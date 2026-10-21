@@ -1,0 +1,71 @@
+{
+  "artifact": "msrs_cell_feature_probe",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L4 cell-feature feasibility",
+  "generated_utc": "2026-10-21T06:35:11+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "script": "molmetal/scripts/msrs_cell_feature_probe.py",
+    "git_commit": "d7513c389212e4b0ed30a6875b28957110e46d1c",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "gate": ">=46 cell lines x >=10 features AND ablation >= +0.005 R2",
+    "kill": "cannot obtain -> close B2 permanently",
+    "access_probes_2026_10_21": {
+      "DepMap": "HTTP 200, Cloudflare Turnstile challenge; body is HTML, not CSV",
+      "GDSC / CancerRxGene": "HTTP 410 Gone",
+      "Cellosaurus API": "no response within 30 s",
+      "GEO GSE36133 (CCLE)": "reachable, RAW.tar only (per-sample CEL files, needs RMA)"
+    }
+  },
+  "filesystem": {
+    "annotation_files_found": [],
+    "n_annotation_files": 0
+  },
+  "coverage": {
+    "n_rows": 42167,
+    "n_unique_cell_lines": 739,
+    "top46_row_share": 0.8022,
+    "top10": {
+      "A549": 4741,
+      "HELA": 4444,
+      "MCF7": 3528,
+      "HEPG2": 2141,
+      "A2780": 2027,
+      "MDAMB231": 1764,
+      "HCT116": 1125,
+      "A2780CISR": 1093,
+      "HEK293": 917,
+      "A549CISR": 772
+    }
+  },
+  "identity_mismatch": {
+    "unmatchable_lines": {
+      "HELA": "HeLa is excluded from CCLE (contamination history)",
+      "HEK293": "HEK293 is not a cancer line and is not in the CCLE panel",
+      "A2780": "A2780 is not in the CCLE panel",
+      "A2780CISR": "resistant sub-line; no DepMap counterpart exists",
+      "A549CISR": "resistant sub-line; no DepMap counterpart exists",
+      "MCF7CISR": "resistant sub-line; no DepMap counterpart exists",
+      "HCT116CISR": "resistant sub-line; no DepMap counterpart exists"
+    },
+    "unmatchable_rows": 9253,
+    "unmatchable_row_share": 0.2194,
+    "unmatchable_lines_present": {
+      "HELA": 4444,
+      "HEK293": 917,
+      "A2780": 2027,
+      "A2780CISR": 1093,
+      "A549CISR": 772
+    },
+    "note": "These lines cannot be matched to CCLE/DepMap regardless of download access: HeLa is excluded from CCLE, HEK293 is not a cancer line, A2780 is outside the CCLE panel, and the CISR lines are resistant derivatives with no DepMap counterpart."
+  },
+  "verdict": "KILL",
+  "verdict_reason": "Two independent failures. Access: every programmatic route is blocked (Cloudflare, 410, timeout, or CEL-only). Identity: the lines that dominate MSRS include five that have no CCLE/DepMap counterpart by construction, so even a successful download would not reach the 46-line gate. The second failure is a property of the corpus and will not improve with retries, so B2 closes.",
+  "what_would_unblock": "A cell-line panel that includes resistant derivatives and non-CCLE lines, or an MSRS-specific annotation effort. Neither is a download."
+}

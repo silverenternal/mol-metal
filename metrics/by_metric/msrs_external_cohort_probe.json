@@ -1,0 +1,104 @@
+{
+  "artifact": "msrs_external_cohort_probe",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L4 external cohort availability",
+  "generated_utc": "2026-10-21T06:36:53+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "ircytotox_sha256": "4b61636c4246add43466ffc725c4a97b64124d267c62853c0d800a4a4bf05d29",
+    "ircytotox_url": "https://zenodo.org/api/records/13120939/files/IrCytoToxDB.csv/content",
+    "ircytotox_doi": "10.5281/zenodo.13120939",
+    "ircytotox_license": "CC-BY-4.0",
+    "script": "molmetal/scripts/msrs_external_cohort_probe.py",
+    "git_commit": "d7513c389212e4b0ed30a6875b28957110e46d1c",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "independence_test": "DOI overlap + row-level agreement on matched (DOI, cell line) cells",
+    "gate": ">=60 compounds / >=3 metals / >=8 papers / DOI-disjoint from MSRS",
+    "kill": "<30 compounds after the DOI diff"
+  },
+  "verdict": "KILL",
+  "ircytotoxdb": {
+    "fetch": {
+      "status": "CACHED",
+      "path": "/home/hugo/codes/mol-metal/.data/external/IrCytoToxDB.csv",
+      "bytes": 452000
+    },
+    "n_rows": 2694,
+    "n_dois": 222,
+    "n_new_dois": 1,
+    "doi_overlap": 221,
+    "doi_overlap_share": 0.9955,
+    "new_doi_examples": [
+      "10.1002/ange.202115247"
+    ],
+    "row_agreement": {
+      "n_matched_cells": 653,
+      "corr": 0.9611,
+      "mean_diff_log10": -0.0005,
+      "median_abs_diff_log10": 0.0,
+      "share_within_0p01": 0.8943,
+      "share_within_0p10": 0.9096,
+      "n_censored_rows_dropped": 373
+    },
+    "year_range": [
+      2008,
+      2022
+    ],
+    "n_cell_lines": 127
+  },
+  "sources": [
+    {
+      "source": "local cell-line annotation",
+      "status": "PRESENT",
+      "detail": "4 files matching ccle/gdsc/depmap/cellosaurus"
+    },
+    {
+      "source": "ChEMBL 29 local export",
+      "status": "NOT-USABLE",
+      "detail": "MET-7 measured: 0 structures containing Pt/Ru/Ir/Rh/Os/Re"
+    },
+    {
+      "source": "PlatinAI",
+      "status": "NOT-USABLE",
+      "detail": "Pt only (MET-7); no Ru/Ir cohort"
+    },
+    {
+      "source": "NCI-60",
+      "status": "NOT-USABLE",
+      "detail": "no SMILES in the local table (MET-7)"
+    },
+    {
+      "source": "DepMap",
+      "status": "NOT-USABLE",
+      "detail": "HTTP 200 but Cloudflare Turnstile challenge; download returns HTML, not CSV (2026-10-21)"
+    },
+    {
+      "source": "GDSC / CancerRxGene",
+      "status": "NOT-USABLE",
+      "detail": "HTTP 410 Gone (2026-10-21)"
+    },
+    {
+      "source": "Cellosaurus API",
+      "status": "NOT-USABLE",
+      "detail": "no response within timeout (2026-10-21)"
+    },
+    {
+      "source": "GEO GSE36133 (CCLE)",
+      "status": "NOT-USABLE",
+      "detail": "reachable, but RAW.tar only: per-sample CEL files needing RMA"
+    },
+    {
+      "source": "RuCytoToxDB",
+      "status": "NOT-USABLE",
+      "detail": "no Zenodo deposit found; ChemRxiv 2025 reports 921 papers, against MSRS's 1,427 Ru DOIs, so it is a subset"
+    }
+  ],
+  "conclusion": "No independent machine-readable cohort exists for this task. IrCytoToxDB, the largest public Ir corpus, shares 99.55% of its DOIs with MetalCytoToxDB and 89.4% of its matched cells are numerically identical to within 0.01 log10 -- it is the Ir slice of the same curation, not an external test set. Every other route is either blocked (DepMap Cloudflare, GDSC 410, Cellosaurus timeout) or has been measured empty (ChEMBL 29, PlatinAI, NCI-60).",
+  "what_would_unblock": "Manual curation of 2023-2025 papers, which is the two weeks EXT-5 budgeted and which this probe deliberately did not fake. The search log and candidate journals are in TODO/completed/ext5_external_cohort_probe.md."
+}

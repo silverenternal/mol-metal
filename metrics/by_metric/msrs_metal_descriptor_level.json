@@ -1,0 +1,452 @@
+{
+  "artifact": "msrs_metal_descriptor_level",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L4 level predictability",
+  "generated_utc": "2026-10-21T06:23:52+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_metal_descriptor_level.py",
+    "git_commit": "752e356d9d1fd6e6de99fa54bbc76e34c30a9489",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "n_metals": 5,
+    "n_features": 16,
+    "features": [
+      "atomic_number",
+      "atomic_weight",
+      "rcovalent_ang",
+      "rvdw_ang",
+      "rb0_ang",
+      "n_outer_electrons",
+      "row",
+      "ie1_kj",
+      "ie2_kj",
+      "pauling_en",
+      "group",
+      "period",
+      "d_electrons_M3",
+      "unpaired_M3_lowspin",
+      "is_4d",
+      "is_5d"
+    ],
+    "feature_sources": {
+      "rdkit_periodic_table": [
+        "atomic_number",
+        "atomic_weight",
+        "rcovalent_ang",
+        "rvdw_ang",
+        "rb0_ang",
+        "n_outer_electrons",
+        "row"
+      ],
+      "nist_and_wikipedia": [
+        "ie1_kj",
+        "ie2_kj",
+        "pauling_en"
+      ],
+      "definitional_no_measurement": [
+        "group",
+        "period",
+        "d_electrons_M3",
+        "unpaired_M3_lowspin",
+        "is_4d",
+        "is_5d"
+      ]
+    },
+    "estimators": {
+      "ridge": "standardised, alpha from a grid, nested leave-one-out",
+      "single": "one column, OLS, leave-one-out"
+    },
+    "null": "120 permutations of metal -> mean assignment, alpha fixed at 1.0",
+    "gate": "PASS if best LOOCV R2 >= 0.5; KILL otherwise"
+  },
+  "verdict": "KILL",
+  "gate_reading": {
+    "clause_loo_r2": "best +0.894 (needs >= 0.5)",
+    "clause_replicates_across_endpoints": false,
+    "clause_permutation_p": "min 0.133 (needs < 0.05)",
+    "why_kill": "the only positive LOOCV R2 is a single column (van der Waals radius) on one endpoint, it is not distinguishable from the 120-permutation null, and it inverts on cisplatin_ratio"
+  },
+  "per_endpoint_best_loo_r2": {
+    "potency": 0.8944,
+    "cisplatin_ratio": -0.4103
+  },
+  "per_endpoint_permutation_p": {
+    "potency": 0.1667,
+    "cisplatin_ratio": 0.1333
+  },
+  "best_loo_r2": 0.8944,
+  "endpoints": {
+    "potency": {
+      "metal_means": {
+        "Ru": 1.1844,
+        "Ir": 0.8473,
+        "Rh": 0.8958,
+        "Os": 0.7902,
+        "Re": 1.2346
+      },
+      "mean_sd": 0.1826,
+      "ridge_loo": {
+        "alpha": 1.0,
+        "alpha_curve": {
+          "0.01": 0.295,
+          "0.1": 0.3115,
+          "1.0": 0.3611,
+          "10.0": 0.1479,
+          "100.0": -0.4117,
+          "1000.0": -0.5472
+        },
+        "loo_r2": 0.3611,
+        "loo_pred": [
+          1.0482,
+          0.6685,
+          1.0015,
+          0.9864,
+          1.155
+        ]
+      },
+      "single_best": {
+        "best_column_index": 3,
+        "best_loo_r2": 0.8944,
+        "per_column_loo_r2": {
+          "0": -1.4688,
+          "1": -1.462,
+          "2": 0.4206,
+          "3": 0.8944,
+          "4": -2.569,
+          "5": 0.0794,
+          "6": -1.576,
+          "7": -0.3062,
+          "8": -0.589,
+          "9": -0.0042,
+          "10": 0.0794,
+          "11": -1.576,
+          "12": 0.0794,
+          "13": 0.0794,
+          "14": -1.576,
+          "15": -1.576
+        },
+        "best_column": "rvdw_ang",
+        "per_column_names": {
+          "0": "atomic_number",
+          "1": "atomic_weight",
+          "2": "rcovalent_ang",
+          "3": "rvdw_ang",
+          "4": "rb0_ang",
+          "5": "n_outer_electrons",
+          "6": "row",
+          "7": "ie1_kj",
+          "8": "ie2_kj",
+          "9": "pauling_en",
+          "10": "group",
+          "11": "period",
+          "12": "d_electrons_M3",
+          "13": "unpaired_M3_lowspin",
+          "14": "is_4d",
+          "15": "is_5d"
+        }
+      },
+      "permutation": {
+        "n_permutations": 120,
+        "exhaustive": true,
+        "null_mean_r2": -2.2731,
+        "null_q95_r2": 0.7912,
+        "p_value": 0.1667,
+        "note": "alpha fixed at 1.0 inside the permutation loop so the null is not re-tuned per shuffle."
+      }
+    },
+    "cisplatin_ratio": {
+      "metal_means": {
+        "Ru": 0.204,
+        "Ir": -0.1772,
+        "Rh": -0.0504,
+        "Os": -0.0436,
+        "Re": -0.1022
+      },
+      "mean_sd": 0.1282,
+      "ridge_loo": {
+        "alpha": 100.0,
+        "alpha_curve": {
+          "0.01": -1.9299,
+          "0.1": -1.8685,
+          "1.0": -1.4902,
+          "10.0": -0.6666,
+          "100.0": -0.4748,
+          "1000.0": -0.5484
+        },
+        "loo_r2": -0.4748,
+        "loo_pred": [
+          -0.083,
+          -0.0167,
+          0.0098,
+          -0.056,
+          -0.0061
+        ]
+      },
+      "single_best": {
+        "best_column_index": 7,
+        "best_loo_r2": -0.4103,
+        "per_column_loo_r2": {
+          "0": -0.7301,
+          "1": -0.7617,
+          "2": -5.0211,
+          "3": -1.5926,
+          "4": -0.84,
+          "5": -2.3,
+          "6": -0.8208,
+          "7": -0.4103,
+          "8": -0.6962,
+          "9": -1.4389,
+          "10": -2.3,
+          "11": -0.8208,
+          "12": -2.3,
+          "13": -2.3,
+          "14": -0.8208,
+          "15": -0.8208
+        },
+        "best_column": "ie1_kj",
+        "per_column_names": {
+          "0": "atomic_number",
+          "1": "atomic_weight",
+          "2": "rcovalent_ang",
+          "3": "rvdw_ang",
+          "4": "rb0_ang",
+          "5": "n_outer_electrons",
+          "6": "row",
+          "7": "ie1_kj",
+          "8": "ie2_kj",
+          "9": "pauling_en",
+          "10": "group",
+          "11": "period",
+          "12": "d_electrons_M3",
+          "13": "unpaired_M3_lowspin",
+          "14": "is_4d",
+          "15": "is_5d"
+        }
+      },
+      "permutation": {
+        "n_permutations": 120,
+        "exhaustive": true,
+        "null_mean_r2": -2.2731,
+        "null_q95_r2": 0.4213,
+        "p_value": 0.1333,
+        "note": "alpha fixed at 1.0 inside the permutation loop so the null is not re-tuned per shuffle."
+      }
+    }
+  },
+  "perfect_offset_counterfactual": {
+    "source": "/home/hugo/codes/mol-metal/metrics/by_metric/msrs_lomo_error_decomposition.json",
+    "cells": {
+      "potency|metal_out": {
+        "per_metal": {
+          "Ru": {
+            "r2_raw": -0.0777,
+            "offset_share": 0.0692,
+            "r2_if_level_perfect": -0.0031,
+            "gain": 0.0746,
+            "r2_if_half_bias_corrected": -0.0218,
+            "half_bias_gain": 0.0559
+          },
+          "Ir": {
+            "r2_raw": -0.1283,
+            "offset_share": 0.0682,
+            "r2_if_level_perfect": -0.0513,
+            "gain": 0.077,
+            "r2_if_half_bias_corrected": -0.0706,
+            "half_bias_gain": 0.0577
+          },
+          "Rh": {
+            "r2_raw": -0.1589,
+            "offset_share": 0.1858,
+            "r2_if_level_perfect": 0.0564,
+            "gain": 0.2153,
+            "r2_if_half_bias_corrected": 0.0026,
+            "half_bias_gain": 0.1615
+          },
+          "Os": {
+            "r2_raw": 0.3479,
+            "offset_share": 0.0064,
+            "r2_if_level_perfect": 0.3521,
+            "gain": 0.0042,
+            "r2_if_half_bias_corrected": 0.351,
+            "half_bias_gain": 0.0031
+          },
+          "Re": {
+            "r2_raw": -0.1034,
+            "offset_share": 0.1713,
+            "r2_if_level_perfect": 0.0856,
+            "gain": 0.189,
+            "r2_if_half_bias_corrected": 0.0384,
+            "half_bias_gain": 0.1418
+          }
+        },
+        "mean_gain": 0.112,
+        "mean_half_bias_gain": 0.084,
+        "n_metals_still_negative": 2,
+        "n_metals": 5
+      },
+      "potency|metal_out_ligand_disjoint": {
+        "per_metal": {
+          "Ru": {
+            "r2_raw": -0.1154,
+            "offset_share": 0.036,
+            "r2_if_level_perfect": -0.0752,
+            "gain": 0.0402,
+            "r2_if_half_bias_corrected": -0.0853,
+            "half_bias_gain": 0.0301
+          },
+          "Ir": {
+            "r2_raw": -0.348,
+            "offset_share": 0.1266,
+            "r2_if_level_perfect": -0.1773,
+            "gain": 0.1707,
+            "r2_if_half_bias_corrected": -0.22,
+            "half_bias_gain": 0.128
+          },
+          "Rh": {
+            "r2_raw": -0.1948,
+            "offset_share": 0.1445,
+            "r2_if_level_perfect": -0.0222,
+            "gain": 0.1726,
+            "r2_if_half_bias_corrected": -0.0653,
+            "half_bias_gain": 0.1295
+          },
+          "Os": {
+            "r2_raw": 0.1143,
+            "offset_share": 0.0087,
+            "r2_if_level_perfect": 0.122,
+            "gain": 0.0077,
+            "r2_if_half_bias_corrected": 0.1201,
+            "half_bias_gain": 0.0058
+          },
+          "Re": {
+            "r2_raw": -0.1173,
+            "offset_share": 0.0607,
+            "r2_if_level_perfect": -0.0495,
+            "gain": 0.0678,
+            "r2_if_half_bias_corrected": -0.0664,
+            "half_bias_gain": 0.0509
+          }
+        },
+        "mean_gain": 0.0918,
+        "mean_half_bias_gain": 0.0689,
+        "n_metals_still_negative": 4,
+        "n_metals": 5
+      },
+      "cisplatin_ratio|metal_out": {
+        "per_metal": {
+          "Ru": {
+            "r2_raw": -0.106,
+            "offset_share": 0.0483,
+            "r2_if_level_perfect": -0.0526,
+            "gain": 0.0534,
+            "r2_if_half_bias_corrected": -0.0659,
+            "half_bias_gain": 0.0401
+          },
+          "Ir": {
+            "r2_raw": -0.1179,
+            "offset_share": 0.0538,
+            "r2_if_level_perfect": -0.0578,
+            "gain": 0.0601,
+            "r2_if_half_bias_corrected": -0.0728,
+            "half_bias_gain": 0.0451
+          },
+          "Rh": {
+            "r2_raw": 0.0541,
+            "offset_share": 0.1066,
+            "r2_if_level_perfect": 0.1549,
+            "gain": 0.1008,
+            "r2_if_half_bias_corrected": 0.1297,
+            "half_bias_gain": 0.0756
+          },
+          "Os": {
+            "r2_raw": 0.335,
+            "offset_share": 0.0029,
+            "r2_if_level_perfect": 0.3369,
+            "gain": 0.0019,
+            "r2_if_half_bias_corrected": 0.3364,
+            "half_bias_gain": 0.0014
+          },
+          "Re": {
+            "r2_raw": -0.0257,
+            "offset_share": 0.0131,
+            "r2_if_level_perfect": -0.0123,
+            "gain": 0.0134,
+            "r2_if_half_bias_corrected": -0.0156,
+            "half_bias_gain": 0.0101
+          }
+        },
+        "mean_gain": 0.0459,
+        "mean_half_bias_gain": 0.0345,
+        "n_metals_still_negative": 3,
+        "n_metals": 5
+      },
+      "cisplatin_ratio|metal_out_ligand_disjoint": {
+        "per_metal": {
+          "Ru": {
+            "r2_raw": -0.2255,
+            "offset_share": 0.0401,
+            "r2_if_level_perfect": -0.1764,
+            "gain": 0.0491,
+            "r2_if_half_bias_corrected": -0.1886,
+            "half_bias_gain": 0.0369
+          },
+          "Ir": {
+            "r2_raw": -0.3061,
+            "offset_share": 0.0618,
+            "r2_if_level_perfect": -0.2254,
+            "gain": 0.0807,
+            "r2_if_half_bias_corrected": -0.2456,
+            "half_bias_gain": 0.0605
+          },
+          "Rh": {
+            "r2_raw": -0.1844,
+            "offset_share": 0.0539,
+            "r2_if_level_perfect": -0.1206,
+            "gain": 0.0638,
+            "r2_if_half_bias_corrected": -0.1365,
+            "half_bias_gain": 0.0479
+          },
+          "Os": {
+            "r2_raw": 0.059,
+            "offset_share": 0.0127,
+            "r2_if_level_perfect": 0.071,
+            "gain": 0.012,
+            "r2_if_half_bias_corrected": 0.068,
+            "half_bias_gain": 0.009
+          },
+          "Re": {
+            "r2_raw": -0.1475,
+            "offset_share": 0.0987,
+            "r2_if_level_perfect": -0.0342,
+            "gain": 0.1133,
+            "r2_if_half_bias_corrected": -0.0626,
+            "half_bias_gain": 0.0849
+          }
+        },
+        "mean_gain": 0.0638,
+        "mean_half_bias_gain": 0.0478,
+        "n_metals_still_negative": 4,
+        "n_metals": 5
+      }
+    }
+  },
+  "counterfactual_summary": {
+    "mean_gain_over_cells": 0.0784,
+    "max_metals_still_negative": 4,
+    "note": "Even a perfect level prediction leaves most held-out metals with R2 < 0, because EXT-1 measured the offset share at 5-10% of squared error."
+  },
+  "caveats": [
+    "Five metals, so every LOOCV trains on four points. Any R2 here has a huge variance and the permutation null is the only meaningful reference.",
+    "Six of the sixteen columns are definitional (group, period, d-count, spin). They are not measurements; they are listed separately in feature_sources.",
+    "RDKit periodic-table values are programmatic and reproducible, but they are element-level, not M(III)-ion-level. Static descriptors cannot encode the ligand-field or solvation environment of the actual complex.",
+    "The counterfactual is arithmetic on EXT-1's decomposition, not a refit: removing the offset multiplies MSE by (1 - offset_share)."
+  ]
+}

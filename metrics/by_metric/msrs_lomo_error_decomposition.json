@@ -1,0 +1,1194 @@
+{
+  "artifact": "msrs_lomo_error_decomposition",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L4 metal extrapolation mechanism",
+  "generated_utc": "2026-10-21T06:23:12+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_lomo_error_decomposition.py",
+    "git_commit": "752e356d9d1fd6e6de99fa54bbc76e34c30a9489",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "learner": "additive LightGBM from MSRS-2 (interaction constraints on ligand/metal/cell)",
+    "representation": "descriptors",
+    "arms": {
+      "raw": "target = value_log10; reproduces msrs_lomo_surface.json",
+      "centred": "target = value_log10 - mean(metal); level and scale removed by construction"
+    },
+    "splits": [
+      "metal_out",
+      "metal_out_ligand_disjoint"
+    ],
+    "seed": 20261018,
+    "shape_gate": 0.1,
+    "identity": "E[(p-y)^2] = (mu_p-mu_y)^2 + (sd_p-sd_y)^2 + 2 sd_p sd_y (1-rho)"
+  },
+  "headline_verdict": "PARTIAL",
+  "replication_verdicts": {
+    "potency|metal_out": "PARTIAL",
+    "potency|metal_out_ligand_disjoint": "SAR_FAILS",
+    "cisplatin_ratio|metal_out": "PARTIAL",
+    "cisplatin_ratio|metal_out_ligand_disjoint": "SAR_FAILS"
+  },
+  "mechanism": {
+    "potency|metal_out": {
+      "mean_offset_share": 0.1002,
+      "mean_scale_share": 0.206,
+      "mean_shape_share": 0.6938,
+      "mean_ceiling_r2": 0.1524,
+      "pooled_spearman": 0.296,
+      "pooled_spearman_p": 0.0
+    },
+    "potency|metal_out_ligand_disjoint": {
+      "mean_offset_share": 0.0753,
+      "mean_scale_share": 0.2717,
+      "mean_shape_share": 0.653,
+      "mean_ceiling_r2": 0.05,
+      "pooled_spearman": 0.1575,
+      "pooled_spearman_p": 0.0
+    },
+    "cisplatin_ratio|metal_out": {
+      "mean_offset_share": 0.0449,
+      "mean_scale_share": 0.1983,
+      "mean_shape_share": 0.7568,
+      "mean_ceiling_r2": 0.1077,
+      "pooled_spearman": 0.2687,
+      "pooled_spearman_p": 0.0
+    },
+    "cisplatin_ratio|metal_out_ligand_disjoint": {
+      "mean_offset_share": 0.0534,
+      "mean_scale_share": 0.2295,
+      "mean_shape_share": 0.7171,
+      "mean_ceiling_r2": 0.0339,
+      "pooled_spearman": 0.0617,
+      "pooled_spearman_p": 4.4e-11
+    }
+  },
+  "dominant_term": {
+    "term": "shape",
+    "mean_share": 0.7052
+  },
+  "endpoints": {
+    "potency": {
+      "status": "OK",
+      "n_rows": 21045,
+      "n_dropped_censored": 4813,
+      "censored_share": 0.1836,
+      "n_ligands": 2846,
+      "metal_means": {
+        "Ru": 1.1816,
+        "Ir": 0.8494,
+        "Rh": 0.8944,
+        "Os": 0.7807,
+        "Re": 1.2346
+      },
+      "splits": {
+        "metal_out": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 6260,
+              "n_test": 14785,
+              "n_ligands_test": 2234,
+              "raw": {
+                "r2": -0.0777,
+                "mae": 0.6347,
+                "mse": 0.635311,
+                "offset_sq": 0.043945,
+                "scale_sq": 0.106376,
+                "shape_term": 0.48499,
+                "identity_residual": 0.0,
+                "offset_share": 0.0692,
+                "scale_share": 0.1674,
+                "shape_share": 0.7634,
+                "slope": 0.4953,
+                "rho": 0.2849,
+                "bias": -0.2096,
+                "pred_mean": 0.972,
+                "observed_mean": 1.1816,
+                "pred_sd": 0.4417,
+                "observed_sd": 0.7678
+              },
+              "centred": {
+                "r2": -0.0091,
+                "mae": 0.5981,
+                "spearman": 0.2873,
+                "spearman_p": 0.0,
+                "pred_sd": 0.436,
+                "observed_sd": 0.7678,
+                "calibration_ceiling_r2": 0.0826
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 17379,
+              "n_test": 3666,
+              "n_ligands_test": 572,
+              "raw": {
+                "r2": -0.1283,
+                "mae": 0.5391,
+                "mse": 0.463407,
+                "offset_sq": 0.031608,
+                "scale_sq": 0.073102,
+                "shape_term": 0.358696,
+                "identity_residual": 0.0,
+                "offset_share": 0.0682,
+                "scale_share": 0.1577,
+                "shape_share": 0.774,
+                "slope": 0.4232,
+                "rho": 0.2447,
+                "bias": 0.1778,
+                "pred_mean": 1.0272,
+                "observed_mean": 0.8494,
+                "pred_sd": 0.3705,
+                "observed_sd": 0.6409
+              },
+              "centred": {
+                "r2": -0.1212,
+                "mae": 0.5367,
+                "spearman": 0.2324,
+                "spearman_p": 0.0,
+                "pred_sd": 0.3708,
+                "observed_sd": 0.6409,
+                "calibration_ceiling_r2": 0.054
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 20086,
+              "n_test": 959,
+              "n_ligands_test": 221,
+              "raw": {
+                "r2": -0.1589,
+                "mae": 0.5924,
+                "mse": 0.606731,
+                "offset_sq": 0.112746,
+                "scale_sq": 0.132513,
+                "shape_term": 0.361472,
+                "identity_residual": 0.0,
+                "offset_share": 0.1858,
+                "scale_share": 0.2184,
+                "shape_share": 0.5958,
+                "slope": 0.6143,
+                "rho": 0.3053,
+                "bias": 0.3358,
+                "pred_mean": 1.2302,
+                "observed_mean": 0.8944,
+                "pred_sd": 0.3595,
+                "observed_sd": 0.7236
+              },
+              "centred": {
+                "r2": 0.0555,
+                "mae": 0.5326,
+                "spearman": 0.288,
+                "spearman_p": 0.0,
+                "pred_sd": 0.358,
+                "observed_sd": 0.7236,
+                "calibration_ceiling_r2": 0.083
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 20166,
+              "n_test": 879,
+              "n_ligands_test": 179,
+              "raw": {
+                "r2": 0.3479,
+                "mae": 0.5718,
+                "mse": 0.496501,
+                "offset_sq": 0.003155,
+                "scale_sq": 0.177531,
+                "shape_term": 0.315815,
+                "identity_residual": 0.0,
+                "offset_share": 0.0064,
+                "scale_share": 0.3576,
+                "shape_share": 0.6361,
+                "slope": 1.1582,
+                "rho": 0.5989,
+                "bias": -0.0562,
+                "pred_mean": 0.7246,
+                "observed_mean": 0.7807,
+                "pred_sd": 0.4512,
+                "observed_sd": 0.8726
+              },
+              "centred": {
+                "r2": 0.3159,
+                "mae": 0.5888,
+                "spearman": 0.6159,
+                "spearman_p": 0.0,
+                "pred_sd": 0.4559,
+                "observed_sd": 0.8726,
+                "calibration_ceiling_r2": 0.3794
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 20289,
+              "n_test": 756,
+              "n_ligands_test": 127,
+              "raw": {
+                "r2": -0.1034,
+                "mae": 0.5371,
+                "mse": 0.468283,
+                "offset_sq": 0.080197,
+                "scale_sq": 0.060456,
+                "shape_term": 0.327629,
+                "identity_residual": 0.0,
+                "offset_share": 0.1713,
+                "scale_share": 0.1291,
+                "shape_share": 0.6996,
+                "slope": 0.6103,
+                "rho": 0.38,
+                "bias": -0.2832,
+                "pred_mean": 0.9514,
+                "observed_mean": 1.2346,
+                "pred_sd": 0.4056,
+                "observed_sd": 0.6514
+              },
+              "centred": {
+                "r2": 0.1056,
+                "mae": 0.4497,
+                "spearman": 0.4035,
+                "spearman_p": 0.0,
+                "pred_sd": 0.3938,
+                "observed_sd": 0.6514,
+                "calibration_ceiling_r2": 0.1628
+              }
+            }
+          },
+          "verdict": {
+            "label": "PARTIAL",
+            "threshold": 0.1,
+            "n_metals_above_threshold": 2,
+            "n_metals": 5,
+            "metals_above_threshold": [
+              "Os",
+              "Re"
+            ],
+            "per_metal_centred_r2": {
+              "Ru": -0.0091,
+              "Ir": -0.1212,
+              "Rh": 0.0555,
+              "Os": 0.3159,
+              "Re": 0.1056
+            },
+            "per_metal_spearman": {
+              "Ru": 0.2873,
+              "Ir": 0.2324,
+              "Rh": 0.288,
+              "Os": 0.6159,
+              "Re": 0.4035
+            },
+            "per_metal_offset_share": {
+              "Ru": 0.0692,
+              "Ir": 0.0682,
+              "Rh": 0.1858,
+              "Os": 0.0064,
+              "Re": 0.1713
+            },
+            "per_metal_scale_share": {
+              "Ru": 0.1674,
+              "Ir": 0.1577,
+              "Rh": 0.2184,
+              "Os": 0.3576,
+              "Re": 0.1291
+            },
+            "per_metal_shape_share": {
+              "Ru": 0.7634,
+              "Ir": 0.774,
+              "Rh": 0.5958,
+              "Os": 0.6361,
+              "Re": 0.6996
+            },
+            "per_metal_ceiling_r2": {
+              "Ru": 0.0826,
+              "Ir": 0.054,
+              "Rh": 0.083,
+              "Os": 0.3794,
+              "Re": 0.1628
+            },
+            "mean_offset_share": 0.1002,
+            "mean_scale_share": 0.206,
+            "mean_shape_share": 0.6938,
+            "mean_ceiling_r2": 0.1524,
+            "mean_abs_bias": 0.2125,
+            "gate_note": "The frozen gate reads centred R2 > 0.10. Centred R2 penalises compression, so it understates rank transfer; per_metal_ceiling_r2 (rho^2) is reported alongside it and is what EXT-3 is scored against."
+          },
+          "pooled": {
+            "raw": {
+              "n": 21045,
+              "pooled_r2": -0.0228,
+              "pooled_spearman": 0.2788,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            },
+            "centred": {
+              "n": 21045,
+              "pooled_r2": 0.001,
+              "pooled_spearman": 0.296,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            }
+          }
+        },
+        "metal_out_ligand_disjoint": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 3067,
+              "n_test": 14785,
+              "n_ligands_test": 2234,
+              "raw": {
+                "r2": -0.1154,
+                "mae": 0.6507,
+                "mse": 0.657582,
+                "offset_sq": 0.023677,
+                "scale_sq": 0.205426,
+                "shape_term": 0.428479,
+                "identity_residual": 0.0,
+                "offset_share": 0.036,
+                "scale_share": 0.3124,
+                "shape_share": 0.6516,
+                "slope": 0.2758,
+                "rho": 0.113,
+                "bias": -0.1539,
+                "pred_mean": 1.0277,
+                "observed_mean": 1.1816,
+                "pred_sd": 0.3146,
+                "observed_sd": 0.7678
+              },
+              "centred": {
+                "r2": -0.0734,
+                "mae": 0.6224,
+                "spearman": 0.1388,
+                "spearman_p": 0.0,
+                "pred_sd": 0.3047,
+                "observed_sd": 0.7678,
+                "calibration_ceiling_r2": 0.0193
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 13404,
+              "n_test": 3666,
+              "n_ligands_test": 572,
+              "raw": {
+                "r2": -0.348,
+                "mae": 0.5867,
+                "mse": 0.55363,
+                "offset_sq": 0.070101,
+                "scale_sq": 0.072754,
+                "shape_term": 0.410775,
+                "identity_residual": 0.0,
+                "offset_share": 0.1266,
+                "scale_share": 0.1314,
+                "shape_share": 0.742,
+                "slope": 0.2357,
+                "rho": 0.1365,
+                "bias": 0.2648,
+                "pred_mean": 1.1142,
+                "observed_mean": 0.8494,
+                "pred_sd": 0.3711,
+                "observed_sd": 0.6409
+              },
+              "centred": {
+                "r2": -0.2898,
+                "mae": 0.5754,
+                "spearman": 0.1331,
+                "spearman_p": 0.0,
+                "pred_sd": 0.3694,
+                "observed_sd": 0.6409,
+                "calibration_ceiling_r2": 0.0177
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 16255,
+              "n_test": 959,
+              "n_ligands_test": 221,
+              "raw": {
+                "r2": -0.1948,
+                "mae": 0.6037,
+                "mse": 0.625555,
+                "offset_sq": 0.090362,
+                "scale_sq": 0.173542,
+                "shape_term": 0.361651,
+                "identity_residual": 0.0,
+                "offset_share": 0.1445,
+                "scale_share": 0.2774,
+                "shape_share": 0.5781,
+                "slope": 0.4382,
+                "rho": 0.1859,
+                "bias": 0.3006,
+                "pred_mean": 1.195,
+                "observed_mean": 0.8944,
+                "pred_sd": 0.307,
+                "observed_sd": 0.7236
+              },
+              "centred": {
+                "r2": -0.0225,
+                "mae": 0.5617,
+                "spearman": 0.1932,
+                "spearman_p": 0.0,
+                "pred_sd": 0.311,
+                "observed_sd": 0.7236,
+                "calibration_ceiling_r2": 0.0373
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 16971,
+              "n_test": 879,
+              "n_ligands_test": 179,
+              "raw": {
+                "r2": 0.1143,
+                "mae": 0.6705,
+                "mse": 0.674363,
+                "offset_sq": 0.00589,
+                "scale_sq": 0.307626,
+                "shape_term": 0.360847,
+                "identity_residual": 0.0,
+                "offset_share": 0.0087,
+                "scale_share": 0.4562,
+                "shape_share": 0.5351,
+                "slope": 0.9596,
+                "rho": 0.3496,
+                "bias": 0.0767,
+                "pred_mean": 0.8575,
+                "observed_mean": 0.7807,
+                "pred_sd": 0.3179,
+                "observed_sd": 0.8726
+              },
+              "centred": {
+                "r2": 0.0795,
+                "mae": 0.6958,
+                "spearman": 0.3622,
+                "spearman_p": 0.0,
+                "pred_sd": 0.3213,
+                "observed_sd": 0.8726,
+                "calibration_ceiling_r2": 0.1312
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 17797,
+              "n_test": 756,
+              "n_ligands_test": 127,
+              "raw": {
+                "r2": -0.1173,
+                "mae": 0.5478,
+                "mse": 0.474165,
+                "offset_sq": 0.028759,
+                "scale_sq": 0.085969,
+                "shape_term": 0.359438,
+                "identity_residual": 0.0,
+                "offset_share": 0.0607,
+                "scale_share": 0.1813,
+                "shape_share": 0.758,
+                "slope": 0.4181,
+                "rho": 0.2299,
+                "bias": -0.1696,
+                "pred_mean": 1.065,
+                "observed_mean": 1.2346,
+                "pred_sd": 0.3582,
+                "observed_sd": 0.6514
+              },
+              "centred": {
+                "r2": -0.062,
+                "mae": 0.5148,
+                "spearman": 0.211,
+                "spearman_p": 0.0,
+                "pred_sd": 0.365,
+                "observed_sd": 0.6514,
+                "calibration_ceiling_r2": 0.0445
+              }
+            }
+          },
+          "verdict": {
+            "label": "SAR_FAILS",
+            "threshold": 0.1,
+            "n_metals_above_threshold": 0,
+            "n_metals": 5,
+            "metals_above_threshold": [],
+            "per_metal_centred_r2": {
+              "Ru": -0.0734,
+              "Ir": -0.2898,
+              "Rh": -0.0225,
+              "Os": 0.0795,
+              "Re": -0.062
+            },
+            "per_metal_spearman": {
+              "Ru": 0.1388,
+              "Ir": 0.1331,
+              "Rh": 0.1932,
+              "Os": 0.3622,
+              "Re": 0.211
+            },
+            "per_metal_offset_share": {
+              "Ru": 0.036,
+              "Ir": 0.1266,
+              "Rh": 0.1445,
+              "Os": 0.0087,
+              "Re": 0.0607
+            },
+            "per_metal_scale_share": {
+              "Ru": 0.3124,
+              "Ir": 0.1314,
+              "Rh": 0.2774,
+              "Os": 0.4562,
+              "Re": 0.1813
+            },
+            "per_metal_shape_share": {
+              "Ru": 0.6516,
+              "Ir": 0.742,
+              "Rh": 0.5781,
+              "Os": 0.5351,
+              "Re": 0.758
+            },
+            "per_metal_ceiling_r2": {
+              "Ru": 0.0193,
+              "Ir": 0.0177,
+              "Rh": 0.0373,
+              "Os": 0.1312,
+              "Re": 0.0445
+            },
+            "mean_offset_share": 0.0753,
+            "mean_scale_share": 0.2717,
+            "mean_shape_share": 0.653,
+            "mean_ceiling_r2": 0.05,
+            "mean_abs_bias": 0.1931,
+            "gate_note": "The frozen gate reads centred R2 > 0.10. Centred R2 penalises compression, so it understates rank transfer; per_metal_ceiling_r2 (rho^2) is reported alongside it and is what EXT-3 is scored against."
+          },
+          "pooled": {
+            "raw": {
+              "n": 21045,
+              "pooled_r2": -0.0917,
+              "pooled_spearman": 0.1263,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            },
+            "centred": {
+              "n": 21045,
+              "pooled_r2": -0.09,
+              "pooled_spearman": 0.1575,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            }
+          }
+        }
+      },
+      "within_metal_ceiling": {
+        "Ru": {
+          "status": "OK",
+          "n_rows": 14785,
+          "n_ligands": 2234,
+          "oof_r2": 0.2529,
+          "oof_spearman": 0.4917,
+          "oof_mae": 0.513
+        },
+        "Ir": {
+          "status": "OK",
+          "n_rows": 3666,
+          "n_ligands": 572,
+          "oof_r2": 0.1236,
+          "oof_spearman": 0.4239,
+          "oof_mae": 0.4552
+        },
+        "Rh": {
+          "status": "OK",
+          "n_rows": 959,
+          "n_ligands": 221,
+          "oof_r2": 0.0997,
+          "oof_spearman": 0.4429,
+          "oof_mae": 0.4945
+        },
+        "Os": {
+          "status": "OK",
+          "n_rows": 879,
+          "n_ligands": 179,
+          "oof_r2": 0.4125,
+          "oof_spearman": 0.6367,
+          "oof_mae": 0.5288
+        },
+        "Re": {
+          "status": "OK",
+          "n_rows": 756,
+          "n_ligands": 127,
+          "oof_r2": 0.1635,
+          "oof_spearman": 0.4414,
+          "oof_mae": 0.4412
+        }
+      },
+      "elapsed_seconds": 195.2
+    },
+    "cisplatin_ratio": {
+      "status": "OK",
+      "n_rows": 11403,
+      "n_dropped_censored": 2510,
+      "censored_share": 0.1783,
+      "n_ligands": 1616,
+      "metal_means": {
+        "Ru": 0.2071,
+        "Ir": -0.1776,
+        "Rh": -0.0552,
+        "Os": -0.0293,
+        "Re": -0.1022
+      },
+      "splits": {
+        "metal_out": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 2389,
+              "n_test": 9014,
+              "n_ligands_test": 1382,
+              "raw": {
+                "r2": -0.106,
+                "mae": 0.6701,
+                "mse": 0.730213,
+                "offset_sq": 0.035264,
+                "scale_sq": 0.097046,
+                "shape_term": 0.597903,
+                "identity_residual": 0.0,
+                "offset_share": 0.0483,
+                "scale_share": 0.1329,
+                "shape_share": 0.8188,
+                "slope": 0.4308,
+                "rho": 0.2656,
+                "bias": -0.1878,
+                "pred_mean": 0.0193,
+                "observed_mean": 0.2071,
+                "pred_sd": 0.501,
+                "observed_sd": 0.8125
+              },
+              "centred": {
+                "r2": -0.0582,
+                "mae": 0.6513,
+                "spearman": 0.2588,
+                "spearman_p": 0.0,
+                "pred_sd": 0.4854,
+                "observed_sd": 0.8125,
+                "calibration_ceiling_r2": 0.067
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 10374,
+              "n_test": 1029,
+              "n_ligands_test": 168,
+              "raw": {
+                "r2": -0.1179,
+                "mae": 0.5207,
+                "mse": 0.462795,
+                "offset_sq": 0.024904,
+                "scale_sq": 0.043628,
+                "shape_term": 0.394263,
+                "identity_residual": 0.0,
+                "offset_share": 0.0538,
+                "scale_share": 0.0943,
+                "shape_share": 0.8519,
+                "slope": 0.4367,
+                "rho": 0.2949,
+                "bias": 0.1578,
+                "pred_mean": -0.0198,
+                "observed_mean": -0.1776,
+                "pred_sd": 0.4345,
+                "observed_sd": 0.6434
+              },
+              "centred": {
+                "r2": -0.0709,
+                "mae": 0.5266,
+                "spearman": 0.171,
+                "spearman_p": 0.0,
+                "pred_sd": 0.4443,
+                "observed_sd": 0.6434,
+                "calibration_ceiling_r2": 0.0292
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 10845,
+              "n_test": 558,
+              "n_ligands_test": 136,
+              "raw": {
+                "r2": 0.0541,
+                "mae": 0.5774,
+                "mse": 0.596239,
+                "offset_sq": 0.063584,
+                "scale_sq": 0.147386,
+                "shape_term": 0.38527,
+                "identity_residual": 0.0,
+                "offset_share": 0.1066,
+                "scale_share": 0.2472,
+                "shape_share": 0.6462,
+                "slope": 0.7905,
+                "rho": 0.4082,
+                "bias": 0.2522,
+                "pred_mean": 0.1969,
+                "observed_mean": -0.0552,
+                "pred_sd": 0.41,
+                "observed_sd": 0.7939
+              },
+              "centred": {
+                "r2": 0.1439,
+                "mae": 0.5541,
+                "spearman": 0.3046,
+                "spearman_p": 0.0,
+                "pred_sd": 0.4175,
+                "observed_sd": 0.7939,
+                "calibration_ceiling_r2": 0.0928
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 10950,
+              "n_test": 453,
+              "n_ligands_test": 77,
+              "raw": {
+                "r2": 0.335,
+                "mae": 0.6225,
+                "mse": 0.607687,
+                "offset_sq": 0.001732,
+                "scale_sq": 0.17128,
+                "shape_term": 0.434675,
+                "identity_residual": 0.0,
+                "offset_share": 0.0029,
+                "scale_share": 0.2819,
+                "shape_share": 0.7153,
+                "slope": 1.0239,
+                "rho": 0.5806,
+                "bias": 0.0416,
+                "pred_mean": 0.0123,
+                "observed_mean": -0.0293,
+                "pred_sd": 0.5421,
+                "observed_sd": 0.956
+              },
+              "centred": {
+                "r2": 0.3288,
+                "mae": 0.6182,
+                "spearman": 0.5363,
+                "spearman_p": 0.0,
+                "pred_sd": 0.5651,
+                "observed_sd": 0.956,
+                "calibration_ceiling_r2": 0.2876
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 11054,
+              "n_test": 349,
+              "n_ligands_test": 59,
+              "raw": {
+                "r2": -0.0257,
+                "mae": 0.5853,
+                "mse": 0.597155,
+                "offset_sq": 0.007807,
+                "scale_sq": 0.140525,
+                "shape_term": 0.448822,
+                "identity_residual": 0.0,
+                "offset_share": 0.0131,
+                "scale_share": 0.2353,
+                "shape_share": 0.7516,
+                "slope": 0.4763,
+                "rho": 0.2423,
+                "bias": 0.0884,
+                "pred_mean": -0.0139,
+                "observed_mean": -0.1022,
+                "pred_sd": 0.3882,
+                "observed_sd": 0.763
+              },
+              "centred": {
+                "r2": 0.0282,
+                "mae": 0.5684,
+                "spearman": 0.2489,
+                "spearman_p": 2e-06,
+                "pred_sd": 0.3665,
+                "observed_sd": 0.763,
+                "calibration_ceiling_r2": 0.062
+              }
+            }
+          },
+          "verdict": {
+            "label": "PARTIAL",
+            "threshold": 0.1,
+            "n_metals_above_threshold": 2,
+            "n_metals": 5,
+            "metals_above_threshold": [
+              "Os",
+              "Rh"
+            ],
+            "per_metal_centred_r2": {
+              "Ru": -0.0582,
+              "Ir": -0.0709,
+              "Rh": 0.1439,
+              "Os": 0.3288,
+              "Re": 0.0282
+            },
+            "per_metal_spearman": {
+              "Ru": 0.2588,
+              "Ir": 0.171,
+              "Rh": 0.3046,
+              "Os": 0.5363,
+              "Re": 0.2489
+            },
+            "per_metal_offset_share": {
+              "Ru": 0.0483,
+              "Ir": 0.0538,
+              "Rh": 0.1066,
+              "Os": 0.0029,
+              "Re": 0.0131
+            },
+            "per_metal_scale_share": {
+              "Ru": 0.1329,
+              "Ir": 0.0943,
+              "Rh": 0.2472,
+              "Os": 0.2819,
+              "Re": 0.2353
+            },
+            "per_metal_shape_share": {
+              "Ru": 0.8188,
+              "Ir": 0.8519,
+              "Rh": 0.6462,
+              "Os": 0.7153,
+              "Re": 0.7516
+            },
+            "per_metal_ceiling_r2": {
+              "Ru": 0.067,
+              "Ir": 0.0292,
+              "Rh": 0.0928,
+              "Os": 0.2876,
+              "Re": 0.062
+            },
+            "mean_offset_share": 0.0449,
+            "mean_scale_share": 0.1983,
+            "mean_shape_share": 0.7568,
+            "mean_ceiling_r2": 0.1077,
+            "mean_abs_bias": 0.1456,
+            "gate_note": "The frozen gate reads centred R2 > 0.10. Centred R2 penalises compression, so it understates rank transfer; per_metal_ceiling_r2 (rho^2) is reported alongside it and is what EXT-3 is scored against."
+          },
+          "pooled": {
+            "raw": {
+              "n": 11403,
+              "pooled_r2": -0.0437,
+              "pooled_spearman": 0.2627,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            },
+            "centred": {
+              "n": 11403,
+              "pooled_r2": -0.0251,
+              "pooled_spearman": 0.2687,
+              "pooled_spearman_p": 0.0,
+              "n_metals": 5
+            }
+          }
+        },
+        "metal_out_ligand_disjoint": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 1215,
+              "n_test": 9014,
+              "n_ligands_test": 1382,
+              "raw": {
+                "r2": -0.2255,
+                "mae": 0.7126,
+                "mse": 0.809085,
+                "offset_sq": 0.032413,
+                "scale_sq": 0.171419,
+                "shape_term": 0.605253,
+                "identity_residual": 0.0,
+                "offset_share": 0.0401,
+                "scale_share": 0.2119,
+                "shape_share": 0.7481,
+                "slope": 0.1333,
+                "rho": 0.0654,
+                "bias": -0.18,
+                "pred_mean": 0.027,
+                "observed_mean": 0.2071,
+                "pred_sd": 0.3985,
+                "observed_sd": 0.8125
+              },
+              "centred": {
+                "r2": -0.2323,
+                "mae": 0.7022,
+                "spearman": 0.0446,
+                "spearman_p": 2.3e-05,
+                "pred_sd": 0.405,
+                "observed_sd": 0.8125,
+                "calibration_ceiling_r2": 0.002
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 8821,
+              "n_test": 1029,
+              "n_ligands_test": 168,
+              "raw": {
+                "r2": -0.3061,
+                "mae": 0.5672,
+                "mse": 0.540687,
+                "offset_sq": 0.033412,
+                "scale_sq": 0.073665,
+                "shape_term": 0.43361,
+                "identity_residual": 0.0,
+                "offset_share": 0.0618,
+                "scale_share": 0.1362,
+                "shape_share": 0.802,
+                "slope": 0.1629,
+                "rho": 0.0942,
+                "bias": 0.1828,
+                "pred_mean": 0.0052,
+                "observed_mean": -0.1776,
+                "pred_sd": 0.372,
+                "observed_sd": 0.6434
+              },
+              "centred": {
+                "r2": -0.2179,
+                "mae": 0.5566,
+                "spearman": 0.0588,
+                "spearman_p": 0.059458,
+                "pred_sd": 0.3688,
+                "observed_sd": 0.6434,
+                "calibration_ceiling_r2": 0.0035
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 8996,
+              "n_test": 558,
+              "n_ligands_test": 136,
+              "raw": {
+                "r2": -0.1844,
+                "mae": 0.6447,
+                "mse": 0.746556,
+                "offset_sq": 0.040259,
+                "scale_sq": 0.197446,
+                "shape_term": 0.508851,
+                "identity_residual": 0.0,
+                "offset_share": 0.0539,
+                "scale_share": 0.2645,
+                "shape_share": 0.6816,
+                "slope": 0.1891,
+                "rho": 0.0833,
+                "bias": 0.2006,
+                "pred_mean": 0.1454,
+                "observed_mean": -0.0552,
+                "pred_sd": 0.3496,
+                "observed_sd": 0.7939
+              },
+              "centred": {
+                "r2": -0.061,
+                "mae": 0.603,
+                "spearman": 0.1266,
+                "spearman_p": 0.002736,
+                "pred_sd": 0.3391,
+                "observed_sd": 0.7939,
+                "calibration_ceiling_r2": 0.016
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 9745,
+              "n_test": 453,
+              "n_ligands_test": 77,
+              "raw": {
+                "r2": 0.059,
+                "mae": 0.7204,
+                "mse": 0.859925,
+                "offset_sq": 0.010933,
+                "scale_sq": 0.251677,
+                "shape_term": 0.597316,
+                "identity_residual": 0.0,
+                "offset_share": 0.0127,
+                "scale_share": 0.2927,
+                "shape_share": 0.6946,
+                "slope": 0.6571,
+                "rho": 0.3123,
+                "bias": 0.1046,
+                "pred_mean": 0.0753,
+                "observed_mean": -0.0293,
+                "pred_sd": 0.4543,
+                "observed_sd": 0.956
+              },
+              "centred": {
+                "r2": 0.0273,
+                "mae": 0.727,
+                "spearman": 0.323,
+                "spearman_p": 0.0,
+                "pred_sd": 0.467,
+                "observed_sd": 0.956,
+                "calibration_ceiling_r2": 0.1043
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 9908,
+              "n_test": 349,
+              "n_ligands_test": 59,
+              "raw": {
+                "r2": -0.1475,
+                "mae": 0.6268,
+                "mse": 0.668089,
+                "offset_sq": 0.065969,
+                "scale_sq": 0.161772,
+                "shape_term": 0.440348,
+                "identity_residual": 0.0,
+                "offset_share": 0.0987,
+                "scale_share": 0.2421,
+                "shape_share": 0.6591,
+                "slope": 0.4235,
+                "rho": 0.2003,
+                "bias": 0.2568,
+                "pred_mean": 0.1546,
+                "observed_mean": -0.1022,
+                "pred_sd": 0.3608,
+                "observed_sd": 0.763
+              },
+              "centred": {
+                "r2": -0.0383,
+                "mae": 0.5964,
+                "spearman": 0.2086,
+                "spearman_p": 8.6e-05,
+                "pred_sd": 0.3248,
+                "observed_sd": 0.763,
+                "calibration_ceiling_r2": 0.0435
+              }
+            }
+          },
+          "verdict": {
+            "label": "SAR_FAILS",
+            "threshold": 0.1,
+            "n_metals_above_threshold": 0,
+            "n_metals": 5,
+            "metals_above_threshold": [],
+            "per_metal_centred_r2": {
+              "Ru": -0.2323,
+              "Ir": -0.2179,
+              "Rh": -0.061,
+              "Os": 0.0273,
+              "Re": -0.0383
+            },
+            "per_metal_spearman": {
+              "Ru": 0.0446,
+              "Ir": 0.0588,
+              "Rh": 0.1266,
+              "Os": 0.323,
+              "Re": 0.2086
+            },
+            "per_metal_offset_share": {
+              "Ru": 0.0401,
+              "Ir": 0.0618,
+              "Rh": 0.0539,
+              "Os": 0.0127,
+              "Re": 0.0987
+            },
+            "per_metal_scale_share": {
+              "Ru": 0.2119,
+              "Ir": 0.1362,
+              "Rh": 0.2645,
+              "Os": 0.2927,
+              "Re": 0.2421
+            },
+            "per_metal_shape_share": {
+              "Ru": 0.7481,
+              "Ir": 0.802,
+              "Rh": 0.6816,
+              "Os": 0.6946,
+              "Re": 0.6591
+            },
+            "per_metal_ceiling_r2": {
+              "Ru": 0.002,
+              "Ir": 0.0035,
+              "Rh": 0.016,
+              "Os": 0.1043,
+              "Re": 0.0435
+            },
+            "mean_offset_share": 0.0534,
+            "mean_scale_share": 0.2295,
+            "mean_shape_share": 0.7171,
+            "mean_ceiling_r2": 0.0339,
+            "mean_abs_bias": 0.185,
+            "gate_note": "The frozen gate reads centred R2 > 0.10. Centred R2 penalises compression, so it understates rank transfer; per_metal_ceiling_r2 (rho^2) is reported alongside it and is what EXT-3 is scored against."
+          },
+          "pooled": {
+            "raw": {
+              "n": 11403,
+              "pooled_r2": -0.1781,
+              "pooled_spearman": 0.0573,
+              "pooled_spearman_p": 8.91e-10,
+              "n_metals": 5
+            },
+            "centred": {
+              "n": 11403,
+              "pooled_r2": -0.2033,
+              "pooled_spearman": 0.0617,
+              "pooled_spearman_p": 4.4e-11,
+              "n_metals": 5
+            }
+          }
+        }
+      },
+      "within_metal_ceiling": {
+        "Ru": {
+          "status": "OK",
+          "n_rows": 9014,
+          "n_ligands": 1382,
+          "oof_r2": 0.3075,
+          "oof_spearman": 0.5299,
+          "oof_mae": 0.5151
+        },
+        "Ir": {
+          "status": "OK",
+          "n_rows": 1029,
+          "n_ligands": 168,
+          "oof_r2": -0.0787,
+          "oof_spearman": 0.2325,
+          "oof_mae": 0.4927
+        },
+        "Rh": {
+          "status": "OK",
+          "n_rows": 558,
+          "n_ligands": 136,
+          "oof_r2": 0.339,
+          "oof_spearman": 0.5178,
+          "oof_mae": 0.4879
+        },
+        "Os": {
+          "status": "OK",
+          "n_rows": 453,
+          "n_ligands": 77,
+          "oof_r2": 0.4582,
+          "oof_spearman": 0.7071,
+          "oof_mae": 0.5456
+        },
+        "Re": {
+          "status": "OK",
+          "n_rows": 349,
+          "n_ligands": 59,
+          "oof_r2": 0.0974,
+          "oof_spearman": 0.3813,
+          "oof_mae": 0.5424
+        }
+      },
+      "elapsed_seconds": 144.1
+    }
+  },
+  "caveats": [
+    "The dominant error term is SHAPE, not offset: mean offset share is 0.05-0.10, scale 0.20-0.27, shape 0.65-0.76. The EXT-1 plan text assumed offset would dominate; that assumption is falsified by this artifact.",
+    "Pooled Spearman is positive in all four endpoint x split cells (0.06-0.30), so rank transfer is not zero -- it is weak.",
+    "Predictions are compressed: predicted sd is 0.31-0.54 against observed 0.64-0.96, slope 0.24-1.16 (four of five metals below 0.7). Part of the negative R2 is compression, which calibration can repair; the rest is ranking.",
+    "calibration_ceiling_r2 = rho^2 is the R2 an infinite-sample linear recalibration would reach. It bounds every k-shot result in EXT-3.",
+    "The centred arm centres the held-out metal's targets by that metal's own mean. This is an oracle operation that defines the shape estimand; it is not deployable. Deploying it requires estimating the mean from k measurements (EXT-3).",
+    "The within-metal ceiling uses the same descriptors-only representation for comparability; a one-hot metal block would score slightly higher within metal.",
+    "Censored rows are dropped (potency 18.4%), so every fit is on the potent side of each cohort.",
+    "Five test cohorts differ in size and ligand chemistry; the per-metal numbers are not exchangeable."
+  ]
+}

@@ -1,0 +1,185 @@
+{
+  "artifact": "msrs_metal_embedding",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L4 metal embedding identifiability",
+  "generated_utc": "2026-10-21T06:27:22+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "script": "molmetal/scripts/msrs_metal_embedding.py",
+    "git_commit": "d7513c389212e4b0ed30a6875b28957110e46d1c",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "matrix": "ligand_main_fragment x metal, mean value_log10 per cell",
+    "gate": "coverage >= 20% of ligands with >=2 metals AND LOOCV R2 >= EXT-2 best + 0.03",
+    "ext2_best_loo_r2": 0.8944,
+    "loo_estimator": "held-out residual row predicted as the mean of the other four metals' residual rows"
+  },
+  "verdict": "KILL",
+  "best_loo_r2": -2.1905,
+  "identified": false,
+  "endpoints": {
+    "potency": {
+      "n_ligands": 2846,
+      "n_ligands_ge2_metals": 379,
+      "n_ligands_ge3_metals": 91,
+      "n_ligands_all5_metals": 1,
+      "share_ge2": 0.1332,
+      "cells_per_metal": {
+        "Ru": 2234,
+        "Ir": 572,
+        "Rh": 221,
+        "Os": 179,
+        "Re": 127
+      },
+      "spectrum": {
+        "n_overlap_ligands": 379,
+        "n_missing_cells_filled_with_zero": 1029,
+        "singular_values": [
+          7.6553,
+          4.5859,
+          3.8091,
+          2.9172,
+          0.0
+        ],
+        "explained_variance_ratio": [
+          0.5709,
+          0.2049,
+          0.1413,
+          0.0829,
+          0.0
+        ],
+        "rank_upper_bound": 5,
+        "note": "rank is bounded by 5 (metals) before centring and by 4 after; a 5-metal matrix cannot support more than four latent dimensions."
+      },
+      "loo_average": {
+        "per_metal": {
+          "Ru": {
+            "status": "OK",
+            "n": 346,
+            "r2": -2.5725,
+            "mae": 0.4411,
+            "corr": -0.9413
+          },
+          "Ir": {
+            "status": "OK",
+            "n": 248,
+            "r2": -2.4901,
+            "mae": 0.4545,
+            "corr": -0.9456
+          },
+          "Rh": {
+            "status": "OK",
+            "n": 118,
+            "r2": -1.8863,
+            "mae": 0.4295,
+            "corr": -0.9245
+          },
+          "Os": {
+            "status": "OK",
+            "n": 115,
+            "r2": -2.5329,
+            "mae": 0.3805,
+            "corr": -0.9496
+          },
+          "Re": {
+            "status": "OK",
+            "n": 39,
+            "r2": -1.4706,
+            "mae": 0.5001,
+            "corr": -0.9196
+          }
+        },
+        "mean_r2": -2.1905,
+        "n_positive": 0,
+        "n_metals": 5
+      }
+    },
+    "cisplatin_ratio": {
+      "n_ligands": 1616,
+      "n_ligands_ge2_metals": 169,
+      "n_ligands_ge3_metals": 30,
+      "n_ligands_all5_metals": 1,
+      "share_ge2": 0.1046,
+      "cells_per_metal": {
+        "Ru": 1382,
+        "Ir": 168,
+        "Rh": 136,
+        "Os": 77,
+        "Re": 59
+      },
+      "spectrum": {
+        "n_overlap_ligands": 169,
+        "n_missing_cells_filled_with_zero": 470,
+        "singular_values": [
+          4.8205,
+          3.6533,
+          2.6257,
+          2.296,
+          0.0
+        ],
+        "explained_variance_ratio": [
+          0.4767,
+          0.2738,
+          0.1414,
+          0.1081,
+          0.0
+        ],
+        "rank_upper_bound": 5,
+        "note": "rank is bounded by 5 (metals) before centring and by 4 after; a 5-metal matrix cannot support more than four latent dimensions."
+      },
+      "loo_average": {
+        "per_metal": {
+          "Ru": {
+            "status": "OK",
+            "n": 157,
+            "r2": -2.7823,
+            "mae": 0.4375,
+            "corr": -0.9545
+          },
+          "Ir": {
+            "status": "OK",
+            "n": 82,
+            "r2": -2.1131,
+            "mae": 0.4601,
+            "corr": -0.9247
+          },
+          "Rh": {
+            "status": "OK",
+            "n": 68,
+            "r2": -2.3311,
+            "mae": 0.4661,
+            "corr": -0.9162
+          },
+          "Os": {
+            "status": "OK",
+            "n": 42,
+            "r2": -2.2216,
+            "mae": 0.4614,
+            "corr": -0.9167
+          },
+          "Re": {
+            "status": "OK",
+            "n": 26,
+            "r2": -2.1728,
+            "mae": 0.6325,
+            "corr": -0.9237
+          }
+        },
+        "mean_r2": -2.3242,
+        "n_positive": 0,
+        "n_metals": 5
+      }
+    }
+  },
+  "caveats": [
+    "A latent metal vector is only estimable from ligands measured against more than one metal. The coverage numbers here are the binding constraint, not the factoriser.",
+    "The singular-value spectrum is computed after filling missing cells with zero (no metal-specific offset). The number of filled cells is reported; the spectrum is descriptive, not a decomposition of measured variation.",
+    "The leave-one-metal-out estimator is deliberately the weakest possible one, because a held-out metal's loading is unidentified. Any stronger estimator would need descriptors, which is EXT-2 and which failed.",
+    "Rank is bounded by 4 after ligand-centring: five metals cannot support more than four latent dimensions, so an 8-dimensional embedding is unidentifiable by construction."
+  ]
+}
