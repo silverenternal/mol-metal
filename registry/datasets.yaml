@@ -11,7 +11,7 @@
 # Update via: .venv/bin/python molmetal/scripts/registry.py generate
 #
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-21T03:02:46+00:00'
+generated_at: '2026-10-21T03:51:08+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -197,6 +197,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_s7_pt_wet_lab.json:
     path: .data/molmetal/rusanov_2025/parsed/s7_pt_wet_lab.json
     md5: 24233db146269caaec645fde6b89d468
@@ -215,6 +222,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s2_journals.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s2. supplementary_table_top_journals.xlsx
     md5: 3fe701fdb332fdac67faade5ed7f78eb
@@ -227,6 +241,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s3_resistance.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s3. supplementary_table_resistance.xlsx
     md5: d20f599f10ee4d74b9d3cbf92c0aff4e
@@ -239,6 +260,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s4_5ref_complexes.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s4. supplementary_table_statistics.xlsx
     md5: e47f6ee6da48187003f7646f3e10325b
@@ -253,6 +281,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s6_214k_predicted.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s6. predicted cytotoxicity
       of the 214,373 unlabeled platinum complexes (mkano).xlsx
@@ -270,6 +305,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s8_roc_auc.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s8. summary of obtained
       mean roc-auc, precision, recall, and f1 score values.xlsx
@@ -284,6 +326,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s9_427_de_novo.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s9. predicted de novo
       structures_a549_a2780_a2780cis_mcf-7_72 h_427 complexes.xlsx
@@ -300,6 +349,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_table_s10_signaling.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s10. correlated deg-deps
       in a2780cis cells treated with platinai.xlsx
@@ -313,6 +369,13 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.
   rusanov_2025_supplementary_information_v2.pdf:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/supplementary_information_v2.pdf
     md5: bba8edc36ae8809d15ff55ef2894dce2
@@ -327,3 +390,10 @@ datasets:
     preserved_from: previous registry/datasets.yaml
     preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
       declares this row; generate() must not delete what it cannot re-derive
+    lifecycle_status: REFERENCE
+    role: reference_table
+    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
+      material'
+    lifecycle_note: Published comparison baseline / source table. Never a training
+      or evaluation cohort; quoted only as the external reference against which our
+      numbers are compared.

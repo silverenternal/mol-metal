@@ -35,7 +35,13 @@
 # =============================================================================
 
 # ============================================================================
-# DATA — REAL PlatinAI 4-cell cohort (Pt-coordination pIC50)
+# DATA — PlatinAI 4-cell cohort: REAL structures, SIMULATED pIC50 labels
+# molmetal/data/platinai_4cell.meta.json records the generator parameters
+# (base_log10_ic50_nm=3.95, sigma=0.45, per-cell offsets), and
+# docs/DATA_INVENTORY.json classifies .data/molmetal/platinai_4cell.csv as
+# DO-NOT-TRAIN.  Metrics trained from this cohort are not measurements of
+# anticancer activity; see metrics/by_metric/m2_r2_per_cohort.json
+# `label_provenance`.
 # Per TODO/decisions/0002-tier2-scope.md: Tier-2 paper target is in-silico +
 # computational-only; no wet-lab planning per AGENTS.md §5.4 + §10.
 # ============================================================================
