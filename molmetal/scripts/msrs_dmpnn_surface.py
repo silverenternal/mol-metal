@@ -257,8 +257,14 @@ def train_fold(
     train_cfg: Mapping[str, object],
     device: torch.device,
     seed: int,
+    init_state: Optional[Mapping[str, object]] = None,
 ) -> Tuple[MetalAwareDMPNN, float]:
-    """Fit one fold; early-stop on ligand-grouped inner validation MAE."""
+    """Fit one fold; early-stop on ligand-grouped inner validation MAE.
+
+    ``init_state`` (UP-5) transfers encoder weights by name and shape; entries
+    whose shape differs — the readout and the metal projection — are skipped, so
+    a checkpoint trained with a different conditioning vector still loads.
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -269,6 +275,14 @@ def train_fold(
         depth=int(model_cfg["depth"]),
         dropout=float(model_cfg["dropout"]),
     ).to(device)
+    if init_state:
+        own = model.state_dict()
+        transfer = {
+            k: v for k, v in init_state.items()
+            if k in own and tuple(own[k].shape) == tuple(v.shape)
+        }
+        model.load_state_dict(transfer, strict=False)
+        print(f"    init: transferred {len(transfer)}/{len(own)} tensors")
 
     opt = torch.optim.AdamW(
         model.parameters(),

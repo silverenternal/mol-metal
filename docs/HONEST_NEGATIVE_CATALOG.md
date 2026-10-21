@@ -9886,3 +9886,85 @@ level term is not recoverable from static metal properties in this corpus.
 (the table is computed, not curated); `msrs_lomo_surface.py --metal-cols`.
 
 **§6.156 catalog-count math.** Net **+1**. Cumulative **210 → 211**. ACTIVE **166 → 167**.
+
+---
+
+## §6.157 — UP-5: Pt pretraining transfers +0.0095, not the +0.03 the plan required (2026-10-21)
+
+**Claim under test.** The learning curve is still climbing at 100% of the data
+(`msrs_learning_curve.json`, plateau_fraction = 1.0), so sample size is the constraint. B1
+blocks new curation, but 17,735 Pt rows sit on disk in a different corpus and could pretrain
+the encoder.
+
+**Measured.** `metrics/by_metric/msrs_pretrain_transfer.json`, same folds (GroupKFold on doi),
+same seed, same arm; only the encoder initialisation differs. 15/20 tensors transfer by name and
+shape (readout and metal projection are re-initialised because the conditioning vector differs).
+
+| arm | DOI R² | MAE |
+|---|---:|---:|
+| scratch | 0.2504 | 0.5036 |
+| Pt pretrain | **0.2599** | 0.5028 |
+| Δ | **+0.0095** | −0.0008 |
+
+**Verdict: FAIL** against the frozen +0.03 gate. The direction is right and MAE agrees, but
++0.0095 is a third of what the plan asked for. One seed; the run-to-run SD on this split is not
+characterised, so the honest statement is "no evidence of a +0.03 transfer", not "pretraining is
+useless".
+
+**Consistency check.** The scratch arm reproduces `msrs_dmpnn_donor_ab.json`'s `hetero` arm
+exactly (0.2504 both), which is expected — same config, folds and seed — and confirms the
+transfer harness did not change the baseline.
+
+**Not run: the tmQM arm.** The plan's second step (5,000 d-block complexes, no bioactivity) was
+skipped. Pt pretraining already only returned a third of the required gain, and tmQM has no
+labels at all, so it would need a self-supervised objective that does not exist yet in this
+repo.
+
+**Artifacts.** `metrics/by_metric/msrs_pretrain_transfer.json`;
+`molmetal/scripts/msrs_pretrain_transfer.py`.
+
+**§6.157 catalog-count math.** Net **+1**. Cumulative **211 → 212**. ACTIVE **167 → 168**.
+
+---
+
+## §6.158 — UP-8: adapting on k points is worse than not adapting, on every metal (2026-10-21)
+
+**Claim under test.** EXT-3 (`msrs_kshot_calibration.json`) found 0/5 metals at R² ≥ 0 with k=50
+under offset / linear / isotonic recalibration, and concluded few-shot was infeasible. That
+conclusion only covered **output rescaling**. UP-8 tests **model adaptation**: a closed-form
+ridge on the k residuals and a prototype-weighted residual average.
+
+**Measured.** `metrics/by_metric/msrs_meta_kshot.json`, whole-DOI sampling, 20 repeats per cell,
+calibration rows excluded from scoring. Potency / metal_out, mean R² over repeats:
+
+| metal | zero-shot | k=50 offset | k=50 ridge | k=50 proto |
+|---|---:|---:|---:|---:|
+| Ru | −0.078 | **−0.476** | −0.377 | −0.476 |
+| Ir | −0.128 | −0.223 | −0.314 | −0.223 |
+| Rh | −0.159 | −0.083 | −0.313 | −0.083 |
+| Os | **+0.348** | +0.196 | +0.180 | +0.196 |
+| Re | −0.103 | −0.128 | −0.209 | −0.128 |
+
+**Verdict: FAIL.** Best arm reaches 1/5 metals with R² ≥ 0 — the same count as zero-shot, and
+the one metal that is positive (Os) gets **worse** under every adaptation. Share of repeats worse
+than zero-shot: Ru 0.50, Ir 0.50, Rh 0.35, **Os 0.85**, Re 0.25 for offset; ridge is worse still
+(Os 1.00).
+
+**Why adaptation hurts.** A residual model fitted on k=50 points inside a 2,000+ dimensional
+design space has k ≪ p. Ridge with α=1 is dominated by the penalty, and the mean-shift arm
+estimates a quantity whose standard error exceeds the bias it removes — the same arithmetic that
+sank EXT-3, now confirmed on a model-adaptation arm rather than an output-rescaling arm.
+
+**The proto arm is not independent evidence.** `diagnostics.proto_equals_offset = true`: in a
+2048-bit Morgan space the cosine similarities are near-constant, the softmax over k prototypes is
+uniform, and the "weighted" average is the plain mean. Two of the three arms are therefore the
+same estimator, and this is recorded rather than counted as two families.
+
+**Combined reading.** EXT-3 (output rescaling) and UP-8 (model adaptation) are two designs, one
+of which degenerated. The surviving claim is narrower than "few-shot fails": **on this corpus,
+k ≤ 50 labelled points cannot fix a held-out metal's level, by either shifting the output or
+refitting a head.**
+
+**Artifacts.** `metrics/by_metric/msrs_meta_kshot.json`; `molmetal/scripts/msrs_meta_kshot.py`.
+
+**§6.158 catalog-count math.** Net **+1**. Cumulative **212 → 213**. ACTIVE **168 → 169**.

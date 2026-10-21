@@ -452,7 +452,7 @@
       "priority": "P1",
       "wave": 2,
       "wall": "2 天 GPU（cuda:0）",
-      "status": "PENDING",
+      "status": "DONE-FAIL",
       "why": "学习曲线在 100% 数据上仍在爬（plateau_fraction=1.0，R² 0.3081 @1.0），说明样本量是约束；但 B1 已封死新数据。可用的无标签/异任务数据：tmQM 5,000 个 d-block 配合物（含几何，当前 TMQM init 在 CFM 配置里是 OFF）、PlatinAI 17,735 行 Pt（不同语料，不能当验证，但可以做表示预训练）。",
       "lever": "ChemCLIP（arXiv:2603.28575）用 44,854 个有机 + 5,164 个金属配合物在 60 个细胞系上做对比学习，Morgan 编码对齐比 0.899，金属侧下游 AUC 0.859 —— 说明跨域（有机/无机）对比预训练在抗癌活性上是可行的；BOS-TMC（159k 配合物）与 OMol25 提供更大语料；自监督预训练把新化学的微调数据需求降 75%（arXiv 2026-01）。",
       "code_points": [
@@ -472,7 +472,23 @@
       "artifacts_needed": [
         "msrs_learning_curve.json",
         "tmqm_combined_r2.json"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_pretrain_transfer.json",
+        "verdict": "PRETRAIN_DOES_NOT_TRANSFER",
+        "numbers": {
+          "scratch_r2": 0.2504,
+          "pt_pretrain_r2": 0.2599,
+          "delta_r2": 0.0095,
+          "scratch_mae": 0.5036,
+          "pt_mae": 0.5028,
+          "pt_inner_val_mae": 0.4204,
+          "tensors_transferred": "15/20"
+        },
+        "reading": "Pt 17.7k 预训练把 DOI 留出 R² 从 0.2504 抬到 0.2599（+0.0095），方向对、MAE 也一致，但只有门槛 +0.03 的三分之一。1 seed，噪声未定，所以只能说「没有 +0.03 的证据」，不能说预训练无用。",
+        "consistency": "scratch 臂复现 msrs_dmpnn_donor_ab 的 hetero 臂（同为 0.2504），说明迁移框架没有改动基线。",
+        "not_run": "tmQM 臂（5k 无活性数据）没跑：Pt 臂只回了三分之一，而 tmQM 没有标签，需要本仓库还不存在的自监督目标。"
+      }
     },
     {
       "id": "UP-6",
@@ -545,7 +561,7 @@
       "priority": "P2",
       "wave": 3,
       "wall": "1 天 GPU",
-      "status": "PENDING",
+      "status": "DONE-FAIL",
       "why": "EXT-3 测的是 post-hoc 校准（offset / linear / isotonic），k=50 时 0/5 金属 R²≥0。原因是偏差只占 MSE 5-10%，用 k 个点估它的噪声大于偏差本身。这不是「少样本不可行」，是「事后校准不是少样本方法」。",
       "lever": "少样本分子性质预测综述（arXiv:2510.08900）把问题分成跨性质与跨分子两类；ProtoNet/MAML 在 5/10-shot 上是主流；但 arXiv:2604.06558 在 10 个蛋白家族上发现 few-shot 适配一致地不如 zero-shot，Pin-Tuning 也指出 naive fine-tune 在少标签下失败——所以这个包有可能是负结果，必须预注册。",
       "code_points": [
@@ -563,7 +579,41 @@
       "deliverable": "metrics/by_metric/msrs_meta_kshot.json",
       "artifacts_needed": [
         "msrs_kshot_calibration.json"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_meta_kshot.json",
+        "verdict": "FAIL",
+        "numbers": {
+          "zero_shot": {
+            "Ru": -0.0777,
+            "Ir": -0.1283,
+            "Rh": -0.1589,
+            "Os": 0.3479,
+            "Re": -0.1034
+          },
+          "k50_offset": {
+            "Ru": -0.4761,
+            "Ir": -0.223,
+            "Rh": -0.0829,
+            "Os": 0.1958,
+            "Re": -0.1275
+          },
+          "k50_ridge": {
+            "Ru": -0.3766,
+            "Ir": -0.3142,
+            "Rh": -0.3128,
+            "Os": 0.1798,
+            "Re": -0.2088
+          },
+          "metals_nonneg_best_arm": 1,
+          "metals_nonneg_zero_shot": 1,
+          "os_share_worse_offset": 0.85,
+          "os_share_worse_ridge": 1.0
+        },
+        "reading": "在 k 个点上做适配比不适配更差，而且每一个金属都更差 —— 包括唯一为正的 Os（0.348 → 0.196，85% 重复更差）。1/5 金属 R²≥0，和 zero-shot 同数。",
+        "degeneracy": "proto 臂与 offset 数值完全相同（diagnostics.proto_equals_offset=true）：2048-bit Morgan 空间里余弦相似度近乎常数，softmax 退化成均匀权重，所以 proto 就是均值。三个臂实际只有两个估计量。",
+        "combined": "EXT-3（输出重标定）与 UP-8（模型适配）两个设计合起来，结论比「few-shot 不可行」窄：在这份语料上，k≤50 个标签点既不能靠平移输出、也不能靠重拟合头来修正留出金属的水平。"
+      }
     },
     {
       "id": "UP-9",

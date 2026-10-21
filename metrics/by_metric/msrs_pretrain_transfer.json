@@ -1,0 +1,55 @@
+{
+ "artifact": "msrs_pretrain_transfer",
+ "version": "1.0",
+ "framework": "MSRS — Metal Substitution Response Surface",
+ "level": "L3 transfer / UP-5",
+ "generated_utc": "2026-10-21T09:20:29+00:00",
+ "provenance": {
+  "config": "configs/msrs_dmpnn_surface_gpu0.yaml",
+  "script": "molmetal/scripts/msrs_pretrain_transfer.py",
+  "pt_corpus": ".data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl",
+  "seed": 20261018,
+  "device": "cuda:0"
+ },
+ "design": {
+  "arms": {
+   "scratch": "metal_state arm, random init",
+   "pt_pretrain": "same arm, encoder initialised from a Pt pIC50 model"
+  },
+  "pretrain_task": "Pt pIC50 = -log10(value_mean * 1e-6), 40 epochs, 10% inner val",
+  "transfer": "state_dict entries matched by name and shape; readout and metal_proj re-initialised because the conditioning vector differs",
+  "split": "GroupKFold(5) on doi",
+  "seeds": 1,
+  "gate": {
+   "delta_r2": 0.03,
+   "frozen_at": "2026-10-21T15:10+08:00"
+  }
+ },
+ "pretrain": {
+  "inner_val_mae": 0.4204,
+  "cond_dim": 41,
+  "wall_s": 143.3
+ },
+ "results": {
+  "scratch": {
+   "mae": 0.5036,
+   "r2": 0.2504,
+   "rmse": 0.6601,
+   "wall_s": 374.9
+  },
+  "pt_pretrain": {
+   "mae": 0.5028,
+   "r2": 0.2599,
+   "rmse": 0.6559,
+   "wall_s": 283.9
+  }
+ },
+ "delta_r2": 0.0095,
+ "verdict": "PRETRAIN_DOES_NOT_TRANSFER",
+ "verdict_rule": "PASS iff DOI-holdout R2 >= scratch + 0.03",
+ "caveats": [
+  "Pt is a different metal and a different corpus; this is domain-shift pretraining, not self-supervised pretraining. The plan's tmQM arm (no bioactivity) is not run.",
+  "One seed. The two arms share folds and seed, but not initialisation, so the comparison is paired by data only.",
+  "94.2% of Pt rows parse; the 5.8% failures are valence errors in the source SMILES ([NH2] bonded twice) and are dropped, not repaired."
+ ]
+}

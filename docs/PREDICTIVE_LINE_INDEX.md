@@ -187,7 +187,16 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP4.cis_metal_out_erac", "value": -0.0904, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.cisplatin_ratio|metal_out.weighted_r2_erac"},
   {"id": "UP4.pooling_none", "value": -0.0806, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.pooling_spectrum.none"},
   {"id": "UP4.pooling_one_hot", "value": -0.0708, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.pooling_spectrum.one_hot"},
-  {"id": "UP4.sign_p", "value": 0.5034, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "sign_test.p_two_sided"}
+  {"id": "UP4.sign_p", "value": 0.5034, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "sign_test.p_two_sided"},
+  {"id": "UP5.scratch_r2", "value": 0.2504, "artifact": "metrics/by_metric/msrs_pretrain_transfer.json", "path": "results.scratch.r2"},
+  {"id": "UP5.pt_r2", "value": 0.2599, "artifact": "metrics/by_metric/msrs_pretrain_transfer.json", "path": "results.pt_pretrain.r2"},
+  {"id": "UP5.delta_r2", "value": 0.0095, "artifact": "metrics/by_metric/msrs_pretrain_transfer.json", "path": "delta_r2"},
+  {"id": "UP5.pt_inner_val_mae", "value": 0.4204, "artifact": "metrics/by_metric/msrs_pretrain_transfer.json", "path": "pretrain.inner_val_mae"},
+  {"id": "UP8.zero_shot_os", "value": 0.3479, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.zero_shot_r2"},
+  {"id": "UP8.k50_offset_ru", "value": -0.4761, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Ru.arms.offset.50.mean_r2"},
+  {"id": "UP8.k50_offset_os", "value": 0.1958, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.arms.offset.50.mean_r2"},
+  {"id": "UP8.k50_offset_ru_worse", "value": 0.5, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Ru.arms.offset.50.share_worse_than_zero_shot"},
+  {"id": "UP8.k50_offset_os_worse", "value": 0.85, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.arms.offset.50.share_worse_than_zero_shot"}
 ]
 ```
 
