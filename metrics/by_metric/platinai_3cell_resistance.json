@@ -1,7 +1,14 @@
 {
-  "status": "MEASURED",
-  "status_basis": "5 seeds (0-4), 100 epochs, 3 cell lines after dropping A2780; per-cell AUCs with per-cell std",
+  "status": "MEASURED_SYNTHETIC_LABELS",
+  "status_basis": "5 seeds (0-4), 100 epochs, 3 cell lines after dropping A2780; per-cell AUCs with per-cell std. The 4,078-complex PlatinAI cohort carries SIMULATED IC50 labels (see label_provenance), so this AUC measures how well the model recovers a log-normal label generator, not Pt cytotoxicity.",
   "metric": "platinai_3cell_resistance",
+  "dataset": "platinai_4cell.csv",
+  "label_provenance": {
+    "labels": "SIMULATED",
+    "structures": "REAL (PlatinAI 5k Pt / known Pt drugs / tmQM Pt, 4078 complexes after dedup)",
+    "evidence": "molmetal/data/platinai_4cell.meta.json records base_log10_ic50_nm=3.95, sigma=0.45 and per-cell cell_offsets_log10_nm; .data/molmetal/platinai_4cell.meta.json says 'SYNTHETIC pIC50 labels'; docs/DATA_INVENTORY.json marks it DO-NOT-TRAIN.",
+    "recorded": "2026-10-21"
+  },
   "description": "Test ROC-AUC per cell line on PlatinAI 4,078 Pt dataset after dropping the A2780 column (label-noise, r=0.003 vs A2780cis). 3-cell-line D-MPNN with chemoinformatic resistance side-features and tmQM-pretrained init.",
   "unit": "ROC-AUC (0-1, higher better) per cell line",
   "scope": "tier1_precious_metal_anticancer",

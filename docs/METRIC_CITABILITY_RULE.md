@@ -169,6 +169,35 @@ denominator difference is not. The registry strips the parenthetical into
 it belongs, in `definition_variant`. Unit drift is then counted as a real
 disagreement rather than as punctuation.
 
+### A hash proves the bytes, not the labels
+
+`sha256(path) == sha256_here` says the artifact has not changed. It says nothing
+about whether the response variable in it was measured. Measured 2026-10-21:
+
+- `.data/molmetal/platinai_4cell.csv` carries a sidecar whose `honest_framing`
+  reads *"SYNTHETIC pIC50 labels … Useful as pipeline test but NOT directly
+  comparable to Rusanov 2025 Table S4-S5"*, and `docs/DATA_INVENTORY.json`
+  classifies it `DO-NOT-TRAIN`.
+- `molmetal/data/platinai_4cell.meta.json` — the raw-nM serialization of the
+  same 4078 complexes — records `base_log10_ic50_nm: 3.95`, `sigma: 0.45` and
+  per-cell `cell_offsets_log10_nm`. Those are generator parameters. The
+  **structures are real** (PlatinAI 5k Pt / known Pt drugs / tmQM Pt); the
+  **labels are simulated**.
+- The registry listed that file as an ordinary dataset, `locked_for`
+  `m2_r2_per_cell` and `l5_hilbert_r2`, and both are paper-line metrics.
+
+The registry now reads the two places those facts already live — the sidecar
+`*.meta.json` beside the artifact and the inventory document — into
+`labels` (`SYNTHETIC` / `REAL` / `UNRECORDED`), `label_evidence`,
+`lifecycle_status` and `role`. A metric whose protocol pins a dataset that is
+synthetic or not trainable is demoted with the evidence quoted in the reason;
+it keeps its number, it loses the claim that the number measures the metric.
+
+`REAL` is deliberately hard to earn: a sidecar that exists and does *not* warn
+is `UNRECORDED`, not `REAL`, because silence is not a provenance statement.
+10 of the 21 registered datasets are `UNRECORDED` on this axis — that is a gap
+to close at acquisition time, not something the registry can infer.
+
 ### Optional disclosure field
 
 `headline_caveat` (string) is printed under the row whatever the mark. Use it
@@ -283,14 +312,19 @@ a merge, so those files looked like they had never been committed at all.
 
 | Mark | n | Metrics |
 |---|---|---|
-| `[CITE]` | 4 | `m19_lomo` 0.5575, `m2_r2_per_cell` −0.0300, `m21_nci60_9cell` 0.7294, `l5_hilbert_r2` −5.6625 |
+| `[CITE]` | 2 | `m19_lomo` 0.5575, `m21_nci60_9cell` 0.7294 |
 | `[NUM ]` | 5 | `m14_decode_ratio`, `m7_diversity`, `m1_ru_auc`, `l6_closure`, `m6_kappa` |
-| `[NO  ]` | 2 | `cfm_bond_accuracy` (no scalar by design, probe scale), `m3_vina_dock` (positive control) |
+| `[NO  ]` | 4 | `cfm_bond_accuracy` (no scalar by design, probe scale), `m3_vina_dock` (positive control), `m2_r2_per_cell` + `l5_hilbert_r2` (dataset `platinai_4cell.csv` carries simulated labels and is DO-NOT-TRAIN) |
 
 `registry.py check` on the same registry:
 
 ```
-395 current, 0 stale, 0 missing | 11 paper-line (9 quotable, 4 headline-grade)
+21/21 datasets verified | ACTIVE 5, DO-NOT-TRAIN 1, SUPERSEDED 2, UNCLASSIFIED 13
+| 1 carry synthetic labels, 10 record no label provenance
+| 1 alternate serialization(s) recorded
+| 1 dataset(s) pinned to a paper-line metric but not trainable: platinai_4cell.csv
+8/8 protocol locks verified | 8/8 protocol ids resolve to a metric row
+395 current, 0 stale, 0 missing | 11 paper-line (7 quotable, 2 headline-grade)
 | 0 paper-line + 0 artifact claims without a status (15 hold a narrative verdict instead)
 | 0 paper-line + 199 artifact rows record no measurement date (199 carry a commit date instead, 0 carry neither)
 | 0 paper-line + 119 artifact rows labelled MEASURED with no standardised scalar (118 hold numbers under a file-specific key, 1 hold none)

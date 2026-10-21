@@ -91,6 +91,11 @@ METRICS_PATH = REGISTRY_DIR / "metrics.yaml"
 DATA_CHECKSUMS_PATH = REPO_ROOT / "configs" / "data_checksums.json"
 PROTOCOL_LOCK_PATH = REPO_ROOT / "configs" / "locks" / "protocol_lock.yaml"
 BY_METRIC_DIR = REPO_ROOT / "metrics" / "by_metric"
+# `docs/DATA_INVENTORY.json` already classifies every cohort it knows as
+# ACTIVE / SUPERSEDED / DO-NOT-TRAIN / REFERENCE / UNUSED.  The registry did
+# not read it, so a dataset flagged DO-NOT-TRAIN elsewhere was indistinguishable
+# from a live one here.
+DATA_INVENTORY_PATH = REPO_ROOT / "docs" / "DATA_INVENTORY.json"
 
 # The three paper lines (per TODO/03_plans/PROTOCOL_RECONCILIATION_AND_RE_PLAN_2026_10_07.md).
 # Each metric id below is a *registry* id; the value maps it to the on-disk
@@ -308,11 +313,111 @@ def build_datasets(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 "source": "configs/locks/protocol_lock.yaml",
                 "locked_for": [metric_key],
             }
+    _enrich_datasets(out, repo_root, lock)
     return out
 
 
 def _dataset_id(path: str) -> str:
     return Path(path).name
+
+
+# ---------------------------------------------------------------------------
+# Dataset lifecycle + label provenance.
+#
+# Measured 2026-10-21: `.data/molmetal/platinai_4cell.csv` carries a sidecar
+# meta saying "SYNTHETIC pIC50 labels ... NOT directly comparable to Rusanov
+# 2025", and `docs/DATA_INVENTORY.json` classifies it DO-NOT-TRAIN.  The
+# registry listed it as an ordinary dataset, `locked_for` two paper-line
+# metrics, and nothing anywhere in the registry could see either fact.  A
+# hash proves the file has not changed; it does not prove the labels are real.
+#
+# The two facts are read from where they already live rather than re-asserted
+# here: the sidecar `*.meta.json` next to the artifact (written by whatever
+# generated it) and the inventory document.  Both are MEASURED artifacts of
+# this repo, so the registry cannot drift away from them.
+# ---------------------------------------------------------------------------
+
+_SYNTHETIC_LABEL_HINTS = ("SYNTHETIC", "SIMULATED", "FABRICATED", "PLACEHOLDER")
+_NON_TRAINABLE_STATUSES = ("DO-NOT-TRAIN", "SUPERSEDED", "UNUSED")
+
+
+def _sidecar_meta(path: Path) -> Optional[Dict[str, Any]]:
+    """The `*.meta.json` written beside an artifact, if one exists."""
+    meta = path.with_suffix("").with_suffix(".meta.json")
+    if not meta.is_file():
+        return None
+    try:
+        obj = json.loads(meta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def _dataset_label_status(path: Path) -> tuple:
+    """(labels, evidence) where labels is SYNTHETIC / REAL / UNRECORDED.
+
+    A sidecar that says SYNTHETIC is authoritative.  A sidecar that exists and
+    does not say so is *not* evidence of real labels — it only means the
+    generator did not warn.  REAL is therefore reserved for a sidecar that
+    positively states a source; everything else is UNRECORDED, which is a gap
+    rather than a claim.
+    """
+    meta = _sidecar_meta(path)
+    if not meta:
+        return "UNRECORDED", "no sidecar meta"
+    text = " ".join(
+        str(meta.get(k) or "")
+        for k in ("honest_framing", "note", "label_provenance", "labels")
+    ).upper()
+    for hint in _SYNTHETIC_LABEL_HINTS:
+        if hint in text:
+            return "SYNTHETIC", f"{path.stem}.meta.json says {hint}"
+    if meta.get("sources") or meta.get("label_source"):
+        return "REAL", f"{path.stem}.meta.json records a label source"
+    return "UNRECORDED", f"{path.stem}.meta.json states no label provenance"
+
+
+def _load_data_inventory() -> Dict[str, Dict[str, Any]]:
+    """`docs/DATA_INVENTORY.json` keyed by absolute path."""
+    if not DATA_INVENTORY_PATH.is_file():
+        return {}
+    try:
+        obj = json.loads(DATA_INVENTORY_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out: Dict[str, Dict[str, Any]] = {}
+    for rec in obj.get("datasets") or []:
+        p = rec.get("path")
+        if isinstance(p, str) and p:
+            out[str((REPO_ROOT / p).resolve())] = rec
+    return out
+
+
+def _alternate_serializations(lock: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    """Same cohort, different on-disk serialization, keyed by dataset id.
+
+    The lock already records these — `platinai_4cell.csv` has one, and the note
+    says the alternate is the *same* 4078 complexes in raw-nM form.  The
+    registry dropped them, so the id `platinai_4cell.csv` silently meant
+    "whichever of the two files the generator happened to see".
+    """
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for entry in (lock.get("metrics") or {}).values():
+        for alt in entry.get("alternate_dataset_serializations") or []:
+            if not isinstance(alt, dict) or not alt.get("path"):
+                continue
+            p = Path(str(alt["path"]))
+            if not p.is_absolute():
+                p = REPO_ROOT / p
+            out.setdefault(_dataset_id(str(alt["path"])), []).append(
+                {
+                    "path": _rel(p),
+                    "md5": alt.get("md5"),
+                    "sha256": _sha256_file(p),
+                    "why": alt.get("why"),
+                }
+            )
+    return out
 
 
 #: Protocol ids that name a *protocol* while the metric row names the
@@ -324,6 +429,60 @@ def _dataset_id(path: str) -> str:
 _PROTOCOL_METRIC_ALIASES = {
     "m17_drugood_ood": "drugood_ood_auc",
 }
+
+
+def _enrich_datasets(
+    out: Dict[str, Dict[str, Any]],
+    repo_root: Path,
+    lock: Dict[str, Any],
+) -> None:
+    """Attach lifecycle, label provenance and alternate serializations.
+
+    A sha256 answers "is this the same bytes?".  It cannot answer "may I train
+    on this?" or "are the labels real?", and those are the questions a reader
+    actually asks of a dataset registry.
+    """
+    inventory = _load_data_inventory()
+    alternates = _alternate_serializations(lock)
+    for did, rec in out.items():
+        path = Path(rec["path"])
+        if not path.is_absolute():
+            path = repo_root / path
+        labels, evidence = _dataset_label_status(path)
+        rec["labels"] = labels
+        rec["label_evidence"] = evidence
+        inv = inventory.get(str(path.resolve()))
+        if inv:
+            rec["lifecycle_status"] = inv.get("status")
+            rec["role"] = inv.get("role")
+            rec["lifecycle_source"] = "docs/DATA_INVENTORY.json"
+            if inv.get("note"):
+                rec["lifecycle_note"] = inv["note"]
+        else:
+            rec["lifecycle_status"] = "UNCLASSIFIED"
+            rec["lifecycle_source"] = "absent from docs/DATA_INVENTORY.json"
+        if did in alternates:
+            rec["alternate_serializations"] = alternates[did]
+
+
+def _dataset_blockers(datasets: Dict[str, Dict[str, Any]], dataset_id: str) -> List[str]:
+    """Reasons a metric resting on ``dataset_id`` cannot be a current claim."""
+    rec = datasets.get(dataset_id)
+    if not rec:
+        return []
+    reasons = []
+    if rec.get("labels") == "SYNTHETIC":
+        reasons.append(
+            f"dataset {dataset_id!r} carries synthetic labels "
+            f"({rec.get('label_evidence')})"
+        )
+    status = str(rec.get("lifecycle_status") or "")
+    if status in _NON_TRAINABLE_STATUSES:
+        reasons.append(
+            f"dataset {dataset_id!r} is {status} in "
+            f"{rec.get('lifecycle_source')}"
+        )
+    return reasons
 
 
 def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
@@ -908,6 +1067,37 @@ def assess_citability(
     }
 
 
+def _apply_dataset_blocks(
+    rows: Dict[str, Dict[str, Any]],
+    datasets: Dict[str, Dict[str, Any]],
+    protocols: Dict[str, Dict[str, Any]],
+) -> None:
+    """Demote a metric whose pinned dataset cannot support the claim.
+
+    The protocol layer is the only place that says *which* artifact a metric
+    was measured on, so it is the join that matters.  When that artifact is
+    flagged synthetic or do-not-train, the number is still a real number — it
+    just is not a measurement of the thing the metric name says it is.
+    """
+    for pid, prec in (protocols or {}).items():
+        dataset_id = prec.get("dataset_id")
+        if not dataset_id:
+            continue
+        reasons = _dataset_blockers(datasets, dataset_id)
+        if not reasons:
+            continue
+        rec = rows.get(prec.get("metric_id") or pid)
+        if not rec:
+            continue
+        rec["dataset_block"] = reasons
+        existing = rec.setdefault("not_quotable", [])
+        for reason in reasons:
+            if reason not in existing:
+                existing.append(reason)
+        rec["quotable"] = False
+        rec["headline_grade"] = False
+
+
 def _link_families(rows: Dict[str, Dict[str, Any]]) -> None:
     """Fill the family columns and make supersession symmetric.
 
@@ -963,7 +1153,11 @@ def _link_families(rows: Dict[str, Dict[str, Any]]) -> None:
             rec["family_collision"] = len(live) > 1 and not rec.get("grain")
 
 
-def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
+def build_metrics(
+    repo_root: Path = REPO_ROOT,
+    datasets: Optional[Dict[str, Dict[str, Any]]] = None,
+    protocols: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     """Harvest the metric layer from metrics/by_metric/*.json.
 
     Two passes per Wf-A36-3 G1 (2026-10-14):
@@ -1138,6 +1332,11 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         )
         out[metric_id] = rec
     _link_families(out)
+    _apply_dataset_blocks(
+        out,
+        datasets if datasets is not None else (_load_yaml(DATASETS_PATH).get("datasets") or {}),
+        protocols if protocols is not None else (_load_yaml(PROTOCOLS_PATH).get("protocols") or {}),
+    )
     return out, covered_files
 
 
@@ -1176,7 +1375,43 @@ def check_datasets(repo_root: Path = REPO_ROOT) -> CheckResult:
                 continue
         checks.append({"id": did, "status": "PASS", "detail": "sha256 match"})
     status = "FAIL" if bad else "PASS"
-    return CheckResult("datasets", status, checks, f"{len(checks)-bad}/{len(checks)} datasets verified")
+    rows = (reg.get("datasets") or {})
+    life: Dict[str, int] = {}
+    for rec in rows.values():
+        s = str(rec.get("lifecycle_status") or "UNCLASSIFIED")
+        life[s] = life.get(s, 0) + 1
+    synthetic = sum(1 for r in rows.values() if r.get("labels") == "SYNTHETIC")
+    labels_unrecorded = sum(
+        1 for r in rows.values() if r.get("labels") == "UNRECORDED"
+    )
+    alternates = sum(len(r.get("alternate_serializations") or []) for r in rows.values())
+    # A dataset pinned to a paper-line metric that is not trainable is the
+    # failure this whole column exists to catch.
+    metric_rows = _load_yaml(METRICS_PATH).get("metrics") or {}
+    paper_ids = {
+        mid for mid, m in metric_rows.items() if m.get("registry_role") == "paper_line"
+    }
+    blocked = []
+    for did, rec in rows.items():
+        if rec.get("labels") != "SYNTHETIC" and str(
+            rec.get("lifecycle_status") or ""
+        ) not in _NON_TRAINABLE_STATUSES:
+            continue
+        hit = sorted(set(rec.get("locked_for") or []) & paper_ids)
+        if hit:
+            blocked.append((did, hit))
+    life_txt = ", ".join(f"{k} {v}" for k, v in sorted(life.items()))
+    return CheckResult(
+        "datasets",
+        status,
+        checks,
+        f"{len(checks)-bad}/{len(checks)} datasets verified | {life_txt} | "
+        f"{synthetic} carry synthetic labels, {labels_unrecorded} record no label "
+        f"provenance | {alternates} alternate serialization(s) recorded | "
+        f"{len(blocked)} dataset(s) pinned to a paper-line metric but not "
+        f"trainable"
+        + (f": {', '.join(d for d, _ in blocked)}" if blocked else ""),
+    )
 
 
 def check_protocols(repo_root: Path = REPO_ROOT) -> CheckResult:
@@ -1579,7 +1814,7 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             file=sys.stderr,
         )
     protocols = build_protocols(repo_root)
-    metrics, covered = build_metrics(repo_root)
+    metrics, covered = build_metrics(repo_root, datasets, protocols)
 
     all_metric_files = {p.stem for p in BY_METRIC_DIR.glob("*.json")}
     covered_stems = {Path(s).stem for s in covered}

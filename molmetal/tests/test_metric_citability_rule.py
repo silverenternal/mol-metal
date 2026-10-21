@@ -50,6 +50,10 @@ from molmetal.scripts.registry import (  # noqa: E402
     _resolve_metric_ref,
     _status_with_source,
     _supersession_fields,
+    _alternate_serializations,
+    _apply_dataset_blocks,
+    _dataset_blockers,
+    _dataset_label_status,
     _unit_canonical,
     _verdict_shape,
 )
@@ -581,3 +585,119 @@ def test_reverse_supersession_does_not_override_an_explicit_pointer():
     }
     _link_families(rows)
     assert rows["old"]["superseded_by"] == "third"
+
+
+# --- dataset labels: a hash proves the bytes, not the biology --------------
+#
+# Measured 2026-10-21: `.data/molmetal/platinai_4cell.csv` carries a sidecar
+# saying "SYNTHETIC pIC50 labels", and DATA_INVENTORY.json says DO-NOT-TRAIN.
+# The registry listed it as an ordinary dataset locked for two paper-line
+# metrics, and no rule could see either fact.
+
+
+def _write_meta(tmp_path, stem, obj):
+    import json
+
+    path = tmp_path / f"{stem}.csv"
+    path.write_text("a,b\n1,2\n", encoding="utf-8")
+    (tmp_path / f"{stem}.meta.json").write_text(json.dumps(obj), encoding="utf-8")
+    return path
+
+
+def test_sidecar_saying_synthetic_marks_the_labels_synthetic(tmp_path):
+    p = _write_meta(
+        tmp_path,
+        "demo",
+        {"honest_framing": "SYNTHETIC pIC50 labels, pipeline test only"},
+    )
+    labels, evidence = _dataset_label_status(p)
+    assert labels == "SYNTHETIC"
+    assert "SYNTHETIC" in evidence
+
+
+def test_a_missing_sidecar_is_unrecorded_not_real(tmp_path):
+    p = tmp_path / "demo.csv"
+    p.write_text("a\n1\n", encoding="utf-8")
+    labels, _ = _dataset_label_status(p)
+    assert labels == "UNRECORDED"
+
+
+def test_a_sidecar_without_label_provenance_is_unrecorded(tmp_path):
+    p = _write_meta(tmp_path, "demo", {"n_rows": 10})
+    labels, _ = _dataset_label_status(p)
+    assert labels == "UNRECORDED"
+
+
+def test_a_sidecar_recording_sources_marks_the_labels_real(tmp_path):
+    p = _write_meta(tmp_path, "demo", {"sources": {"tmQM": 10}})
+    labels, _ = _dataset_label_status(p)
+    assert labels == "REAL"
+
+
+def test_dataset_blockers_name_the_evidence():
+    datasets = {
+        "x.csv": {
+            "labels": "SYNTHETIC",
+            "label_evidence": "x.meta.json says SYNTHETIC",
+            "lifecycle_status": "DO-NOT-TRAIN",
+            "lifecycle_source": "docs/DATA_INVENTORY.json",
+        }
+    }
+    reasons = _dataset_blockers(datasets, "x.csv")
+    assert len(reasons) == 2
+    assert any("synthetic labels" in r for r in reasons)
+    assert any("DO-NOT-TRAIN" in r for r in reasons)
+
+
+def test_a_clean_dataset_blocks_nothing():
+    datasets = {
+        "x.csv": {"labels": "REAL", "lifecycle_status": "ACTIVE"},
+        "y.csv": {"labels": "UNRECORDED", "lifecycle_status": "UNCLASSIFIED"},
+    }
+    assert _dataset_blockers(datasets, "x.csv") == []
+    assert _dataset_blockers(datasets, "y.csv") == []
+
+
+def test_dataset_block_demotes_the_pinned_metric():
+    rows = {"m2": {"quotable": True, "headline_grade": True, "not_quotable": []}}
+    datasets = {
+        "x.csv": {
+            "labels": "SYNTHETIC",
+            "label_evidence": "x.meta.json says SYNTHETIC",
+            "lifecycle_status": "DO-NOT-TRAIN",
+            "lifecycle_source": "docs/DATA_INVENTORY.json",
+        }
+    }
+    protocols = {"m2_proto": {"metric_id": "m2", "dataset_id": "x.csv"}}
+    _apply_dataset_blocks(rows, datasets, protocols)
+    assert rows["m2"]["quotable"] is False
+    assert rows["m2"]["headline_grade"] is False
+    assert len(rows["m2"]["dataset_block"]) == 2
+    assert any("synthetic labels" in r for r in rows["m2"]["not_quotable"])
+
+
+def test_dataset_block_follows_the_protocol_metric_id_alias():
+    # `m17_drugood_ood` is the protocol id; the row is `drugood_ood_auc`.
+    rows = {"drugood_ood_auc": {"quotable": True, "headline_grade": True, "not_quotable": []}}
+    datasets = {"d.csv": {"labels": "SYNTHETIC", "label_evidence": "m"}}
+    protocols = {"m17_drugood_ood": {"metric_id": "drugood_ood_auc", "dataset_id": "d.csv"}}
+    _apply_dataset_blocks(rows, datasets, protocols)
+    assert rows["drugood_ood_auc"]["quotable"] is False
+
+
+def test_alternate_serializations_are_lifted_from_the_lock(tmp_path):
+    alt = tmp_path / "alt.csv"
+    alt.write_text("a\n1\n", encoding="utf-8")
+    lock = {
+        "metrics": {
+            "m": {
+                "alternate_dataset_serializations": [
+                    {"path": str(alt), "md5": "deadbeef", "why": "raw serialization"}
+                ]
+            }
+        }
+    }
+    out = _alternate_serializations(lock)
+    assert list(out) == ["alt.csv"]
+    assert out["alt.csv"][0]["md5"] == "deadbeef"
+    assert len(out["alt.csv"][0]["sha256"]) == 64

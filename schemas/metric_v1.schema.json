@@ -115,6 +115,10 @@
     "verdict": {
       "type": ["string", "object", "array", "null"],
       "description": "The finding. Three shapes coexist: prose, a status token, and a bespoke dict (19 distinct key sets, 2026-10-21). A dict is not a status token and does not make the row quotable; registry.py records `verdict_shape` and lifts the boolean keys into `verdict_conclusions`."
+    },
+    "label_provenance": {
+      "type": ["object", "null"],
+      "description": "Whether the response variable is measured or generated. `labels: SYNTHETIC` means every number here is real but describes a label generator, not the biology; registry.py blocks quotability for any metric whose pinned dataset carries synthetic labels. Structures can be real while labels are simulated — say both."
     }
   }
 }

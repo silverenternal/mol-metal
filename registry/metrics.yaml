@@ -1,5 +1,5 @@
 schema: molmetal-registry-metrics-v1
-generated_at: '2026-10-21T02:41:45+00:00'
+generated_at: '2026-10-21T03:08:36+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
   matches disk.
@@ -23,7 +23,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: date_utc
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: decode_ratio
     grain: {}
     unit_canonical: ratio
@@ -60,7 +60,7 @@ metrics:
     metric_timestamp: '2026-10-04'
     metric_timestamp_source: date_utc
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: cfm_bond_accuracy
     grain: {}
     unit_canonical: ratio over candidate pairs within the edge cutoff
@@ -104,7 +104,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: date_utc
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: vina_mean
     grain: {}
     unit_canonical: kcal/mol
@@ -146,7 +146,7 @@ metrics:
     metric_timestamp: '2026-10-11'
     metric_timestamp_source: date
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: m7_diversity
     grain: {}
     unit_canonical: moses intdiv1
@@ -186,7 +186,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: metalcytotox_ru_auc
     grain: {}
     unit_canonical: roc-auc
@@ -228,7 +228,7 @@ metrics:
     metric_timestamp: '2026-10-08T06:51:17+00:00'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: metal_lomo_auc_wasserstein
     grain: {}
     unit_canonical: roc-auc
@@ -248,7 +248,7 @@ metrics:
     family_collision: false
   m2_r2_per_cell:
     source_json: metrics/by_metric/m2_r2_per_cohort.json
-    source_json_sha256: 46455a168da47eda2d47de1b2dd1a80020ac6e20c94c73ee326a5bcb6d3a172f
+    source_json_sha256: a98a99052e7dc605d761a3e865596948fa9eb8f3728188f51327b4dcee167d74
     source_json_missing: false
     value: -0.029983019522041743
     value_basis: value_key:aggregate.mean_r2
@@ -257,11 +257,12 @@ metrics:
     status_narrative_source: null
     verdict: HONEST_NEGATIVE
     verdict_shape: text
-    scope: tier1_precious_metal_anticancer / m2 R² per-cohort REAL verification (Wf-388-A1)
+    scope: tier1_precious_metal_anticancer / m2 R² per-cohort verification (Wf-388-A1;
+      SIMULATED pIC50 labels, see label_provenance)
     metric_timestamp: '2026-09-30'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: m2_r2_per_cohort
     grain: {}
     unit_canonical: r²
@@ -274,9 +275,12 @@ metrics:
     direction: '>='
     remains: closed structural (Wf-369-A2); REAL cohorts per Wf-388-A1 (2 of 3 independent
       — hilbert is aliased); no GPU
-    quotable: true
-    headline_grade: true
-    not_quotable: []
+    quotable: false
+    headline_grade: false
+    not_quotable:
+    - dataset 'platinai_4cell.csv' carries synthetic labels (platinai_4cell.meta.json
+      says SYNTHETIC)
+    - dataset 'platinai_4cell.csv' is DO-NOT-TRAIN in docs/DATA_INVENTORY.json
     not_headline: []
     headline_caveat: 'The headline mean averages 3 cohorts but only 2 are independent:
       hilbert is aliased to platinai_4cell (the loader''s target-name dispatch is
@@ -287,6 +291,10 @@ metrics:
     family_size: 1
     family_live: 1
     family_collision: false
+    dataset_block:
+    - dataset 'platinai_4cell.csv' carries synthetic labels (platinai_4cell.meta.json
+      says SYNTHETIC)
+    - dataset 'platinai_4cell.csv' is DO-NOT-TRAIN in docs/DATA_INVENTORY.json
   m21_nci60_9cell:
     source_json: metrics/by_metric/nci60_precious_9cell_auc.json
     source_json_sha256: a2bdc1ad6c514ac7d0b5e36cc24106ca4a1d0348581b59cf1a943bec3abf8ce1
@@ -302,7 +310,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: nci60_precious_9cell_auc
     grain:
       protocol_variant: 5seed_50ep_9cell
@@ -324,20 +332,20 @@ metrics:
     family_collision: false
   l5_hilbert_r2:
     source_json: metrics/by_metric/hilbert_4cell_r2.json
-    source_json_sha256: 422a04b4321d2dcaa9ef9aee54b01d5b5963801adca2c0808c4c086f250f949e
+    source_json_sha256: d4079d7e0e1689b4577bebc0c451cb67d165a56ea5e792ae195d5c7509fc30d1
     source_json_missing: false
-    value: -5.662524090882017
+    value: -6.712634861296495
     value_basis: aggregate_combined_r2_mean
     status: MEASURED_BELOW_GATE
     status_source: status
     status_narrative_source: null
     verdict: HONEST_NEGATIVE
     verdict_shape: text
-    scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
-    metric_timestamp: '2026-09-27'
+    scope: tier1_precious_metal_anticancer / Wf-83 P1 combined anchor
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: hilbert_4cell_r2
     grain: {}
     unit_canonical: r²
@@ -348,14 +356,23 @@ metrics:
     direction: '>='
     remains: architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO
       GPU
-    quotable: true
-    headline_grade: true
-    not_quotable: []
-    not_headline: []
+    quotable: false
+    headline_grade: false
+    not_quotable:
+    - dataset 'platinai_4cell.csv' carries synthetic labels (platinai_4cell.meta.json
+      says SYNTHETIC)
+    - dataset 'platinai_4cell.csv' is DO-NOT-TRAIN in docs/DATA_INVENTORY.json
+    not_headline:
+    - evaluation dataset not declared
+    - split not declared
     headline_caveat: null
     family_size: 1
     family_live: 1
     family_collision: false
+    dataset_block:
+    - dataset 'platinai_4cell.csv' carries synthetic labels (platinai_4cell.meta.json
+      says SYNTHETIC)
+    - dataset 'platinai_4cell.csv' is DO-NOT-TRAIN in docs/DATA_INVENTORY.json
   l6_closure:
     source_json: metrics/by_metric/l6_closure.json
     source_json_sha256: 82305a3bd789b36fc0c304d4563dc48dd030814b8fe77a5bb909c442053bc30b
@@ -371,7 +388,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: l6_closure
     grain: {}
     unit_canonical: ratio
@@ -409,7 +426,7 @@ metrics:
     metric_timestamp: '2026-10-01'
     metric_timestamp_source: timestamp
     registry_role: paper_line
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     metric_family: m6_kappa
     grain: {}
     unit_canonical: ratio
@@ -443,7 +460,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: admet_full_coverage
     grain: {}
@@ -478,7 +495,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -511,7 +528,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -544,7 +561,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ames_mutagen
     grain: {}
@@ -577,7 +594,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: aqueous_solubility_logs
     grain: {}
@@ -612,7 +629,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: atom_vocab_coverage
     grain: {}
@@ -649,7 +666,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -681,7 +698,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -714,7 +731,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -747,7 +764,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -780,7 +797,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -813,7 +830,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: bbb
     grain: {}
@@ -846,7 +863,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -887,7 +904,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -920,7 +937,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: blk_g1_bond_head_scaling
     grain: {}
@@ -962,7 +979,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: blk_l1_platinai_50d_r2
     grain: {}
@@ -997,7 +1014,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -1042,7 +1059,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -1077,7 +1094,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: caco2_perm
     grain: {}
@@ -1110,7 +1127,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cell_permeability_logpapp
     grain: {}
@@ -1143,7 +1160,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -1176,7 +1193,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_5new_loss_classes_wirein
     grain: {}
@@ -1216,7 +1233,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_a4_receptive_field
     grain: {}
@@ -1282,7 +1299,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_arch1_t_degradation
     grain: {}
@@ -1321,7 +1338,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_assemble_hinge_tau
     grain: {}
@@ -1357,7 +1374,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_blk_c_obj_decision
     grain: {}
@@ -1393,7 +1410,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_blkc_m3_noise_floor
     grain: {}
@@ -1428,7 +1445,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_bond_type_f1_3seed
     grain: {}
@@ -1464,7 +1481,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_checkpoint_property_benchmark
     grain: {}
@@ -1500,7 +1517,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -1533,7 +1550,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -1566,7 +1583,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_decode_chemistry_validity
     grain: {}
@@ -1602,7 +1619,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_decode_fragmentation
     grain: {}
@@ -1638,7 +1655,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_decode_real
     grain: {}
@@ -1683,7 +1700,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_embed_failure_localisation
     grain: {}
@@ -1721,7 +1738,7 @@ metrics:
     metric_timestamp: '2026-10-20'
     metric_timestamp_source: date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_epoch_wall
     grain: {}
@@ -1793,7 +1810,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_fm_term_percloud
     grain: {}
@@ -1830,7 +1847,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_free_generation_panel_seed0
     grain: {}
@@ -1866,7 +1883,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_generated_geometry_defect
     grain: {}
@@ -1901,7 +1918,7 @@ metrics:
     metric_timestamp: '2026-10-11'
     metric_timestamp_source: nested:provenance_correction_2026_10_11.date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: generated_to_activity_cross_application
     grain: {}
@@ -1937,7 +1954,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_generation_collapse_rootcause
     grain: {}
@@ -1973,7 +1990,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -2004,7 +2021,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_geom_classifier_dft
     grain: {}
@@ -2043,7 +2060,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_head_ring_size_behaviour
     grain: {}
@@ -2079,7 +2096,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_internal_diversity_intdiv1
     grain: {}
@@ -2115,7 +2132,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -2156,7 +2173,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_l3_decode_post_repair
     grain: {}
@@ -2192,7 +2209,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_l3_guidance_ab
     grain: {}
@@ -2228,7 +2245,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_l3_guidance_sweep
     grain: {}
@@ -2264,7 +2281,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_l5_metal_deletion_control
     grain: {}
@@ -2300,7 +2317,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_loss_term_liveness
     grain: {}
@@ -2345,7 +2362,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_m4_aromatic_lo_band_sweep
     grain: {}
@@ -2386,7 +2403,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_m4_threshold_sweep
     grain: {}
@@ -2422,7 +2439,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: nested:corrections_2026_10_12[1].date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_metal_geometry
     grain: {}
@@ -2458,7 +2475,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_metal_geometry_pairing_control
     grain: {}
@@ -2494,7 +2511,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_metric_validity_audit
     grain: {}
@@ -2530,7 +2547,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_objective_inventory
     grain: {}
@@ -2566,7 +2583,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_opt1_stereo_suppression
     grain: {}
@@ -2637,7 +2654,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_opt2_ring_content
     grain: {}
@@ -2673,7 +2690,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_opt2_ring_dative_correction
     grain: {}
@@ -2709,7 +2726,7 @@ metrics:
     metric_timestamp: '2026-10-13'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_opt3_min_per_metal
     grain: {}
@@ -2745,7 +2762,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_pad_groups_mcnemar
     grain: {}
@@ -2781,7 +2798,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_panel_reference_band_real_tmqm
     grain: {}
@@ -2817,7 +2834,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -2850,7 +2867,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_qed_fragment_aware
     grain: {}
@@ -2886,7 +2903,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -2919,7 +2936,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_real_tmqm_sixmetal_baseline
     grain: {}
@@ -2958,7 +2975,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_reference_band_audit
     grain: {}
@@ -2994,7 +3011,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_run_census
     grain: {}
@@ -3029,7 +3046,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_sa_gao_coley_reference
     grain: {}
@@ -3065,7 +3082,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_sa_gap_decomposition
     grain: {}
@@ -3101,7 +3118,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -3133,7 +3150,7 @@ metrics:
     metric_timestamp: '2026-10-10'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_sa_reference_scale
     grain: {}
@@ -3169,7 +3186,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_sa_stereocentre_control
     grain: {}
@@ -3205,7 +3222,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_soft_valence_scale
     grain: {}
@@ -3241,7 +3258,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_valence_budget_variant_ab
     grain:
@@ -3277,7 +3294,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cfm_valence_budget_variant_ab
     grain:
@@ -3313,7 +3330,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: nested:corrections_2026_10_12[1].date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -3346,7 +3363,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -3380,7 +3397,7 @@ metrics:
     metric_timestamp: '2026-09-27T16:50:00+08:00'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: chemprop_v2_5metal_5seed_50epoch
     grain: {}
@@ -3416,7 +3433,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: chemprop_v2_lomo_v2
     grain: {}
@@ -3449,7 +3466,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: chemprop_v2_status_2026_09_27
     grain: {}
@@ -3485,7 +3502,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: chemprop_v2_status_2026_09_28
     grain: {}
@@ -3521,7 +3538,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: clearance
     grain: {}
@@ -3555,7 +3572,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3592,7 +3609,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3628,7 +3645,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3664,7 +3681,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3700,7 +3717,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3736,7 +3753,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: com_shift
     grain:
@@ -3772,7 +3789,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: cytotox_label_noise
     grain: {}
@@ -3812,7 +3829,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: nested:measurements[0].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: diversity_subpocket
     grain: {}
@@ -3855,7 +3872,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: nested:measurements[6].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: diversity_tanimoto
     grain: {}
@@ -3876,7 +3893,7 @@ metrics:
     family_collision: false
   dmpnn_ckpt_status:
     source_json: metrics/by_metric/dmpnn_ckpt_status.json
-    source_json_sha256: b43f13849a3af614694c287008276c0da06223146abd8fc7ce281d59ccfccd09
+    source_json_sha256: a6db107ec57620bc3b04d367046740fc4a34fcc6476b2fba95ba98dbceaec932
     source_json_missing: false
     value: null
     value_basis: null
@@ -3886,10 +3903,10 @@ metrics:
     verdict: null
     verdict_shape: null
     scope: model_checkpoint_inventory
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_ckpt_status
     grain: {}
@@ -3925,7 +3942,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_auc
     grain:
@@ -3967,7 +3984,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_auc
     grain:
@@ -4009,7 +4026,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_auc
     grain:
@@ -4051,7 +4068,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_auc
     grain:
@@ -4093,7 +4110,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_capacity_foldwise
     grain:
@@ -4135,7 +4152,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_capacity_pair_delta
     grain:
@@ -4177,7 +4194,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: dmpnn_within_metal_auc
     grain:
@@ -4218,7 +4235,7 @@ metrics:
     metric_timestamp: '2026-10-03'
     metric_timestamp_source: nested:corrections[1].date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: docked_pose_rmsd
     grain: {}
@@ -4251,7 +4268,7 @@ metrics:
     metric_timestamp: '2026-10-07'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4282,7 +4299,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4314,7 +4331,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: drugood_v3_scaffold
     grain: {}
@@ -4350,7 +4367,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4382,7 +4399,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -4415,7 +4432,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -4448,7 +4465,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -4481,7 +4498,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -4514,7 +4531,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -4547,7 +4564,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: nested:context.timestamp_phase4c
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4584,7 +4601,7 @@ metrics:
     metric_timestamp: '2026-10-06'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: f3_dmpnn_lomo_target_centering
     grain: {}
@@ -4618,7 +4635,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4651,7 +4668,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_ablations_inhouse_ep50
     grain: {}
@@ -4687,7 +4704,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4719,7 +4736,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4751,7 +4768,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4783,7 +4800,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4815,7 +4832,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4847,7 +4864,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4879,7 +4896,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_adaptlr_lever
     grain: {}
@@ -4916,7 +4933,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_c3_sampler_pairwise
     grain: {}
@@ -4952,7 +4969,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -4984,7 +5001,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_ep50_lowk_verdict
     grain: {}
@@ -5020,7 +5037,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_fused_kcurve
     grain: {}
@@ -5056,7 +5073,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_i2_chemistry_fair_test
     grain: {}
@@ -5092,7 +5109,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5124,7 +5141,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5157,7 +5174,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5189,7 +5206,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5222,7 +5239,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5254,7 +5271,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5287,7 +5304,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5319,7 +5336,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5352,7 +5369,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5384,7 +5401,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5417,7 +5434,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5450,7 +5467,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5482,7 +5499,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5515,7 +5532,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5548,7 +5565,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5581,7 +5598,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5614,7 +5631,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5647,7 +5664,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5680,7 +5697,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -5716,7 +5733,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_inhouse_kcurve_ep50
     grain: {}
@@ -5752,7 +5769,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5784,7 +5801,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_inhouse_kcurve_headonly
     grain: {}
@@ -5820,7 +5837,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_kshot_curve_paperfunnel
     grain:
@@ -5857,7 +5874,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5889,7 +5906,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5921,7 +5938,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -5953,7 +5970,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_lowk_l2sp_lever
     grain: {}
@@ -5989,7 +6006,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_kshot_curve_paperfunnel
     grain:
@@ -6026,7 +6043,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fsma_xgb_warmstart_kshot
     grain: {}
@@ -6062,7 +6079,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
@@ -6095,7 +6112,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fusion_dmpnn_gbdt_within_metal
     grain:
@@ -6138,7 +6155,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fusion_decision_table
     grain: {}
@@ -6174,7 +6191,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: fusion_dmpnn_gbdt_within_metal
     grain:
@@ -6216,7 +6233,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: gi50_proxy
     grain: {}
@@ -6249,7 +6266,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: gi50_proxy_summary
     grain: {}
@@ -6282,7 +6299,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: half_life
     grain: {}
@@ -6315,7 +6332,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: hepatotox_index
     grain: {}
@@ -6348,7 +6365,7 @@ metrics:
     metric_timestamp: '2026-09-17'
     metric_timestamp_source: nested:measurements[0].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: herg_cardio_risk
     grain:
@@ -6386,7 +6403,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: herg_cardio_risk
     grain:
@@ -6420,7 +6437,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: l1_nci60_cap512_d4_probe
     grain: {}
@@ -6456,7 +6473,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: l2_moleculenet_ensemble
     grain: {}
@@ -6492,7 +6509,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: l3_kshot_curve
     grain: {}
@@ -6533,7 +6550,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: l3_metalcond_lomo
     grain: {}
@@ -6576,7 +6593,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: l4_ru_within_metal_tie_robustness
     grain: {}
@@ -6612,7 +6629,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ligand_vs_pocket_rmsd
     grain: {}
@@ -6645,7 +6662,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: logp7_4
     grain: {}
@@ -6682,7 +6699,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -6720,7 +6737,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -6765,7 +6782,7 @@ metrics:
     metric_timestamp: '2026-09-30'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: m4_sa
     grain: {}
@@ -6802,7 +6819,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: m4_success_rate
     grain: {}
@@ -6835,7 +6852,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer
     grain:
@@ -6871,7 +6888,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer
     grain:
@@ -6907,7 +6924,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer
     grain:
@@ -6943,7 +6960,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer
     grain:
@@ -6979,7 +6996,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer_scaffold_seed_stability
     grain: {}
@@ -7027,7 +7044,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer_seed_stability
     grain: {}
@@ -7083,7 +7100,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer_seed_stability
     grain: {}
@@ -7121,7 +7138,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer
     grain:
@@ -7170,7 +7187,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_activity_transfer_tie_sensitivity
     grain: {}
@@ -7207,7 +7224,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: nested:measurements[5].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_compliance_rate
     grain: {}
@@ -7249,7 +7266,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: nested:measurements[1].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_coord_compliance
     grain: {}
@@ -7285,7 +7302,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_coord_compliance_phase3g
     grain: {}
@@ -7322,7 +7339,7 @@ metrics:
     metric_timestamp: '2026-09-27T01:08:15.981545+00:00'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_lomo_auc
     grain: {}
@@ -7354,7 +7371,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:33:51'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_lomo_auc_v2
     grain: {}
@@ -7389,7 +7406,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_lomo_chemprop_v2
     grain: {}
@@ -7424,7 +7441,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_router_ablation
     grain:
@@ -7459,7 +7476,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_sensitivity_decomposition
     grain: {}
@@ -7494,7 +7511,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_sensitivity_predictor
     grain: {}
@@ -7529,7 +7546,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metal_transfer_chemistry
     grain: {}
@@ -7551,20 +7568,20 @@ metrics:
     family_collision: false
   metalcytotox_combined_r2:
     source_json: metrics/by_metric/metalcytotox_combined_r2.json
-    source_json_sha256: 50248f3d363172e4832bc52c36d3b42fc208f87ed33776eeacfff344fde58984
+    source_json_sha256: 425e68518470c3a5ceec3a83d3ee68136c222b35c2aa1ee6d7d2c9d21e8634b0
     source_json_missing: false
     value: null
     value_basis: null
-    status: MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING
+    status: MEASURED
     status_source: status
     status_narrative_source: null
     verdict: null
     verdict_shape: null
     scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metalcytotox_combined_r2
     grain: {}
@@ -7576,8 +7593,6 @@ metrics:
     quotable: false
     headline_grade: false
     not_quotable:
-    - status 'MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING' is prose, not a status
-      token
     - no scalar headline
     not_headline:
     - run count not declared (n_seeds/seeds/n_runs)
@@ -7603,7 +7618,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metalcytotox_ru_paper_lightgbm_cv
     grain: {}
@@ -7641,7 +7656,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metallodrug_vertical_coverage
     grain: {}
@@ -7678,7 +7693,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metric18_protein_metal_binding_auc
     grain:
@@ -7714,7 +7729,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metric18_protein_metal_binding_per_residue_auc
     grain: {}
@@ -7750,7 +7765,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: metric18_protein_metal_binding_auc
     grain:
@@ -7786,7 +7801,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -7820,7 +7835,7 @@ metrics:
     metric_timestamp: '2026-10-20'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: moleculenet_auc_chemprop_v2_same_protocol
     grain: {}
@@ -7855,7 +7870,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: moleculenet_auc_chemprop_v2_same_protocol
     grain: {}
@@ -7891,7 +7906,7 @@ metrics:
     metric_timestamp: '2026-10-08'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -7922,7 +7937,7 @@ metrics:
     metric_timestamp: '2026-10-08'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -7957,7 +7972,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: moleculenet_auc_dmpnn_5seed_cap512_d4
     grain: {}
@@ -7994,7 +8009,7 @@ metrics:
     metric_timestamp: '2026-10-08'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8025,7 +8040,7 @@ metrics:
     metric_timestamp: '2026-09-25'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8060,7 +8075,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: moleculenet_auc_morgan_mlp_aligned
     grain: {}
@@ -8094,7 +8109,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8127,7 +8142,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8160,7 +8175,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8192,7 +8207,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8225,7 +8240,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8257,7 +8272,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8290,7 +8305,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8323,7 +8338,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8356,7 +8371,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8388,7 +8403,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8420,7 +8435,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8453,7 +8468,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8485,7 +8500,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8518,7 +8533,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8550,7 +8565,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8585,7 +8600,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8618,7 +8633,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8650,7 +8665,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8683,7 +8698,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8715,7 +8730,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8748,7 +8763,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8781,7 +8796,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8814,7 +8829,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8846,7 +8861,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8878,7 +8893,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8910,7 +8925,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8942,7 +8957,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -8974,7 +8989,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9006,7 +9021,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9038,7 +9053,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9070,7 +9085,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9102,7 +9117,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9135,7 +9150,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9167,7 +9182,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9199,7 +9214,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9232,7 +9247,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9271,7 +9286,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9308,7 +9323,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9341,7 +9356,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9374,7 +9389,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9406,7 +9421,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9438,7 +9453,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9470,7 +9485,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9503,7 +9518,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9537,7 +9552,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9572,7 +9587,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9604,7 +9619,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9636,7 +9651,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9668,7 +9683,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9701,7 +9716,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9733,7 +9748,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9765,7 +9780,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9829,7 +9844,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9864,7 +9879,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -9901,7 +9916,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: nested:sprint_a_date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: multi_task_4domain_v2
     grain: {}
@@ -9938,7 +9953,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: nested:measurements[3].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: n_distinct
     grain: {}
@@ -9976,7 +9991,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: n_train_scaleup
     grain: {}
@@ -10013,7 +10028,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: nci60_precious_9cell_auc
     grain:
@@ -10033,7 +10048,7 @@ metrics:
     family_collision: false
   ood_per_element_reachability:
     source_json: metrics/by_metric/ood_per_element_reachability.json
-    source_json_sha256: 41a70f724c935c58b8731341ccc2fd58e650dd9a848d9776682a38de581105d5
+    source_json_sha256: 8df5eceaabb397258133b3fe2b0f233b0a1c31db30fffbc75fcda7872fe3975e
     source_json_missing: false
     value: null
     value_basis: null
@@ -10043,10 +10058,10 @@ metrics:
     verdict: null
     verdict_shape: null
     scope: tier2_ood_per_element
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ood_per_element_reachability
     grain: {}
@@ -10069,7 +10084,7 @@ metrics:
     family_collision: false
   ood_per_metal_reachability:
     source_json: metrics/by_metric/ood_per_metal_reachability.json
-    source_json_sha256: 31717c8a23ea6f3ed644f9dcde8865b96be40d293e65f491c8ec436c3808616e
+    source_json_sha256: ea59f36aec3de63c16f44c4bc5f912f235276277b939588abb4d9c9f58bd2703
     source_json_missing: false
     value: null
     value_basis: null
@@ -10078,11 +10093,11 @@ metrics:
     status_narrative_source: null
     verdict: null
     verdict_shape: null
-    scope: tier2_d_block_ood
-    metric_timestamp: '2026-09-27'
+    scope: tier2_precious_metal_ood
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ood_per_metal_reachability
     grain: {}
@@ -10118,7 +10133,7 @@ metrics:
     metric_timestamp: '2026-10-08'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ood_reachability_summary
     grain: {}
@@ -10157,7 +10172,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa15_inhouse_metalcond_lomo
     grain: {}
@@ -10196,7 +10211,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa15_metalcond_lomo
     grain: {}
@@ -10232,7 +10247,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa18_model_class_5metal
     grain: {}
@@ -10268,7 +10283,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa18_pic50_regression_5metal
     grain: {}
@@ -10303,7 +10318,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa20_external_temporal_5metal
     grain: {}
@@ -10340,7 +10355,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa3_chemprop_lomo_probe_cohort
     grain: {}
@@ -10374,7 +10389,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pa3_inhouse_lomo_probe_cohort
     grain: {}
@@ -10414,7 +10429,7 @@ metrics:
     metric_timestamp: '2026-09-17'
     metric_timestamp_source: nested:measurements[4].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pb_pass_rate
     grain: {}
@@ -10460,7 +10475,7 @@ metrics:
     metric_timestamp: '2026-10-08'
     metric_timestamp_source: nested:measurements[7].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pearson_r_pic50
     grain: {}
@@ -10496,7 +10511,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: per_metal_pic50_wasserstein
     grain: {}
@@ -10537,7 +10552,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: nested:measurements[0].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pharmacophore_pass_rate
     grain: {}
@@ -10575,7 +10590,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: pharmacophore_pass_rate_prod
     grain: {}
@@ -10610,7 +10625,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: plasma_protein_binding
     grain: {}
@@ -10630,11 +10645,11 @@ metrics:
     family_collision: false
   platinai_3cell_resistance:
     source_json: metrics/by_metric/platinai_3cell_resistance.json
-    source_json_sha256: 85b549ba41d6339b38927b6fbc0943a29f29e47ff7bb81c33a2ecab483dfa8b0
+    source_json_sha256: 3a95413370d303bfb9a3981fd8caa0240992527f3d0da0f4f4f5795371a10604
     source_json_missing: false
     value: 0.545851474519129
     value_basis: value_overall_mean_auc
-    status: MEASURED
+    status: MEASURED_SYNTHETIC_LABELS
     status_source: status
     status_narrative_source: null
     verdict: null
@@ -10643,7 +10658,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_3cell_resistance
     grain: {}
@@ -10652,11 +10667,11 @@ metrics:
     n_seeds: 5.0
     value_missing: false
     carries_claim: true
-    quotable: true
+    quotable: false
     headline_grade: false
-    not_quotable: []
-    not_headline:
-    - evaluation dataset not declared
+    not_quotable:
+    - status 'MEASURED_SYNTHETIC_LABELS' is not a measurement of this metric
+    not_headline: []
     headline_caveat: null
     family_size: 1
     family_live: 1
@@ -10676,7 +10691,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_4cell_auc
     grain: {}
@@ -10709,7 +10724,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -10742,7 +10757,7 @@ metrics:
     metric_timestamp: '2026-09-16'
     metric_timestamp_source: nested:measurements[0].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_a2780_pred
     grain: {}
@@ -10764,20 +10779,20 @@ metrics:
     family_collision: false
   platinai_combined_r2:
     source_json: metrics/by_metric/platinai_combined_r2.json
-    source_json_sha256: 3b15a0a2459fc89c8bfed7a83a07e8a3d0121866672256c062362793f847c152
+    source_json_sha256: 21e1e71f8c64724ef0f90c697224443adb5dec2afe9fc55fc30230dd0bd73255
     source_json_missing: false
     value: null
     value_basis: null
-    status: MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING
+    status: MEASURED
     status_source: status
     status_narrative_source: null
     verdict: null
     verdict_shape: null
     scope: tier1_precious_metal_anticancer / PlatinAI 4-cell
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_combined_r2
     grain: {}
@@ -10789,8 +10804,6 @@ metrics:
     quotable: false
     headline_grade: false
     not_quotable:
-    - status 'MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING' is prose, not a status
-      token
     - no scalar headline
     not_headline:
     - run count not declared (n_seeds/seeds/n_runs)
@@ -10816,7 +10829,7 @@ metrics:
     metric_timestamp: '2026-09-16'
     metric_timestamp_source: nested:measurements[0].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_mcf7_pred
     grain: {}
@@ -10851,7 +10864,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: platinai_pool_dedup
     grain: {}
@@ -10887,7 +10900,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: protein_metal_per_residue_summary
     grain: {}
@@ -10931,7 +10944,7 @@ metrics:
     metric_timestamp: '2026-10-01T21:14:43.243963+00:00'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: m5_qed_drug_likeness_bickerton
     grain: {}
@@ -10966,7 +10979,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: qed_score
     grain: {}
@@ -11000,7 +11013,7 @@ metrics:
     metric_timestamp: '2026-09-15'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: r13_100x3_partial
     grain: {}
@@ -11035,7 +11048,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rdkit_validity
     grain: {}
@@ -11069,7 +11082,7 @@ metrics:
     metric_timestamp: '2026-09-17'
     metric_timestamp_source: nested:measurements[1].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: reference_tanimoto
     grain: {}
@@ -11104,7 +11117,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11139,7 +11152,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11175,7 +11188,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11211,7 +11224,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11247,7 +11260,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11283,7 +11296,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: rigid_fragment_rmsd
     grain:
@@ -11319,7 +11332,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: ring_size_distribution
     grain: {}
@@ -11362,7 +11375,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: nested:measurements[11].date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: sa_mean
     grain: {}
@@ -11401,7 +11414,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: sa_score
     grain: {}
@@ -11434,7 +11447,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: stacked_dmpnn_xgb_within_metal
     grain:
@@ -11476,7 +11489,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: steric_clash_pb_dock
     grain:
@@ -11513,7 +11526,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: steric_clash_pb_dock
     grain:
@@ -11550,7 +11563,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: steric_clash_pb_dock
     grain:
@@ -11587,7 +11600,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: table1_transfer_inhouse
     grain:
@@ -11629,7 +11642,7 @@ metrics:
     metric_timestamp: '2026-09-25'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tier1_summary
     grain: {}
@@ -11665,7 +11678,7 @@ metrics:
     metric_timestamp: '2026-09-25'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -11698,7 +11711,7 @@ metrics:
     metric_timestamp: '2026-10-11'
     metric_timestamp_source: nested:production_scale_comparison_2026_10_11.date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tmqm_bond_perception
     grain: {}
@@ -11750,7 +11763,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tmqm_bond_perception_3seed
     grain: {}
@@ -11773,7 +11786,7 @@ metrics:
     family_collision: false
   tmqm_combined_r2:
     source_json: metrics/by_metric/tmqm_combined_r2.json
-    source_json_sha256: 01a14d1c58649139bd2e762bfad189536c03628697b569e504975fb8c9d2d98a
+    source_json_sha256: 0c1411ef5957c373f9977372d09e2429a1823a1a8ce7307a415d9db54fa5b1e7
     source_json_missing: false
     value: null
     value_basis: null
@@ -11783,10 +11796,10 @@ metrics:
     verdict: null
     verdict_shape: null
     scope: tier2_cross_dataset / tmQM-dblock 29-element
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tmqm_combined_r2
     grain: {}
@@ -11822,7 +11835,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -11855,7 +11868,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tmqm_pretrain_init_ab_multimetal
     grain: {}
@@ -11890,7 +11903,7 @@ metrics:
     metric_timestamp: '2026-10-12'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: tmqm_pretrain_init_ab_metalcytotox_ru
     grain: {}
@@ -11923,7 +11936,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: nested:generated_at
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -11956,7 +11969,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vdss
     grain: {}
@@ -11989,7 +12002,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -12022,7 +12035,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12057,7 +12070,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:09:26Z'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12092,7 +12105,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:09:26Z'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12127,7 +12140,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:09:26Z'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12162,7 +12175,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:09:26Z'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12197,7 +12210,7 @@ metrics:
     metric_timestamp: '2026-09-27T06:08:50Z'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12232,7 +12245,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_high_affinity
     grain:
@@ -12269,7 +12282,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_min_score
     grain:
@@ -12303,7 +12316,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12339,7 +12352,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12375,7 +12388,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12411,7 +12424,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12447,7 +12460,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12483,7 +12496,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12518,7 +12531,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_reference
     grain:
@@ -12555,7 +12568,7 @@ metrics:
     metric_timestamp: '2026-09-26T22:19:41.168358+00:00'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12590,7 +12603,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12625,7 +12638,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12660,7 +12673,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12695,7 +12708,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12730,7 +12743,7 @@ metrics:
     metric_timestamp: '2026-09-27'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12765,7 +12778,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_relaxed_success
     grain:
@@ -12802,7 +12815,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -12837,7 +12850,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -12872,7 +12885,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -12907,7 +12920,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -12942,7 +12955,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -12977,7 +12990,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -13012,7 +13025,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_score
     grain:
@@ -13036,7 +13049,7 @@ metrics:
     family_collision: false
   vina_status:
     source_json: metrics/by_metric/vina_status.json
-    source_json_sha256: 645ba15c9b1d1b7a3a59fbd41a274f9d9ac07a9f269d6cda738f041747f4b159
+    source_json_sha256: 09cee1ef037f17401c55d4080506607a27d93ea7dca68dc508296d7a441328d8
     source_json_missing: false
     value: null
     value_basis: null
@@ -13046,10 +13059,10 @@ metrics:
     verdict: null
     verdict_shape: null
     scope: docking_engine_health
-    metric_timestamp: '2026-09-27'
+    metric_timestamp: '2026-10-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_status
     grain: {}
@@ -13085,7 +13098,7 @@ metrics:
     metric_timestamp: '2026-09-18'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13122,7 +13135,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13159,7 +13172,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13196,7 +13209,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13233,7 +13246,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13270,7 +13283,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13307,7 +13320,7 @@ metrics:
     metric_timestamp: '2026-09-21'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: vina_triple_success
     grain:
@@ -13344,7 +13357,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: w1_cohort_expansion_probe
     grain: {}
@@ -13380,7 +13393,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: w1_os_root_cause_audit
     grain: {}
@@ -13417,7 +13430,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: nested:consolidation_date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wf181_g5_50epoch_cascade_delta_5metal
     grain: {}
@@ -13454,7 +13467,7 @@ metrics:
     metric_timestamp: '2026-09-29'
     metric_timestamp_source: nested:consolidation_date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wf181_g5_50epoch_full_sweep
     grain: {}
@@ -13488,7 +13501,7 @@ metrics:
     metric_timestamp: '2026-09-28'
     metric_timestamp_source: timestamp
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold
     grain: {}
@@ -13521,7 +13534,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13554,7 +13567,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13587,7 +13600,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13620,7 +13633,7 @@ metrics:
     metric_timestamp: '2026-09-26'
     metric_timestamp_source: date_utc
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13653,7 +13666,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13686,7 +13699,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain: {}
@@ -13719,7 +13732,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa103_shortcut_sigma_sweep
     grain: {}
@@ -13756,7 +13769,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa94_cohort_placement_audit
     grain: {}
@@ -13792,7 +13805,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa94_tmqm_dative_calibration
     grain: {}
@@ -13829,7 +13842,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa94_tmqm_dative_rule_delta
     grain: {}
@@ -13864,7 +13877,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa95_gpu_quality_gate
     grain: {}
@@ -13899,7 +13912,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa95_metalcytotox_feature_flips
     grain: {}
@@ -13934,7 +13947,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa95_per_metal_dative_calibration
     grain: {}
@@ -13969,7 +13982,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa96_ring_prior_gate
     grain: {}
@@ -14004,7 +14017,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa97_bond_metric_recheck
     grain: {}
@@ -14040,7 +14053,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa97_fragmentation_diagnosis
     grain: {}
@@ -14076,7 +14089,7 @@ metrics:
     metric_timestamp: '2026-10-19'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa98_assemble_discrimination
     grain: {}
@@ -14112,7 +14125,7 @@ metrics:
     metric_timestamp: '2026-10-20'
     metric_timestamp_source: date
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: wfa98_assemble_smoke
     grain: {}
@@ -14147,7 +14160,7 @@ metrics:
     metric_timestamp: null
     metric_timestamp_source: null
     registry_role: artifact
-    last_refreshed: '2026-10-21T02:41:45+00:00'
+    last_refreshed: '2026-10-21T03:08:36+00:00'
     registry_origin: wf_a36_3_g1_disk_walk
     metric_family: null
     grain:
