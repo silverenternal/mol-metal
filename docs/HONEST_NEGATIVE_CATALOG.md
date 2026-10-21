@@ -10316,3 +10316,80 @@ every component has a CI". `1 − explained_total` = **0.0716** structure-first 
 **Workflow** | UP-17 (2026-10-21; CPU only, 1 min 16 s including 200 ligand-clustered
 resamples in each of two orders; §5.2 every number is an artifact field; §5.3 + §5.4: 0
 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.163 — Wf-A107e: turning the sampler on did not make the metric mean generation (2026-10-21)
+
+**What this wave was for.** §6.162 found that Wf-A107's `gen_ring_*` numbers were decodes
+of collapsed noise because `use_fm_objective` was absent and `wasserstein_weight` was 0.0.
+Wf-A107e re-ran the same one-factor A/B (ring weight 0 vs 1.0, formulation `edge_ring`)
+with a sampler that is actually trained, and with the gradient clip scoped per module so
+the ring term cannot rescale the flow field:
+
+    use_fm_objective: true   fm_t_per_cloud: 1   use_tmqm_init: true
+    wasserstein_weight: 0.1  grad_clip_scope: per_module
+
+**MEASURED (seed 0, 5 epochs, 200 train / 63 val clouds; `wfa107e_ab.json`).**
+
+| metric (last epoch) | control | edge_ring w=1.0 | delta |
+|---|---:|---:|---:|
+| `gen_ring_3_share` | 0.5016 | 0.3648 | **−0.1368** |
+| `gen_ring_5_6_share` | 0.1688 | 0.2121 | +0.0433 |
+| `gen_rings_per_mol` | 6.48 | 9.82 | +3.34 |
+| bond existence AP | 0.3465 | 0.1768 | **−0.1697** |
+| bond F1 | 0.4896 | 0.4824 | −0.0072 |
+| `ring_prior_term` | 0.0000 | 0.7190 | +0.719 |
+
+**Three readings, in order of how much they matter.**
+
+1. **The sampler is still not sampling molecules.** The probe on the trainer's own last
+   eval batch (seed 402, offset 64, 32 clouds) reads **mean pair distance 2.18 Å** and
+   **90.9% of atom pairs inside the 3.5 Å cutoff** — against 2.26 Å / 89.1% in Wf-A107
+   (`wfa107e_head_swap_probe_gen402.json` vs `wfa107c_head_swap_probe_gen402.json`).
+   Five epochs of FM on 200 clouds moved the cloud by 0.08 Å. The head's graph on it is
+   still a blob (166 rings/mol raw vs 18.9 on truth geometry). So `gen_ring_*` is STILL a
+   decode of a blob; turning the objective on was necessary but not sufficient.
+2. **The decoded A/B is unchanged, which is the point.** 3-share −0.1368 here vs −0.1357
+   in Wf-A107 (§6.153). Whatever the metric is measuring, it is not sensitive to whether
+   the velocity field trains — consistent with (1).
+3. **The prior now costs bond accuracy.** AP 0.3465 → 0.1768. In Wf-A107 (untrained
+   sampler) the same prior was AP-neutral (−0.0013 over 3 seeds). The difference is not
+   the data: `bond_ce` is slightly LOWER in the treatment (0.7779 vs 0.7995) while
+   precision falls 0.551 → 0.520 and recall rises 0.441 → 0.450 — the ring term pushes
+   edges toward "bonded" and destroys the ranking. **Caveat: n = 1 seed, and Wf-A107b
+   measured the 3-seed run-to-run spread of this protocol at 0.133 AP, so a −0.170 delta
+   is at the edge of that spread, not established as an effect size.**
+
+**The clip fix works and is now measurable.** With `grad_clip_scope: per_module` the
+treatment's `grad_norm` (pre-clip, global) rises 7.52 → 8.47 and yet the flow field barely
+moves: **`vel_field` max |delta| = 5.3e-8**, against **2.95e-3** in the head. That residual
+is float32 reduction order, not gradient leakage — 5.5e-5 of the head's delta. Under the
+old global clip the same pair differed by an unknown amount through the shared clip factor
+(§6.162 measured the norms that would have caused it). The flag is opt-in and the default
+(`global`) is bit-exact.
+
+**Honest boundaries (ACTIVE).**
+  * **Still no generation claim.** A 5-epoch, 200-cloud run does not produce a sampler,
+    with or without `use_fm_objective`. The number this wave supports is "the decoded
+    metric is insensitive to the sampler", not "the prior improves generation".
+  * **1 seed.** Direction only; the bond-AP cost needs 3 seeds before it can be quoted.
+  * **The truth-geometry head effect grew** (−0.199 on 3-share, seed 0, vs −0.086 in
+    Wf-A107) and bond F1 fell 0.024. Part of that is the head now being clipped on its own
+    budget rather than the joint one, i.e. a different head-training trajectory — which is
+    the intended semantics of the fix, but it means Wf-A107 and Wf-A107e head effects are
+    not directly comparable.
+  * **Next step is budget, not another flag.** A sampler needs more epochs and more data
+    (the c7 line uses the full 26,715-cloud corpus), not a different ring formulation.
+
+**Artifacts.** `configs/wfa107e_fm_{control,edge_ring_w1}.yaml`,
+`molmetal/scripts/wfa107e_ab_analysis.py`,
+`metrics/by_metric/wfa107e_ab.json`,
+`metrics/by_metric/wfa107e_head_swap_probe_gen402.json`,
+`molmetal/scripts/wfa107c_head_swap_probe.py` (now takes `--device`; a trained field makes
+the CPU sampler >20 min for 2x32 clouds vs ~1 min on GPU0).
+
+**§6.163 catalog-count math.** Net **+1**. Cumulative **217 → 218**. ACTIVE **173 → 174**.
+
+**Workflow** | Wf-A107e (2026-10-21; GPU0: 2 arms x 5 epochs with FM on, 2 probes; §5.2
+every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

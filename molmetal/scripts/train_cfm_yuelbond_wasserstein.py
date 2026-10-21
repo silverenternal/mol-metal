@@ -3079,6 +3079,53 @@ class CFMJointModel(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# Gradient clipping scope
+# ---------------------------------------------------------------------------
+def clip_gradients(model, max_norm: float, scope: str = "global") -> float:
+    """Clip gradients and return the PRE-CLIP global norm.
+
+    ``scope="global"`` (default) is one ``clip_grad_norm_`` over every
+    parameter — the behaviour every run before Wf-A107e had.
+
+    ``scope="per_module"`` clips ``model.head`` and everything else
+    separately, both at ``max_norm``.  Why: with one shared norm, a loss that
+    only touches the head raises the joint norm and the clip then rescales
+    every OTHER module's gradient too.  MEASURED on the Wf-A107 ring-prior
+    pair, grad_norm 2.62 (control) vs 7.94 (edge_ring w=1.0) against
+    ``max_norm=5.0``: the treatment arm's velocity field was trained at 0.63x
+    the control's effective step, in the direction of the hypothesis.  With
+    ``use_fm_objective`` on, the control alone reads 17.1, so the confound is
+    larger still.
+
+    The returned value is the global pre-clip norm in BOTH scopes, so
+    ``grad_norm`` in the metrics keeps its meaning and stays comparable
+    across waves.
+    """
+    _clip_norm = float(max_norm) if max_norm > 0.0 else float("inf")
+    _scope = str(scope or "global").lower()
+    if _scope == "per_module" and hasattr(model, "head"):
+        _sq = 0.0
+        for p in model.parameters():
+            if p.grad is not None:
+                _sq += float(p.grad.detach().pow(2).sum())
+        _global = _sq ** 0.5
+        _head_params = [p for p in model.head.parameters() if p.grad is not None]
+        _head_ids = {id(p) for p in _head_params}
+        _rest_params = [
+            p for p in model.parameters()
+            if p.grad is not None and id(p) not in _head_ids
+        ]
+        if _head_params:
+            torch.nn.utils.clip_grad_norm_(_head_params, max_norm=_clip_norm)
+        if _rest_params:
+            torch.nn.utils.clip_grad_norm_(_rest_params, max_norm=_clip_norm)
+        return _global
+    return float(
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
+    )
+
+
+# ---------------------------------------------------------------------------
 # Bond logits -> RDKit-strict sanitisation rate
 # ---------------------------------------------------------------------------
 def _apply_logit_adjustment(
@@ -3947,6 +3994,11 @@ def train_one_epoch(
     # so the Wf-124 P2 + Wf-148 baseline is preserved bit-for-bit;
     # 0.0 disables clipping entirely.
     max_norm: float = 5.0,
+    # Wf-A107e (2026-10-21) — clip scope.  "global" (default) reproduces the
+    # pre-Wf-A107e call exactly; "per_module" clips model.head separately
+    # from the rest so an auxiliary head loss cannot rescale the velocity
+    # field's step through the shared clip norm.  See --grad-clip-scope.
+    grad_clip_scope: str = "global",
     # BLK-C5 (2026-10-09) — entropy regularisation weight (用户建议三).
     # Wf-A43 C — default ON; was 0.0 = OFF (term collapsed to torch.zeros(())
     # in the loss sum).  Pre-Wf-A43 the BLK-C5 experiments had set this to
@@ -5995,10 +6047,7 @@ def train_one_epoch(
                 f"peak_alloc={_mt_peak:.0f}",
                 flush=True,
             )
-        _clip_norm = float(max_norm) if max_norm > 0.0 else float("inf")
-        grad_norm = float(
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
-        )
+        grad_norm = clip_gradients(model, max_norm, grad_clip_scope)
         _t_step0 = _stage_tick()
         optimiser.step()
         if _STEP_TIMING_ON:
@@ -9239,15 +9288,19 @@ def parse_args() -> argparse.Namespace:
         dest="ring_template_formulation",
         type=str,
         default="count",
-        choices=["count", "per_atom"],
+        choices=["count", "per_atom", "edge_ring"],
         help=(
             "2026-10-21 NEW (Wf-A107): ring-prior formulation.  'count' "
             "(default) is the Wf-A78 behaviour.  'per_atom' normalises by "
             "the atom count and uses one-sided excess(3,4) / deficit(5,6) "
             "errors, so the gradient does not vanish when the bond head "
             "over-produces triangles (MEASURED on a synthetic over-producing "
-            "graph: 361x the count form's gradient).  Opt-in via YAML "
-            "flow.ring_template_formulation."
+            "graph: 361x the count form's gradient).  'edge_ring' (Wf-A107b) "
+            "replaces the cycle COUNT with a per-edge ring-membership BCE: "
+            "one Bernoulli per candidate edge, so the gradient is intensive "
+            "in graph density instead of collapsing as the graph densifies.  "
+            "Both count forms were MEASURED to cost bond AP at every weight "
+            "tested (§6.152).  Opt-in via YAML flow.ring_template_formulation."
         ),
     )
     p.add_argument(
@@ -10400,6 +10453,30 @@ def parse_args() -> argparse.Namespace:
             "bit-exact Wf-124 P2 + Wf-148 baseline this flag documents. "
             "BLK-C5 therefore passes --max-norm 1.0 explicitly from "
             "scripts/launch_wf_fix3lines_cfm_c5_repair.sh."
+        ),
+    )
+    p.add_argument(
+        "--grad-clip-scope",
+        dest="grad_clip_scope",
+        type=str,
+        default="global",
+        choices=("global", "per_module"),
+        help=(
+            "Wf-A107e (2026-10-21) — which parameter groups share one clip "
+            "norm. 'global' (default) is the pre-Wf-A107e behaviour: "
+            "clip_grad_norm_(model.parameters()) over head + velocity field "
+            "together, bit-exact. 'per_module' clips model.head and "
+            "everything else SEPARATELY at --max-norm. Why this exists: an "
+            "auxiliary loss attached to one module raises the joint norm and "
+            "therefore rescales EVERY module's gradient. MEASURED on the "
+            "Wf-A107 ring-prior A/B: the control's grad_norm is 2.62 and the "
+            "edge_ring arm's is 7.94, so with --max-norm 5.0 the treatment "
+            "arm's flow field was trained at 0.63x the control's effective "
+            "step — a confound in the direction of the hypothesis. The same "
+            "happens with use_fm_objective on (MEASURED control epoch 0 "
+            "grad_norm 17.1), which is why a trained-sampler ring A/B needs "
+            "this. grad_norm in the metrics stays the PRE-CLIP global norm "
+            "in both scopes, so existing curves remain comparable."
         ),
     )
     # ------------------------------------------------------------------
@@ -14330,6 +14407,9 @@ def main() -> int:
             # from the yaml-driven ``args.max_norm`` (start.sh passes
             # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).
             max_norm=float(getattr(args, "max_norm", 5.0)),
+            # Wf-A107e — clip scope (see --grad-clip-scope).  getattr keeps
+            # namespaces built elsewhere on the bit-exact global path.
+            grad_clip_scope=str(getattr(args, "grad_clip_scope", "global")),
             # Round-3 D1 — assemble-aware connectivity weight.  getattr with
             # an explicit default so an args namespace built elsewhere
             # (tests, other entry points) keeps the pre-D1 objective rather
@@ -16112,6 +16192,21 @@ def main() -> int:
             "ring_template_formulation": str(
                 getattr(args, "ring_template_formulation", "count")
             ),
+            # Wf-A107e — the clip scope changes which module a loss can
+            # rescale, so a run whose artifact does not record it cannot be
+            # compared with one that used the other scope.
+            "grad_clip_scope": str(getattr(args, "grad_clip_scope", "global")),
+            "max_norm": float(getattr(args, "max_norm", 5.0)),
+            # Wf-A107e — whether the sampler was trained at all.  Its absence
+            # from this block is how Wf-A107 came to be read as a generation
+            # result when `gen_ring_*` was a decode of collapsed noise
+            # (§6.162): every downstream reader had to open the yaml to know.
+            "use_fm_objective": bool(
+                getattr(args, "use_fm_objective", False)
+            ),
+            "fm_weight": float(getattr(args, "fm_weight", 1.0)),
+            "fm_t_per_cloud": int(getattr(args, "fm_t_per_cloud", 0)),
+            "use_tmqm_init": bool(getattr(args, "use_tmqm_init", False)),
             "bond_rbf_features": bool(
                 getattr(args, "bond_rbf_features", False)
             ),
