@@ -1,0 +1,238 @@
+{
+  "metric": "m2_r2_real_4cell",
+  "status": "MEASURED",
+  "scope": "tier1_precious_metal_anticancer / m2 R2 per-cohort on REAL labels",
+  "unit": "R^2 (can be negative; higher = better)",
+  "dataset": "platinai_4cell_real_cohort.csv",
+  "label_provenance": {
+    "labels": "REAL",
+    "label_type": "experimental IC50",
+    "source": "MB-Finder (Rusanov 2025 PlatinAI), unit uM per the SI figure captions S17-S28",
+    "builder": "molmetal/scripts/build_platinai_4cell_real_cohort.py",
+    "note": "Not a reproduction of Rusanov Table S4-S5: 1,966 compounds here vs their 4,078, which span 592 cell lines and are not fully reachable through the public API."
+  },
+  "replaces_as_paper_line": {
+    "metric": "m2_r2_per_cohort",
+    "why": "that row's labels are synthetic (DO-NOT-TRAIN), so its number is a pipeline null test; this one is measured on REAL IC50s",
+    "not_a_supersession": "different cohort (1,966 vs 4,078) and different model (RDKit+Ridge vs the D-MPNN trainer), so the two values are not comparable and the older row is not deleted or marked stale"
+  },
+  "protocol": {
+    "features": "32-d RDKit (PLATINAI_32D_COLUMNS)",
+    "model": "Ridge, closed-form with intercept",
+    "alpha": "per select_features(n) tier",
+    "splits": [
+      "random_5x5",
+      "scaffold_5x5"
+    ],
+    "n_seeds": 5,
+    "n_folds": 5,
+    "missing_labels": "never imputed: each task is evaluated on its own observed labels",
+    "secondary": "mean_of_available_cells is reported only for continuity with m2_r2_per_cohort"
+  },
+  "per_cell": [
+    {
+      "target": "a549",
+      "n": 871,
+      "alpha": 0.5,
+      "tier": "n_lt_1000",
+      "target_mean": 4.991594144661309,
+      "target_std": 0.7666016574578678,
+      "by_feature_set": {
+        "rdkit_12d": {
+          "n_features": 12,
+          "random_5x5": {
+            "mean_r2": 0.07931364019249519,
+            "std_r2": 0.0037922404211093927,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.005044718369049113,
+            "std_r2": 0.08041604590442297,
+            "n_folds_evaluated": 25
+          }
+        },
+        "rdkit_32d": {
+          "n_features": 32,
+          "random_5x5": {
+            "mean_r2": 0.13713631397095027,
+            "std_r2": 0.007193482057895433,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.42830214194387395,
+            "std_r2": 0.978030016290109,
+            "n_folds_evaluated": 25
+          }
+        }
+      }
+    },
+    {
+      "target": "a2780",
+      "n": 860,
+      "alpha": 0.5,
+      "tier": "n_lt_1000",
+      "target_mean": 5.550941860465116,
+      "target_std": 0.9233904880190074,
+      "by_feature_set": {
+        "rdkit_12d": {
+          "n_features": 12,
+          "random_5x5": {
+            "mean_r2": 0.09171606937422336,
+            "std_r2": 0.009812985364668273,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": 0.027008082930444606,
+            "std_r2": 0.06849773267467381,
+            "n_folds_evaluated": 25
+          }
+        },
+        "rdkit_32d": {
+          "n_features": 32,
+          "random_5x5": {
+            "mean_r2": 0.10080350141695212,
+            "std_r2": 0.015098815140201002,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.028445502337944545,
+            "std_r2": 0.10946156201602449,
+            "n_folds_evaluated": 25
+          }
+        }
+      }
+    },
+    {
+      "target": "a2780cis",
+      "n": 600,
+      "alpha": 0.5,
+      "tier": "n_lt_1000",
+      "target_mean": 5.158202166666666,
+      "target_std": 0.7539337303406086,
+      "by_feature_set": {
+        "rdkit_12d": {
+          "n_features": 12,
+          "random_5x5": {
+            "mean_r2": 0.03938686381737163,
+            "std_r2": 0.0030688471558857336,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.027312617283561835,
+            "std_r2": 0.0926951536932513,
+            "n_folds_evaluated": 25
+          }
+        },
+        "rdkit_32d": {
+          "n_features": 32,
+          "random_5x5": {
+            "mean_r2": 0.039283233096403074,
+            "std_r2": 0.01397348218974311,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.32405817120425856,
+            "std_r2": 0.6343792181542416,
+            "n_folds_evaluated": 25
+          }
+        }
+      }
+    },
+    {
+      "target": "mcf7",
+      "n": 813,
+      "alpha": 0.5,
+      "tier": "n_lt_1000",
+      "target_mean": 5.179291512915128,
+      "target_std": 0.7723222364177007,
+      "by_feature_set": {
+        "rdkit_12d": {
+          "n_features": 12,
+          "random_5x5": {
+            "mean_r2": 0.010133839484043745,
+            "std_r2": 0.010380286937711173,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.08812962024731047,
+            "std_r2": 0.10557025000435608,
+            "n_folds_evaluated": 25
+          }
+        },
+        "rdkit_32d": {
+          "n_features": 32,
+          "random_5x5": {
+            "mean_r2": 0.08770052000931736,
+            "std_r2": 0.017030905363562672,
+            "n_folds_evaluated": 25
+          },
+          "scaffold_5x5": {
+            "mean_r2": -0.03728225527035953,
+            "std_r2": 0.09899303240648732,
+            "n_folds_evaluated": 25
+          }
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "target": "mean_of_available_cells",
+    "n": 1966,
+    "alpha": 0.1,
+    "tier": "n_gte_1000",
+    "target_mean": 5.170859838080705,
+    "target_std": 0.8342733317662103,
+    "by_feature_set": {
+      "rdkit_12d": {
+        "n_features": 12,
+        "random_5x5": {
+          "mean_r2": 0.05392146872957435,
+          "std_r2": 0.0008078387591094709,
+          "n_folds_evaluated": 25
+        },
+        "scaffold_5x5": {
+          "mean_r2": -0.010640994264174718,
+          "std_r2": 0.03413125089424574,
+          "n_folds_evaluated": 25
+        }
+      },
+      "rdkit_32d": {
+        "n_features": 32,
+        "random_5x5": {
+          "mean_r2": 0.09054859237702713,
+          "std_r2": 0.005363306923590141,
+          "n_folds_evaluated": 25
+        },
+        "scaffold_5x5": {
+          "mean_r2": -0.044707173629421074,
+          "std_r2": 0.08341413889701477,
+          "n_folds_evaluated": 25
+        }
+      }
+    }
+  },
+  "n_compounds_featurised": 1966,
+  "n_tasks_evaluated": 4,
+  "mean_scaffold_r2_over_cells": {
+    "rdkit_12d": -0.023369718242369202,
+    "rdkit_32d": -0.20452201768910916
+  },
+  "mean_random_r2_over_cells": {
+    "rdkit_12d": 0.05513760321703348,
+    "rdkit_32d": 0.09123089212340571
+  },
+  "verdict": {
+    "scaffold_gate_0_85_met": false,
+    "any_cell_positive_scaffold_r2": false,
+    "headline": "REAL-label R2: 32-d RDKit + Ridge does not clear the 0.85 gate (mean scaffold R2 over cells = -0.2045); the RDKit descriptor family carries no cytotoxicity signal that survives a scaffold split on this cohort."
+  },
+  "source": "molmetal/scripts/wf_a60_m2_real_cohort.py",
+  "wf_tag": "Wf-A60 m2 R2 on REAL PlatinAI 4-cell labels",
+  "wall_seconds": 15.6,
+  "timestamp": "2026-10-21",
+  "value": -0.20452201768910916,
+  "value_basis": "mean over the four cell lines of the 5-seed x 5-fold Bemis-Murcko scaffold-split R2 (32-d RDKit, Ridge alpha=0.5). The random-split mean is reported separately under mean_random_r2_over_cells.",
+  "n_seeds": 5,
+  "n_folds": 5,
+  "split": "5 seeds x 5 folds under two protocols: random permutation and Bemis-Murcko scaffold groups (largest-first)"
+}

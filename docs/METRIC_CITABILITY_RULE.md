@@ -193,6 +193,19 @@ protocol pins a dataset that is synthetic or not trainable is demoted with the
 evidence quoted in the reason; it keeps its number, it loses the claim that the
 number measures the metric.
 
+**What happened next (2026-10-21).** Demotion is not a fix. `m2_r2_per_cell` was
+demoted correctly and still quoted a number nobody could use, so the fix was to
+rebuild the cohort rather than relabel the metric: `build_platinai_4cell_real_cohort.py`
+harvested 1,966 compounds with measured IC50s over the same four cell lines, and
+`m2_r2_per_cell` now reads `m2_r2_real_4cell.json` (REAL labels, 4,370
+measurements). `l5_hilbert_r2` is still pinned to the synthetic file and is still
+`[NO]` — it has no real-label counterpart yet, and that is the honest state.
+The old row was **not deleted**: `m2_r2_per_cohort` still reports what it
+measured on the synthetic cohort, and the new file records
+`replaces_as_paper_line` rather than `supersedes`, because a different cohort
+under a different model is a replacement of the *citation*, not of the
+*measurement*.
+
 Precedence, most specific first:
 
 1. the sidecar `*.meta.json` written by whatever generated the file — it

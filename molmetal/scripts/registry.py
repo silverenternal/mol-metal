@@ -114,7 +114,13 @@ LINE_METRICS: Dict[str, Dict[str, str]] = {
         # pointed at platinai_4cell_auc.json, whose unit is ROC-AUC: the gap
         # table then compared 0.7105 (AUC) against the R² target 0.85 and
         # reported a 0.14 shortfall where the real one is 0.88.
-        "m2_r2_per_cell": "m2_r2_per_cohort",
+        # 2026-10-21: re-pointed from `m2_r2_per_cohort`, which averages R²
+        # over 4,078 complexes whose pIC50 labels are SIMULATED (its own
+        # `label_provenance` says so, and the dataset is DO-NOT-TRAIN).  The
+        # paper line now reads the measurement on the 1,966-compound REAL-label
+        # cohort.  The synthetic file keeps its row and its provenance; it is
+        # simply no longer what the paper quotes.
+        "m2_r2_per_cell": "m2_r2_real_4cell",
         "m21_nci60_9cell": "nci60_precious_9cell_auc",
     },
     "line3_lambda_mcts": {

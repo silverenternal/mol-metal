@@ -66,30 +66,42 @@ metrics:
       m1 comparison number by the 0.7717 DOI-split entry.
 
   m2_r2_per_cell:
-    description: R2 per-cell-line (PlatinAI 4-cell Pt cohort)
+    description: R2 per-cell-line (PlatinAI 4-cell Pt cohort, REAL labels)
     # 2026-10-07 (P-A m2 lock fix): re-pointed from
     # molmetal/configs/m2_r2_per_cohort.yaml (a per-cohort FEATURE config that
     # names no dataset artifact at all -> the gate's "trainer config names NO
     # dataset artifact" FAIL) to the actual trainer launch config for this
     # cohort, which names platinai_4cell.csv under data.csv.
+    #
+    # 2026-10-21 (label-provenance fix): the PRIMARY artifact is now the
+    # REAL-label cohort.  platinai_4cell.csv's pIC50 columns are SYNTHETIC
+    # (platinai_4cell.meta.json says so) and docs/DATA_INVENTORY.json marks it
+    # DO-NOT-TRAIN, so every R2 measured on it was a pipeline null test, not a
+    # measurement of PlatinAI cytotoxicity.  metrics/by_metric/m2_r2_real_4cell.json
+    # reports the same Ridge + RDKit protocol on the 1,966-compound cohort built
+    # by molmetal/scripts/build_platinai_4cell_real_cohort.py.
     trainer_config: configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
-    # MEASURED 2026-10-07 via md5sum.  This is the artifact the trainer
-    # actually loads: `--dataset platinai_4cell` -> _resolve_default_csv_path
-    # -> DEFAULT_PLATINAI_4CELL_CSV == this path, and
-    # load_platinai_4cell_split_table requires its SMILES_Ligands / pIC50_*
-    # columns.  472144 bytes, 4078 data rows x 6 cols.
-    dataset_path: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv
-    dataset_md5: 5a5d8da8d1b05a9647546a5c2101f6f2
+    # MEASURED 2026-10-21 via md5sum.  212,405 bytes, 1,966 data rows.
+    dataset_path: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell_real_cohort.csv
+    dataset_md5: bc79ad79f91114cb499c966e1ac5986e
     accepted_dataset_md5:
+      - md5: bc79ad79f91114cb499c966e1ac5986e
+        path: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell_real_cohort.csv
+        why: >-
+          REAL-label 4-cell cohort: 1,966 compounds / 4,370 measurements
+          (A549 871, A2780 860, A2780cis 600, MCF-7 813), built from the
+          MB-Finder PlatinAI harvest with the unit pinned to uM by the Rusanov
+          2025 SI figure captions S17-S28.  This is the artifact m2 is measured
+          on since 2026-10-21.
       - md5: 5a5d8da8d1b05a9647546a5c2101f6f2
         path: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv
         why: >-
-          Pt-only PlatinAI 4-cell-line cohort in the schema the trainer's loader
-          accepts (SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal).
-          This is the file `--dataset platinai_4cell` resolves to and the file
-          configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml names under
-          `data.csv` (added 2026-10-07; resolves to the live --csv dest, so it
-          is NOT a wfA2_config_loader dead key).
+          KEPT ACCEPTED so the pre-flight gate still validates the D-MPNN
+          trainer config, which loads this file (4,078 complexes, schema
+          SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal).  Its
+          labels are SYNTHETIC and the dataset is DO-NOT-TRAIN: any R2 from it
+          is a pipeline null test.  It is no longer the artifact m2's paper
+          line reads.
     # 2026-10-07: cbdb7c2d7d236ed3ea05e582a425f855 was the previously-accepted
     # md5.  It is the SAME 4078 complexes in a raw-nM serialization, but
     # load_platinai_4cell_split_table raises ValueError on it (no
@@ -102,33 +114,42 @@ metrics:
           Same 4078-complex PlatinAI 4-cell cohort, different serialization
           (complex_id,smiles,ic50_*_nm,source).  NOT loader-compatible; kept for
           provenance only.
-    # MEASURED: the operative split is `scaffold_70_10_10` — a deterministic
-    # canonical-SMILES hash inside load_platinai_4cell_split_table, with the four
-    # cell lines as four task heads (Wf-A10 cell-line axis).  The previous value
-    # "cohort-split 70/10/20 + per-cell-line eval" came from
+    # MEASURED: the D-MPNN trainer's operative split is `scaffold_70_10_10` — a
+    # deterministic canonical-SMILES hash inside load_platinai_4cell_split_table,
+    # with the four cell lines as four task heads (Wf-A10 cell-line axis).  The
+    # previous value "cohort-split 70/10/20 + per-cell-line eval" came from
     # PROTOCOL_ALIGNMENT_MATRIX prose and did not describe the code.
-    split: scaffold 70/10/10 per-cell-line task axis (deterministic SMILES hash)
+    # m2_r2_real_4cell measures the SAME per-cell-line question with an
+    # independent protocol: 5 seeds x 5 folds, each run under BOTH a random
+    # permutation and Bemis-Murcko scaffold groups (largest-first).  The random
+    # split is reported only as a leak control — it lets near-analogues straddle
+    # the fold boundary and reads ~+0.09 where the scaffold split reads <=0.
+    split: 5 seeds x 5 folds, random permutation AND Bemis-Murcko scaffold groups
     n_folds: 5
     target_metric: R2 per cell line
     baseline_paper: Rusanov 2025
     baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
-    alignment_level: DATASET + METRIC + SPLIT APPROX ALIGN
+    alignment_level: DATASET + METRIC APPROX ALIGN / COHORT NOT REPRODUCED
     honest_negative: >-
-      Rusanov reports per-cell-line; we use a scaffold 70/10/10 per-cell-line task
-      axis with per-cell eval.  Per-cell breakdown matches; the split protocol
-      differs.  SPLIT IS NOT MACHINE-CHECKED: no trainer exposes a split-protocol
-      CLI flag, so pre_flight_check reports the split as `undeclared` (the same
-      tolerated state as m1 / m19 / m21, whose configs/dmpnn.yaml also declares
-      no split).  The config's former `data.split:` block was renamed
-      `data.split_intent:` on 2026-10-07 because all six of its leaves were
-      MEASURED dead in wfA2_config_loader — it documented an intent, and
-      stringifying it produced a fabricated diff rather than a real mismatch.
-      SEPARATE CAVEAT (pre-existing, still open): the trainer's own --dataset
-      help text states the platinai_4cell labels are SYNTHETIC and that any AUC
-      from it is "a pipeline null test, not a measurement".  This entry's
-      Rusanov 2025 alignment claim is therefore NOT established and must not be
-      presented as head-to-head until label provenance is confirmed against the
-      Rusanov release.
+      Rusanov reports per-cell-line R2 on 4,078 complexes spanning 592 cell
+      lines; our REAL cohort is 1,966 compounds over 4 cell lines, so this is
+      NOT a reproduction of their Table S4-S5 and the numbers are not
+      head-to-head.  Per-cell breakdown matches; the cohort and the split
+      protocol differ.  SPLIT IS NOT MACHINE-CHECKED: no trainer exposes a
+      split-protocol CLI flag, so pre_flight_check reports the split as
+      `undeclared` (the same tolerated state as m1 / m19 / m21, whose
+      configs/dmpnn.yaml also declares no split).
+      LABEL PROVENANCE (closed 2026-10-21): the earlier blocker — "the
+      platinai_4cell labels are SYNTHETIC, any AUC from it is a pipeline null
+      test" — no longer applies to this metric.  m2 now reads
+      metrics/by_metric/m2_r2_real_4cell.json, measured on the REAL-label
+      cohort.  platinai_4cell.csv remains accepted in this lock only so the
+      D-MPNN trainer config still validates; nothing measured on it is quoted.
+      MEASURED RESULT: mean scaffold R2 over the four cell lines = -0.2045
+      (32-d RDKit descriptors + Ridge, alpha 0.5).  Only A2780 is positive
+      (12-d, +0.0270).  The RDKit descriptor family carries no cytotoxicity
+      signal that survives a scaffold split on this cohort, so the 0.85 gate is
+      far out of reach and this is an honest negative, not a near miss.
 
   m17_drugood_ood:
     description: DrugOOD OOD generalization, 3-split mean AUC

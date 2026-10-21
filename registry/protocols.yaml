@@ -1,5 +1,5 @@
 schema: molmetal-registry-protocols-v1
-generated_at: '2026-10-21T02:40:40+00:00'
+generated_at: '2026-10-21T06:18:24+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable protocol facts. A protocol is LOCKED iff protocol_lock_sha256
   still matches disk.
@@ -17,21 +17,21 @@ protocols:
     epochs: 10
     trainer_config: configs/dmpnn.yaml
     metric_id: m1_ru_auc
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m2_r2_per_cell:
-    description: R2 per-cell-line (PlatinAI 4-cell Pt cohort)
+    description: R2 per-cell-line (PlatinAI 4-cell Pt cohort, REAL labels)
     baseline_paper: Rusanov 2025
     baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
-    alignment_level: DATASET + METRIC + SPLIT APPROX ALIGN
-    dataset_id: platinai_4cell.csv
-    split: scaffold 70/10/10 per-cell-line task axis (deterministic SMILES hash)
+    alignment_level: DATASET + METRIC APPROX ALIGN / COHORT NOT REPRODUCED
+    dataset_id: platinai_4cell_real_cohort.csv
+    split: 5 seeds x 5 folds, random permutation AND Bemis-Murcko scaffold groups
     n_folds: 5
     seeds: null
     epochs: null
     trainer_config: configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
     metric_id: m2_r2_per_cell
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m17_drugood_ood:
     description: DrugOOD OOD generalization, 3-split mean AUC
@@ -45,7 +45,7 @@ protocols:
     epochs: null
     trainer_config: configs/locks/drugood.yaml
     metric_id: drugood_ood_auc
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m19_lomo:
     description: Multi-metal LOMO transfer AUC (mean of 5 metals)
@@ -59,7 +59,7 @@ protocols:
     epochs: null
     trainer_config: configs/dmpnn.yaml
     metric_id: m19_lomo
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m21_nci60_9cell:
     description: NCI-60 precious 9-cell-line mean AUC
@@ -76,7 +76,7 @@ protocols:
     epochs: null
     trainer_config: configs/dmpnn.yaml
     metric_id: m21_nci60_9cell
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   l5_hilbert_r2:
     description: Mean combined Hilbert primal-dual + ASTSR evolutionary R2 (4 PlatinAI
@@ -96,7 +96,7 @@ protocols:
     epochs: null
     trainer_config: null
     metric_id: l5_hilbert_r2
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   l6_closure:
     description: Closure-theorem reachability rate (d-block / tmQM)
@@ -111,7 +111,7 @@ protocols:
     epochs: null
     trainer_config: null
     metric_id: l6_closure
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m6_kappa:
     description: Shape Kappa Index (mean normalised RDKit Kappa1/2/3) on metallo drugs
@@ -125,5 +125,5 @@ protocols:
     epochs: null
     trainer_config: null
     metric_id: m6_kappa
-    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_sha256: 4c969402d594f306bf6397b1b9225c4b5441f78387aaf94312e540bd1c2d40ef
     protocol_lock_ref: configs/locks/protocol_lock.yaml
