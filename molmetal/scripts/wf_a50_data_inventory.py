@@ -94,7 +94,11 @@ DECLARED: List[tuple] = [
      "(compound, cell) pairs from 4,370 raw biodata rows (A549 871, A2780 860, "
      "A2780cis 600, MCF-7 813); 953 compounds cover >=2 cells, 56 cover all "
      "four. Unit is uM per the Rusanov 2025 SI figure captions; "
-     "pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace "
+     "pIC50 = 6 - log10(IC50_uM). 1,935 unique SMILES, not 1,966: 28 SMILES "
+     "appear under 2-3 compound codes (59 rows), with per-cell labels up to "
+     "1.45 log units apart. The split groups by scaffold, so duplicates cannot "
+     "cross train/test, but the compound count overstates chemical diversity "
+     "by 1.6 %. This is the cohort that can replace "
      "pt_4cell_synthetic (which carries simulated labels)."),
     ("pt_4cell_real_trainer", DATA / "platinai_4cell_real_trainer.csv",
      "eval_pt", "ACTIVE",
@@ -119,8 +123,11 @@ DECLARED: List[tuple] = [
      "9-cell precious-metal panel. It is a subset of MetalCytoToxDB "
      "(5,207/5,207 canonical molecules), not an independent corpus. Split is a "
      "Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 "
-     "molecules. The older 3,645/521/1,041 figure is superseded by the "
-     "BLK-PA12 fix."),
+     "molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine "
+     "cells have < 30 test rows. An opt-in per-cell-row split exists "
+     "(--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 "
+     "rows); see section 5. The older 3,645/521/1,041 figure is the "
+     "pre-BLK-PA12 molecule-level split and is superseded."),
     ("nci60_gi50_raw", DATA / "NCI60_GI50" / "GI50.csv", "reference", "UNUSED",
      "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."),
     ("drugood_lbap_scaffold", DATA / "drugood" / "ic50" / "csv" /
@@ -531,18 +538,43 @@ def render_md(doc: Dict[str, Any]) -> str:
         "",
         "## 5. Known gaps",
         "",
-        "- `.data/molmetal/bindingdb_ic50.csv` is a **broken symlink** to a 0-byte",
-        "  file (`/home/hugo/codes/pocket/data/tdc/bindingdb_ic50.csv`); any",
-        "  BindingDB path is BLOCKED until that source is restored.",
-        "- The platinum set has no scaffold split yet: the 17,735 rows are a pool,",
-        "  not a fixed train/val/test partition. It also needs deduplication at",
-        "  the `(compound_code, cell_line)` level before any AUC is reported.",
-        "- The CFM `scaffold_id` is a full-complex, stereo-aware key. Rebuilding",
-        "  it as a desalted, stereo-blind ligand scaffold would change the split",
-        "  and require retraining.",
-        "- The MoleculeNet `_scaffold_split` uses a stereo-aware key; the D-MPNN",
-        "  `ScaffoldSplitter` uses a stereo-blind key. They are not the same",
-        "  protocol.",
+        "Open:",
+        "",
+        "- **NCI-60 9-cell split is not 70/10/20 by rows.** The shipped",
+        "  `scaffold_70_10_10` protocol budgets fractions in *scaffold counts*, so",
+        "  the largest 70 % of the 1,151 scaffolds (94.3-100 % of every cell's",
+        "  rows) go to train and test receives the singleton leftovers:",
+        "  **7,320 / 160 / 343 rows** (93.6 / 2.0 / 4.4 %). Five of nine cells",
+        "  have < 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28)",
+        "  and SKOV3 has 0 val rows. An opt-in coverage split exists",
+        "  (`--nci60-split-strategy scaffold_coverage_70_10_20`: 5,371 / 920 /",
+        "  1,532 rows, every cell >= 25 test and >= 22 val), but **no model has",
+        "  been retrained on it**. Measured:",
+        "  `metrics/by_metric/nci60_split_coverage_audit.json`; risk",
+        "  `TODO/risks.md` R11.",
+        "- **CFM v3/v4 `scaffold_id` is a full-complex, stereo-aware key**, so",
+        "  73.7 % of test rows share a desalted scaffold with train.",
+        "  `cfm_5metal_v5` fixes this (0 shared scaffolds) but no checkpoint has",
+        "  been trained from it; see section 3.",
+        "- **`pt_biodata_all` is a pool, not a partition.** 17,735 rows, 3,668",
+        "  duplicate `(compound_code, cell_line)` rows and 987 exact duplicate",
+        "  measurements; 296 unique SMILES fail RDKit parsing. The 4-cell cohort",
+        "  filters and median-collapses these (counted in its `.meta.json`), but",
+        "  the raw pool itself is unchanged.",
+        "",
+        "Closed (kept here so the old claims are not re-quoted):",
+        "",
+        "- ~~BindingDB path BLOCKED~~ — fixed 2026-10-19;",
+        "  `.data/molmetal/bindingdb_ic50.csv` points at the 990,630-row export",
+        "  and `_load_real_bindingdb` accepts both headers.",
+        "- ~~Platinum set has no scaffold split~~ — `--platinai-split-strategy",
+        "  bemis_murcko_70_10_10` gives 13,148 / 1,056 / 2,108 rows with 0.0 %",
+        "  shared scaffolds. The legacy hash split remains the default for",
+        "  checkpoint compatibility.",
+        "- ~~MoleculeNet `_scaffold_split` is stereo-aware~~ —",
+        "  `_bemis_murcko_scaffold` is now `isomericSmiles=False`, bit-exact with",
+        "  `MurckoScaffoldSmiles(includeChirality=False)` on all four tasks; the",
+        "  4-task 5-seed re-run is the live 0.8095 artifact.",
         "",
         "## 6. Leakage audit",
         "",
