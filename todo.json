@@ -1,1715 +1,533 @@
 {
-  "schema": 5,
+  "schema": 6,
   "created": "2026-10-14",
   "updated": "2026-10-21",
-  "rewritten": "2026-10-21（EXT 阶段关闭）— EXT-1..EXT-8 全部落盘。结论：boundary_path。失败位置是 shape（占平方误差 0.65-0.76），不是 offset（0.05-0.10）；k-shot 校准在诚实切分上 0/5 金属达到 R²≥0；不存在独立外部 cohort。",
-  "supersedes": "MET-1..MET-11 + FIX-L4 + STR-1..STR-7 + FIX-C6..C12 + EXT-1..EXT-8；结果见 closed_work、work_packages 的 result 与 TODO/completed/。",
-  "purpose": "EXT 阶段已关闭，结论是 boundary_path。三条机制已实测：① 跨金属外推的失败位置是 shape（排序），占平方误差 0.653-0.757；offset 只占 0.045-0.100，所以\"校准一下就能用\"在算术上不成立（完美水平只值 +0.078 R²，4/5 金属仍为负）。② 表观迁移主要来自配体重叠：potency 合并 ρ 从 0.296（metal_out）掉到 0.158（ligand_disjoint），cisplatin 从 0.269 掉到 0.062。③ 不存在独立外部 cohort：IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%，89.4% 的匹配格数值相同。一区的两条腿（可部署外推、独立外部验证）都被测量关闭，不是被判断关闭。",
-  "how_to_read": "先读 north_star.decision_rule 的三条分流，再看 EXT-1 的 gate —— 它是分流门，必须在 EXT-2/EXT-3 之前跑完。每个包都有明确门槛与 KILL；没有门槛的实验不许跑。expected_gain_projected 一律是 PROJECTED，不是测量值。旧包（STR-* / FIX-*）保留为历史，不要再启动。",
+  "rewritten": "2026-10-21（UP 强化阶段）。删除了 MET-*/FIX-*/STR-*/EXT-* 共 45 个已完成条目与 closed_work 全表——历史在 git log、docs/WF_HISTORY.md、TODO/completed/。本文件只保留仍会改变决策的测量事实与未执行的计划。",
+  "supersedes": "EXT-1..EXT-8 的结论不再在此重复，见 docs/CLAIM_LEDGER.md（C8/C9/C10）、docs/PREDICTIVE_LINE_INDEX.md、docs/HONEST_NEGATIVE_CATALOG.md §6.151、TODO/completed/ext_phase_results.md。",
+  "purpose": "把预测线从「严格协议下的边界」推到「可发表的强指标」。上一轮（EXT）测出失败位置是 shape（占平方误差 0.65-0.76），不是 level。本轮不再测「能不能」，只做「怎么把 shape 学出来」：交互项、3D 配位表示、跨金属迁移、预训练、条件覆盖。每个包有写死的门槛与 KILL；失败也要留下一个可引用的机制结论。",
+  "how_to_read": "先读 metric_gap_analysis.rows 的六行表——那是本文件的全部理由。然后按 sequence 的三波执行。每个 work_package 的 gate 在看到结果前写死；改门槛只能在结果产生前，且必须写 amendment_note。",
   "rules": {
-    "truth": "§5.2 诚实负结果不隐藏; MISSING 必须显式标注, 不静默丢弃。",
-    "artifacts": "§5.5 supersede-don't-delete; 每个数字必须有 producer 脚本 + 落盘 JSON。",
-    "launch": "§5.11 仅从 YAML 启动; >1h GPU 需 USER_OK (§5.1)。",
-    "paper": "§5.3 paper_a/* 任何编辑先给 hunk 再获明确 OK; 禁止碰 paper/* (Paper B)。",
-    "git": "禁止 git reset / checkout -- / stash / add -A; 用 git commit -- <path>。",
-    "env": "单 venv .venv; GPU 一律 cuda:0; CUDA D-MPNN 需 --deterministic; CPU per-molecule forward 需 OMP_NUM_THREADS=1。",
+    "truth": "§5.2 每个数字必须能追到 metrics/by_metric/*.json 的路径；没有 artifact 的数字只能标 PROJECTED。",
+    "artifacts": "§5.5 一个包一个 artifact；脚本写 provenance.script + git_commit + source sha256。",
+    "launch": "§5.11 训练/推理只从 YAML 启动；新 flag 必须先跑 50 步 CPU smoke（§5.7）。",
+    "paper": "§5.3 paper/* 冻结。本轮只产出 metrics 与 docs，不写正文。",
+    "git": "只允许 git commit -- <path>；禁止 reset/checkout --/stash/add -A。",
+    "env": "单 venv .venv；CPU 任务 OMP_NUM_THREADS=1；GPU 只用 cuda:0；CUDA D-MPNN 需 --deterministic。",
     "language": "面向用户的输出用中文。"
   },
   "north_star": {
-    "thesis": "把「换金属」当作可量化的干预 do(m)，估计 Δ(m→m′ | ligand, cell-line)，并转成可执行的金属推荐（含弃权）。",
-    "phase": "EXT 已关闭（2026-10-21）— 结论 boundary_path",
-    "current_goal": "按 EXT-8 的三条主张（C8 失败位置 / C9 外部 cohort 不存在 / C10 k-shot 无效）写\"严格协议下的边界 + 资源\"论文。一区路径需要用户决定是否投入两周做 2023-2025 人工整理，或是否换学习器重跑一次预注册的 LOMO。",
-    "immediate_goal": "无待跑的计算包。下一步是用户决策：(a) 接受 boundary 定位并解冻论文线；(b) 投入两周做 EXT-5 的人工整理；(c) 做一次新的预注册检验（换学习器类），不沿用本轮门槛。",
+    "thesis": "跨金属活性外推的失败位置已经定位在 shape（配体-金属交互），不是 level（金属整体强弱）。所以本轮唯一值得投入的方向是「让模型能表达并学到这个交互」，而不是继续校准水平。",
+    "phase": "UP 强化阶段（2026-10-21 起）",
+    "current_goal": "把 DOI 留出 R² 从 0.3767 推到 ≥0.42（headline 0.45），把 metal_out 绝对 R² 从 −0.0734 推到 ≥0，把排序平衡准确率从 0.5272 推到 ≥0.58。三条都过 → 一区强指标路径；只过一条 → 机制论文（比 EXT 的 boundary 强一档）。",
+    "immediate_goal": "先跑 UP-1（交互约束 A/B，CPU 1 小时）与 UP-2（排序扩样本，CPU 3 小时）。这两个包便宜且能立刻改变后续路线：UP-1 若证明形状是「模型结构自缚」，UP-3/UP-5 的 GPU 投入才值得。",
     "decision_rule": {
-      "zone1_path": "EXT-1 = SAR_TRANSFERS 且 EXT-3 PASS 且 EXT-5 PASS 且 EXT-6 PASS （Spearman ρ>0 且 CI 下界>0）",
-      "zone2_path": "EXT-1 = SAR_TRANSFERS 且 EXT-3 PASS，但 EXT-5 或 EXT-6 失败 —— 写「内部两终点复现 + 外部未验证」",
-      "boundary_path": "EXT-1 = SAR_FAILS 或 EXT-3 KILL —— 写「严格协议下的边界」+ 数据资源，停止一切建模投入",
-      "no_p_hacking": "门槛在看到结果之前写死在本文件里；同一假设只允许一次主检验，重跑只做 seed/抽样稳健性。",
-      "gates_frozen_at": "2026-10-21T12:00+08:00 — 写于 EXT-1..EXT-7 任何结果产生之前。",
-      "gate_author": "agent 预注册；用户未参与设定数值，只给了「做一区」的目标。",
-      "mde_context": "DOI R² 的边际 MDE 0.0643，配对 ΔR² 的 CI 宽度约 0.03，所以 +0.02 的配对增益可检测；判据用配对 CI，不用绝对 R² 的边际 CI。",
-      "outcome": {
-        "date": "2026-10-21",
-        "EXT-1": "PARTIAL",
-        "EXT-3": "KILL",
-        "EXT-5": "KILL",
-        "EXT-6": "BLOCKED",
-        "path": "boundary_path",
-        "why": "预注册规则：EXT-1 = SAR_FAILS 或 EXT-3 KILL → boundary。EXT-3 = KILL。",
-        "no_goalpost_moved": "门槛在 2026-10-21T12:00+08:00 写死；EXT-3 的门槛在首次运行前修订过一次，修订理由与时间已记入 artifact 的 amendment_note。"
-      }
+      "strong_path": "UP-1 过 且 UP-2 过 且 (UP-3 或 UP-5 过) 且 UP-9 的 DOI R² ≥0.42 —— 写强指标论文。",
+      "mechanism_path": "UP-1 或 UP-2 过，但 DOI R² <0.42 —— 写「形状可学、水平不可学」的机制论文。",
+      "hard_boundary": "UP-1 与 UP-2 都不过 —— 形状确实不可学，退回 EXT 的 boundary 定位，但此时负结果有 n=436 与四臂 A/B 支撑，比 EXT 强。",
+      "no_p_hacking": "同一假设只允许一次主检验；重跑只做 seed/抽样稳健性。所有门槛写死于 gates_frozen_at。",
+      "gates_frozen_at": "2026-10-21T15:10+08:00 — 写于 UP-1..UP-9 任何结果产生之前。",
+      "gate_author": "agent 预注册；用户给定目标是「把弱指标做强」，未参与设定数值。",
+      "mde_context": "DOI R² 的配对 ΔR² CI 宽度约 0.03（msrs_power.json），所以 +0.03 的配对增益可检测；本文件最小可检增益为 +0.02（UP-7），其余 ≥+0.03。"
     },
     "honest_probability_projected": {
-      "note": "PROJECTED，不是测量值。按 EXT-1 分流 55% × EXT-3 80% × EXT-5 50% × EXT-6 50% 粗乘，但 zone1 不要求 EXT-6 通过（外部部分迁移仍可发表），故取 55%×80%×50%。",
-      "zone1": "20-25%",
-      "zone2": "65%",
-      "zone3_or_better": "95%",
-      "why_not_higher": "一区的瓶颈不是数字不够大，是「只有 MSRS 一个数据源」。EXT-5 是唯一能改这件事的包，而它依赖人工整理，不能保证。"
+      "note": "PROJECTED，不是测量值。依据：UP-1 有机制证据（交互占 0.712）但从未直接测过；UP-3 的 3D 配位在配合物上无本仓库先例。",
+      "DOI_r2_ge_0.42": "40-45%",
+      "ranking_balanced_ge_0.58": "30-35%",
+      "metal_out_r2_ge_0": "35-40%",
+      "Q1_strong_path": "35-40%",
+      "why_not_higher": "数据只有 6,782 个配合物 / 5 个金属 / 1,921 篇；学习曲线在 100% 数据上仍在爬（plateau_fraction=1.0），说明上限受数据约束，任何表示改进都可能被样本量吃掉。"
     },
-    "paper_state": "MSRS-8 仍冻结；解冻需用户显式同意，且只允许从 metrics/paper_tables/ 取数。"
+    "paper_state": "MSRS-8 仍冻结；解冻需用户显式同意。"
   },
   "current_position": {
     "measured_facts": [
-      "FIX-C8（新发现）：--consistency-term-weight 默认 0.05，但 sample_edm_sigma 默认 device=cpu，每步抛 RuntimeError 被吞，该项自上线起恒为 0。",
-      "C7（2026-10-21 终态）：全语料自由生成池已存在 —— cfm_c7_fullgen_2026_10_20，18/18 epoch，12,669 行 / 12,668 可打分 / 10,190 唯一 SMILES，SA≤4.5 = 36/12,668 = 0.28% [0.21,0.39]，低于 n_train=256 池的 0.69% [0.42,1.11]；联合闸（SA≤4.5 且 novelty≥0.90）= 0/10,190。⚠️ 旧条目「真生成池最大 n_train=256 / 全语料池全是键头重建」写于 2026-10-20，已过期；全语料键头重建池（n=83，SA 5.032）仍是构造产物，不能当生成性质引用。",
-      "FIX-C7（生成溯源）：三个被打分的池来自 n_train=64/256/256（语料 26,715）。全语料池 n=83：SA 5.032、SA≤4.5 33.7% [24.5,44.4]、QED 0.2042–0.2275；小规模池 n=2,396：SA 6.44–7.55、0.67%。但 SA 子集 novelty 0.8677→0.6977，联合门槛 0/83、0/2,396。cfm_r9_fix_v2（type-F1 0.947）无 checkpoint。",
-      "FIX-C6（LOMO 可解析性 + seed 集成）：按 MIN_UNIQUE_FOR_GATE=200，只有 Ru(1,311)/Ir(538) 可入闸，LOMO=0.5974（all-metals 0.5576）；seed 集成 resolvable=0.5957（Ru 0.5901 / Ir 0.6012）。Rh n=51、AUC 0.3812 CI [0.2217,0.5407] 含 0.5。重跑与已发布面板差 0.0158（CUDA 非确定性）。",
-      "FIX-C3（Δ 符号指标）：门内 218 对多数类率 0.6009（Os-Ru 153 / Ir-Rh 64）；水平相减 raw 0.5826 但平衡仅 0.5272 [0.4359,0.6198]（TPR 0.80/TNR 0.25）；直接回归 raw 0.5183 / 平衡 0.5162 [0.3939,0.6430]；lambdarank 0.0734 且 |Δ̂| 0.045（退化）。0.5826 低于恒定预测 0.018。",
-      "STR-7（打包）：paper_metric_tables --strict 生成 12 张表、0 MISSING；新增 T11（5-seed：ECFP4 树 / MACCS+RDKit / 融合）与 T12（排序三路线同一 0.65 门槛）。docs/CLAIM_LEDGER.md 的 11 条 artifact 指针由测试逐条解析。C6 更正：LOMO 0.5575±0.0949 低于 0.7 门槛（verdict BELOW_TARGET_BASELINE_REAL_ONLY），跨金属迁移不可写；可写的是 within-metal（Ru 0.8271 / Ir 0.8430）。",
-      "STR-6（SA 引导解码，BLOCKED→KILL）：--sa-penalty 零梯度（sascorer 无梯度，代理被 torch.tensor(float(...)) 包住）、无可微 SA 代理、每 run 仅 seed0 checkpoint，计划中的 3×200 A/B 不可执行；600 样本补测因 checkpoint 无法从其 args 重建而失败。产量审计（2,396 个无引导分子）：SA≤4.5 共 16 个 = 0.67% [0.41%,1.08%]；SA 均值 6.4423 / 7.5478 / 7.4741 vs 真实 tmQM 5.03。门内 16 个 novelty 0.8757 < 0.90（n=16 不可用）。",
-      "STR-5（Δ 直接回归，复用 FIX-M4 pair_full，只加逐对落盘）：DOI 留出 427 对 / 门槛内 218 对，符号 0.5183 [0.3902,0.6539]、MAE(Δ) 0.5559 [0.4267,0.6829]、bias −0.1730、校准斜率 0.1658、R² 0.0155；无门槛 427 对符号 0.4988 ≈ 随机。同 218 对的水平模型：符号 0.5826 [0.4670,0.6805]、MAE 0.5115、斜率 0.3919。排序线三连负：相减 0.5826 / 融合 0.5505 / 直接回归 0.5183，均远低于 0.65。",
-      "STR-4（特征扩展，5 seed）：MACCS+RDKit 臂 DOI R² 0.3767（seed mean 0.3697±0.0022），配对 Δ +0.0387 [+0.0241,+0.0535]；ligand 0.5593（−0.0003）、scaffold 0.4733（+0.0204 [+0.0077,+0.0337]）、year 0.3946（+0.0166 [−0.0050,+0.0385]）。置换控制（DOI，5 seed）0.3275±0.0022 < 原树 0.3332 → 增益来自描述符内容。与 GNN 融合后 DOI 0.3811（+0.0431 [+0.0260,+0.0604]）。单 seed 筛选：ECFP6 DOI 0.3321 KILL、assay 0.3410（+0.0078，CI 含 0）。但 DOI Δ 符号仍 0.5826（融合 0.5505）< 0.65 —— R² 与排序分离。",
-      "STR-3（删失训练，seed 0）：+4,918 右删失行，DOI R² tobit 0.2400 / hinge 0.2828（树 0.3332），Δ −0.0933 / −0.0504，两个 CI 均排除 0；ligand 0.4962 / 0.5326（树 0.5554）；scaffold 0.3564 / 0.4014；year 0.2872 / 0.3296。8/8 协议×目标为负。结论：删失行编码剂量设计，不是随机缺失，条件均值目标下应继续排除。",
-      "STR-2（5 树 + 5 GNN，四协议）：DOI stack R² 0.3597（gate 0.36，差 0.0003）、equal 0.3606、tree 0.3380、gnn 0.3089；配对 ΔR² +0.0217 [+0.0044,+0.0377]。ligand 0.5997（Δ+0.0401）、scaffold 0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。单模型（同 seed）stack：ligand 0.5828±0.0102 / DOI 0.3485±0.0046 / scaffold 0.4693±0.0068 / year 0.3862±0.0082。DOI Δ 符号：tree 0.5826 → stack 0.5413（融合反而变差）。残差相关 0.86–0.90。",
-      "STR-1（5 seed，四协议）：seed 平均预测 R² ligand 0.5596 / DOI 0.3380 / scaffold 0.4530 / year 0.3780（R² seed SD 0.0026–0.0066）；Δ 符号 ligand 0.6101 / DOI 0.5826 / scaffold 0.6330 / year 0.4082（seed SD 0.0179–0.0387，max 0.0387 < 0.05 → STABLE）。单 seed 的 DOI 0.6193 高于全部五个 seed，属偏高抽样，主表改用 0.5826。DOI 全覆盖 regret 0.1279（单 seed 0.1168）、q=0.5 0.1072、p_holm 1.0。",
-      "MSRS 全量 21,404 行 / 5 金属 / 424 个严格多金属队列 / 61 DOI；严格队列全部 k=2。",
-      "最强回归（5-seed）：canonical R² 0.5828±0.0102（stack_foldwise）/ 0.5555±0.0026（tree）；fragment 0.5137±0.0048 / 0.4832±0.0018。融合 Δ+0.0273（p=0.0016）/ +0.0304（p=1.1e-4），5/5 seed 更好。GNN 单模 0.5032 / 0.4331，显著差于树（0/5 seed）。",
-      "表示增益（fragment）：全配合物 +0.1002 R²（p=2.3e-20，canonical +0.1040）；金属状态 +0.0444；配位 +0.0272。",
-      "融合：等权 +0.0171（p=4.8e-12）；堆叠 +0.0251（p=5.1e-34）；决策层无变化。",
-      "Δ 效应量（MET-3，427 对/61 DOI）：DOI 留出下符号 0.6193 [0.5085, 0.7137]，MAE(Δ) 0.5089（恒零预测器 0.5299，只好 4.0%），校准斜率 0.32、R² 0.0039；预测 |Δ| 恒 0.10–0.13 vs 观测 0.53 → 只有方向、没有幅度。year 斜率 −1.14。",
-      "决策：regret 0.1186 vs global_best 0.1198；top-1 0.566；Holm p=1.0。",
-      "跨论文（强特征，MET-2）：DOI R² 0.3321 [0.2806, 0.3820]、scaffold 0.4503 [0.4102, 0.4884]、year 0.3739 [0.3230, 0.4175]；相对 ligand 0.5556 分别 −0.2235 / −0.1053 / −0.1817。旧特征对应值 0.1648 / 0.1585 / 0.1778。表示增益四协议全正 +0.0544/+0.0423/+0.0611/+0.0392。",
-      "校准（MET-4，21,404 行，α=0.10）：DOI global coverage 0.9004 / 中位宽 2.0052 log10；difficulty 0.8789 / 1.9195；ligand global 0.9003 / 1.6515。点校准 DOI slope 0.9256、r2_point 0.3321、r2_fit 0.3363；残差高斯 90% 宽 2.0466 ≈ conformal 实测 2.0052。同队列多金属 851 行覆盖仅 0.8096（单金属 0.9050）。旧 actionability 的 0.9044 / 2.2083 是不同设计，已被本 artifact 取代。",
-      "跨金属：Ir 0.8295–0.8597 vs Krasnov 0.73；Ru 0.8128–0.8363 vs 0.81（持平）；LOMO 0.5575 / 0.5845。",
-      "生成/对接：decode_ratio 0.998；RMSD 0.6578 Å，5/5 ≤2 Å；Vina 贵金属 BLOCKED。",
-      "光毒性：Ru switch 0.2624 vs Ir 0.1373，差 +0.1251 [0.0395, 0.2048]；PI 预测 OOF R²<0。",
-      "NCI-60 9 细胞系 AUC 0.7294 ± 0.2137 vs Krasnov 0.81（−0.08；2 个细胞系 n<10）。",
-      "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。",
-      "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。",
-      "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。",
-      "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。",
-      "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
-      "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
-      "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。",
-      "指标表自动化（MET-11）：10 张表 / 106 行 / 11 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记源文件 sha256；18 个测试全过。",
-      "细胞系特征（FIX-L4）：磁盘上 0 个 CCLE/GDSC/DepMap/Cellosaurus 文件；711 个细胞系中 46 个即可覆盖 80% 的行（top10 53.37%、top50 81.17%），539 个系各 <10 行只占 6.21%；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。",
-      "删失信息（2026-10-19 检查）：potency 26,801 行中右删失 5,015 行、左删失 9 行；右删失 bound 中位 100 µM（log10=2.0），全部有 bound，97.9% 有 ligand_main_fragment。这 5,015 行目前被丢弃，是现有语料里唯一未使用的信息。",
-      "ChEMBL 29 本地库（.data/molmetal/chembl_29/chembl_29_sqlite/chembl_29.db，21 GB，2,084,724 结构 / 18,635,916 活性）实测含 0 个金属结构：`%Pt%`、`%Ru%`、`%Fe%`、`%[Na%` 全部为 0。该 dump 已被去金属化，不能用来补外部队列。",
-      "LOMO 水平漂移（msrs_lomo_surface.json, metal_out）：potency 的 observed−train gap 为 Ru +0.2884 / Ir −0.2984 / Rh −0.2110 / Os −0.3288 / Re +0.1440；cisplatin_ratio 为 Ru +0.3170 / Ir −0.3498 / Rh −0.2059 / Os −0.1770 / Re −0.2505。",
-      "LOMO 的 oracle_metal_mean MAE 只比最好模型低 0.0178（potency Ru），且 Os/Re 两金属上最好模型反而更好 —— 说明水平项与结构项不是同一件事。",
-      "金属感知增益在两终点上独立复现：potency ligand_only 0.2055 → additive 0.2510（+0.0455）；cisplatin_ratio 0.1800 → 0.2638（+0.0838）（msrs_surface_model.json）。",
-      "LOMO descriptor R² 均值：potency/metal_out −0.0241、potency/ligand_disjoint −0.1322、cisplatin/metal_out +0.0279、cisplatin/ligand_disjoint −0.1609；正向金属数 1/5、1/5、2/5、1/5。"
+      "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811（msrs_seed_ensemble.json, msrs_feature_expansion_5seed.json, msrs_feature_fusion.json）。scaffold 0.4733 / year 0.3946。ligand 0.5596 是内插，不可当泛化报。",
+      "失败位置：Murphy 分解 offset 0.045-0.100、scale 0.198-0.272、shape 0.653-0.757（msrs_lomo_error_decomposition.json）。shape = 排序，不是水平。",
+      "metal_out 绝对 R²：−0.0734（descriptors），4/5 金属为负（msrs_lomo_surface.json）。中心化后 2/5 金属 >0.10（Os 0.316 / Re 0.106），ligand-disjoint 下 0/5（EXT-1）。",
+      "交互项：Ru–Os 的 metal×ligand 交互占 Δ 方差 0.712 [0.6011,0.7756]，F=3.47，p=8.2e-25；Ir–Rh 未定（最小可检 0.4165）（msrs_variance_decomposition.json）。",
+      "方差分解：DOI 占随机方差 0.6506、ligand-within-DOI 0.1395、残差 0.2099；噪声地板 σ=0.2091 log10（msrs_variance_decomposition.json）。",
+      "排序：门内 218 对、3 个金属对、多数类 0.6009；水平相减 raw 0.5826 / 平衡 0.5272（TPR 0.80 / TNR 0.25）；直接回归 0.5183 / 0.5162（msrs_delta_metric_audit.json）。",
+      "排序的样本量可以翻倍：把匹配键从 (ligand, cell, DOI, time) 放宽到 (ligand, cell)，门内 436 对、4 个金属对、多数类 0.6101（本次实测，尚未入 artifact；脚本见 UP-2）。",
+      "校准：DOI 留出 α=0.10 覆盖 0.9004、中位宽 2.0052 log10；metal-Mondrian 覆盖 0.9002（无效）；difficulty-normalized 覆盖 0.8789、宽 1.9195（msrs_calibration.json）。多金属子群覆盖 0.8096。",
+      "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538），seed 集成 0.5947；Rh/Os/Re 低于 MIN_UNIQUE_FOR_GATE=200 不得入闸（lomo_resolvability_audit.json）。",
+      "k-shot：k=50 时 ligand-disjoint 上 R²≥0 的金属 0/5；k=5 时 55-95% 的重复比不校准更差（msrs_kshot_calibration.json）。",
+      "学习曲线：10%/25%/50%/100% 数据 R² = 0.0081/0.1014/0.2136/0.3081，plateau_fraction_95pct_of_full = 1.0 —— 100% 仍在爬（msrs_learning_curve.json）。",
+      "数据规模：26,801 行 / 6,782 配合物 / 1,921 篇 / 754 细胞系 / 5 金属（MetalCytoToxDB.csv）。5 金属中心化后秩 ≤4；跨 ≥2 金属的配体 13.3%，跨全 5 金属的配体恰好 1 个（msrs_metal_embedding.json）。"
     ]
   },
   "metric_gap_analysis": {
-    "doc": "docs/METRIC_GAP_ANALYSIS.md",
-    "phase": "测量阶段已完成（2026-10-19）；下面是强化计划的输入，不是待办清单。",
-    "positive": [
+    "note": "六行，按可改进性排序。current 全部是 MEASURED；target 是本轮 gate；lever 指向 work_package。",
+    "rows": [
       {
-        "metric": "metal-blind drop (ligand)",
-        "value": 0.0683,
-        "ci95": [
-          0.0516,
-          0.0903
-        ],
-        "p": 0.0099,
-        "artifact": "msrs_metal_ablation.json"
+        "metric": "metal_out 绝对 R²",
+        "current": -0.0734,
+        "target": "≥0（且 ≥3/5 金属 ≥0）",
+        "artifact": "msrs_lomo_surface.json",
+        "lever": "UP-1 交互约束 A/B + UP-4 eRAC/部分池化",
+        "why_weak": "metal_out 的 LightGBM 被 interaction_constraints 限制成 ligand / metal / cell 三块互不相交，结构上无法表达占 Δ 方差 0.712 的交互项。"
       },
       {
-        "metric": "metal-blind drop (DOI)",
-        "value": 0.0693,
-        "ci95": [
-          0.0509,
-          0.0884
-        ],
-        "artifact": "msrs_metal_ablation.json"
+        "metric": "DOI 留出 R²",
+        "current": 0.3767,
+        "target": "≥0.42（headline 0.45）",
+        "artifact": "msrs_feature_expansion_5seed.json",
+        "lever": "UP-3 3D 配位图 + UP-5 预训练 + UP-9 集成",
+        "why_weak": "2D 指纹 + 手写配位块；D-MPNN 与 LightGBM 打平（+0.0019），说明换模型类没有用，要换表示。"
       },
       {
-        "metric": "representation gain (ligand)",
-        "value": 0.1002,
-        "artifact": "msrs_complex_features.json"
+        "metric": "排序平衡准确率",
+        "current": 0.5272,
+        "target": "≥0.58（436 对上）",
+        "artifact": "msrs_delta_metric_audit.json",
+        "lever": "UP-2 扩样本 + listwise LambdaRank",
+        "why_weak": "218 对、3 个金属对、多数类 0.6009；模型退化成恒答正号（TPR 0.80 / TNR 0.25）。raw sign 在类不平衡下不是可比的指标。"
       },
       {
-        "metric": "representation gain (DOI)",
-        "value": 0.0423,
-        "ci95": [
-          0.0271,
-          0.0571
-        ],
-        "mde": 0.019,
-        "artifact": "msrs_power.json"
+        "metric": "LOMO AUC（可解析子集）",
+        "current": 0.5974,
+        "target": "≥0.63",
+        "artifact": "lomo_resolvability_audit.json",
+        "lever": "UP-4 eRAC 跨周期迁移 + UP-5 预训练",
+        "why_weak": "5 金属、秩 ≤4；Ru/Ir 之外三个折在测量地板上。"
       },
       {
-        "metric": "canonical R2, stack 5-seed",
-        "value": 0.5828,
-        "std": 0.0102,
-        "artifact": "msrs_seed_stability.json"
+        "metric": "conformal 中位宽度 / 子群覆盖",
+        "current": "2.0052 log10 / 0.8096",
+        "target": "≤1.75 / ≥0.87",
+        "artifact": "msrs_calibration.json",
+        "lever": "UP-6 label-shift conformal",
+        "why_weak": "宽度由残差 SD 决定（R²=0.38 ⇒ 宽 2.0），校准改不了精度；能改的是条件覆盖。"
       },
       {
-        "metric": "phototoxicity switch diff (Ru-Ir)",
-        "value": 0.1251,
-        "ci95": [
-          0.0395,
-          0.2048
-        ],
-        "artifact": "msrs_phototoxicity.json"
-      },
-      {
-        "metric": "Ir within-metal AUC",
-        "value": "0.8295-0.8597",
-        "artifact": "metal_activity_transfer_seed_stability.json"
-      }
-    ],
-    "negative": [
-      {
-        "metric": "R2 DOI",
-        "value": 0.3321,
-        "target": 0.5,
-        "artifact": "msrs_generalization.json"
-      },
-      {
-        "metric": "R2 scaffold / year",
-        "value": "0.4503 / 0.3739",
-        "target": 0.5,
-        "artifact": "msrs_generalization.json"
-      },
-      {
-        "metric": "delta sign (DOI)",
-        "value": 0.6193,
-        "ci95": [
-          0.5085,
-          0.7137
-        ],
-        "target": 0.65,
-        "artifact": "msrs_delta_metrics.json"
-      },
-      {
-        "metric": "MAE(delta)",
-        "value": 0.5089,
-        "constant_zero": 0.5299,
-        "target": 0.3,
-        "artifact": "msrs_delta_metrics.json"
-      },
-      {
-        "metric": "decision regret (50% coverage)",
-        "value": 0.1115,
-        "baseline": 0.1067,
-        "p_holm": 1.0,
-        "target": 0.1,
-        "artifact": "msrs_decision_curve.json"
-      },
-      {
-        "metric": "conformal median width (DOI)",
-        "value": 2.0052,
-        "target": 1.0,
-        "artifact": "msrs_calibration.json"
-      },
-      {
-        "metric": "LOMO AUC",
-        "value": 0.5575,
-        "target": 0.65,
-        "artifact": "metal_lomo_auc_wasserstein.json"
-      },
-      {
-        "metric": "generation SA / novelty",
-        "value": "6.4423 / 0.8517",
-        "target": "4.5 / 0.90",
-        "artifact": "cfm_generation_metrics.json"
-      }
-    ],
-    "blocked": [
-      {
-        "metric": "external cohort",
-        "measured": "triple intersection 0",
-        "artifact": "msrs_external_dataset.json"
-      },
-      {
-        "metric": "cell-line biology features",
-        "measured": "0 annotation files; 46 lines cover 80%",
-        "artifact": "msrs_cell_features.json"
-      },
-      {
-        "metric": "docking on precious metals",
-        "measured": "1/10 pockets, run died",
-        "artifact": "cfm_vina_generated.json"
+        "metric": "k-shot 可用金属数（k=50）",
+        "current": "0/5",
+        "target": "≥3/5",
+        "artifact": "msrs_kshot_calibration.json",
+        "lever": "UP-8 meta-learning（不是 post-hoc 校准）",
+        "why_weak": "EXT-3 只测了事后校准；偏差只占 MSE 5-10%，估它的噪声大于偏差本身。"
       }
     ],
     "gates": {
-      "strong_metric_path": {
-        "DOI_R2": 0.36,
-        "paired_CI_lower": ">0",
-        "delta_sign": 0.65,
-        "delta_CI_lower": 0.55
-      },
-      "note": "PROPOSED 门槛，写死在 STR-1..STR-5 的 gate 字段；不因结果调整。"
+      "frozen_at": "2026-10-21T15:10+08:00",
+      "rule": "结果产生后不得改数值；只允许在结果产生前写 amendment_note（时间 + 理由）。"
     }
   },
-  "closed_work": [
-    {
-      "id": "MET-1",
-      "result": "PASS",
-      "headline": "canonical stack 0.5828 ± 0.0102；树 0.5555、D-MPNN 0.5032、blend 0.5759"
-    },
-    {
-      "id": "MET-2",
-      "result": "NEGATIVE",
-      "headline": "四协议 R²：ligand 0.5556 / DOI 0.3321 / scaffold 0.4503 / year 0.3739"
-    },
-    {
-      "id": "MET-3",
-      "result": "NEGATIVE",
-      "headline": "Δ 符号 0.6193 [0.5085,0.7137]；MAE(Δ) 0.5089（恒零 0.5299）；斜率 0.32、R² 0.0039"
-    },
-    {
-      "id": "MET-4",
-      "result": "NEGATIVE",
-      "headline": "DOI conformal coverage 0.9004、中位宽 2.0052；difficulty 0.8789/1.9195；多金属队列覆盖 0.8096"
-    },
-    {
-      "id": "MET-5",
-      "result": "NEGATIVE",
-      "headline": "50% 覆盖 regret 0.1115 vs 0.1067，Holm p=1.0；margin 0.111 vs baseline 0.280"
-    },
-    {
-      "id": "MET-6",
-      "result": "PASS",
-      "headline": "metal-blind −0.0683 [0.0516,0.0903]（DOI −0.0693），block p=0.0099；金属 one-hot 只值 0.0064；cell-blind 同为 −0.0629"
-    },
-    {
-      "id": "MET-7",
-      "result": "BLOCKED (measured)",
-      "headline": "三键交集 0：Pt vs 五金属不重叠；配体 144、细胞系 3 有重叠"
-    },
-    {
-      "id": "MET-8",
-      "result": "PASS",
-      "headline": "regret MDE 0.050（62 DOI）、符号 MDE 0.130（53 DOI）、MAE MDE 0.077；null 均为真 miss"
-    },
-    {
-      "id": "MET-9",
-      "result": "NEGATIVE",
-      "headline": "novelty 0.8517、SA 6.4423、QED 0.0944、对接 BLOCKED（1/10 pocket）"
-    },
-    {
-      "id": "MET-10",
-      "result": "PASS",
-      "headline": "数据卡 + 泄漏审计：ligand 划分 89.43% 测试行共享 DOI；doi 划分 0% DOI 交叉但 15.43% 共享配体"
-    },
-    {
-      "id": "MET-11",
-      "result": "PASS",
-      "headline": "10 张表 / 106 行 / 0 MISSING，每格带 JSON pointer"
-    },
-    {
-      "id": "FIX-L4",
-      "result": "BLOCKED (measured)",
-      "headline": "磁盘 0 个 CCLE/GDSC 文件；46/711 细胞系覆盖 80%；身份值 0.0629 R²"
-    },
-    {
-      "id": "STR-1",
-      "result": "STABLE",
-      "headline": "5-seed：DOI R² 0.3380（单 seed 0.3321）、Δ 符号 0.5826（单 seed 0.6193，seed 均值 0.567±0.033）；regret 0.1279 变差，p=1.0"
-    },
-    {
-      "id": "STR-2",
-      "result": "PARTIAL",
-      "headline": "DOI stack 0.3597（gate 0.36，差 0.0003），ΔR² +0.0217 [+0.0044,+0.0377]；equal 0.3606；单模型 stack 0.3485±0.0046；融合后 DOI Δ 符号 0.5826→0.5413"
-    },
-    {
-      "id": "STR-3",
-      "result": "KILL",
-      "headline": "删失训练：DOI tobit 0.2400 / hinge 0.2828（树 0.3332），8/8 组合为负且 CI 排除 0"
-    },
-    {
-      "id": "STR-4",
-      "result": "PASS_R2_FAIL_SIGN",
-      "headline": "MACCS+RDKit 把 DOI R² 抬到 0.3767（Δ +0.0387 [+0.0241,+0.0535]），置换控制 0.3275 证明是内容而非宽度；Δ 符号仍 0.5826（融合 0.5505）"
-    },
-    {
-      "id": "STR-5",
-      "result": "KILL",
-      "headline": "Δ 直接回归 DOI 符号 0.5183 [0.3902,0.6539]（无门槛 0.4988），MAE 0.5559 差于恒零；水平相减 0.5826 仍最好"
-    },
-    {
-      "id": "STR-6",
-      "result": "KILL",
-      "headline": "SA≤4.5 产量 16/2,396 = 0.67% [0.41%,1.08%]；门内 16 个 novelty 0.8757 <0.90；--sa-penalty 空转、无可微代理、单 checkpoint"
-    },
-    {
-      "id": "STR-7",
-      "result": "PASS",
-      "headline": "12 张表 / 0 MISSING；台账 C1-C7（4 支持 / 3 不支持）；C6 更正为 LOMO 0.5575 < 0.7 不可写"
-    },
-    {
-      "id": "FIX-C6",
-      "result": "KILL",
-      "headline": "LOMO 按可解析规则是 0.5974（非 0.5575）；seed 集成 0.5957 仍 <0.6；Rh CI 含 0.5"
-    },
-    {
-      "id": "FIX-C3",
-      "result": "KILL",
-      "headline": "Δ 符号多数类 0.6009 > 水平模型 0.5826；平衡符号 0.5272（CI 含 0.5）；lambdarank 0.0734 退化"
-    },
-    {
-      "id": "FIX-C7",
-      "result": "RE-ATTRIBUTED",
-      "headline": "v1.1 重归因：盘上不存在全语料自由生成池（full_corpus 那个 csv 是 wf_cfm_decode_dump_smiles 的键头重建，表头 metal_z）；真生成 SA≤4.5 = 0.69% [0.42,1.11]（n=2330，n_train 全为 256）；gen_validity 全语料 0.074–0.086 vs 256 样本 0.083–0.292，未随规模改善。33.7% / novelty 0.8677 已撤回"
-    }
-  ],
+  "literature": {
+    "note": "2026-10-21 检索（arXiv API + Europe PMC）。只列被某个 work_package 直接使用的条目；标 id_verified=true 的是从 arXiv API 返回的原始条目，false 的是检索摘要里出现但未记下 ID，引用前需补 ID。",
+    "entries": [
+      {
+        "id": "krasnov2026",
+        "cite": "Krasnov L, Malikov D, Kiseleva MA, Nykhrikova EV, Tatarin SV, Bezzubov SI. J Med Chem 2026, 69(8):8838-8851. doi:10.1021/acs.jmedchem.5c02755",
+        "id_verified": true,
+        "finding": "MetalCytoToxDB：26,500 个 IC50 / 7,050 配合物 / 754 细胞系 / 1,921 篇。模型做的是 Ru、Ir 子集内的细胞毒性分类，不是跨金属回归；「multimetal prediction」只作为探索。",
+        "used_by": "UP-4, 全文对照",
+        "why": "这是我们唯一的语料来源，也是我们 LOMO 比它难得多的原因：它没有报跨金属回归。"
+      },
+      {
+        "id": "chemclip",
+        "cite": "Koohi-Moghadam M, Sun H, Li H, Bae KT. ChemCLIP: Bridging Organic and Inorganic Anticancer Compounds Through Contrastive Learning. arXiv:2603.28575 (2026-03-30)",
+        "id_verified": true,
+        "finding": "44,854 个有机化合物 + 5,164 个金属配合物，60 个细胞系；活性感知难负样本；256 维共享空间；Morgan 编码对齐比 0.899，金属侧下游 AUC 0.859。",
+        "used_by": "UP-5",
+        "why": "证明跨域（有机/无机）对比预训练在抗癌活性上可行，且金属侧只有 5k 样本也能用。"
+      },
+      {
+        "id": "erac",
+        "cite": "Harper DR, Nandy A, Arunachalam N, Duan C, Janet JP, Kulik HJ. Representations and Strategies for Transferable Machine Learning Models in Chemical Discovery. arXiv:2106.10768; J Chem Phys (2022) doi:10.1063/5.0082964",
+        "id_verified": true,
+        "finding": "把 RAC 的核电荷换成有效核电荷（eRAC），避免同族金属被过度判为相异；用「一个大样本周期 + 新周期少量点」的迁移策略稳定提升。",
+        "used_by": "UP-1, UP-4",
+        "why": "Ru/Os 都是 group 8，正是「同族但不同周期」的情形；这解释了为什么 one-hot 金属在 metal_out 上必然失败。"
+      },
+      {
+        "id": "rankgnn",
+        "cite": "Damke C, Hüllermeier E. Ranking Structured Objects with Graph Neural Networks. arXiv:2104.08869; Discovery Science 2021:166-180",
+        "id_verified": true,
+        "finding": "pairwise RankGNN 在排序性能上显著优于或至少持平 pointwise 图回归。",
+        "used_by": "UP-1, UP-2",
+        "why": "我们的目标是「换哪个金属更毒」，本质是成对偏好，不是绝对值回归。"
+      },
+      {
+        "id": "fsmpp-survey",
+        "cite": "Few-shot Molecular Property Prediction: A Survey. arXiv:2510.08900 (2025-10-10)",
+        "id_verified": true,
+        "finding": "把少样本 MPP 的难点分成跨性质（分布漂移）与跨分子（结构异质）两类，并整理 benchmark 与协议。",
+        "used_by": "UP-8",
+        "why": "我们的「新金属」正好是跨性质 + 跨分子的复合情形；先确认方法族再跑。"
+      },
+      {
+        "id": "context-help",
+        "cite": "When Does Context Help? Target-Conditional Molecular Property Prediction. arXiv:2604.06558 (2026-04-08)",
+        "id_verified": true,
+        "finding": "在 10 个蛋白家族、67-9,409 个化合物的数据区间上，few-shot 适配一致地不如 zero-shot；并指出 DUD-E 基准有 50% 活性泄漏。",
+        "used_by": "UP-8",
+        "why": "这是对我们 EXT-3 负结果的独立佐证：少样本适配失败不是我们实现的问题。"
+      },
+      {
+        "id": "pin-tuning",
+        "cite": "Pin-Tuning: Parameter-Efficient In-Context Tuning for Few-Shot Molecular Property Prediction. arXiv:2411.01158; NeurIPS 2024",
+        "id_verified": true,
+        "finding": "预训练分子编码器在标签稀缺时直接微调会失败；提出 adapter + Bayesian 权重整合。",
+        "used_by": "UP-7, UP-8",
+        "why": "如果 UP-8 要跑微调臂，必须用参数高效 + 权重整合，否则会重演「微调不如零样本」。"
+      },
+      {
+        "id": "cp-label-shift",
+        "cite": "Conformal Prediction for Molecular Properties under Label Shift. arXiv:2608.17678 (2026-08-18)",
+        "id_verified": true,
+        "finding": "用边际标签概率比给 conformal 分数加权，无需重训即可在标签漂移下维持覆盖。",
+        "used_by": "UP-6",
+        "why": "DOI 留出同时有协变量漂移与标签漂移，标准 split conformal 的交换性假设不成立。"
+      },
+      {
+        "id": "kmm-cp",
+        "cite": "KMM-CP: Practical Conformal Prediction under Covariate Shift via Selective Kernel Mean Matching. arXiv:2603.26415 (2026-03-27)",
+        "id_verified": true,
+        "finding": "在分子性质基准上把 coverage gap 降低 >50%。",
+        "used_by": "UP-6",
+        "why": "给我们一个可比的「覆盖差距能降多少」的量级预期。"
+      },
+      {
+        "id": "cp-steel",
+        "cite": "Distribution-Free Conformal Prediction for Steel Fatigue Strength: Marginal Validity Is Not Enough. arXiv (2026-08)",
+        "id_verified": false,
+        "finding": "边际覆盖 0.918，但最高强度四分位只有 0.758；cross-fitted normalized 与 Mondrian 修正。",
+        "used_by": "UP-6",
+        "why": "和我们的「全局 0.9004 / 多金属子群 0.8096」是同一个现象，且给了修正配方。"
+      },
+      {
+        "id": "mlip-gnn-tmqm",
+        "cite": "Impact of Local Descriptors from ML Potentials in GNNs for Molecular Property Prediction. arXiv (2026-02)",
+        "id_verified": false,
+        "finding": "把 MLIP 的局部描述符注入 EGNN，在 tmQM 的 5 个目标上全部提升。",
+        "used_by": "UP-3",
+        "why": "说明配合物的几何/电子局部环境是有效信号，而我们现在完全没用。"
+      },
+      {
+        "id": "bos-tmc",
+        "cite": "The BOS-TMC Dataset: DFT Properties of 159k Experimentally Characterized Transition Metal Complexes. arXiv (2026-04)",
+        "id_verified": false,
+        "finding": "159k 单核配合物、2.9M+ DFT 性质，作为 ML 基准。",
+        "used_by": "UP-5",
+        "why": "如果 UP-5 的 5k tmQM 有效，这是下一个量级的预训练语料（需先确认许可）。"
+      }
+    ]
+  },
   "blockers": [
     {
       "id": "B1",
       "what": "外部独立 cohort",
       "status": "BLOCKED-PENDING-MANUAL-CURATION",
-      "measured": "2026-10-21 EXT-5：IrCytoToxDB（Scientific Data 2024，Zenodo 10.5281/zenodo.13120939，CC-BY-4.0，2,694 条 / 222 篇 / 127 系）与 MSRS 的 DOI 重叠 221/222=99.55%，仅 1 个新 DOI；653 个匹配 (DOI,细胞系) 格里 89.4% 数值相同到 0.01 log10，中位 |Δ|=0.0，r=0.9611。ChEMBL 29 本地库 0 个目标金属；PlatinAI 只有 Pt；NCI-60 无 SMILES；DepMap Cloudflare Turnstile；GDSC HTTP 410；Cellosaurus 超时；GEO GSE36133 只有 CEL；RuCytoToxDB 无 Zenodo 存款且 921 篇 ⊂ MSRS 的 1,427 Ru DOI。",
-      "unblock": "人工整理 2023-2025 文献 ≥60 化合物 / ≥3 金属 / ≥8 篇，按 DOI 与 MetalCytoToxDB 取差集。未做。",
-      "do_not": "不要用 Pt 的 PlatinAI 冒充外部验证；不要从 ChEMBL 29 挖（已去金属）",
-      "evidence": [
-        "metrics/by_metric/chembl29_metal_scan.json",
-        "molmetal/scripts/chembl29_metal_scan.py",
-        "molmetal/tests/test_chembl29_metal_scan.py"
-      ],
-      "reconfirmed": "2026-10-21（脚本可重跑，查询文本与计数同产物；DB 自 2021 年起未变）",
-      "artifact": "metrics/by_metric/msrs_external_cohort_probe.json"
+      "measured": "IrCytoToxDB 与 MSRS 的 DOI 重叠 221/222 = 99.55%，仅 1 个新 DOI；653 个匹配格里 89.4% 数值相同到 0.01 log10（msrs_external_cohort_probe.json）。其余来源全部实测不可用。",
+      "unblock": "人工整理 2023-2025 文献 ≥60 化合物 / ≥3 金属 / ≥8 篇，按 DOI 取差集。未做，不编造。",
+      "do_not": "不要用 Pt 的 PlatinAI 或 IrCytoToxDB 冒充外部验证。",
+      "artifact": "msrs_external_cohort_probe.json"
     },
     {
       "id": "B2",
       "what": "细胞系生物学特征",
       "status": "CLOSED",
-      "measured": "2026-10-21 EXT-7：0 个注释文件；21.9%（9,253/42,167）的行来自 CCLE/DepMap 里按构造不存在的系（HELA/HEK293/A2780/A2780CISR/A549CISR）；top-46 覆盖 80.22%。",
-      "unblock": "下载 ≥46 个系的 CCLE/GDSC 表，并跑一次带特征的消融（≥+0.005）",
-      "reconfirmed": "2026-10-21（文件系统复测，仍未出现任何注释表）",
-      "decision": "永久关闭。访问与身份双重失败，身份那一半不会因重试改善。",
-      "artifact": "metrics/by_metric/msrs_cell_feature_probe.json"
+      "measured": "0 个注释文件；21.9% 的行来自 CCLE/DepMap 按构造不存在的系。",
+      "artifact": "msrs_cell_feature_probe.json"
     },
     {
       "id": "B3",
       "what": "决策层增益",
       "status": "CLOSED",
-      "measured": "MET-5 + MET-8：观测 −0.0034，MDE 0.050；要检测它需 13,571 个 DOI",
-      "decision": "不再投入；作为边界陈述"
-    },
-    {
-      "id": "B4",
-      "what": "pairwise / rerank",
-      "status": "CLOSED",
-      "measured": "msrs_pairwise_reranker：原始 Δregret +0.0208（p=0.054，方向错），DOI post-hoc −0.0011（p=0.53）",
-      "decision": "不再重试；STR-5 只做一次『直接 Δ 回归』，不是 rerank"
+      "measured": "观测 −0.0034，MDE 0.050；检测不到。",
+      "artifact": "msrs_decision_curve.json"
     }
   ],
   "work_packages": [
     {
-      "id": "STR-1",
-      "title": "五 seed OOF 与 seed 平均后的 Δ / 校准 / 决策",
-      "layer": "统计",
+      "id": "UP-1",
+      "title": "交互约束 A/B：把 shape 从「结构上不可表达」变成「可表达」",
       "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "2 小时",
-      "why": "MET-3/4/5 全部消费单 seed OOF（results/msrs_generalization/oof.npz，seed 20261018）。MET-1 实测 blend 的 seed SD 是 0.0102，单 seed 的 Δ 可能被 seed 噪声主导；在谈『Δ 不可学』之前必须先排除这一项。",
-      "method": "复用现有 msrs_generalization.py（已有 --seed 与 --oof-out）：四个协议 × 5 seed = 20 次树模型，保存每个 seed 的 OOF；对预测取均值后重算 Δ 符号/MAE/校准、conformal、决策曲线；同时报每个指标的 seed SD。评估行不变（21,404）。",
-      "deliverable": "metrics/by_metric/msrs_seed_ensemble.json + results/msrs_seed_ensemble/",
-      "gate": "报告 seed SD；若 Δ 符号 seed SD >0.05，现有单 seed 结论标记为『噪声主导』，后续一律用 5-seed 均值。",
-      "kill": "无（诊断项）",
-      "expected_gain_projected": "Δ 符号可能 ±0.01–0.03；不承诺翻正",
-      "depends_on": [],
-      "code_work": "无（脚本已支持）；新增一个聚合脚本 msrs_seed_ensemble.py。",
-      "result": {
-        "verdict": "STABLE",
-        "max_sign_seed_sd": 0.0387,
-        "r2_seed_averaged": {
-          "ligand": 0.5596,
-          "doi": 0.338,
-          "scaffold": 0.453,
-          "year": 0.378
-        },
-        "r2_seed_sd": {
-          "ligand": 0.0026,
-          "doi": 0.0029,
-          "scaffold": 0.0028,
-          "year": 0.0066
-        },
-        "sign_seed_averaged": {
-          "ligand": 0.6101,
-          "doi": 0.5826,
-          "scaffold": 0.633,
-          "year": 0.4082
-        },
-        "sign_seed_sd": {
-          "ligand": 0.0179,
-          "doi": 0.0332,
-          "scaffold": 0.0387,
-          "year": 0.0303
-        },
-        "single_seed_sign_doi": 0.6193,
-        "artifact": "metrics/by_metric/msrs_seed_ensemble.json",
-        "doc": "TODO/completed/str1_seed_ensemble.md",
-        "note": "单 seed 0.6193 高于全部五个 seed（0.5183–0.5963），是偏高抽样；主表改用 0.5826。决策 regret 从 0.1168 变差到 0.1279（p_holm 仍 1.0）。"
-      },
-      "acceptance_result": "PASS — max sign SD 0.0387 < 0.05（STABLE）；不翻正任何负结果，但钉住了误差棒。"
-    },
-    {
-      "id": "STR-2",
-      "title": "四协议融合臂补全（GNN + blend + stack）",
-      "layer": "模型",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "cuda:0",
-      "wall": "8 小时",
-      "why": "msrs_generalization.design.arms_not_measured = 3：DOI/scaffold/year 只测了树。融合臂的 +0.0273 只在 ligand 上验证过，跨论文是否成立完全未知。这是最便宜的、可能直接抬高 DOI R² 的未测项。",
-      "method": "给 msrs_generalization.py 增加 GNN 臂（当前显式不跑，design.arms_not_measured=3）：GNN 必须在同一 fold 上产出 OOF，再与树臂做 blend_equal / stack_foldwise；四个协议各 5 seed；配对 DOI 聚类 bootstrap 给 ΔR² 的 CI。",
-      "deliverable": "metrics/by_metric/msrs_fusion_protocols.json",
-      "gate": "DOI stack R² ≥0.36 且配对 ΔR² 的 95% CI 下界 >0。",
-      "kill": "DOI stack R² <0.34，或配对 CI 含 0 且点估计 <+0.01。",
-      "expected_gain_projected": "PROJECTED +0.01–0.03 DOI R²（基于 ligand 上的 +0.0273）",
-      "depends_on": [],
-      "code_work": "中等：GNN 臂接线 + fold 对齐 + OOF 保存；先用 --limit 200 做 smoke。",
-      "result": {
-        "verdict": "PARTIAL",
-        "gate_arm": "stack_foldwise",
-        "doi_stack_r2": 0.3597,
-        "doi_stack_delta_r2": 0.0217,
-        "doi_stack_ci": [
-          0.0044,
-          0.0377
-        ],
-        "doi_equal_r2": 0.3606,
-        "doi_tree_r2": 0.338,
-        "doi_gnn_r2": 0.3089,
-        "per_seed_single_model_stack": {
-          "ligand": 0.5828,
-          "doi": 0.3485,
-          "scaffold": 0.4693,
-          "year": 0.3862
-        },
-        "ensemble_stack": {
-          "ligand": 0.5997,
-          "doi": 0.3597,
-          "scaffold": 0.4839,
-          "year": 0.3968
-        },
-        "delta_sign_doi": {
-          "tree": 0.5826,
-          "equal": 0.5413,
-          "stack": 0.5413
-        },
-        "residual_correlation": {
-          "ligand": 0.8648,
-          "doi": 0.8902,
-          "scaffold": 0.8814,
-          "year": 0.8952
-        },
-        "artifact": "metrics/by_metric/msrs_fusion_protocols.json",
-        "doc": "TODO/completed/str2_fusion_protocols.md",
-        "note": "效应成立（+0.0217，CI 下界 +0.0044），绝对门槛差 0.0003（0.3597 < 0.36）。equal 臂 0.3606 过线但不替换 gate 臂。融合把 DOI Δ 符号从 0.5826 降到 0.5413。"
-      },
-      "acceptance_result": "PARTIAL — 配对 ΔR² CI 排除 0，但 gate 臂 R² 0.3597 < 0.36（差 0.0003）；不改门槛。"
-    },
-    {
-      "id": "STR-3",
-      "title": "删失标签训练（右删失 5,015 行）",
-      "layer": "数据",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "cuda:0（树先跑，GNN 可选）",
-      "wall": "4 小时（树 2h + 分析）",
-      "why": "potency 26,801 行里 5,015 行右删失（bound 中位 100 µM）被直接丢弃，占 18.7%。这是现有语料里唯一没被用上的信息，且集中在『不活跃』一端——而 Δ 符号恰恰需要两端。",
-      "method": "训练集 = 21,404 有值行 + 5,015 右删失行（+9 左删失，可选）；右删失用 hinge `max(0, log10(bound) − pred)`，左删失镜像；评估仍在同一 21,404 行。先跑树，通过 gate 再上 GNN。",
-      "deliverable": "metrics/by_metric/msrs_censored_training.json",
-      "gate": "DOI R² ≥0.36 且配对 ΔR² CI 下界 >0；ligand R² 不低于 0.5828 − 0.005。",
-      "kill": "DOI R² <0.34，或 ligand R² 掉 >0.01。",
-      "expected_gain_projected": "PROJECTED +0.01–0.04 DOI R²；不确定，因为删失 bound 大多落在现有 y 范围内",
-      "depends_on": [
-        "STR-1"
+      "wave": 1,
+      "wall": "1 小时 CPU",
+      "status": "PENDING",
+      "why": "metal_out 的绝对 R² 是 −0.0734，4/5 金属为负（msrs_lomo_surface.json）。同一份数据测出 Ru–Os 的 metal×ligand 交互占 Δ 方差 0.712（msrs_variance_decomposition.json）。而 metal_out 的 LightGBM 用 interaction_constraints 把 ligand / metal / cell 三块设成互不相交（msrs_surface_model.py:222-233，groups 由 :213-217 定义；msrs_code_levers.py:249-256 是另一条管线的同款实现），结构上禁止了 ligand×metal 分裂。这是「先测出交互占主导，再用一个不能表达交互的模型」的自相矛盾。",
+      "lever": "LightGBM interaction_constraints 的语义（不设 = 允许任意交互）；RankGNN（arXiv:2104.08869）说明成对监督比逐点回归更贴合排序任务；eRAC（arXiv:2106.10768）说明跨金属迁移需要让金属间的距离反映周期表位置。",
+      "code_points": [
+        "molmetal/scripts/msrs_lomo_surface.py:152 evaluate_split — 加 arm 参数（additive/free/pair/product），同一折、同一特征、只改约束",
+        "molmetal/scripts/msrs_surface_model.py:222 fit_predict — constraints 已是可选参数（:231-232），直接传 None 即 free 臂",
+        "molmetal/scripts/msrs_code_levers.py:249-256 — 另一条管线的同款构造。注意 msrs_generalization.py:370-381 调 fit_arm 时传 constraints=False（DOI headline 未被约束），所以这条只在需要时同步改，不是 UP-1 的主战场",
+        "molmetal/scripts/msrs_surface_model.py:213-217 — groups 的定义，product 臂在这里把 ligand 块与 metal 块做外积哈希后作为一个新块"
       ],
-      "result": {
-        "verdict": "KILL",
-        "doi_r2": {
-          "tobit": 0.24,
-          "hinge": 0.2828
-        },
-        "doi_delta": {
-          "tobit": -0.0933,
-          "hinge": -0.0504
-        },
-        "doi_ci": {
-          "tobit": [
-            -0.1244,
-            -0.0635
-          ],
-          "hinge": [
-            -0.0733,
-            -0.0276
-          ]
-        },
-        "ligand_r2": {
-          "tobit": 0.4962,
-          "hinge": 0.5326,
-          "tree": 0.5554
-        },
-        "n_censored_train": 4918,
-        "artifact": "metrics/by_metric/msrs_censored_training.json",
-        "doc": "TODO/completed/str3_censored_training.md",
-        "note": "8/8 协议×目标组合为负，8/8 CI 排除 0。删失不是随机缺失：bound 编码论文剂量设计，加入后把预测面整体上拉。Tobit 比 hinge 更差。"
-      },
-      "acceptance_result": "KILL — DOI 最好 0.2828（<0.34），ligand 掉 0.023–0.059。"
+      "arms": [
+        "additive（现状）：[[lig],[met],[cell]]",
+        "free：无约束",
+        "pair：[[lig,met],[cell]] —— 允许配体-金属交互，仍禁止细胞系交互",
+        "product：显式外积特征 + 无约束（检验「约束去掉但样本不够」的情况）"
+      ],
+      "steps": [
+        "跑 4 臂 × 2 split（metal_out, metal_out_ligand_disjoint）× 2 endpoint（potency, cisplatin_ratio）。",
+        "胜者加 5 seed；报告 DOI 聚类配对 bootstrap（2000 次）的 ΔR² CI。",
+        "同时报告每金属 R² 与偏置，不只报加权平均。"
+      ],
+      "gate": "任一非 additive 臂在 metal_out potency 上 weighted_R² ≥ additive + 0.05，且配对 bootstrap CI 下界 >0，且 ligand_disjoint 上同向（点估计不反号）。",
+      "kill": "四臂两两差 <0.02 → 形状不是约束造成的，是表示不够；跳过模型侧投入，直接进 UP-3/UP-5。",
+      "deliverable": "metrics/by_metric/msrs_interaction_ab.json",
+      "artifacts_needed": ["msrs_lomo_surface.json", "msrs_variance_decomposition.json"]
     },
     {
-      "id": "STR-4",
-      "title": "特征扩展：ECFP6 + MACCS + RDKit 描述符 + 实验条件",
-      "layer": "特征",
+      "id": "UP-2",
+      "title": "排序：把 218 对扩到 436 对，指标从 raw sign 换成 balanced + regret，模型换成 listwise",
+      "priority": "P0",
+      "wave": 1,
+      "wall": "3 小时 CPU",
+      "status": "PENDING",
+      "why": "现有 C3 的结论是「0.5826 低于多数类 0.6009」，但那个结论建立在 218 对、3 个金属对、60.1% 正号的基础上。把匹配键从 (ligand, cell, DOI, time) 放宽到 (ligand, cell)（允许跨论文配对），门内变成 436 对、4 个金属对（Os–Ru 318 / Ir–Rh 99 / Rh–Ru 19）、多数类 0.6101。样本翻倍，且多出 Rh–Ru 这一个此前只有 1 对的金属对。raw sign 在 61% 多数类下不是可比的指标；balanced accuracy 的恒定预测是 0.5。",
+      "lever": "RankGNN（arXiv:2104.08869）：pairwise RankGNN 显著优于或至少持平 pointwise 回归；LambdaRank 的 listwise 目标在每篇论文内部成组（同一 DOI 的配体天然成组）。决策指标用 regret / NDCG@1（已有 msrs_code_levers.json 的 424 个 cohort 口径）。",
+      "code_points": [
+        "molmetal/scripts/msrs_generalization.py:160 pair_table — 加 pair_key 参数（'strict' | 'ligand_cell'），后者去掉 DOI 与 time",
+        "molmetal/scripts/msrs_generalization.py:195 pair_sign_accuracy — 增加 balanced / per-metal-pair 分解",
+        "molmetal/scripts/msrs_delta_metrics.py:52 GATE_THRESHOLD — 保留 0.2091，但 gate 改看 balanced",
+        "molmetal/scripts/msrs_delta_metrics.py:151 by_metal_pair — 已存在，直接复用做逐金属对报告",
+        "新建 molmetal/scripts/msrs_listwise_ranker.py — LambdaRank，query group = DOI，特征 = 现有 ligand+metal+cell 块"
+      ],
+      "steps": [
+        "先用同一份 OOF 预测在 436 对上重算，确认扩样本本身是否改变结论（不训练）。",
+        "再训 LambdaRank（5 seed），同一折。",
+        "报告三组数：raw sign、balanced、regret@50%。"
+      ],
+      "gate": "436 对上 balanced ≥0.58 且 DOI 聚类 bootstrap CI 下界 >0.52；raw ≥0.63；regret@50% ≤0.10。三条同时满足才算过。",
+      "kill": "balanced <0.55 → 排序不可学。此负结果比 EXT 强，因为 n 翻倍、金属对从 3 增到 4、且换了目标函数。",
+      "deliverable": "metrics/by_metric/msrs_ranking_expanded.json",
+      "artifacts_needed": ["msrs_delta_metric_audit.json", "msrs_code_levers.json"]
+    },
+    {
+      "id": "UP-3",
+      "title": "3D 配位图：把金属-配体键与配位几何放进图里",
       "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "3 小时",
-      "why": "当前 2,074 维 = ECFP4 2048 + 2 类别 + 26 金属/细胞列。DOI 留出下新论文的实验条件（time_h、method、is_cancer_line）没有被显式建模；ECFP4 也可能截断了大片段信息。",
-      "method": "三组臂：(a) ECFP6 4096；(b) + MACCS + 20 个 RDKit 描述符；(c) + time_h / method / is_cancer_line。每组只加一个块，避免混淆。",
-      "deliverable": "metrics/by_metric/msrs_feature_expansion.json",
-      "gate": "任一臂 DOI R² ≥0.36 且配对 ΔR² CI 下界 >0。",
-      "kill": "全部臂 DOI R² <0.34。",
-      "expected_gain_projected": "PROJECTED +0.005–0.02 DOI R²",
-      "depends_on": [
-        "STR-1"
+      "wave": 2,
+      "wall": "1 天 GPU（cuda:0）",
+      "status": "PENDING",
+      "why": "shape 占平方误差 0.65-0.76，而当前表示是 2D ECFP4/MACCS + 手写配位块（msrs_172d_full.json 的三个 stream 全是 2D）。D-MPNN 在 canonical 分组上只比 LightGBM 高 +0.0019（msrs_dmpnn_surface.json），说明换模型类不解决问题——问题在输入里没有金属-配体键的几何。",
+      "lever": "eRAC（arXiv:2106.10768）用有效核电荷让同族金属的距离反映周期表；MLIP 局部描述符注入 GNN 在 tmQM 的 5 个目标上全部提升（arXiv 2026-02）；mCGCNN（arXiv:2606.28458）证明显式金属-配体交换路径子图能提升过渡金属体系；TMCgen（arXiv 2026-05）说明配位角几何可以被生成。",
+      "code_points": [
+        "新建 molmetal/features/complex_graph.py — RDKit ETKDG 嵌入 + 金属配位键补全；输出金属节点特征（Z_eff、氧化态、配位数、电荷）与金属-供体距离/角度",
+        "molmetal/baselines/dmpnn.py:54 ATOM_FEATURE_DIM / :192 _bond_features — 新增 v3 schema（不覆盖 v1/v2，保持 bit-exact 回退）",
+        "molmetal/baselines/dmpnn.py:233 mol_to_graph — 接 complex_graph 的预构建图",
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py — 走新 schema；先跑 50 步 CPU smoke（§5.7）"
       ],
-      "result": {
-        "verdict": "PASS_R2_FAIL_SIGN",
-        "single_seed": {
-          "ecfp6_doi": 0.3321,
-          "ecfp6_delta": -0.0012,
-          "maccs_rdkit_doi": 0.3706,
-          "maccs_rdkit_delta": 0.0374,
-          "maccs_rdkit_ci": [
-            0.0205,
-            0.0539
-          ],
-          "assay_doi": 0.341,
-          "assay_delta": 0.0078,
-          "assay_ci": [
-            -0.004,
-            0.0192
-          ]
-        },
-        "doi_r2_maccs_5seed": 0.3767,
-        "doi_r2_seed_mean": 0.3697,
-        "doi_r2_seed_sd": 0.0022,
-        "doi_delta": 0.0387,
-        "doi_ci": [
-          0.0241,
-          0.0535
-        ],
-        "doi_r2_fused": 0.3811,
-        "doi_fused_delta": 0.0431,
-        "doi_fused_ci": [
-          0.026,
-          0.0604
-        ],
-        "other_protocols_maccs": {
-          "ligand": 0.5593,
-          "scaffold": 0.4733,
-          "year": 0.3946
-        },
-        "other_protocols_delta": {
-          "ligand": [
-            -0.0003,
-            -0.0483,
-            0.0278
-          ],
-          "scaffold": [
-            0.0204,
-            0.0077,
-            0.0337
-          ],
-          "year": [
-            0.0166,
-            -0.005,
-            0.0385
-          ]
-        },
-        "shuffle_control_doi": 0.3275,
-        "shuffle_control_sd": 0.0022,
-        "sign_doi": {
-          "maccs": 0.5826,
-          "fused": 0.5505
-        },
-        "n_features": {
-          "baseline": 2074,
-          "maccs_rdkit": 2261,
-          "ecfp6": 4122,
-          "assay": 2076
-        },
-        "artifact": "metrics/by_metric/msrs_feature_expansion.json",
-        "artifact_5seed": "metrics/by_metric/msrs_feature_expansion_5seed.json",
-        "artifact_fusion": "metrics/by_metric/msrs_feature_fusion.json",
-        "doc": "TODO/completed/str4_feature_expansion.md",
-        "note": "R² 过线（0.3767 ≥ 0.36，CI 下界 +0.0241）且置换控制 0.3275 低于原树 0.3332，证明增益来自描述符内容而非 187 列宽度；但 Δ 符号仍是 0.5826（融合后 0.5505）< 0.65 —— R² 与排序分离。ECFP6 KILL（0.3321）；assay 只 +0.0078 且 CI 含 0；语料无 method 列。",
-        "artifact_shuffle": "metrics/by_metric/msrs_feature_expansion_shuffle.json"
-      },
-      "acceptance_result": "PASS on R²（0.3767 ≥ 0.36，配对 Δ +0.0387 [+0.0241,+0.0535]）；FAIL on Δ 符号（0.5826 < 0.65，融合后 0.5505）。"
+      "steps": [
+        "先做 200 个配合物的几何可行性探针（ETKDG 成功率、配位数分布），失败就退回「2D 图 + 显式金属节点 + 配位键」版本。",
+        "3D 可行 → 训 DOI 留出 5 seed；不可行 → 只做 2D 显式金属节点。",
+        "报告与 2D 基线的配对 ΔR²。"
+      ],
+      "gate": "DOI 留出 R² ≥0.45（单模型），或相对 2D 基线 ≥+0.03 且配对 CI 下界 >0。",
+      "kill": "<0.40 → 2D 表示不是瓶颈，停止几何投入。",
+      "deliverable": "metrics/by_metric/msrs_complex3d.json",
+      "artifacts_needed": ["msrs_172d_full.json", "msrs_dmpnn_surface.json"]
     },
     {
-      "id": "STR-5",
-      "title": "Δ 直接目标（一次性，预算匹配）",
-      "layer": "目标",
+      "id": "UP-4",
+      "title": "eRAC 金属描述符 + 部分池化：让 5 个金属之间可以借力",
       "priority": "P1",
-      "status": "DONE",
-      "gpu": "cuda:0",
-      "wall": "4 小时",
-      "why": "pairwise/rerank 已失败（B4）。唯一没试的是直接对 Δ 回归：在共享配体的配对上建 pair 特征，预测 Δ 本身，而不是对绝对强度建模后相减。相减会把两份残差相加，直接回归不经过这一步。",
-      "method": "配对来自 427 个队列；pair 特征 = 金属对 one-hot + 两金属的 state/coord 差 + 配体上下文；目标 = 观测 Δ。训练/评估按 DOI 分组。预算匹配：optimizer steps 与主模型相同（防止用更多步数换增益）。",
-      "deliverable": "metrics/by_metric/msrs_delta_direct.json",
-      "gate": "DOI Δ 符号 ≥0.65 且 DOI 聚类 CI 下界 >0.55。",
-      "kill": "Δ 符号 <0.62 或 MAE(Δ) 未改善（<0.50）。只做一次，不调参重试。",
-      "expected_gain_projected": "PROJECTED 不确定；R²(Δ)=0.0039 说明排序信息很少，成功概率低",
-      "depends_on": [
-        "STR-1",
-        "STR-3"
+      "wave": 2,
+      "wall": "1 天 CPU",
+      "status": "PENDING",
+      "why": "EXT-2 用 16 列静态描述符直接预测金属水平，结果 KILL（置换 p=0.167，且在 cisplatin_ratio 上反号 −0.410）。但那是「硬预测水平」，不是「在金属之间做部分池化」。metal_out 的绝对 R² 仍是 −0.0734，4/5 金属为负；5 金属中心化后秩 ≤4。",
+      "lever": "eRAC 的核心不是多几列，是把 nuclear charge 换成 effective nuclear charge，使同族金属（Ru/Os 都是 group 8）不被过度判为相异；Harper 等的迁移做法是「一个大样本金属的模型 + 新金属的少量点」而不是「用描述符硬算」。",
+      "code_points": [
+        "molmetal/scripts/msrs_metal_descriptor_level.py:82 定义列 — 加 Z_eff（Slater 规则）、group、period、离子半径、HSAB 硬度；保留原 16 列做消融",
+        "molmetal/scripts/msrs_metal_embedding.py — 复用秩诊断，确认新描述符没有把秩从 4 降到 3",
+        "molmetal/scripts/train_metal_lomo_wasserstein.py — 加 partial-pooling 先验（金属水平向描述符预测值收缩，收缩系数由内层 CV 选）"
       ],
-      "method_note": "执行前核实：STR-5 描述的『反对称 pair 特征 + 直接回归 Δ』已经由 FIX-M4 的 pair_full 臂实现（msrs_pairwise_reranker.py，ridge，DOI 留出已测）。因此 STR-5 不新训模型，而是把该臂的 DOI 留出逐对预测重新按本计划的 gate 统计（sign@|Δ|≥0.2091、MAE(Δ)、DOI 聚类 CI）；只加 --oof-out 落盘（路径选择，不改模型）。预算匹配改为容量匹配：线性模型 + 内层 GroupKFold 选 alpha，无法比主模型花更多容量。",
-      "result": {
-        "verdict": "KILL",
-        "sign_accuracy": 0.5183,
-        "sign_ci": [
-          0.3902,
-          0.6539
-        ],
-        "mae_delta": 0.5559,
-        "mae_ci": [
-          0.4267,
-          0.6829
-        ],
-        "bias_delta": -0.173,
-        "calibration_slope": 0.1658,
-        "calibration_r2": 0.0155,
-        "ungated_sign": 0.4988,
-        "ungated_mae": 0.4515,
-        "n_pairs": 218,
-        "n_pairs_total": 427,
-        "n_dois_gated": 53,
-        "level_baseline": {
-          "sign_accuracy": 0.5826,
-          "sign_ci": [
-            0.467,
-            0.6805
-          ],
-          "mae_delta": 0.5115,
-          "mae_ci": [
-            0.4575,
-            0.5697
-          ],
-          "slope": 0.3919
-        },
-        "artifact": "metrics/by_metric/msrs_delta_direct.json",
-        "pairs_artifact": "results/msrs_pairwise_reranker/pair_oof_doi.npz",
-        "doc": "TODO/completed/str5_delta_direct.md",
-        "note": "直接回归 Δ 在 DOI 留出下只有 0.5183（无门槛 0.4988 ≈ 随机），MAE 0.5559 差于恒零 0.5299；两条 kill 线同时触发。区间与水平模型重叠，故不主张『显著更差』，只主张未过绝对门槛。FIX-M4 regret 完全复现，证明只加落盘未改模型。"
-      },
-      "acceptance_result": "KILL — 符号 0.5183 < 0.62，MAE 0.5559 ≥ 0.50；无门槛符号 0.4988 ≈ 随机。"
+      "steps": [
+        "先只换描述符、不动模型，看 metal_out R² 是否从 −0.073 变正。",
+        "再加部分池化（收缩），比较「完全池化 / 不池化 / 部分池化」三档。",
+        "报告每金属 R² 与收缩系数。"
+      ],
+      "gate": "metal_out 绝对 R² ≥0 且 ≥3/5 金属 ≥0；LOMO 可解析子集 AUC ≥0.63。",
+      "kill": "仍 4/5 金属为负 → 水平项确认不能由金属静态性质给出；这是 EXT-2 的强化版负结果（n 更大、含池化）。",
+      "deliverable": "metrics/by_metric/msrs_erac_metal.json",
+      "artifacts_needed": ["msrs_metal_descriptor_level.json", "msrs_lomo_surface.json"]
     },
     {
-      "id": "STR-6",
-      "title": "SA 引导解码",
-      "layer": "生成",
+      "id": "UP-5",
+      "title": "预训练：tmQM 5k + Pt 17.7k，先学金属化学再学细胞毒",
+      "priority": "P1",
+      "wave": 2,
+      "wall": "2 天 GPU（cuda:0）",
+      "status": "PENDING",
+      "why": "学习曲线在 100% 数据上仍在爬（plateau_fraction=1.0，R² 0.3081 @1.0），说明样本量是约束；但 B1 已封死新数据。可用的无标签/异任务数据：tmQM 5,000 个 d-block 配合物（含几何，当前 TMQM init 在 CFM 配置里是 OFF）、PlatinAI 17,735 行 Pt（不同语料，不能当验证，但可以做表示预训练）。",
+      "lever": "ChemCLIP（arXiv:2603.28575）用 44,854 个有机 + 5,164 个金属配合物在 60 个细胞系上做对比学习，Morgan 编码对齐比 0.899，金属侧下游 AUC 0.859 —— 说明跨域（有机/无机）对比预训练在抗癌活性上是可行的；BOS-TMC（159k 配合物）与 OMol25 提供更大语料；自监督预训练把新化学的微调数据需求降 75%（arXiv 2026-01）。",
+      "code_points": [
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py — 已有 --init-from 路径，接预训练 checkpoint",
+        "molmetal/data/tmqm_dblock_subset.csv — 5,000 行含几何，作为预训练语料",
+        ".data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl — 17,735 行 Pt，仅用于预训练，不进任何验证",
+        "新建 molmetal/scripts/msrs_pretrain_contrastive.py — 掩码原子 + 活性对齐（同一化合物跨细胞系为正样本）"
+      ],
+      "steps": [
+        "先做 Pt-only 预训练（17.7k，同域但异金属），测 DOI R² 是否 +0.03。",
+        "再加 tmQM 几何预训练（5k），测增量。",
+        "报告「scratch / Pt-pretrain / Pt+tmQM」三档。"
+      ],
+      "gate": "DOI 留出 R² ≥ scratch + 0.03 且配对 CI 下界 >0；metal_out 不退化（≥ −0.02）。",
+      "kill": "+<0.01 → 数据规模不是瓶颈（与学习曲线的外推矛盾），记录并回到 UP-3。",
+      "deliverable": "metrics/by_metric/msrs_pretrain_transfer.json",
+      "artifacts_needed": ["msrs_learning_curve.json", "tmqm_combined_r2.json"]
+    },
+    {
+      "id": "UP-6",
+      "title": "条件覆盖：宽度由精度决定，但覆盖可以按 strata 修",
+      "priority": "P1",
+      "wave": 1,
+      "wall": "3 小时 CPU",
+      "status": "PENDING",
+      "why": "conformal 中位宽 2.0052 log10（≈100 倍 IC50 区间），多金属子群覆盖 0.8096 < 0.90。宽度是残差 SD 的函数（R²=0.38 ⇒ 宽 ≈2.0），所以校准改不了宽度；但条件覆盖可以改，而现在的 metal-Mondrian 完全无效（0.9002 vs 0.9004），difficulty-normalized 反而掉到 0.8789。",
+      "lever": "label-shift conformal（arXiv:2608.17678）与 KMM-CP（arXiv:2603.26415，coverage gap −50%）针对的正是「标签分布漂移下的覆盖」；钢疲劳那篇（2026-08）给出同类现象：边际 0.918、最高强度四分位 0.758，Mondrian + normalized 修正。我们的 DOI 留出就是协变量/标签双漂移。",
+      "code_points": [
+        "molmetal/scripts/msrs_calibration.py:191 run_protocol — 加 shift 变体（重要性权重 = 测试/校准的金属×细胞系分布比）",
+        "molmetal/scripts/msrs_calibration.py:160 difficulty_design / :170 fit_difficulty — 现成的 normalized 分数，复用",
+        "molmetal/scripts/msrs_calibration.py:201-259 — 三个变体的分位数计算处，shift 变体在这里插入权重"
+      ],
+      "steps": [
+        "报告按 metal × cohort-size 的 12 个 strata 覆盖，不只报全局。",
+        "shift 变体与 global / metal / difficulty 四路对比，同一折。",
+        "同时报宽度，确认没有用宽度换覆盖。"
+      ],
+      "gate": "最差 strata 覆盖 ≥0.87，且中位宽 ≤1.75（或宽度增幅 <5% 时覆盖 ≥0.88）。",
+      "kill": "覆盖改善但宽度不变 → 写「宽度是精度下界，不是校准问题」，并把 C5 的表述从「可校准」改成「精度受限」。",
+      "deliverable": "metrics/by_metric/msrs_calibration_shift.json",
+      "artifacts_needed": ["msrs_calibration.json"]
+    },
+    {
+      "id": "UP-7",
+      "title": "多任务辅助终点：phototoxicity 与 cisplatin_ratio 当正则",
       "priority": "P2",
-      "status": "DONE",
-      "gpu": "cuda:0",
-      "wall": "3 小时",
-      "why": "生成物 SA 6.4423 vs 目标 4.5；bond head 正常（bond F1 0.996、connectivity 0.970），瓶颈是配体 realism，不是成键。--sa-penalty 已接线但没在 3 seed × 200 样本上验证。",
-      "method": "3 seed × 200 样本，开/关 SA penalty 对照；报 SA、QED、novelty 双口径、IntDiv1、金属合规；对接仍 BLOCKED，不假装能算。",
-      "deliverable": "metrics/by_metric/cfm_sa_guided.json",
-      "gate": "SA ≤4.5 且平均 novelty ≥0.90。",
-      "kill": "SA >5.5（说明 penalty 无效，生成线按现状定稿）。",
-      "expected_gain_projected": "PROJECTED SA 6.44 → 5.0–5.8（不确定能否到 4.5）",
-      "depends_on": [],
-      "result": {
-        "verdict": "KILL",
-        "guided_decoding": "UNAVAILABLE",
-        "blockers": [
-          "--sa-penalty inert (sascorer has no gradient; proxy wrapped in torch.tensor(float(...)))",
-          "no differentiable SA surrogate (deleted 2026-10-04 as fake)",
-          "one checkpoint per run; 3-seed sweep needs two more training runs",
-          "checkpoint cannot be rebuilt from its own args (time_embed_proj / pocket_inject_per_layer absent from args)"
-        ],
-        "sa_le_4p5": {
-          "panel_of_record": [
-            0,
-            66
-          ],
-          "pcgrad_on": [
-            9,
-            1155
-          ],
-          "pcgrad_off": [
-            7,
-            1175
-          ]
-        },
-        "sa_mean": {
-          "panel_of_record": 6.4423,
-          "pcgrad_on": 7.5478,
-          "pcgrad_off": 7.4741
-        },
-        "combined": {
-          "n": 2396,
-          "n_gate": 16,
-          "rate": 0.0067,
-          "wilson_ci95": [
-            0.0041,
-            0.0108
-          ]
-        },
-        "gate_subset_novelty": {
-          "n": 16,
-          "mean": 0.8757,
-          "median": 0.8889,
-          "underpowered": true
-        },
-        "artifact": "metrics/by_metric/cfm_sa_guided.json",
-        "doc": "TODO/completed/str6_sa_guided.md",
-        "note": "计划中的 3 seed × 200 A/B 三处阻断，无法执行；600 样本补测也因 checkpoint 无法从其 args 重建而失败。改用产量审计：SA≤4.5 只有 16/2,396 = 0.67% [0.41%,1.08%]，且这 16 个的 novelty 0.8757 < 0.90。两条门槛同时不过。未花 GPU。"
-      },
-      "acceptance_result": "KILL — SA≤4.5 产量 0.67%（<5%），门内子集 novelty 0.8757（<0.90）；引导机制不存在。"
-    },
-    {
-      "id": "STR-7",
-      "title": "结果打包与主张台账",
-      "layer": "打包",
-      "priority": "P3",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 小时",
-      "why": "每轮强化后表必须重生成；且需要一张『主张 → 支持/不支持/未测』的台账，防止正文比 artifact 走得远。",
-      "method": "重跑 paper_metric_tables.py；新增 claim_ledger.md（C1–C7 × 证据 × 判定）；catalog 增补新负结果。",
-      "deliverable": "metrics/paper_tables/ + docs/CLAIM_LEDGER.md",
-      "gate": "0 MISSING；每条主张有 artifact 或明确写 UNMEASURED。",
-      "kill": "无",
-      "depends_on": [
-        "STR-1",
-        "STR-2",
-        "STR-3",
-        "STR-4",
-        "STR-5",
-        "STR-6"
+      "wave": 3,
+      "wall": "1 天 GPU",
+      "status": "PENDING",
+      "why": "phototoxicity 2,158 行、cisplatin_ratio 14,309 行，目前各自单独建模；三者共享配体-金属结构，辅助任务可以当正则，尤其在 Ru 之外的小金属上。",
+      "lever": "辅助任务正则化在多任务小数据上是标准做法；Pin-Tuning（arXiv:2411.01158）用 Bayesian 权重整合防止少标签微调漂移。",
+      "code_points": [
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py — 已有任务头结构，加 phototoxicity 与 cisplatin_ratio 两个回归头",
+        "molmetal/scripts/msrs_endpoints.py — 端点定义已存在（potency / phototoxicity / cisplatin_ratio）"
       ],
-      "result": {
-        "verdict": "PASS",
-        "tables": 12,
-        "missing_cells": 0,
-        "new_tables": [
-          "T11_generalization_strong",
-          "T12_ranking"
-        ],
-        "ledger": "docs/CLAIM_LEDGER.md",
-        "claims": {
-          "supported": [
-            "C1 representation",
-            "C2 cross-paper R2",
-            "C4 fusion (R2 only)",
-            "C5 calibration (with subgroup caveat)"
-          ],
-          "not_supported": [
-            "C3 ranking",
-            "C6 cross-metal transfer (LOMO 0.5575 < 0.7)",
-            "C7 generation"
-          ],
-          "unmeasured": 3,
-          "blocked": 3
-        },
-        "artifact": "metrics/paper_tables/manifest.json",
-        "doc": "docs/CLAIM_LEDGER.md",
-        "note": "12 张表 0 MISSING；新增 T11（5-seed 三臂泛化矩阵）与 T12（三条排序路线同一门槛）。台账 11 条 artifact 指针由 test_claim_ledger.py 逐条解析验证。C6 更正：LOMO 低于 0.7 门槛，跨金属迁移不可写；可写的是 within-metal。"
-      },
-      "acceptance_result": "PASS — 12 张表 0 MISSING；7 条主张全部有 artifact 指针或明确 UNMEASURED/BLOCKED。"
-    },
-    {
-      "id": "FIX-C6",
-      "title": "LOMO 可解析性 + seed 集成（修 C6）",
-      "layer": "模型",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "cuda:0",
-      "wall": "1 小时（5 折并发）",
-      "why": "C6 的 0.5575 是五金属等权均值，其中 Rh(51)/Os(36)/Re(74) 低于项目自己的 MIN_UNIQUE_FOR_GATE=200，按规则不得入闸。可解析的 Ru/Ir 均为 0.5972/0.5975，距 0.6 只差 0.003。另外已发布数字是『先算 AUC 再平均』，不是部署时的『先平均分数再算 AUC』。",
-      "method": "1) lomo_resolvability_audit.py：按既有规则给出 all_metals 与 resolvable_only 两个聚合 + 每折 Hanley SE（已完成）；2) 给 trainer 加 --dump-test-scores-dir（只选择落盘路径），重跑 5 折 × 5 seed × 30 epoch，落逐行分数；3) lomo_seed_ensemble.py 同时报 mean_of_seed_aucs 与 auc_of_mean_score，并与已发布值交叉校验。",
-      "deliverable": "metrics/by_metric/lomo_resolvability_audit.json + lomo_seed_ensemble.json",
-      "gate": "resolvable_only 的 auc_of_mean_score ≥ 0.60，且逐 seed AUC 复现已发布 0.5575（|diff| < 0.01）。",
-      "kill": "resolvable_only 的 auc_of_mean_score < 0.5974（即不如已发布的 seed-mean），或复现失败（说明不是同一队列）。",
-      "expected_gain_projected": "PROJECTED +0.003–0.01（Ru 0.5972 / Ir 0.5975 → 0.60–0.61）",
-      "depends_on": [
-        "STR-7"
+      "steps": [
+        "单任务 vs 双辅助任务，同一折、同一 seed 集。",
+        "报告每个终点的 R²，确认辅助任务没有拖累主任务。"
       ],
-      "result": {
-        "verdict": "KILL",
-        "resolvable_only": 0.5974,
-        "all_metals": 0.5576,
-        "ensemble_resolvable": 0.5957,
-        "ensemble_folds": {
-          "Ru": 0.5901,
-          "Ir": 0.6012,
-          "Os": 0.5636,
-          "Rh": 0.3814,
-          "Re": 0.5722
-        },
-        "rh_ci": [
-          0.2217,
-          0.5407
-        ],
-        "reproduction_diff": 0.0158,
-        "artifacts": [
-          "metrics/by_metric/lomo_resolvability_audit.json",
-          "metrics/by_metric/lomo_seed_ensemble.json"
-        ],
-        "doc": "TODO/completed/fix_c6_lomo_resolvability.md",
-        "note": "按 MIN_UNIQUE_FOR_GATE=200 只有 Ru/Ir 可入闸，LOMO 0.5974（差 0.0026 而非 0.0424）；seed 集成 0.5957，仍 <0.6。Rh n=51、CI 含 0.5，是测量地板。重跑与已发布面板差 0.0158（CUDA 非确定性），绝对值不可比。"
-      },
-      "acceptance_result": "KILL — resolvable 集成 0.5957 < 0.6；复现 diff 0.0158 > 0.01。"
+      "gate": "potency DOI R² ≥ 单任务 + 0.02，且 phototoxicity / cisplatin_ratio 自身 R² 不下降 >0.02。",
+      "kill": "+<0.01 → 辅助任务无正则价值，记录。",
+      "deliverable": "metrics/by_metric/msrs_multitask_aux.json",
+      "artifacts_needed": ["msrs_endpoints.json"]
     },
     {
-      "id": "FIX-C3",
-      "title": "Δ 符号指标修正 + lambdarank 臂（修 C3）",
-      "layer": "指标/模型",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "30 分钟",
-      "why": "0.5826 一直被对照 0.5 读，但门内 218 对的多数类率是 0.6009（只有 Os-Ru / Ir-Rh 两个金属对）。若属实，0.5826 低于恒定预测，整个 C3 的叙述要改。",
-      "method": "msrs_delta_metric_audit.py 报原始符号、多数类率、金属对先验与平衡符号（TPR+TNR)/2 + DOI 聚类 CI；msrs_rank_within_cohort.py 加 lambdarank 臂（同容量 500/31/0.05），并用合成数据自检接线。",
-      "deliverable": "metrics/by_metric/msrs_delta_metric_audit.json + msrs_rank_within_cohort.json",
-      "gate": "若平衡符号 ≥0.65 且 CI 下界 >0.55，则 C3 可写；否则记录指标缺陷。",
-      "kill": "平衡符号 <0.55 或 lambdarank 退化（|pred| < 0.1）。",
-      "expected_gain_projected": "PROJECTED 低；主要价值是判定指标是否可用",
-      "depends_on": [
-        "STR-7"
-      ],
-      "result": {
-        "verdict": "KILL",
-        "majority_class_rate": 0.6009,
-        "metal_pair_prior": 0.6055,
-        "level": {
-          "raw": 0.5826,
-          "balanced": 0.5272,
-          "ci": [
-            0.4359,
-            0.6198
-          ],
-          "tpr": 0.8015,
-          "tnr": 0.2529
-        },
-        "direct": {
-          "raw": 0.5183,
-          "balanced": 0.5162,
-          "ci": [
-            0.3939,
-            0.643
-          ],
-          "tpr": 0.5267,
-          "tnr": 0.5057
-        },
-        "lambdarank": {
-          "raw": 0.0734,
-          "ci": [
-            0.0126,
-            0.1454
-          ],
-          "ungated": 0.1007,
-          "mean_abs_pred": 0.0455
-        },
-        "pair_composition": {
-          "Os-Ru": 153,
-          "Ir-Rh": 64,
-          "Rh-Ru": 1
-        },
-        "artifacts": [
-          "metrics/by_metric/msrs_delta_metric_audit.json",
-          "metrics/by_metric/msrs_rank_within_cohort.json"
-        ],
-        "doc": "TODO/completed/fix_c3_delta_metric_floor.md",
-        "note": "0.5826 低于恒定预测 0.018；平衡符号 0.5272（CI 含 0.5），模型学的是基准率（TPR 0.80 / TNR 0.25）。lambdarank 退化（0.0734，|Δ̂| 0.045）。合成自检 1.000 排除接线错误。"
-      },
-      "acceptance_result": "KILL — 平衡符号 0.5272 / 0.5162，CI 均含 0.5；无路线超过恒定预测 0.6009。"
-    },
-    {
-      "id": "FIX-C7",
-      "title": "生成线溯源：全语料池是键头重建，不是生成",
-      "layer": "指标/模型",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "10 分钟",
-      "why": "C7 的 SA 6.4423 / 0.67% 被读成架构不行。v1.0 归因训练规模，但全语料池的 CSV 表头含 metal_z —— 由 wf_cfm_decode_dump_smiles.py 给定真实 tmQM 几何、只跑键头重建，从不调用采样器。",
-      "method": "c7_scale_matched_pools.py v1.1：按 CSV 表头把池分为 reconstruction / generation，只在同一管线内按 n_train 分层聚合；并从 events.jsonl 取 gen_validity 作为唯一可跨规模比较的同管线指标。",
-      "deliverable": "metrics/by_metric/c7_scale_matched_pools.json",
-      "gate": "若存在全语料 generation 池且 SA≤4.5 显著高于小规模层，C7 可改写为 SUPPORTED。",
-      "kill": "若无全语料 generation 池，C7 保持 NOT SUPPORTED，归因为 artifact 不存在。",
-      "depends_on": [
-        "STR-6"
-      ],
-      "result": {
-        "verdict": "NOT SUPPORTED (v1.2: full-corpus generation pool now EXISTS; SA<=4.5 0.28% < small 0.69%)",
-        "pipeline_split": {
-          "generation": {
-            "n": 2342,
-            "tiers": [
-              "mid",
-              "small"
-            ],
-            "tiers_missing": [
-              "full_corpus"
-            ],
-            "sa_mean": "5.650-7.548",
-            "rate_sa_le_gate": 0.0068,
-            "ci": [
-              0.0042,
-              0.0111
-            ],
-            "n_sa_le_gate": 16
-          },
-          "reconstruction": {
-            "n": 149,
-            "tiers": [
-              "full_corpus",
-              "small"
-            ],
-            "tiers_missing": [
-              "mid"
-            ],
-            "sa_mean": "5.032-6.442",
-            "note": "bond-head reconstruction of real tmQM geometry; SA inherited"
-          }
-        },
-        "full_corpus_generation_pool_exists": true,
-        "gen_validity": {
-          "full_corpus": [
-            0.0859,
-            0.0742
-          ],
-          "small_256": [
-            0.0833,
-            0.2917
-          ],
-          "mid_2048": 0.013
-        },
-        "withdrawn_v1_0": [
-          "full_corpus SA<=4.5 33.7%",
-          "novelty reversal 0.8677->0.6977",
-          "SA half reachable"
-        ],
-        "artifacts": [
-          "metrics/by_metric/c7_scale_matched_pools.json"
-        ],
-        "doc": "TODO/completed/fix_c7_generator_scale.md",
-        "note": "v1.1（2026-10-20）：盘上无全语料自由生成池；真生成最大只到 n_train=256。gen_validity 全语料 0.074-0.086 vs 256 样本 0.083-0.292，未随规模改善。cfm_r9_fix_v2 仍无 checkpoint。 ⚠️ 2026-10-21 更新：全语料自由生成池已存在（18/18 epoch，12,668 可打分），SA≤4.5 = 0.28% [0.21,0.39]，仍低于 256 样本的 0.69%。判定不变，理由从「artifact 不存在」改为「测到了且更低」。",
-        "v1_2_resolution": {
-          "date": "2026-10-21",
-          "run": "molmetal/reports/cfm_c7_fullgen_2026_10_20 (18/18 epochs, exit=0, wall 11,232 s)",
-          "gate_as_written": "若存在全语料 generation 池且 SA≤4.5 显著高于小规模层，C7 可改写为 SUPPORTED。",
-          "clause_1_pool_exists": "SATISFIED — 12,668 scored, tiers_missing=[]",
-          "clause_2_significantly_higher": "FAILED — 0.28% [0.21,0.39] vs 0.69% [0.42,1.11]; CIs do not overlap, direction is lower",
-          "conclusion": "The gate was written before the run and it resolves to NOT SUPPORTED on its second clause. The kill branch ('no full-corpus pool ⇒ artifact missing') no longer applies; the verdict now rests on a measured rate, not on an absent artifact.",
-          "artifacts": [
-            "metrics/by_metric/c7_scale_matched_pools.json",
-            "metrics/by_metric/c7_fullgen_pool_quality.json",
-            "docs/CLAIM_LEDGER.md C7",
-            "docs/HONEST_NEGATIVE_CATALOG.md §6.150b/§6.150c"
-          ]
-        }
-      },
-      "acceptance_result": "v1.1 重新归因（全语料池为键头重建）；v1.2（2026-10-21）全语料真生成池跑完 18/18 epoch，预登记闸的第一条满足、第二条失败（0.28% < 0.69%，CI 不重叠），C7 维持 NOT SUPPORTED。"
-    },
-    {
-      "id": "FIX-C8",
-      "title": "一致性正则项权重 0.05 但每步静默返回 0（设备不匹配）",
-      "layer": "模型",
+      "id": "UP-8",
+      "title": "k-shot 改成 meta-learning：不再校准，而是学「怎么适应新金属」",
       "priority": "P2",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 小时",
-      "why": "--consistency-term-weight 默认 0.05 且 enabled=True，但 consistency_loss_fn 内部 sample_edm_sigma 默认 device=cpu，与 cuda 上的 noise 相乘抛 RuntimeError，被 ConsistencyTerm.compute 的 except 捕获后返回 torch.zeros(())。所以自该权重上线以来，这一项在每一步都是精确 0。",
-      "method": "三行复现：consistency_loss_fn(lambda z: z*0.5, torch.randn(4,3,device='cuda:0'), weight=0.05) -> RuntimeError: Expected all tensors to be on the same device。修复：sample_edm_sigma(b, ..., device=x_t.device)。",
-      "deliverable": "molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py + 回归测试",
-      "gate": "修复后同 seed 单 epoch CPU/GPU smoke：该项非零且 grad 非零。",
-      "kill": "若修复后该项数值爆炸或训练发散，则把它显式设为 0 并声明为 DECLARED_INERT_PATHS。",
-      "depends_on": [],
-      "note": "2026-10-20 C7 全语料 run 的 smoke 日志里发现。刻意未在 C7 run 进行中修复：修了会改变目标函数，使该 run 与 cfm_fullcorpus_b64 不可比，且这一项在 b64 里同样是死的。",
-      "result": {
-        "verdict": "FIXED (term restored; quality effect unmeasured)",
-        "root_cause": "sample_edm_sigma defaulted to device=cpu; sigma_b * noise raised on CUDA; ConsistencyTerm.compute caught it and returned torch.zeros(())",
-        "fix": "sample_edm_sigma(..., device=x_t.device)",
-        "verified": {
-          "trainer_path_value": 0.0010665,
-          "device": "cuda:0",
-          "requires_grad": true,
-          "grad_nonzero": true
-        },
-        "tests": "molmetal/tests/test_wf380a1_consistency.py 7 passed (4 new)",
-        "artifacts": [
-          "docs/HONEST_NEGATIVE_CATALOG.md §6.145"
-        ],
-        "note": "C7 在跑的 run 用的是修前代码（启动早于编辑），因此目标函数与 b64 一致。"
-      },
-      "acceptance_result": "修复后该项非零且梯度非零；质量影响未测，不得声称。"
+      "wave": 3,
+      "wall": "1 天 GPU",
+      "status": "PENDING",
+      "why": "EXT-3 测的是 post-hoc 校准（offset / linear / isotonic），k=50 时 0/5 金属 R²≥0。原因是偏差只占 MSE 5-10%，用 k 个点估它的噪声大于偏差本身。这不是「少样本不可行」，是「事后校准不是少样本方法」。",
+      "lever": "少样本分子性质预测综述（arXiv:2510.08900）把问题分成跨性质与跨分子两类；ProtoNet/MAML 在 5/10-shot 上是主流；但 arXiv:2604.06558 在 10 个蛋白家族上发现 few-shot 适配一致地不如 zero-shot，Pin-Tuning 也指出 naive fine-tune 在少标签下失败——所以这个包有可能是负结果，必须预注册。",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_meta_kshot.py — 金属当 task，ProtoNet + MAML 两臂；query set 按 DOI 分组避免泄漏",
+        "molmetal/scripts/msrs_kshot_calibration.py:99 CALIBRATIONS — 保留为对照组，不改",
+        "molmetal/scripts/msrs_kshot_calibration.py:145 sample_calibration — 按 DOI 整篇抽样，meta 版复用"
+      ],
+      "steps": [
+        "k ∈ {5,10,20,50}，每档 20 次重复，按 DOI 整篇抽。",
+        "三臂：zero-shot / 事后校准（EXT-3 现状）/ meta-learning。",
+        "报告每金属 R² 与「比 zero-shot 更差的重复比例」。"
+      ],
+      "gate": "k=50 时 R²≥0 的金属 ≥3/5。",
+      "kill": "0-1/5 → C10 从「事后校准无效」升级为「少样本迁移无效」，由两个独立设计支撑（校准 + meta-learning），是更强的负结果。",
+      "deliverable": "metrics/by_metric/msrs_meta_kshot.json",
+      "artifacts_needed": ["msrs_kshot_calibration.json"]
     },
     {
-      "id": "FIX-C9",
-      "title": "每个 epoch 86% 的时间在给一个不可调优的 kernel 做 autotune；顺带撤回我自己三条错误归因",
-      "layer": "性能",
+      "id": "UP-9",
+      "title": "集成与冻结：把赢家合起来，出唯一可引数字",
       "priority": "P2",
-      "status": "DONE",
-      "gpu": "~4 分钟（两次 512 云标定 + 一次 128 云分离点）",
-      "wall": "2 小时",
-      "why": "用户报 'cpu跑满了' 并要求 '6个loss得开啊，该上gpu的地方进gpu就行'。cProfile 显示不是 CPU 也不是六个正则项：triton_kernels/equivariant_ops.py 的 _aggregate_vectors_kernel 用 key=['n_edges','feat_dim'] 做 autotune，但该 kernel grid=(n_edges,)、每 program 处理一条边、body 里没有任何按边循环，n_edges 只出现在 eid >= n_edges 的守卫里 —— 每个 program 的指令流与 n_edges 无关，最优 (num_warps,num_stages) 不可能依赖它。而 n_edges 每个 batch 都变、eval 又是逐分子调用，于是几乎每次调用都重新 benchmark 9 个配置。",
-      "method": "1) cProfile 一个 128 云/2 步 run：576 次 forward 触发 981 次 autotune _bench，109.4 s 在 triton.testing.do_bench、40.1 s 在 torch._C._cuda_synchronize，占 train_one_epoch 126.9 s 的 86%。2) 改 key 为 ['feat_dim']（FEAT_BLOCK 是 wrapper 里由 feat_dim 派生的 constexpr，feat_dim 已是完备 key）。3) 同配置 512 云单 epoch 前后对比。",
-      "deliverable": "triton_kernels/equivariant_ops.py + molmetal/tests/test_triton_autotune_keys.py（2 测试）+ metrics/by_metric/cfm_epoch_wall.json + docs/HONEST_NEGATIVE_CATALOG.md §6.149",
-      "gate": "同配置 epoch_time_sec 显著下降，且逐项 loss 相对变化 ≤1e-3。",
-      "kill": "若改 key 后 loss 出现 >1% 的系统性偏移，说明不同 kernel 配置改变了数值路径，需回退并改用固定 config。",
-      "depends_on": [],
-      "note": "非 bit-exact：kernel 配置变了会改变 atomic_add 的求和顺序。实测逐项 ≤1.5e-4 相对，train_loss 5.8e-3 相对（六个正则项逐步采样）。",
-      "result": {
-        "verdict": "FIXED (7.55x epoch speedup)",
-        "measured": {
-          "epoch_time_sec_pre": 304.30269,
-          "epoch_time_sec_post": 40.303891,
-          "ratio": 7.5501,
-          "n_train": 512,
-          "n_val": 192,
-          "batch_size": 64,
-          "steps_per_epoch": 8,
-          "source": [
-            "molmetal/reports/c7_calib_eval0_2026_10_20/events.jsonl",
-            "molmetal/reports/c7_calib_postfix_2026_10_20/events.jsonl"
-          ]
-        },
-        "derived_split": {
-          "per_train_step_sec": 2.608251,
-          "per_epoch_eval_sec": 19.437882,
-          "method": "两个 MEASURED 点联立（8 步+E=40.303891，2 步+E=24.654188）"
-        },
-        "tests": "molmetal/tests/test_triton_autotune_keys.py 2 passed；test_typed_dispatch_triton + test_wf328w9_triton_edge + test_wf333t2_triton_kernels_full 24 passed",
-        "retracted": [
-          "六项全关 262.0s vs 304.4s（14%）—— configs/c7_calib_noterms_2026_10_20.yaml 的 4 个 key 不 resolve 到任何 dest，_config_binding_gate 报 4 VIOLATION，六项其实没关；配置已删除",
-          "fm_ode 占 12%（269.1s vs 304.4s）—— key 有效，但 35 s 差值落在修前 autotune 噪声内，不能作为归因",
-          "_build_bond_pair_features 是 CPU 热点 —— 该函数在 cProfile 里完全不出现，本 trainer 不走 adapter.train_step"
-        ],
-        "artifacts": [
-          "docs/HONEST_NEGATIVE_CATALOG.md §6.149",
-          "metrics/by_metric/cfm_epoch_wall.json",
-          "commits d0a1ad72 + 73538adf"
-        ]
-      },
-      "acceptance_result": "epoch 从 304.303 s 降到 40.304 s（7.55x），六项 loss 全开；三条错误归因已入册撤回。仍慢的部分：trainer 的 forward 契约是单分子进、单分子出，batch 64 = 64 次模型调用，批量化是契约改动，本轮未做。"
-    },
-    {
-      "id": "FIX-C10",
-      "title": "训练集全部 26,715 个分子常驻显存，全语料 run 首步 OOM",
-      "layer": "性能",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "~10 分钟（≤4096 云的探针）",
-      "wall": "1.5 小时",
-      "why": "train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds] 把每个训练分子都搬到显存，每云约 20 次小分配，26715 云 = 约 53 万次分配。载荷本身只有 5,842 B/云（全语料 0.15 GiB），代价是分配器碎片，因此随云数而非云大小增长。",
-      "method": "4096 云实测：512 云峰值 71,491 MiB，4096 云 86,031 MiB（+3,584 云 = +13.7 GB）。改为训练集留 CPU、按 batch 搬运（train_one_epoch 本来就逐云调用 _to_device_cloud），并让 Wf-A73 类先验统计循环自己搬运。",
-      "deliverable": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
-      "gate": "同配置 512 云 arm 的 train_loss / grad_norm / bond_ce 逐位不变，且 4096 云峰值显著下降。",
-      "kill": "若逐位不一致说明搬运改变了数值路径，必须回退。",
-      "depends_on": [],
-      "note": "expandable_segments:True 实测无效（97,340 MiB 预留 + 4 次 OOM，对照 86,031 + 1 次），已作为负结果记录。",
-      "result": {
-        "verdict": "FIXED (bit-identical)",
-        "train_loss_before": 27.194684267044067,
-        "train_loss_after": 27.194684267044067,
-        "grad_norm": 18.774024963378906,
-        "bond_ce": 1.4187850058078766,
-        "epoch_sec_before": 47.365,
-        "epoch_sec_after": 44.7,
-        "peak_4096_before": 86031,
-        "peak_4096_after_training_phase": 55170,
-        "artifacts": [
-          "docs/HONEST_NEGATIVE_CATALOG.md §6.150",
-          "commit 432ab5b6"
-        ]
-      },
-      "acceptance_result": "逐位一致且训练段峰值 86,031 → 55,170 MiB。"
-    },
-    {
-      "id": "FIX-C11",
-      "title": "六项全开比三项多 19 GB 显存；SBOO3 的 n_rot/n_perm/alpha 没有 argparse dest",
-      "layer": "性能",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "~15 分钟",
-      "wall": "1 小时",
-      "why": "用户要求六项 loss 全开。开启 consistency/shortcut_distill/so3 后，4096 云峰值从 78,320 升到 97,286 MiB（整卡）。SBOO3Term 每步做 2*n_rot 次额外前向并保留全部图到 backward。三个旋钮此前只是 train_one_epoch 的函数默认值（0.5/4/4），§5.11 无法从 YAML 绑定。",
-      "method": "把 sboo3_alpha / sboo3_n_perm / sboo3_n_rot 提升为真正的 argparse dest（默认值不变，保持既有配置逐位兼容），调用点用同样的 getattr 兜底；YAML 设 sboo3_n_rot: 1。",
-      "deliverable": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py + configs/c7_fullgen_2026_10_20.yaml",
-      "gate": "默认值下所有既有配置逐位不变；n_rot=1 时峰值下降。",
-      "kill": "若 n_rot=1 让 loss 发散则回到 4 并改 batch。",
-      "depends_on": [
-        "FIX-C10"
+      "wave": 3,
+      "wall": "4 小时 CPU",
+      "status": "PENDING",
+      "why": "stack_foldwise 已经是当前最好（相对单树 +0.0251，msrs_hybrid.json），但基学习器同质。UP-1/3/5 若各自有增益，需要一次折内 stacking 确认可加性；不可加时以配对 CI 裁定。",
+      "lever": "折内 stacking（避免折外泄漏）；多样性基学习器（树 / D-MPNN / 指纹 kNN）。",
+      "code_points": [
+        "molmetal/scripts/msrs_hybrid.py — 加 D-MPNN 与 kNN 两个基学习器",
+        "molmetal/scripts/msrs_seed_ensemble.py:185 build — 最终聚合口径",
+        "molmetal/scripts/paper_metric_tables.py --strict — 出表后必须重跑"
       ],
-      "note": "n_rot 4→1 只买到 5 GB 而不是预期的 9 GB：峰值来自留出评估段，评估不随 n_rot 变化。",
-      "result": {
-        "verdict": "PARTIAL — 5 GB of the 19 GB recovered",
-        "peak_3term_4096": 78320,
-        "peak_6term_nrot4_4096": 97286,
-        "peak_6term_nrot1_4096": 92431,
-        "smoke_512_nrot1": {
-          "epoch_sec": 169.161,
-          "train_loss": 27.541544675827026,
-          "gen_validity": 1.0,
-          "gen_validity_n": 704
-        },
-        "artifacts": [
-          "docs/HONEST_NEGATIVE_CATALOG.md §6.150",
-          "commit d3e4d341"
-        ]
-      },
-      "acceptance_result": "六项全开可跑，但只剩约 3 GB 余量；n_rot=1 是无偏的 1 样本估计，方差更大，且与 n_rot=4 的同 seed run 数值不可比。"
-    },
-    {
-      "id": "FIX-C12",
-      "title": "全语料 run 的显存峰值随步数增长；expandable_segments 是唯一有效杠杆；顺带修掉 C7 脚本三处盲点",
-      "layer": "性能",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "~7 小时（3 次 4096 云探针 + 1 次 99 s 失败启动 + 1 次 856 s 被杀的续跑 + 1 次 11,232 s 跑完 18/18 epoch 的续跑）",
-      "wall": "7 小时",
-      "why": "全语料 18-epoch run 在 epoch 4 死于致命 OOM（此前 48 次可恢复 OOM，峰值 97,331 MiB，另有余量被另一项目 lineageflow 的 11.3 GB 占走）。§6.150 当时给出的归因是「峰值在评估段」，但该归因自相矛盾：n_rot 4→1 让峰值降了 5 GB，评估不依赖 n_rot，所以峰值必然在训练侧。",
-      "method": "4096 云、六项全开、n_rot=1、gen_eval_n=0（完全不跑生成评估）下对比三种配置；再用 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True 在修好后的代码上重测。",
-      "deliverable": "molmetal/scripts/c7_scale_matched_pools.py（checkpoint 兜底 + 结论句由数据推导 + 内容哈希去重）、molmetal/scripts/train_cfm_yuelbond_wasserstein.py（resume_mode_error）、configs/c7_fullgen_resume_2026_10_20.yaml、docs/HONEST_NEGATIVE_CATALOG.md §6.150b、docs/CLAIM_LEDGER.md C7 行",
-      "gate": "同一 n_train 下峰值显著下降且 0 次 OOM；C7 结论句与 full_corpus_generation_pool_exists 不得互相矛盾。",
-      "kill": "若 expandable_segments 在修好后的代码上仍无改善，说明增长是真实引用泄漏，需改用逐层定位。",
-      "depends_on": [
-        "FIX-C10",
-        "FIX-C11"
+      "steps": [
+        "只在 UP-1/3/5 里通过的臂上做 stacking。",
+        "报告 DOI / scaffold / year 三协议 + 配对 CI。",
+        "更新 docs/PREDICTIVE_LINE_INDEX.md 的机器校验块（测试会逐条解析）。"
       ],
-      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB，最终 nvidia-smi 峰值 97,331 MiB（这是 reserved，不是 allocated：MOLMETAL_MEM_TRACE 显示 allocated 全程 87-88 MiB，无泄漏）。⚠️ 两次错误归因已撤回：(1)「单片段率上升=连通性改善/变差」——语料把金属写成单独 component（69.1% 是 3 成分，均值 3.34，单一成分 0.07%），单片段率在这个数据集里不是质量指标；(2)「失效只在采样器、不在键头」——键头重建池平均只有 1.35/1.49 个成分（语料 3.34），过度成键从键头就开始。站得住的结论：成分均值收敛（22.17→3.45 vs 3.34）但成分构成不收敛（ep17 有 60.5% 的多成分分子第二成分是单个原子，语料 1.5%）；键密度 1.137（语料 1.069）但 3 元环 67.5% vs 0.01%。",
-      "result": {
-        "verdict": "PASS — 显存机制查清并撤回三条错误归因；全语料 18/18 epoch 跑完，C7 判定 NOT SUPPORTED 且这次有收敛池",
-        "measured": {
-          "peak_4096_b64_no_expand": 92431,
-          "peak_4096_b32_no_expand": 85695,
-          "peak_4096_b64_expand": 70324,
-          "oom_4096_b64_expand": 0,
-          "epoch_sec_4096_expand": 188.36,
-          "c7_fullgen_epochs_completed": 18,
-          "c7_fullgen_peak": 97331,
-          "c7_fullgen_recoverable_ooms": 46,
-          "c7_fullgen_candidates": 2816,
-          "c7_fullgen_sa_le_4_5": 36,
-          "c7_fullgen_rate": 0.0028,
-          "c7_fullgen_ci95": [
-            0.0021,
-            0.0039
-          ],
-          "c7_small_rate": 0.0069,
-          "source": [
-            "metrics/by_metric/c7_scale_matched_pools.json",
-            "metrics/by_metric/c7_fullgen_pool_quality.json",
-            "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
-            "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
-          ],
-          "c7_fullgen_exit_code": 0,
-          "c7_fullgen_wall_s": 11232,
-          "c7_fullgen_rows": 12669,
-          "c7_fullgen_scored": 12668,
-          "c7_fullgen_unique_smiles": 10190,
-          "c7_fullgen_last_epoch_rate": 0.0057,
-          "c7_joint_gate": "0/10190",
-          "c7_sa_subset_mean_novelty": 0.8587,
-          "single_fragment_rate_overall": 0.0851,
-          "bonds_per_heavy_atom_by_epoch": {
-            "real_corpus_train": 1.0694,
-            "epoch_0": 0.5283,
-            "epoch_8": 1.0211,
-            "epoch_17": 1.137,
-            "overall": 0.8936
-          },
-          "three_ring_share": {
-            "real_corpus_train": 0.0001,
-            "epoch_0": 0.6676,
-            "epoch_8": 0.65,
-            "epoch_17": 0.6754
-          },
-          "six_ring_share": {
-            "real_corpus_train": 0.8753,
-            "epoch_0": 0.0271,
-            "epoch_8": 0.0341,
-            "epoch_17": 0.0283
-          },
-          "bond_head_trajectory": {
-            "bond_f1": [
-              0.1731,
-              0.6046
-            ],
-            "bond_recall": [
-              0.0986,
-              0.4853
-            ],
-            "bond_pr_auc": [
-              0.5834,
-              0.7571
-            ],
-            "epochs": [
-              4,
-              17
-            ],
-            "bond_n_scored": 192
-          },
-          "component_count_by_epoch": {
-            "corpus": 3.34,
-            "epoch_0": 22.17,
-            "epoch_8": 6.28,
-            "epoch_17": 3.45
-          },
-          "second_frag_single_atom_share": {
-            "corpus": 0.0146,
-            "epoch_0": 0.8801,
-            "epoch_8": 0.6677,
-            "epoch_17": 0.6052
-          },
-          "mean_second_frag_size": {
-            "corpus": 12.088,
-            "epoch_0": 1.218,
-            "epoch_8": 1.82,
-            "epoch_17": 1.982
-          },
-          "head_recon_component_count": {
-            "cfm_fullcorpus_b64": 1.35,
-            "cfm_objective_terms": 1.488,
-            "n": 83
-          },
-          "regularizer_fallback_reasons": {
-            "wired": true,
-            "evidence": "1-epoch CPU smoke (configs/cfm_5metal_wfa80_per_class_cpu_smoke.yaml copy, 31 steps, 67.7 s, exit 0): train_epoch carries both regularizer_fallbacks={} and regularizer_fallback_reasons={}",
-            "why": "FALLBACK_COUNTS says how often a term was lost; the reasons dict says why. CUDA OOM and a cusolver error need opposite repairs."
-          }
-        },
-        "retracted": [
-          "「峰值在留出评估段」——n_rot 改动能移动峰值，评估不依赖 n_rot，自相矛盾",
-          "「expandable_segments 无效（97,340 MiB + 4 次 OOM）」——那是在 FIX-C10 之前测的；修好后同一设置 70,324 MiB / 0 OOM",
-          "「训练段峰值 86,031 → 55,170 MiB」——55,170 是运行中的一个采样点，不是峰值；修后峰值是 92,431"
-        ],
-        "blocked_on": "无。此前两次续跑分别因 resume_from 模式/路径混用（99 s）与并行 session 同卡启动 SIGTERM（856 s）失败；第三次跑到 18/18。",
-        "artifacts": [
-          "molmetal/scripts/c7_fullgen_pool_quality.py（逐 epoch 单片段/环分布/可解析率）",
-          "metrics/by_metric/c7_fullgen_pool_quality.json",
-          "docs/HONEST_NEGATIVE_CATALOG.md §6.150b",
-          "docs/CLAIM_LEDGER.md C7",
-          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2 / 2e8a87d5 / c4b038d7 / 78fad531",
-          "molmetal/loss/regularization_losses.py (FALLBACK_REASONS)",
-          "scripts/_config_binding_gate.py (skip hole / --strict / required --config)"
-        ]
-      },
-      "acceptance_result": "显存机制查清：峰值随训练步数增长，expandable_segments 在修好后的代码上把 4096 云峰值从 92,431 降到 70,324 MiB 且消除 OOM。C7 全语料自由生成池跑到 18/18 epoch（exit=0，wall 11,232 s，46 次可恢复 OOM，12,668 可打分）：SA≤4.5 = 0.28% [0.21,0.39]，低于 256 样本的 0.69%；联合闸 0/10,190；单片段率升到 12.22%。判定 NOT SUPPORTED。"
-    },
-    {
-      "id": "EXT-1",
-      "title": "LOMO 误差分解 + 目标重定义（水平 / 尺度 / 结构三分量）",
-      "layer": "诊断",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "3 小时",
-      "why": "LOMO 的 R² 全为负，但没有任何 artifact 回答过「负在哪」。msrs_lomo_surface.json 已经露出两件事：(a) 留出金属的水平漂移很大 —— potency metal_out 的 observed−train gap 为 Ru +0.2884 / Ir −0.2984 / Rh −0.2110 / Os −0.3288 / Re +0.1440；(b) 把真实金属均值给模型（oracle_metal_mean），MAE 只从 0.6263 降到 0.6085，说明去掉水平误差之后，剩下的结构信号在 3/5 金属上是零或负的（只有 Os 0.7250→0.5647、Re 0.4965→0.4712 明显受益）。所以「零样本金属外推失败」是两个完全不同的原因叠在一起，必须拆开。",
-      "method": "三臂 × 2 终点 × 2 切分（metal_out / metal_out_ligand_disjoint）× 5 金属。(A) 原始目标（复现现有四个均值 −0.0241 / +0.0279 / −0.1322 / −0.1609）；(B) 每金属中心化目标 z=(y−mean_m)/sd_m —— 水平与尺度按构造消掉，只剩 SAR 迁移；(C) 中心化 + 每金属斜率。误差按 offset² + (slope−1)²·Var + residual 三项分解，逐行预测落盘。",
-      "deliverable": "metrics/by_metric/msrs_lomo_error_decomposition.json",
-      "gate": "分流门（不是 PASS/FAIL）：SAR_TRANSFERS 若 (B) 臂 R²>0.10 的金属 ≥3/5；SAR_FAILS 若 ≤1/5；中间为 PARTIAL。三种结论都入册，事后不改门槛。",
-      "kill": "无 KILL —— 这是测量不是下注。但必须在 EXT-2/EXT-3 之前跑完，否则后两个包的门槛会被结果污染。",
-      "expected_gain_projected": "PROJECTED：SAR_TRANSFERS 概率约 55%（Os/Re 已有正信号，中心化会消掉水平项）。",
-      "depends_on": [],
-      "why_now": "唯一能在 3 小时内把「负结果」变成「机制」的包，且决定后面所有包的走向。",
-      "result": {
-        "verdict": "PARTIAL",
-        "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json",
-        "key_numbers": {
-          "dominant_term": "shape",
-          "dominant_share": 0.7052,
-          "offset_share_range": [
-            0.045,
-            0.1
-          ],
-          "scale_share_range": [
-            0.198,
-            0.272
-          ],
-          "shape_share_range": [
-            0.653,
-            0.757
-          ],
-          "metals_above_gate_potency_metal_out": 2,
-          "metals_above_gate_potency_disjoint": 1,
-          "pooled_rho_potency_metal_out": 0.296,
-          "pooled_rho_potency_disjoint": 0.158,
-          "mean_ceiling_r2_potency_metal_out": 0.1524,
-          "mean_ceiling_r2_potency_disjoint": 0.05
-        },
-        "note": "预注册的分流门要求中心化后 R²>0.10 的金属 ≥3/5；实测 2/5（Os +0.316、Re +0.106），判 PARTIAL；去掉配体重叠后 1/5，判 SAR_FAILS。规划里\"offset 主导\"的前提被证伪：offset 只占 0.045-0.100，shape 占 0.653-0.757。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "PARTIAL"
-    },
-    {
-      "id": "EXT-2",
-      "title": "静态金属描述符能否定水平（3 → ≥16 列）",
-      "layer": "特征",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "2 小时",
-      "why": "msrs_lomo_surface.json 的 caveats 自己写着：「Three descriptors cannot span five metals; a poor rank correlation is a property of the descriptor table, not of the learner.」这是一句没被检验的断言。如果静态描述符能预测金属的均值水平，零样本外推就成立；如果不能，EXT-3 的 k-shot 就是唯一路径。",
-      "method": "建 molmetal/data/metal_descriptors_v2.csv，5 金属 × ≥16 列，每列带文献：Shannon 离子半径、Pauling 电负性、d 电子数、CFSE、Pearson HSAB 硬度/软度、配体场分裂 Δo、水交换速率（Helm & Merbach）、M(III/II) 还原电位、极化率、自旋态、配位数偏好。leave-one-metal-out 预测 5 个金属的均值；再把预测 offset 注入 EXT-1 的分解，看 |bias| 降多少。",
-      "gate": "LOOM R² ≥ 0.5 且注入后 LOMO |bias| 降 ≥50%",
-      "kill": "LOOM R² < 0.5 —— 结论「静态描述符定不了水平」。n=5 本来就不该指望，这个负结果是论文的一节。",
-      "note": "n=5 时 R²=0.5 是弱门槛；必须同时报 permutation p 与逐折预测值，不许只报一个 R²。",
-      "depends_on": [
-        "EXT-1"
-      ],
-      "result": {
-        "verdict": "KILL",
-        "artifact": "metrics/by_metric/msrs_metal_descriptor_level.json",
-        "key_numbers": {
-          "best_loo_r2": 0.8944,
-          "best_single_column": "rvdw_ang",
-          "potency_permutation_p": 0.1667,
-          "cisplatin_best_loo_r2": -0.4103,
-          "cisplatin_permutation_p": 0.1333,
-          "perfect_level_gain_r2": 0.0784,
-          "metals_still_negative_after_perfect_level": 4
-        },
-        "note": "单列 rvdw 的 LOOCV R² 0.894 过 0.5，但 120 次置换 p=0.167，且在 cisplatin_ratio 上反号（−0.410）。按 todo 自己的 note 收紧判决为 KILL。完美水平的反事实只值 +0.078 R²，4/5 金属仍为负。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "KILL"
-    },
-    {
-      "id": "EXT-3",
-      "title": "k-shot 校准曲线：新金属要几条数据才能用",
-      "layer": "能力",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "3 小时",
-      "why": "如果水平不可估（EXT-1/EXT-2），部署时不可能零样本。真实场景里新金属总会有少量测量。所以正确的问题不是「能不能零样本外推」，而是「要多少条」。这条曲线同时给出失败的上界与可部署的下界，是一区里唯一可写成「方法」的东西。",
-      "method": "对每个留出金属，k ∈ {0,5,10,20,50,100,200} 抽样，三档校准：offset-only / offset+slope / offset+slope+isotonic。每个 k 重复 20 次抽样，报均值与 95% CI。三条臂：(a) within-metal 上限（该金属自身 80/20 ligand 分组）；(b) zero-shot；(c) k-shot。recovery = (|bias_0|−|bias_k|)/|bias_0|。",
-      "gate": "k=50 恢复 ≥60% 的 level gap，且 k=20 恢复 ≥35%",
-      "kill": "k=100 仍 <40% —— 不是校准问题，是结构不迁移，转边界论文。",
-      "note": "抽样行不得与测试行重叠；同一 DOI 的行不得跨 train/test（按 DOI 聚类抽样）。",
-      "depends_on": [
-        "EXT-1"
-      ],
-      "result": {
-        "verdict": "KILL",
-        "artifact": "metrics/by_metric/msrs_kshot_calibration.json",
-        "key_numbers": {
-          "k50_metals_r2_nonneg_potency_metal_out": 1,
-          "k50_metals_r2_nonneg_potency_disjoint": 0,
-          "k50_metals_r2_nonneg_cisplatin_metal_out": 2,
-          "k50_metals_r2_nonneg_cisplatin_disjoint": 0,
-          "k5_worse_than_zero_shot_share_range": [
-            0.55,
-            0.95
-          ]
-        },
-        "note": "门槛在首次运行前修订（原门槛\"恢复 60% level gap\"因 level gap 只占 5-10% 而退化）。修订后门槛：k=50 线性校准在 ligand-disjoint 上 R²≥0 的金属 ≥3/5；实测 0/5。更强的发现：小 k 校准是负作用（k=5 时 55-95% 的重复比不校准更差）。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "KILL"
-    },
-    {
-      "id": "EXT-4",
-      "title": "学习式金属嵌入（8 维，只用训练金属拟合）",
-      "layer": "模型",
-      "priority": "P2",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "4 小时",
-      "why": "静态描述符是「人挑的化学」，嵌入是「数据里学出来的金属相似度」。如果 EXT-2 失败，嵌入是同一问题的另一种表达方式；如果 EXT-2 成功，嵌入用来检验是否还有残差空间。",
-      "method": "在 ligand×metal 残差矩阵上做矩阵分解得到 8 维金属向量；或与 GBDT 联合训练。嵌入只能用训练金属拟合，留出金属的向量由 EXT-2 的描述符映射生成（否则泄漏）。",
-      "gate": "比 EXT-2 最好臂好 ≥0.03 R²（metal_out, potency）",
-      "kill": "无增益即放弃。泄漏检查必须写进 artifact：嵌入只能见训练金属。",
-      "depends_on": [
-        "EXT-2"
-      ],
-      "result": {
-        "verdict": "KILL",
-        "artifact": "metrics/by_metric/msrs_metal_embedding.json",
-        "key_numbers": {
-          "potency_ligands_ge2_metals": 379,
-          "potency_share_ge2": 0.1332,
-          "potency_all5": 1,
-          "cisplatin_share_ge2": 0.1046,
-          "cisplatin_all5": 1,
-          "best_loo_r2": -2.1905
-        },
-        "note": "5 个金属中心化后秩上界是 4，8 维嵌入按构造不可识别；更根本的是只有 13.3% 的配体跨 ≥2 个金属，全 5 金属的配体只有 1 个。留一金属的\"其他四金属残差均值\"预测 R²=-2.19。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "KILL"
-    },
-    {
-      "id": "EXT-5",
-      "title": "外部时间队列：2023-2025 年 Ru/Ir 细胞毒数据",
-      "layer": "数据",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "2 周（人工整理）",
-      "why": "B1 是唯一挡住一区的硬约束。MET-7 已实测 ChEMBL 29 本地库 0 个目标金属结构、PlatinAI 只有 Pt、NCI-60 无 SMILES —— 这些只证明「现成数据库里没有」，不证明「没有外部数据」。剩下的唯一路径是从 2023-2025 年的原始文献里整理。而且时间外推本身就是审稿人最认的那种外部验证。",
-      "method": "检索 2023-01 至 2025-12 的 Ru/Ir 配合物细胞毒论文；每个化合物抽 SMILES + IC50 + 细胞系 + 曝光条件 + DOI；与 MetalCytoToxDB 按 DOI 取差集（不是 SMILES 差集）。",
-      "gate": "≥60 化合物 / ≥3 金属 / ≥8 篇论文 / 全部 DOI 可追溯 / 与 MetalCytoToxDB 的 DOI 交集 0",
-      "kill": "2 周内 <30 化合物 → BLOCKED，退回内部时间留出（year split），一区路径关闭。",
-      "note": "本阶段唯一非建模工作，可与 EXT-1..EXT-4 并行，不占 GPU。",
-      "depends_on": [],
-      "result": {
-        "verdict": "KILL",
-        "artifact": "metrics/by_metric/msrs_external_cohort_probe.json",
-        "key_numbers": {
-          "ircytotoxdb_rows": 2694,
-          "ircytotoxdb_dois": 222,
-          "doi_overlap_share": 0.9955,
-          "new_dois": 1,
-          "matched_cells": 653,
-          "row_corr": 0.9611,
-          "median_abs_diff_log10": 0.0,
-          "share_within_0p01": 0.8943
-        },
-        "note": "IrCytoToxDB（Scientific Data 2024，CC-BY-4.0）与 MSRS 的 DOI 重叠 99.55%，653 个匹配细胞格里 89.4% 数值相同到 0.01 log10，中位差 0.0。它不是外部队列，是同一份 curation 的 Ir 切片。其余来源逐一实测不可用。没有做 2023-2025 人工整理，没有编造任何行。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "KILL"
-    },
-    {
-      "id": "EXT-6",
-      "title": "外部队列上的零样本与 k-shot 检验",
-      "layer": "验证",
-      "priority": "P0",
-      "status": "BLOCKED",
-      "gpu": "none",
-      "wall": "3 小时",
-      "why": "外部队列存在的唯一意义就是被检验；不做这一步 EXT-5 等于没做。",
-      "method": "在 EXT-5 队列上跑三条臂：zero-shot（MSRS 全训练）、k-shot（k≤20）、within-cohort 上限。主指标 Spearman ρ（DOI 聚类 bootstrap），辅以 R²。",
-      "gate": "Spearman ρ > 0 且 CI 下界 > 0；k=20 时 R² > 0",
-      "kill": "无 —— 负结果入册，作为「外部也不迁移」的证据，反而加强边界论文。",
-      "depends_on": [
-        "EXT-5"
-      ],
-      "result": {
-        "verdict": "BLOCKED",
-        "artifact": null,
-        "key_numbers": {},
-        "note": "EXT-5 未产出可用 cohort，外部检验无法执行。没有生成替代数字，也没有用 IrCytoToxDB 冒充外部检验。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "BLOCKED"
-    },
-    {
-      "id": "EXT-7",
-      "title": "细胞系特征的可行性门（解 B2）",
-      "layer": "数据",
-      "priority": "P2",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天（可行性探针）",
-      "why": "B2 记录 0 个 CCLE/GDSC 文件，46 个系覆盖 80% 的行，细胞身份本身只值 0.0629 R²（ligand）。但一区里「金属×细胞系选择性」是有吸引力的结果，值得花 1 天确认能不能拿到。",
-      "method": "探针：能否在 1 天内拿到 ≥46 个系 × ≥10 个特征（表达/突变/拷贝数任一类）；拿到就跑消融。",
-      "gate": "≥46 系 × ≥10 特征，且带特征消融 ≥+0.005 R²",
-      "kill": "拿不到即永久关闭 B2，不再重开。",
-      "depends_on": [],
-      "result": {
-        "verdict": "KILL",
-        "artifact": "metrics/by_metric/msrs_cell_feature_probe.json",
-        "key_numbers": {
-          "annotation_files": 0,
-          "unique_cell_lines": 739,
-          "top46_share": 0.8022,
-          "unmatchable_lines": 5,
-          "unmatchable_row_share": 0.2194
-        },
-        "note": "双重失败：访问（DepMap Cloudflare Turnstile、GDSC HTTP 410、Cellosaurus 超时、GEO 只有 CEL）与身份（21.9% 的行来自 CCLE/DepMap 里按构造不存在的系：HELA/HEK293/A2780/A2780CISR/A549CISR）。第二种不会因重试改善，B2 永久关闭。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "KILL"
-    },
-    {
-      "id": "EXT-8",
-      "title": "一区 / 二区分流打包与主张台账",
-      "layer": "打包",
-      "priority": "P3",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天",
-      "why": "EXT-1 的分流结果决定主张结构；三种结局写三套骨架，不等到最后才想。",
-      "method": "按 north_star.decision_rule 的三条路生成对应主张台账与表；所有数字走 registry.py cite 与 docs/PREDICTIVE_LINE_INDEX.md，不新增手工数字。",
-      "deliverable": "docs/PREDICTIVE_LINE_INDEX.md + docs/CLAIM_LEDGER.md 更新",
-      "gate": "台账 0 MISSING；索引测试 30 passed；每条主张有 artifact:jsonpath",
-      "kill": "无",
-      "depends_on": [
-        "EXT-1",
-        "EXT-3",
-        "EXT-6"
-      ],
-      "result": {
-        "verdict": "BOUNDARY_PATH",
-        "artifact": "docs/CLAIM_LEDGER.md",
-        "key_numbers": {
-          "claim_ledger_new_claims": [
-            "C8",
-            "C9",
-            "C10"
-          ],
-          "index_entries_added": 17,
-          "index_tests": "46 passed"
-        },
-        "note": "按预注册规则：EXT-3 KILL → boundary_path。新增 C8（失败位置=shape）、C9（无独立外部 cohort）、C10（k-shot 校准无效且有害）。B1 从 UNMEASURED 升级为 BLOCKED（领域事实），B2 永久关闭。",
-        "doc": "TODO/completed/ext_phase_results.md"
-      },
-      "acceptance_result": "BOUNDARY_PATH"
+      "gate": "DOI R² ≥0.42（headline 0.45）；且任一子指标不低于其最好单臂 −0.01。",
+      "kill": "集成 < 最好单臂 → 增益不可加，以单臂为准，删掉 stacking 叙事。",
+      "deliverable": "metrics/by_metric/msrs_final_stack.json",
+      "artifacts_needed": ["msrs_hybrid.json", "msrs_seed_ensemble.json"]
     }
   ],
   "decision_points": [
     {
       "id": "DP-1",
-      "after": [
-        "STR-1",
-        "STR-2"
-      ],
-      "question": "融合臂在 DOI 上是否成立？",
-      "if_yes": "继续 STR-3 / STR-4；把 DOI 数字作为主表跨论文行。",
-      "if_no": "停止模型侧投入，直接按边界论文定稿；不再跑 STR-5。",
-      "status": "RESOLVED",
-      "evidence": {
-        "answer": "效应成立，绝对水平未过线",
-        "doi_stack_r2": 0.3597,
-        "gate": 0.36,
-        "doi_equal_r2": 0.3606,
-        "doi_delta_r2": 0.0217,
-        "ci": [
-          0.0044,
-          0.0377
-        ],
-        "delta_sign_doi": 0.5413,
-        "note": "按 if_no 的字面（gate 未过）应停止模型侧投入；但 +0.0217 的 CI 排除 0，且差 0.0003。需要用户裁定。"
-      },
-      "resolution": {
-        "date": "2026-10-19",
-        "owner": "用户",
-        "decision": "继续 STR-3 + STR-4",
-        "note": "融合效应成立；gate 差 0.0003 由 S2 尝试补上。"
-      }
+      "after": ["UP-1", "UP-2"],
+      "question": "形状是可学的（交互约束或扩样本任一给出增益），还是不可学？",
+      "if_yes": "继续 UP-3 / UP-5 的 GPU 投入；UP-4 作为水平项的兜底。",
+      "if_no": "停止模型侧投入，只做 UP-4 / UP-6，按机制论文定稿；负结果比 EXT 强（四臂 A/B + n=436）。",
+      "status": "OPEN"
     },
     {
       "id": "DP-2",
-      "after": [
-        "STR-3",
-        "STR-4"
-      ],
-      "question": "DOI R² 是否到 0.36、Δ 符号是否到 0.65？",
-      "if_yes": "进入强指标路径：补 STR-5（Δ）与 STR-6（生成）。",
-      "if_no": "按边界论文定稿；STR-5/STR-6 不跑，节省 GPU。",
-      "status": "RESOLVED",
-      "evidence": {
-        "doi_r2_best": 0.3811,
-        "doi_r2_tree_only": 0.3767,
-        "gate_r2": 0.36,
-        "delta_sign_best": 0.5826,
-        "delta_sign_fused": 0.5505,
-        "gate_sign": 0.65,
-        "answer": "R² 到了（0.3767 / 0.3811），Δ 符号没到（0.5826 / 0.5505）",
-        "note": "按 if_no 的字面（两项未同时满足）应停止 STR-5/STR-6 并定稿边界论文；但 R² 已过线，是否仍投入 STR-5（Δ 直接回归，GPU 4h）需用户裁定。"
-      },
-      "needs_user": true,
-      "resolution": {
-        "date": "2026-10-20",
-        "owner": "用户",
-        "decision": "STR-5 + STR-6 都跑",
-        "note": "R² 已过线，用户选择继续投排序轴（STR-5）并补生成线（STR-6）；边界论文推迟到两者出结果后。"
-      }
+      "after": ["UP-3", "UP-5", "UP-9"],
+      "question": "DOI 留出 R² 是否 ≥0.42？",
+      "if_yes": "强指标路径：UP-7 / UP-8 作为增量，论文主表用 UP-9 的数字。",
+      "if_no": "机制路径：主表写「形状可学、水平不可学」，DOI R² 如实报，不追 0.42。",
+      "status": "OPEN"
     },
     {
       "id": "DP-3",
-      "after": [
-        "STR-7"
-      ],
-      "question": "是否解冻 MSRS-8？",
-      "owner": "用户",
-      "note": "解冻需用户显式同意；解冻前不得编辑 paper_a/* 或 paper/*。"
+      "after": ["UP-9"],
+      "question": "是否解冻论文线（MSRS-8）？",
+      "if_yes": "从 metrics/paper_tables/ 取数写正文。",
+      "if_no": "保持冻结，只交付 metrics 与 docs。",
+      "status": "OPEN",
+      "owner": "用户"
     }
   ],
   "sequence": {
-    "wave_E1_diagnosis": {
-      "items": [
-        "EXT-1"
-      ],
-      "note": "P0，3 小时，纯 CPU。分流门，必须在 E2/E3 之前。"
+    "wave_1_cheap": {
+      "items": ["UP-1", "UP-2", "UP-6"],
+      "note": "P0/P1，全 CPU，1 天内可出结论。UP-1 与 UP-2 决定后面是否值得投 GPU。"
     },
-    "wave_E2_level": {
-      "items": [
-        "EXT-2",
-        "EXT-4"
-      ],
-      "note": "P1/P2，EXT-1 出结论后启动；回答「水平能不能从化学算出来」。"
+    "wave_2_representation": {
+      "items": ["UP-3", "UP-4", "UP-5"],
+      "note": "P1，DP-1 通过后启动。UP-3 与 UP-5 争 GPU0，串行；UP-4 纯 CPU 可并行。"
     },
-    "wave_E3_kshot": {
-      "items": [
-        "EXT-3"
-      ],
-      "note": "P0，EXT-1 出结论后启动；这是能力路线的最低成就。"
-    },
-    "wave_E4_external": {
-      "items": [
-        "EXT-5"
-      ],
-      "note": "P0，纯数据工作，今天即可并行启动，不占 GPU，不依赖 EXT-1。"
-    },
-    "wave_E5_validate": {
-      "items": [
-        "EXT-6"
-      ],
-      "note": "P0，EXT-5 交付后 3 小时。"
-    },
-    "wave_E6_optional": {
-      "items": [
-        "EXT-7"
-      ],
-      "note": "P2，1 天可行性探针；拿到才做，拿不到永久关闭 B2。"
-    },
-    "wave_E7_packaging": {
-      "items": [
-        "EXT-8"
-      ],
-      "note": "P3，EXT-1/EXT-3/EXT-6 全部落盘后。"
+    "wave_3_increment": {
+      "items": ["UP-7", "UP-8", "UP-9"],
+      "note": "P2，DP-2 之前只做 UP-9 的预演；UP-7/UP-8 在主结果出来后再跑，避免摊薄。"
     }
   },
   "open_decisions": [
-    "是否接受 boundary 定位并解冻论文线（MSRS-8）：三条机制主张 C8/C9/C10 已可直接进正文。",
-    "是否投入两周做 EXT-5 的人工整理（唯一能解 B1 的动作，纯人工，不能编造）。",
-    "是否做一次新的预注册检验：换学习器类（非 LightGBM 加性约束）重跑 LOMO —— 本轮 KILL 是这一类模型下的结论。",
-    "一区目标期刊：Briefings in Bioinformatics / Chemical Science / JCIM，需在决定投稿前定。"
+    "是否接受「先跑 UP-1/UP-2 再决定是否投 GPU」的顺序（约 4 小时 CPU 换掉 3 天 GPU 的风险）。",
+    "UP-3 的 3D 几何如果 ETKDG 在配合物上失败率高，是否接受退回「2D + 显式金属节点 + 配位键」的降级方案。",
+    "是否允许 UP-5 用 PlatinAI 的 Pt 数据做预训练（只做表示，不做验证）——这是唯一能扩大语料的动作，但跨语料。",
+    "论文线（MSRS-8）是否在 DP-2 之后解冻。"
   ],
   "do_not": [
-    "不要把 DOI 当特征 — 它带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003。",
-    "不要在 61 个 DOI 上继续调决策层 — FIX-M4 的 +0.02 在整篇论文留出后归零。",
-    "不要把配体分组的 R² 0.58 写成跨论文性能。",
-    "不要把 NCI-60 0.7294 写成接近 Krasnov 0.81 — 差 0.08，且 2 个细胞系 n<10。",
-    "不要单列 bond_f1 或 decode_ratio — 前者塌向全正，后者不是化学指标。",
-    "不要把 424 个严格队列说成五金属排序可验证 — 65% 是 k=2，且只有 61 DOI。",
-    "不要在 paper_a 未获 OK 前写任何 hunk。",
-    "不要再调决策层 — MET-8 已证明要检测观测效应需要 13,571 个 DOI。",
-    "不要再试 pairwise / rerank — B4 已关闭（原始方向为负，DOI post-hoc p=0.53）。",
-    "不要从 ChEMBL 29 本地库挖外部队列 — 实测 0 个金属结构（2026-10-19）。",
-    "不要把 cell_blind 的 0.063 R² 当成『生物特征可加的增益』 — 那是身份的贡献。",
-    "不要用单 seed 的 Δ 数字下结论 — 先看 STR-1 的 seed SD。",
-    "不要在看到结果后改 gate — 门槛写死在本文件里。",
-    "不要把 LOMO 的负 R² 直接读成「金属完全不可外推」 —— 先跑 EXT-1 的三分量分解；水平项与结构项是两回事。",
-    "不要在 EXT-5 的队列里混入 MetalCytoToxDB 已有的 DOI —— 差集按 DOI 取，不按 SMILES。",
-    "不要让 k-shot 的抽样行与测试行重叠，也不要让同一 DOI 跨 train/test。",
-    "不要把 EXT-2 的 n=5 LOOCV R² 当强证据 —— 5 个点拟合 16 维，必须报 permutation p 与逐折预测。",
-    "不要把中心化后的 R² 与原始 R² 并列成一张表 —— 它们是不同估计量，必须分表。",
-    "不要在 EXT-1 出结论前启动 EXT-2/EXT-3 —— 门槛会被结果污染。",
-    "不要把 IrCytoToxDB 当外部验证 —— 它与 MSRS 的 DOI 重叠 99.55%，89.4% 的匹配格数值相同。",
-    "不要把 k-shot 校准写成可部署方案 —— 诚实切分上 k=50 时 0/5 金属达到 R²≥0，k=5 时 55-95% 的重复更差。",
-    "不要再说\"跨金属失败是因为水平估不准\" —— offset 只占平方误差 0.045-0.100，shape 占 0.653-0.757。",
-    "不要把\"完美水平\"之外的反事实当成可部署增益 —— 完美水平也只值 +0.078 R²，4/5 金属仍为负。",
-    "不要重开 B2 —— 21.9% 的行来自 CCLE/DepMap 里按构造不存在的系。"
+    "不要用 IrCytoToxDB 或 PlatinAI 当外部验证；前者与 MSRS 的 DOI 重叠 99.55%，后者只有 Pt。",
+    "不要把 ligand 协议（0.5596）当泛化数字报。",
+    "不要把 raw sign（0.5826）与多数类（0.6009）比较成「接近门槛」；类不平衡下用 balanced。",
+    "不要把 0.5575 的 all-metals LOMO 当 headline；可入闸的是可解析子集 0.5974。",
+    "不要把 k-shot 校准写成「可部署」；EXT-3 是 0/5。",
+    "不要在 metal_out 上继续用 interaction_constraints 而不做 A/B。",
+    "不要把 conformal 宽度归因于校准；宽度是残差 SD 的函数。",
+    "不要在没有 artifact 的情况下引用任何文献数字当自己的结果。",
+    "不要为凑 +0.02 改折、改 seed 集、改端点定义。",
+    "不要在 paper/* 上动手，除非用户显式解冻。"
   ],
   "paper_freeze": {
-    "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；2026-10-19 改为强指标论文。",
-    "frozen": [
-      {
-        "id": "MSRS-8",
-        "what": "论文整合（强指标版）"
-      }
-    ],
-    "unfreeze_condition": "EXT-1..EXT-8 已落盘（2026-10-21）；台账 C1-C10 已更新、0 MISSING；用户显式同意后解冻，且只允许从 metrics/paper_tables/ 取数。",
-    "hard_rule": "解冻前不得编辑 paper_a/* 或 paper/*；不得生成 hunk。"
+    "directive": "TODO-84 active。",
+    "frozen": true,
+    "unfreeze_condition": "DP-3 由用户裁定；且 UP-9 的 artifact 已落盘、registry PASS、paper_metric_tables --strict 0 MISSING。",
+    "hard_rule": "冻结期间只允许写 metrics/by_metric/*.json 与 docs/*，不写 paper/*。"
   }
 }
