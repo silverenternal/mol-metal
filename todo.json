@@ -2,9 +2,9 @@
   "schema": 5,
   "created": "2026-10-14",
   "updated": "2026-10-21",
-  "rewritten": "2026-10-21 — EXT 阶段（一区外推）。MET-* / STR-* / FIX-* 全部 DONE，计划切换到 EXT-1..EXT-8：先把 LOMO 的失败分解成「水平不可估」与「结构不迁移」，再用 k-shot 校准与外部时间队列把可部署性做实。",
-  "supersedes": "STR-1..STR-7 + FIX-C6..C12；结果见 closed_work、work_packages 的 result 与 TODO/completed/。",
-  "purpose": "测量阶段与强化阶段都已关闭。当前状态是论文的中间形态，不是终态：金属感知的增益在两个终点上独立复现（potency +0.0455 R²、cisplatin_ratio +0.0838 R²，均为 additive 相对 ligand_only，ligand 分组，msrs_surface_model.json）；但跨金属外推在两个终点、两种切分下都失败（descriptor R² 均值 potency/metal_out −0.0241、potency/ligand_disjoint −0.1322、cisplatin/metal_out +0.0279、cisplatin/ligand_disjoint −0.1609；正向金属数 1/5、1/5、2/5、1/5）。本阶段只回答一个问题：这个失败是「水平不可估」还是「结构不迁移」。前者可以用少量新金属测量校准掉，是能力问题；后者是领域级负结果。答案决定一区、二区还是边界，三条路都写好了门槛。",
+  "rewritten": "2026-10-21（EXT 阶段关闭）— EXT-1..EXT-8 全部落盘。结论：boundary_path。失败位置是 shape（占平方误差 0.65-0.76），不是 offset（0.05-0.10）；k-shot 校准在诚实切分上 0/5 金属达到 R²≥0；不存在独立外部 cohort。",
+  "supersedes": "MET-1..MET-11 + FIX-L4 + STR-1..STR-7 + FIX-C6..C12 + EXT-1..EXT-8；结果见 closed_work、work_packages 的 result 与 TODO/completed/。",
+  "purpose": "EXT 阶段已关闭，结论是 boundary_path。三条机制已实测：① 跨金属外推的失败位置是 shape（排序），占平方误差 0.653-0.757；offset 只占 0.045-0.100，所以\"校准一下就能用\"在算术上不成立（完美水平只值 +0.078 R²，4/5 金属仍为负）。② 表观迁移主要来自配体重叠：potency 合并 ρ 从 0.296（metal_out）掉到 0.158（ligand_disjoint），cisplatin 从 0.269 掉到 0.062。③ 不存在独立外部 cohort：IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%，89.4% 的匹配格数值相同。一区的两条腿（可部署外推、独立外部验证）都被测量关闭，不是被判断关闭。",
   "how_to_read": "先读 north_star.decision_rule 的三条分流，再看 EXT-1 的 gate —— 它是分流门，必须在 EXT-2/EXT-3 之前跑完。每个包都有明确门槛与 KILL；没有门槛的实验不许跑。expected_gain_projected 一律是 PROJECTED，不是测量值。旧包（STR-* / FIX-*）保留为历史，不要再启动。",
   "rules": {
     "truth": "§5.2 诚实负结果不隐藏; MISSING 必须显式标注, 不静默丢弃。",
@@ -17,9 +17,9 @@
   },
   "north_star": {
     "thesis": "把「换金属」当作可量化的干预 do(m)，估计 Δ(m→m′ | ligand, cell-line)，并转成可执行的金属推荐（含弃权）。",
-    "phase": "EXT（外推阶段）— 2026-10-21 起",
-    "current_goal": "回答「LOMO 为什么失败」，并据此做出一区或二区。三条分流：SAR_TRANSFERS（每金属中心化后 R²>0.10 的金属 ≥3/5）→ 走能力路线；SAR_FAILS（≤1/5）→ 走领域级负结果 + 资源路线；中间为 PARTIAL。能力路线的最低成就是 EXT-3：k=50 恢复 ≥60% 的 level gap。",
-    "immediate_goal": "先跑 EXT-1（3 小时，纯 CPU，无新模型）：把平方误差分解成 offset / scale / residual 三项，并同时跑「每金属中心化目标」这一臂。它决定后面所有包的门槛怎么读。EXT-5（外部队列）是纯数据工作，可以今天并行启动，不占 GPU。",
+    "phase": "EXT 已关闭（2026-10-21）— 结论 boundary_path",
+    "current_goal": "按 EXT-8 的三条主张（C8 失败位置 / C9 外部 cohort 不存在 / C10 k-shot 无效）写\"严格协议下的边界 + 资源\"论文。一区路径需要用户决定是否投入两周做 2023-2025 人工整理，或是否换学习器重跑一次预注册的 LOMO。",
+    "immediate_goal": "无待跑的计算包。下一步是用户决策：(a) 接受 boundary 定位并解冻论文线；(b) 投入两周做 EXT-5 的人工整理；(c) 做一次新的预注册检验（换学习器类），不沿用本轮门槛。",
     "decision_rule": {
       "zone1_path": "EXT-1 = SAR_TRANSFERS 且 EXT-3 PASS 且 EXT-5 PASS 且 EXT-6 PASS （Spearman ρ>0 且 CI 下界>0）",
       "zone2_path": "EXT-1 = SAR_TRANSFERS 且 EXT-3 PASS，但 EXT-5 或 EXT-6 失败 —— 写「内部两终点复现 + 外部未验证」",
@@ -27,7 +27,17 @@
       "no_p_hacking": "门槛在看到结果之前写死在本文件里；同一假设只允许一次主检验，重跑只做 seed/抽样稳健性。",
       "gates_frozen_at": "2026-10-21T12:00+08:00 — 写于 EXT-1..EXT-7 任何结果产生之前。",
       "gate_author": "agent 预注册；用户未参与设定数值，只给了「做一区」的目标。",
-      "mde_context": "DOI R² 的边际 MDE 0.0643，配对 ΔR² 的 CI 宽度约 0.03，所以 +0.02 的配对增益可检测；判据用配对 CI，不用绝对 R² 的边际 CI。"
+      "mde_context": "DOI R² 的边际 MDE 0.0643，配对 ΔR² 的 CI 宽度约 0.03，所以 +0.02 的配对增益可检测；判据用配对 CI，不用绝对 R² 的边际 CI。",
+      "outcome": {
+        "date": "2026-10-21",
+        "EXT-1": "PARTIAL",
+        "EXT-3": "KILL",
+        "EXT-5": "KILL",
+        "EXT-6": "BLOCKED",
+        "path": "boundary_path",
+        "why": "预注册规则：EXT-1 = SAR_FAILS 或 EXT-3 KILL → boundary。EXT-3 = KILL。",
+        "no_goalpost_moved": "门槛在 2026-10-21T12:00+08:00 写死；EXT-3 的门槛在首次运行前修订过一次，修订理由与时间已记入 artifact 的 amendment_note。"
+      }
     },
     "honest_probability_projected": {
       "note": "PROJECTED，不是测量值。按 EXT-1 分流 55% × EXT-3 80% × EXT-5 50% × EXT-6 50% 粗乘，但 zone1 不要求 EXT-6 通过（外部部分迁移仍可发表），故取 55%×80%×50%。",
@@ -340,24 +350,27 @@
     {
       "id": "B1",
       "what": "外部独立 cohort",
-      "status": "BLOCKED-PENDING-DATA",
-      "measured": "MET-7：同金属交集 0。2026-10-21 复测（可执行，有产物）：ChEMBL 29 本地库 2,084,724 个结构，六个目标/贵金属 Pt/Ru/Ir/Rh/Os/Re 全部 0 命中，Fe 也 0；唯一的 2 个 [Na] 命中是同一偶氮染料的钠盐（SMILES 含 OCCC[Na]，一个化学上不该存在的 Na-C 键），是解析产物，不是金属化学队列。旧说法「0 个金属结构」严格讲不成立，已改为「0 个目标金属结构」。",
-      "unblock": "需要一份含 Ru/Ir/Rh/Os/Re + SMILES + 细胞系 + potency 的外部表；仓库内和 ChEMBL dump 都没有。ChEMBL 那条路现在有产物可复现，不需要再查。",
+      "status": "BLOCKED-PENDING-MANUAL-CURATION",
+      "measured": "2026-10-21 EXT-5：IrCytoToxDB（Scientific Data 2024，Zenodo 10.5281/zenodo.13120939，CC-BY-4.0，2,694 条 / 222 篇 / 127 系）与 MSRS 的 DOI 重叠 221/222=99.55%，仅 1 个新 DOI；653 个匹配 (DOI,细胞系) 格里 89.4% 数值相同到 0.01 log10，中位 |Δ|=0.0，r=0.9611。ChEMBL 29 本地库 0 个目标金属；PlatinAI 只有 Pt；NCI-60 无 SMILES；DepMap Cloudflare Turnstile；GDSC HTTP 410；Cellosaurus 超时；GEO GSE36133 只有 CEL；RuCytoToxDB 无 Zenodo 存款且 921 篇 ⊂ MSRS 的 1,427 Ru DOI。",
+      "unblock": "人工整理 2023-2025 文献 ≥60 化合物 / ≥3 金属 / ≥8 篇，按 DOI 与 MetalCytoToxDB 取差集。未做。",
       "do_not": "不要用 Pt 的 PlatinAI 冒充外部验证；不要从 ChEMBL 29 挖（已去金属）",
       "evidence": [
         "metrics/by_metric/chembl29_metal_scan.json",
         "molmetal/scripts/chembl29_metal_scan.py",
         "molmetal/tests/test_chembl29_metal_scan.py"
       ],
-      "reconfirmed": "2026-10-21（脚本可重跑，查询文本与计数同产物；DB 自 2021 年起未变）"
+      "reconfirmed": "2026-10-21（脚本可重跑，查询文本与计数同产物；DB 自 2021 年起未变）",
+      "artifact": "metrics/by_metric/msrs_external_cohort_probe.json"
     },
     {
       "id": "B2",
       "what": "细胞系生物学特征",
-      "status": "BLOCKED-PENDING-DATA",
-      "measured": "FIX-L4：0 个注释文件（2026-10-21 复测：全仓 *ccle*/*gdsc*/*depmap*/*cellosaurus* 仍为 0）；46 个系即可覆盖 80% 的行；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。",
+      "status": "CLOSED",
+      "measured": "2026-10-21 EXT-7：0 个注释文件；21.9%（9,253/42,167）的行来自 CCLE/DepMap 里按构造不存在的系（HELA/HEK293/A2780/A2780CISR/A549CISR）；top-46 覆盖 80.22%。",
       "unblock": "下载 ≥46 个系的 CCLE/GDSC 表，并跑一次带特征的消融（≥+0.005）",
-      "reconfirmed": "2026-10-21（文件系统复测，仍未出现任何注释表）"
+      "reconfirmed": "2026-10-21（文件系统复测，仍未出现任何注释表）",
+      "decision": "永久关闭。访问与身份双重失败，身份那一半不会因重试改善。",
+      "artifact": "metrics/by_metric/msrs_cell_feature_probe.json"
     },
     {
       "id": "B3",
@@ -1283,7 +1296,7 @@
       "title": "LOMO 误差分解 + 目标重定义（水平 / 尺度 / 结构三分量）",
       "layer": "诊断",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "3 小时",
       "why": "LOMO 的 R² 全为负，但没有任何 artifact 回答过「负在哪」。msrs_lomo_surface.json 已经露出两件事：(a) 留出金属的水平漂移很大 —— potency metal_out 的 observed−train gap 为 Ru +0.2884 / Ir −0.2984 / Rh −0.2110 / Os −0.3288 / Re +0.1440；(b) 把真实金属均值给模型（oracle_metal_mean），MAE 只从 0.6263 降到 0.6085，说明去掉水平误差之后，剩下的结构信号在 3/5 金属上是零或负的（只有 Os 0.7250→0.5647、Re 0.4965→0.4712 明显受益）。所以「零样本金属外推失败」是两个完全不同的原因叠在一起，必须拆开。",
@@ -1293,14 +1306,43 @@
       "kill": "无 KILL —— 这是测量不是下注。但必须在 EXT-2/EXT-3 之前跑完，否则后两个包的门槛会被结果污染。",
       "expected_gain_projected": "PROJECTED：SAR_TRANSFERS 概率约 55%（Os/Re 已有正信号，中心化会消掉水平项）。",
       "depends_on": [],
-      "why_now": "唯一能在 3 小时内把「负结果」变成「机制」的包，且决定后面所有包的走向。"
+      "why_now": "唯一能在 3 小时内把「负结果」变成「机制」的包，且决定后面所有包的走向。",
+      "result": {
+        "verdict": "PARTIAL",
+        "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json",
+        "key_numbers": {
+          "dominant_term": "shape",
+          "dominant_share": 0.7052,
+          "offset_share_range": [
+            0.045,
+            0.1
+          ],
+          "scale_share_range": [
+            0.198,
+            0.272
+          ],
+          "shape_share_range": [
+            0.653,
+            0.757
+          ],
+          "metals_above_gate_potency_metal_out": 2,
+          "metals_above_gate_potency_disjoint": 1,
+          "pooled_rho_potency_metal_out": 0.296,
+          "pooled_rho_potency_disjoint": 0.158,
+          "mean_ceiling_r2_potency_metal_out": 0.1524,
+          "mean_ceiling_r2_potency_disjoint": 0.05
+        },
+        "note": "预注册的分流门要求中心化后 R²>0.10 的金属 ≥3/5；实测 2/5（Os +0.316、Re +0.106），判 PARTIAL；去掉配体重叠后 1/5，判 SAR_FAILS。规划里\"offset 主导\"的前提被证伪：offset 只占 0.045-0.100，shape 占 0.653-0.757。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "PARTIAL"
     },
     {
       "id": "EXT-2",
       "title": "静态金属描述符能否定水平（3 → ≥16 列）",
       "layer": "特征",
       "priority": "P1",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "2 小时",
       "why": "msrs_lomo_surface.json 的 caveats 自己写着：「Three descriptors cannot span five metals; a poor rank correlation is a property of the descriptor table, not of the learner.」这是一句没被检验的断言。如果静态描述符能预测金属的均值水平，零样本外推就成立；如果不能，EXT-3 的 k-shot 就是唯一路径。",
@@ -1310,14 +1352,30 @@
       "note": "n=5 时 R²=0.5 是弱门槛；必须同时报 permutation p 与逐折预测值，不许只报一个 R²。",
       "depends_on": [
         "EXT-1"
-      ]
+      ],
+      "result": {
+        "verdict": "KILL",
+        "artifact": "metrics/by_metric/msrs_metal_descriptor_level.json",
+        "key_numbers": {
+          "best_loo_r2": 0.8944,
+          "best_single_column": "rvdw_ang",
+          "potency_permutation_p": 0.1667,
+          "cisplatin_best_loo_r2": -0.4103,
+          "cisplatin_permutation_p": 0.1333,
+          "perfect_level_gain_r2": 0.0784,
+          "metals_still_negative_after_perfect_level": 4
+        },
+        "note": "单列 rvdw 的 LOOCV R² 0.894 过 0.5，但 120 次置换 p=0.167，且在 cisplatin_ratio 上反号（−0.410）。按 todo 自己的 note 收紧判决为 KILL。完美水平的反事实只值 +0.078 R²，4/5 金属仍为负。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "KILL"
     },
     {
       "id": "EXT-3",
       "title": "k-shot 校准曲线：新金属要几条数据才能用",
       "layer": "能力",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "3 小时",
       "why": "如果水平不可估（EXT-1/EXT-2），部署时不可能零样本。真实场景里新金属总会有少量测量。所以正确的问题不是「能不能零样本外推」，而是「要多少条」。这条曲线同时给出失败的上界与可部署的下界，是一区里唯一可写成「方法」的东西。",
@@ -1327,14 +1385,31 @@
       "note": "抽样行不得与测试行重叠；同一 DOI 的行不得跨 train/test（按 DOI 聚类抽样）。",
       "depends_on": [
         "EXT-1"
-      ]
+      ],
+      "result": {
+        "verdict": "KILL",
+        "artifact": "metrics/by_metric/msrs_kshot_calibration.json",
+        "key_numbers": {
+          "k50_metals_r2_nonneg_potency_metal_out": 1,
+          "k50_metals_r2_nonneg_potency_disjoint": 0,
+          "k50_metals_r2_nonneg_cisplatin_metal_out": 2,
+          "k50_metals_r2_nonneg_cisplatin_disjoint": 0,
+          "k5_worse_than_zero_shot_share_range": [
+            0.55,
+            0.95
+          ]
+        },
+        "note": "门槛在首次运行前修订（原门槛\"恢复 60% level gap\"因 level gap 只占 5-10% 而退化）。修订后门槛：k=50 线性校准在 ligand-disjoint 上 R²≥0 的金属 ≥3/5；实测 0/5。更强的发现：小 k 校准是负作用（k=5 时 55-95% 的重复比不校准更差）。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "KILL"
     },
     {
       "id": "EXT-4",
       "title": "学习式金属嵌入（8 维，只用训练金属拟合）",
       "layer": "模型",
       "priority": "P2",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "4 小时",
       "why": "静态描述符是「人挑的化学」，嵌入是「数据里学出来的金属相似度」。如果 EXT-2 失败，嵌入是同一问题的另一种表达方式；如果 EXT-2 成功，嵌入用来检验是否还有残差空间。",
@@ -1343,14 +1418,29 @@
       "kill": "无增益即放弃。泄漏检查必须写进 artifact：嵌入只能见训练金属。",
       "depends_on": [
         "EXT-2"
-      ]
+      ],
+      "result": {
+        "verdict": "KILL",
+        "artifact": "metrics/by_metric/msrs_metal_embedding.json",
+        "key_numbers": {
+          "potency_ligands_ge2_metals": 379,
+          "potency_share_ge2": 0.1332,
+          "potency_all5": 1,
+          "cisplatin_share_ge2": 0.1046,
+          "cisplatin_all5": 1,
+          "best_loo_r2": -2.1905
+        },
+        "note": "5 个金属中心化后秩上界是 4，8 维嵌入按构造不可识别；更根本的是只有 13.3% 的配体跨 ≥2 个金属，全 5 金属的配体只有 1 个。留一金属的\"其他四金属残差均值\"预测 R²=-2.19。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "KILL"
     },
     {
       "id": "EXT-5",
       "title": "外部时间队列：2023-2025 年 Ru/Ir 细胞毒数据",
       "layer": "数据",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "2 周（人工整理）",
       "why": "B1 是唯一挡住一区的硬约束。MET-7 已实测 ChEMBL 29 本地库 0 个目标金属结构、PlatinAI 只有 Pt、NCI-60 无 SMILES —— 这些只证明「现成数据库里没有」，不证明「没有外部数据」。剩下的唯一路径是从 2023-2025 年的原始文献里整理。而且时间外推本身就是审稿人最认的那种外部验证。",
@@ -1358,14 +1448,31 @@
       "gate": "≥60 化合物 / ≥3 金属 / ≥8 篇论文 / 全部 DOI 可追溯 / 与 MetalCytoToxDB 的 DOI 交集 0",
       "kill": "2 周内 <30 化合物 → BLOCKED，退回内部时间留出（year split），一区路径关闭。",
       "note": "本阶段唯一非建模工作，可与 EXT-1..EXT-4 并行，不占 GPU。",
-      "depends_on": []
+      "depends_on": [],
+      "result": {
+        "verdict": "KILL",
+        "artifact": "metrics/by_metric/msrs_external_cohort_probe.json",
+        "key_numbers": {
+          "ircytotoxdb_rows": 2694,
+          "ircytotoxdb_dois": 222,
+          "doi_overlap_share": 0.9955,
+          "new_dois": 1,
+          "matched_cells": 653,
+          "row_corr": 0.9611,
+          "median_abs_diff_log10": 0.0,
+          "share_within_0p01": 0.8943
+        },
+        "note": "IrCytoToxDB（Scientific Data 2024，CC-BY-4.0）与 MSRS 的 DOI 重叠 99.55%，653 个匹配细胞格里 89.4% 数值相同到 0.01 log10，中位差 0.0。它不是外部队列，是同一份 curation 的 Ir 切片。其余来源逐一实测不可用。没有做 2023-2025 人工整理，没有编造任何行。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "KILL"
     },
     {
       "id": "EXT-6",
       "title": "外部队列上的零样本与 k-shot 检验",
       "layer": "验证",
       "priority": "P0",
-      "status": "TODO",
+      "status": "BLOCKED",
       "gpu": "none",
       "wall": "3 小时",
       "why": "外部队列存在的唯一意义就是被检验；不做这一步 EXT-5 等于没做。",
@@ -1374,28 +1481,50 @@
       "kill": "无 —— 负结果入册，作为「外部也不迁移」的证据，反而加强边界论文。",
       "depends_on": [
         "EXT-5"
-      ]
+      ],
+      "result": {
+        "verdict": "BLOCKED",
+        "artifact": null,
+        "key_numbers": {},
+        "note": "EXT-5 未产出可用 cohort，外部检验无法执行。没有生成替代数字，也没有用 IrCytoToxDB 冒充外部检验。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "BLOCKED"
     },
     {
       "id": "EXT-7",
       "title": "细胞系特征的可行性门（解 B2）",
       "layer": "数据",
       "priority": "P2",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天（可行性探针）",
       "why": "B2 记录 0 个 CCLE/GDSC 文件，46 个系覆盖 80% 的行，细胞身份本身只值 0.0629 R²（ligand）。但一区里「金属×细胞系选择性」是有吸引力的结果，值得花 1 天确认能不能拿到。",
       "method": "探针：能否在 1 天内拿到 ≥46 个系 × ≥10 个特征（表达/突变/拷贝数任一类）；拿到就跑消融。",
       "gate": "≥46 系 × ≥10 特征，且带特征消融 ≥+0.005 R²",
       "kill": "拿不到即永久关闭 B2，不再重开。",
-      "depends_on": []
+      "depends_on": [],
+      "result": {
+        "verdict": "KILL",
+        "artifact": "metrics/by_metric/msrs_cell_feature_probe.json",
+        "key_numbers": {
+          "annotation_files": 0,
+          "unique_cell_lines": 739,
+          "top46_share": 0.8022,
+          "unmatchable_lines": 5,
+          "unmatchable_row_share": 0.2194
+        },
+        "note": "双重失败：访问（DepMap Cloudflare Turnstile、GDSC HTTP 410、Cellosaurus 超时、GEO 只有 CEL）与身份（21.9% 的行来自 CCLE/DepMap 里按构造不存在的系：HELA/HEK293/A2780/A2780CISR/A549CISR）。第二种不会因重试改善，B2 永久关闭。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "KILL"
     },
     {
       "id": "EXT-8",
       "title": "一区 / 二区分流打包与主张台账",
       "layer": "打包",
       "priority": "P3",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "EXT-1 的分流结果决定主张结构；三种结局写三套骨架，不等到最后才想。",
@@ -1407,7 +1536,23 @@
         "EXT-1",
         "EXT-3",
         "EXT-6"
-      ]
+      ],
+      "result": {
+        "verdict": "BOUNDARY_PATH",
+        "artifact": "docs/CLAIM_LEDGER.md",
+        "key_numbers": {
+          "claim_ledger_new_claims": [
+            "C8",
+            "C9",
+            "C10"
+          ],
+          "index_entries_added": 17,
+          "index_tests": "46 passed"
+        },
+        "note": "按预注册规则：EXT-3 KILL → boundary_path。新增 C8（失败位置=shape）、C9（无独立外部 cohort）、C10（k-shot 校准无效且有害）。B1 从 UNMEASURED 升级为 BLOCKED（领域事实），B2 永久关闭。",
+        "doc": "TODO/completed/ext_phase_results.md"
+      },
+      "acceptance_result": "BOUNDARY_PATH"
     }
   ],
   "decision_points": [
@@ -1525,10 +1670,10 @@
     }
   },
   "open_decisions": [
-    "一区目标期刊：Briefings in Bioinformatics（1 区，接受 benchmark + 负结果）vs Chemical Science（1 区，需要更广的化学意义）vs JCIM（2 区，最稳）。EXT-1 结果出来后再定。",
-    "是否投入 2 周做 EXT-5 外部队列 —— 这是唯一解 B1 的路径，但纯人工。",
-    "是否接受「水平不可估 + k-shot 可解」作为主标题（需要 EXT-1 = SAR_TRANSFERS）。",
-    "是否解冻论文线（MSRS-8）：仍冻结，等 EXT-1/EXT-3 落盘。"
+    "是否接受 boundary 定位并解冻论文线（MSRS-8）：三条机制主张 C8/C9/C10 已可直接进正文。",
+    "是否投入两周做 EXT-5 的人工整理（唯一能解 B1 的动作，纯人工，不能编造）。",
+    "是否做一次新的预注册检验：换学习器类（非 LightGBM 加性约束）重跑 LOMO —— 本轮 KILL 是这一类模型下的结论。",
+    "一区目标期刊：Briefings in Bioinformatics / Chemical Science / JCIM，需在决定投稿前定。"
   ],
   "do_not": [
     "不要把 DOI 当特征 — 它带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003。",
@@ -1549,7 +1694,12 @@
     "不要让 k-shot 的抽样行与测试行重叠，也不要让同一 DOI 跨 train/test。",
     "不要把 EXT-2 的 n=5 LOOCV R² 当强证据 —— 5 个点拟合 16 维，必须报 permutation p 与逐折预测。",
     "不要把中心化后的 R² 与原始 R² 并列成一张表 —— 它们是不同估计量，必须分表。",
-    "不要在 EXT-1 出结论前启动 EXT-2/EXT-3 —— 门槛会被结果污染。"
+    "不要在 EXT-1 出结论前启动 EXT-2/EXT-3 —— 门槛会被结果污染。",
+    "不要把 IrCytoToxDB 当外部验证 —— 它与 MSRS 的 DOI 重叠 99.55%，89.4% 的匹配格数值相同。",
+    "不要把 k-shot 校准写成可部署方案 —— 诚实切分上 k=50 时 0/5 金属达到 R²≥0，k=5 时 55-95% 的重复更差。",
+    "不要再说\"跨金属失败是因为水平估不准\" —— offset 只占平方误差 0.045-0.100，shape 占 0.653-0.757。",
+    "不要把\"完美水平\"之外的反事实当成可部署增益 —— 完美水平也只值 +0.078 R²，4/5 金属仍为负。",
+    "不要重开 B2 —— 21.9% 的行来自 CCLE/DepMap 里按构造不存在的系。"
   ],
   "paper_freeze": {
     "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；2026-10-19 改为强指标论文。",
@@ -1559,7 +1709,7 @@
         "what": "论文整合（强指标版）"
       }
     ],
-    "unfreeze_condition": "EXT-1 与 EXT-3 落盘；DP-1/DP-2/DP-3 已裁定；台账 0 MISSING；用户显式同意。",
+    "unfreeze_condition": "EXT-1..EXT-8 已落盘（2026-10-21）；台账 C1-C10 已更新、0 MISSING；用户显式同意后解冻，且只允许从 metrics/paper_tables/ 取数。",
     "hard_rule": "解冻前不得编辑 paper_a/* 或 paper/*；不得生成 hunk。"
   }
 }

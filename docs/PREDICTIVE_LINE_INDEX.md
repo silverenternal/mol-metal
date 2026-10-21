@@ -127,7 +127,23 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "C6.lomo_wasserstein_real_only", "value": 0.3812, "artifact": "metrics/by_metric/metal_lomo_auc_wasserstein.json", "path": "real_only_fold_value"},
   {"id": "C6.ru_within", "value": 0.8271, "artifact": "metrics/by_metric/metal_activity_transfer_seed_stability_v2.json", "path": "within_metal_stability.Ru.mean", "tol": 0.0002},
   {"id": "C6.ir_within", "value": 0.8430, "artifact": "metrics/by_metric/metal_activity_transfer_seed_stability_v2.json", "path": "within_metal_stability.Ir.mean", "tol": 0.0002},
-  {"id": "C7.sa_le_4p5_full_corpus", "value": 0.0028, "artifact": "metrics/by_metric/c7_scale_matched_pools.json", "path": "by_pipeline.generation.by_tier.full_corpus.rate_sa_le_gate"}
+  {"id": "C7.sa_le_4p5_full_corpus", "value": 0.0028, "artifact": "metrics/by_metric/c7_scale_matched_pools.json", "path": "by_pipeline.generation.by_tier.full_corpus.rate_sa_le_gate"},
+  {"id": "C8.dominant_share", "value": 0.7052, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "dominant_term.mean_share"},
+  {"id": "C8.offset_share", "value": 0.1002, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_offset_share"},
+  {"id": "C8.scale_share", "value": 0.2060, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_scale_share"},
+  {"id": "C8.shape_share", "value": 0.6938, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_shape_share"},
+  {"id": "C8.ceiling_r2", "value": 0.1524, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_ceiling_r2"},
+  {"id": "C8.rho_metal_out", "value": 0.2960, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.pooled.centred.pooled_spearman"},
+  {"id": "C8.rho_ligand_disjoint", "value": 0.1575, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out_ligand_disjoint.pooled.centred.pooled_spearman"},
+  {"id": "C8.metals_above_gate", "value": 2, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.n_metals_above_threshold"},
+  {"id": "C8.perfect_level_gain", "value": 0.0784, "artifact": "metrics/by_metric/msrs_metal_descriptor_level.json", "path": "counterfactual_summary.mean_gain_over_cells"},
+  {"id": "C8.metals_still_negative_after_level", "value": 4, "artifact": "metrics/by_metric/msrs_metal_descriptor_level.json", "path": "counterfactual_summary.max_metals_still_negative"},
+  {"id": "C10.k50_metals_nonnegative", "value": 0, "artifact": "metrics/by_metric/msrs_kshot_calibration.json", "path": "endpoints.potency.splits.metal_out_ligand_disjoint.verdict_at_gate_k.n_metals_r2_nonnegative"},
+  {"id": "C9.ir_doi_overlap", "value": 0.9955, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.doi_overlap_share"},
+  {"id": "C9.ir_new_dois", "value": 1, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.n_new_dois"},
+  {"id": "C9.ir_identical_rows", "value": 0.8943, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.row_agreement.share_within_0p01"},
+  {"id": "C9.ir_median_abs_diff", "value": 0.0, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.row_agreement.median_abs_diff_log10"},
+  {"id": "C9.unmatchable_rows", "value": 0.2194, "artifact": "metrics/by_metric/msrs_cell_feature_probe.json", "path": "identity_mismatch.unmatchable_row_share"}
 ]
 ```
 
@@ -203,14 +219,24 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 
 ---
 
-## §5 数据阻断（这两条决定了二区天花板）
+## §5 数据阻断（2026-10-21 EXT 阶段后：B1 已从"缺数据"升级为"领域事实"）
 
 | ID | 阻断 | 实测 | 需要什么 |
 |---|---|---|---|
-| B1 | 外部独立 cohort | 三键交集 **0**：PlatinAI 只有 Pt、MSRS 无 Pt、NCI-60 无 SMILES；ChEMBL 29 本地库 0 个金属结构 | 一份含 Ru/Ir/Rh/Os/Re + SMILES + 细胞系 + potency 的外部表 |
-| B2 | 细胞系生物学特征 | 0 个 CCLE/GDSC 注释文件；46 个系覆盖 80% 数据 | ≥46 个系的特征表 + 带特征消融（≥+0.005） |
+| B1 | 外部独立 cohort | **不存在。** IrCytoToxDB（Scientific Data 2024，2,694 条 / 222 篇 / 127 系，CC-BY-4.0）与 MSRS 的 DOI 重叠 **221/222 = 99.55%**，仅 1 个新 DOI；653 个匹配 (DOI,细胞系) 格里 **89.4%** 数值相同到 0.01 log10，中位差 **0.0**，r=0.9611。其余来源：ChEMBL 29 本地库 0 个目标金属、PlatinAI 只有 Pt、NCI-60 无 SMILES、DepMap Cloudflare Turnstile、GDSC HTTP 410、Cellosaurus 超时、GEO GSE36133 只有 CEL 原始文件、RuCytoToxDB 无 Zenodo 存款（921 篇 ⊂ MSRS 的 1,427 个 Ru DOI） | 人工整理 2023–2025 文献（EXT-5 的两周预算，**未做，未编造**） |
+| B2 | 细胞系生物学特征 | **永久关闭。** 0 个注释文件；21.9% 的行来自 CCLE/DepMap 里按构造不存在的系（HELA / HEK293 / A2780 / A2780CISR / A549CISR）；top-46 覆盖 80.22% | 一份包含耐药衍生系与非 CCLE 系的注释，或 MSRS 自建注释——都不是下载 |
 
-**不要用 Pt 的 PlatinAI 冒充外部验证。**
+**不要用 Pt 的 PlatinAI 冒充外部验证。也不要用 IrCytoToxDB 冒充外部验证**——
+它是同一份 curation 的 Ir 切片（见 C9）。
+
+### 5.1 EXT 阶段一句话
+
+跨金属外推的失败位置已经确定：**shape（排序）占平方误差 0.653–0.757，
+offset（水平）只占 0.045–0.100**。所以"校准一下就能用"在算术上不成立
+（完美水平只值 +0.078 R²，4/5 金属仍为负）；k=50 校准时 R²≥0 的金属是 **0/5**，
+且小 k 校准在 55–95% 的重复里比不校准更差。表观迁移主要来自配体重叠：
+potency 的合并 ρ 从 0.296（metal_out）掉到 0.158（ligand_disjoint）。
+详见 `TODO/completed/ext_phase_results.md`。
 
 ---
 

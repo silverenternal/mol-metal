@@ -1,6 +1,6 @@
 # CLAIM LEDGER — 主张 → 证据 → 判定
 
-**日期**：2026-10-20（STR-7）
+**日期**：2026-10-21（EXT-8；C1–C7 为 2026-10-20 STR-7，新增 C8–C10）
 **规则**：每条主张必须指向一个磁盘上的 artifact 指针；没有指针的写 `UNMEASURED`，
 被外部依赖挡住的写 `BLOCKED`。**这张表是正文的上限**——正文不能比它走得远。
 **数值来源**：`metrics/by_metric/*.json`；表格由
@@ -15,6 +15,9 @@
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
 | C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。成分均值 22.17→**3.45**（语料 3.34），但第二成分是单原子的占 **60.5%**（语料 1.5%）、第二成分均 **1.98** 原子（语料 12.09）。键密度 1.137（语料 1.069），3 元环 **67.5%** vs 语料 **0.01%**。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。键头 teacher-forced `bond_f1` 0.173→0.605，但重建池只有 **1.35/1.49** 个成分（语料 3.34）。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/reference`；`.../per_epoch/17`；`.../head_on_real_geometries`；`.../bond_head_trajectory`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
+| C8 | 跨金属外推失败的主因是结构（排序）不迁移，不是水平估不准 | **SUPPORTED** | offset 占平方误差 0.045–0.100，scale 0.198–0.272，**shape 0.653–0.757**；完美水平只值 +0.078 R² 且 4/5 金属仍为负 | `msrs_lomo_error_decomposition.json:/dominant_term`；`.../mechanism`；`msrs_metal_descriptor_level.json:/counterfactual_summary` |
+| C9 | 公开语料里不存在独立的跨金属外部 cohort | **SUPPORTED**（领域事实） | IrCytoToxDB 与 MSRS 的 DOI 重叠 221/222 = 99.55%，仅 1 个新 DOI；匹配的 653 个 (DOI,细胞系) 格里 89.4% 数值相同（\|Δ\|<0.01），中位 \|Δ\|=0.0，r=0.9611 | `msrs_external_cohort_probe.json:/ircytotoxdb/doi_overlap_share`；`.../ircytotoxdb/row_agreement` |
+| C10 | 给新金属少量测量后校准，可以让模型可用 | **NOT SUPPORTED**（且校准使结果变差） | ligand-disjoint 切分上 k=50 时 R²≥0 的金属 **0/5**；k=5 时"比零样本更差"的重复占 55–95% | `msrs_kshot_calibration.json:/endpoints/potency/splits/metal_out_ligand_disjoint/verdict_at_gate_k` |
 
 ---
 
@@ -86,6 +89,15 @@ vs 0.81，Ir 0.8430（0.8295–0.8597）vs 0.73；最差 seed 仍过线。」
 **不得入闸**：Rh 的 0.3812 的 CI 是 [0.2217, 0.5407]，包含 0.5，它是测量地板。
 也不能写「差 0.04」——那是把三个不可解析的折等权平均进去的结果。
 
+**EXT-1 补上的机制（2026-10-21）**：把 LOMO 的平方误差按 Murphy 恒等式拆成
+offset / scale / shape 三项后，**shape 占 0.653–0.757，offset 只占 0.045–0.100**。
+所以"跨金属外推失败"不是"新金属的活性水平估不准"，而是"配体的 SAR 本身几乎不迁移"。
+两条限制必须一起写：
+
+- 表观迁移主要来自**配体重叠**。potency 的合并 ρ 在 metal_out 是 +0.296，
+  去掉配体重叠后掉到 +0.158；cisplatin 从 +0.269 掉到 +0.062。
+- 任何校准的上限是 ρ²，在诚实切分上只有 0.002–0.131。**不要写"校准后可用"。**
+
 ## C7 — 生成
 
 **能写**：「全语料的自由生成池现在存在（`cfm_c7_fullgen_2026_10_20`，n_train=26,715，
@@ -115,20 +127,59 @@ wall 11,232 s），仍**没有**证据说这是收敛值或天花板；也**不�
 epochs 5-17 每轮都有 1-6 步某个加权项返回 0（`EnergyConservation` 31 步 / `SBOO3Term` 52 /
 `FmOdeTerm` 19），epochs 0-3 是未记录而非零（计数器在 run 中途才落地）。
 
+## C8 — 失败在哪：水平还是结构
+
+**能写**：「把留出金属的平方误差按 Murphy 恒等式拆成三项，shape（排序）占
+0.653–0.757，scale（压缩）占 0.198–0.272，offset（水平）只占 0.045–0.100。
+因此零样本跨金属外推的瓶颈不是"新金属的活性水平估不准"：即使把真实水平
+直接给模型（oracle offset），R² 也只提高 +0.078，五个金属里仍有四个是负的。
+预测是压缩的（sd_pred 0.31–0.54 vs sd_obs 0.64–0.96，slope 0.24–1.16），
+所以任何校准的算术上限是 ρ²，在 ligand-disjoint 切分上只有 0.002–0.131。」
+
+**不能写**：「校准一下就能用」——见 C10。也不能写「中心化后 R²>0.10 说明迁移成立」：
+预注册门要求 ≥3/5 金属，实测 2/5（Os +0.316、Re +0.106），判 PARTIAL；
+去掉配体重叠后只剩 1/5（Os +0.080），判 SAR_FAILS。
+
+## C9 — 外部 cohort 到底存不存在
+
+**能写**：「这个领域目前没有机器可读的独立外部 cohort。最大的公开 Ir 语料
+IrCytoToxDB（Scientific Data 2024，2,694 条 / 222 篇 / 127 个细胞系，CC-BY-4.0）
+与 MSRS 的 DOI 重叠是 221/222 = 99.55%，只有 1 个新 DOI；在 653 个匹配的
+(DOI, 细胞系) 格里，89.4% 的数值与 MSRS 相同到 0.01 log10 以内，中位差 0.0。
+也就是说它不是外部测试集，是同一份 curation 的 Ir 切片。」
+
+**不能写**：「我们没找到外部数据是因为搜得不够」——本轮逐一实测了
+ChEMBL 29 本地库（0 个目标金属）、PlatinAI（只有 Pt）、NCI-60（无 SMILES）、
+DepMap（Cloudflare Turnstile）、GDSC（HTTP 410）、Cellosaurus（超时）、
+GEO GSE36133（只有 CEL 原始文件）、RuCytoToxDB（无 Zenodo 存款，921 篇 ⊂ MSRS 的 1,427 个 Ru DOI）。
+唯一剩下的路径是人工整理 2023–2025 文献，**没有做，也没有编造任何行**。
+
+## C10 — k-shot 校准
+
+**能写**：「在 ligand-disjoint 切分上，用 k 条新金属测量做 offset / linear / isotonic
+校准，k=50 时 R²≥0 的金属是 0/5；而且小 k 校准是**负作用**：k=5 时，
+offset-only 校准在 55–95% 的重复里比不校准更差。机制与 C8 一致——
+零样本的偏差本来就小（占平方误差 5–10%），用少量点去估它，估出来的噪声比要修的偏差还大。」
+
+**不能写**：「给新金属测 20 个化合物就能用」。
+
 ---
 
 ## UNMEASURED（完全没有数字）
 
 | 主张 | 为什么没有 | 需要什么 |
 |---|---|---|
-| 外部数据集上的绝对精度 | PlatinAI 只有 Pt、MSRS 无 Pt、NCI-60 无 SMILES，三键交集 0 | 一个新的、含多贵金属且带 SMILES 的外部集 |
-| 细胞系特征带来的增益 | 0 个 CCLE/GDSC 文件；46/711 细胞系覆盖 80% 数据 | 细胞系分子特征表 |
 | 湿实验验证 | 硬性不做（§5.4） | — |
+
+（「外部数据集上的绝对精度」与「细胞系特征带来的增益」已从 UNMEASURED 移入
+BLOCKED：2026-10-21 的 EXT-5 / EXT-7 给出了实测原因，见下。）
 
 ## BLOCKED（有依赖挡着）
 
 | 主张 | 阻断原因 | 证据 |
 |---|---|---|
+| 外部数据集上的绝对精度 | **不存在独立外部 cohort**：IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%、89.4% 数值相同；其余来源逐一实测不可用 | `msrs_external_cohort_probe.json:/conclusion` |
+| 细胞系特征带来的增益 | **双重阻断**：0 个注释文件；且 21.9% 的行来自 CCLE/DepMap 里按构造不存在的系（HELA / HEK293 / A2780 / A2780CISR / A549CISR） | `msrs_cell_feature_probe.json:/identity_mismatch` |
 | 贵金属配合物的对接打分 | Vina 无贵金属参数 | catalog §6.52d |
 | SA 引导解码 | 无梯度 + 无可微代理 + 单 checkpoint | catalog §6.140 |
 | 3-seed 生成扫描 | 每 run 只有一个 `seed0` checkpoint | catalog §6.140 |
