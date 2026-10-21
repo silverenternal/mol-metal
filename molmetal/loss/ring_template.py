@@ -48,6 +48,40 @@ DEFAULT-OFF
 weight <= 0 returns an exact torch.zeros(()) without touching the inputs,
 so a run that does not set flow.ring_template_weight is bit-exact with
 the pre-Wf-A78 trainer (AGENTS.md §5.11).
+
+Wf-A107 (2026-10-21) — TWO GRADIENT DEFECTS IN THE COUNT FORM
+-------------------------------------------------------------
+Wf-A96 ran this prior at weight 0.01 for 5 epochs and measured
+rings/mol 0.0 -> 7.05 (real 4.19) with the 3-ring share stuck at 0.44
+(real 0.005) and the 5/6 share at 0.19 (real 0.97).  Two independent
+causes were found, both in the gradient path:
+
+1. ``log1p(count)`` plus a ``/E`` denominator make d(loss)/dp shrink as
+   the count grows.  On a 20-atom cloud with a complete candidate graph
+   (190 pairs), sweeping the bond probability:
+
+       bond p   hard triangles   count grad   per_atom grad
+       0.50     0                0.782        0.536
+       0.90     1140             1.04e-4      226.0
+
+   i.e. the count form's gradient falls ~7,500x exactly when the
+   over-produced-3-ring regime is reached, while per_atom rises ~420x.
+   The prior was loudest when it had nothing to correct.
+   ``formulation="per_atom"`` normalises by n_atoms and drops log1p,
+   keeping O(1/n_atoms) gradient in both regimes.
+2. The triangle double-count correction subtracted ``0.5 * raw[3]``,
+   which is exact only for a 0/1 graph.  On a soft graph a triangle
+   contributes ``0.5 * (p1 p2 p3)**2``; the old form over-subtracted and
+   the clamp turned the 6-count (and its whole gradient) into an exact
+   zero whenever partial triangles existed.  ``_cycle_counts`` now uses
+   the squared product, which reduces to the old value on hard graphs.
+
+Both are reproduced by ``molmetal/scripts/wfa107_ring_gradient_probe.py``
+-> ``metrics/by_metric/wfa107_ring_gradient_probe.json``.
+
+Both changes are gradient-path only for the shipped ``count``
+formulation: the reported ``ring_prior_term`` is the hard count, so its
+VALUE is unchanged.  ``per_atom`` is opt-in.
 """
 from __future__ import annotations
 
@@ -67,11 +101,28 @@ class RingTemplatePriorConfig:
     size_weights: per-size weight on the squared count error.  Uniform
         by default: the target is the molecule's own profile, so no size
         needs to be privileged a priori.
+    formulation: ``"count"`` (default, Wf-A78 behaviour, bit-exact) or
+        ``"per_atom"`` (Wf-A107).  See :meth:`RingTemplatePrior.compute`
+        for why ``per_atom`` exists.
+    deficit_sizes: in ``per_atom`` mode, sizes whose error is one-sided
+        *deficit* (promote rings).  Every other size is one-sided
+        *excess* (suppress rings).  Default (5, 6) matches the chemistry
+        the corpus shows: 3/4-rings are strained and near-absent, 5/6
+        rings carry 97% of the real ring population.
     """
 
     sizes: Tuple[int, ...] = (3, 4, 5, 6)
     size_weights: Optional[Dict[int, float]] = None
     eps: float = 1e-6
+    formulation: str = "count"
+    deficit_sizes: Tuple[int, ...] = (5, 6)
+
+    def __post_init__(self) -> None:
+        if self.formulation not in ("count", "per_atom"):
+            raise ValueError(
+                "formulation must be 'count' or 'per_atom', got "
+                f"{self.formulation!r}"
+            )
 
     def weight_for(self, k: int) -> float:
         if self.size_weights is None:
@@ -83,11 +134,29 @@ def _cycle_counts(
     bond_prob: torch.Tensor,
     pair_index: torch.Tensor,
     sizes: Sequence[int],
+    n_atoms: Optional[int] = None,
 ) -> Dict[int, torch.Tensor]:
     """Cycle counts per size via the non-backtracking operator.
 
     Returns one entry per requested size (zeros included, so the caller
     can combine a hard-value pass with a soft-gradient pass).
+
+    Wf-A107 — the triangle correction is now taken on the SAME graph the
+    count is taken on.  The pre-A107 code subtracted ``0.5 * raw[3]``,
+    which is exact only when every edge probability is 0 or 1.  On a
+    soft graph a triangle with edge probabilities ``(p1, p2, p3)``
+    contributes ``0.5 * (p1 p2 p3)**2`` to ``trace(B**6)/12`` (the walk
+    traverses each edge twice, so the probability is squared), while the
+    old form subtracted ``0.5 * p1 p2 p3`` — far too much.  MEASURED on
+    a 6-atom cloud with a soft hexagon (p=0.35) plus one chord at the
+    same probability (triangle 0-1-2): raw 6-count 0.002757, old
+    correction 0.021437, old 6-count 0.0 and d(count6)/d(hex-edge
+    logit) = 0.0 -> the 6-ring term had NO gradient at all.  Corrected:
+    6-count 0.001838 (= the hexagon's own 0.35**6) with gradient
+    -0.001195.  That is the second reason the prior moved rings/mol
+    without moving the 5/6 share (Wf-A96).  The corrected term is
+    ``0.5 * trace((W o W)**3) / 6``, which reduces to the old
+    ``0.5 * #triangles`` for a 0/1 graph.
     """
     src = pair_index[0].to(bond_prob.device)
     dst = pair_index[1].to(bond_prob.device)
@@ -110,11 +179,17 @@ def _cycle_counts(
         raw[k] = torch.diagonal(power).sum() / (2.0 * k)
     if 6 in raw and 3 in raw:
         # A closed non-backtracking 6-walk can go around a TRIANGLE twice;
-        # that is not a 6-cycle.  Each triangle contributes exactly 0.5 to
-        # trace(B^6)/12, and no other repetition fits in 6 steps (2-cycles
-        # do not exist, 4+2 is not non-backtracking), so this subtraction
-        # is exact for simple graphs.
-        raw[6] = (raw[6] - 0.5 * raw[3]).clamp(min=0.0)
+        # that is not a 6-cycle.  Each triangle contributes
+        # 0.5 * (product of its three edge probabilities)**2 to
+        # trace(B^6)/12, so subtract exactly that.
+        if n_atoms is None:
+            n_atoms = int(torch.maximum(d_src.max(), d_dst.max()).item()) + 1
+        n = max(int(n_atoms), int(torch.maximum(d_src.max(), d_dst.max()).item()) + 1)
+        w = torch.zeros((n, n), dtype=bond_prob.dtype, device=bond_prob.device)
+        w[d_src, d_dst] = p_dir
+        w2 = w * w
+        tri_sq = torch.trace(w2 @ w2 @ w2) / 6.0
+        raw[6] = (raw[6] - 0.5 * tri_sq).clamp(min=0.0)
     return {k: raw[k] for k in sizes}
 
 
@@ -184,8 +259,8 @@ class RingTemplatePrior:
         soft = 1.0 - probs[:, 0]
         hard = (soft > 0.5).to(soft.dtype)
 
-        soft_counts = _cycle_counts(soft, pair_index, self.config.sizes)
-        hard_counts = _cycle_counts(hard, pair_index, self.config.sizes)
+        soft_counts = _cycle_counts(soft, pair_index, self.config.sizes, n_atoms)
+        hard_counts = _cycle_counts(hard, pair_index, self.config.sizes, n_atoms)
 
         truth = truth_bonds.to(bond_logits.device)
         if truth.dim() != 2 or truth.shape[0] != 2:
@@ -194,6 +269,7 @@ class RingTemplatePrior:
             torch.ones(truth.shape[1], device=bond_logits.device, dtype=soft.dtype),
             truth,
             self.config.sizes,
+            n_atoms,
         )
         if float(sum(v.detach() for v in truth_counts.values())) <= self.config.eps:
             return zero
@@ -214,6 +290,13 @@ class RingTemplatePrior:
         # step direction even at a small weight.
         denom = max(int(pair_index.shape[1]), 1)
 
+        if self.config.formulation == "per_atom":
+            if not self.config.sizes:
+                return zero
+            return self.weight * self._per_atom_loss(
+                hard_counts, soft_counts, truth_counts, int(n_atoms)
+            )
+
         loss = zero
         for k in self.config.sizes:
             # Value from the hard graph, gradient from the soft graph.
@@ -227,6 +310,72 @@ class RingTemplatePrior:
                 torch.log1p(c) - torch.log1p(truth_counts[k])
             ) ** 2
         return self.weight * loss
+
+    def _per_atom_loss(
+        self,
+        hard_counts: Dict[int, torch.Tensor],
+        soft_counts: Dict[int, torch.Tensor],
+        truth_counts: Dict[int, torch.Tensor],
+        n_atoms: int,
+    ) -> torch.Tensor:
+        """Wf-A107 — per-atom one-sided ring-count error.
+
+        WHY THIS EXISTS (MEASURED 2026-10-21, Wf-A107)
+        -----------------------------------------------
+        The ``count`` formulation wraps the count in ``log1p`` and
+        divides the soft count by the candidate-edge count E.  Both
+        choices make the gradient vanish exactly where the prior is
+        needed.  On a synthetic 20-atom cloud whose candidate graph is
+        complete (190 pairs), sweeping the bond probability:
+
+            bond p   hard triangles   count grad   per_atom grad
+            0.50     0                0.782        0.536
+            0.90     1140             1.04e-4      226.0
+
+        At the over-produced-3-ring state the shipped prior's gradient
+        is ~7,500x weaker than at the cold-start state where it had
+        nothing to correct, while ``per_atom`` is ~420x STRONGER.  That
+        is why weight 0.01 moved rings/mol from 0.0 to 7.05 while
+        leaving the 3-ring share at 0.44: the prior fired hardest when
+        the graph was ring-free.
+
+        Normalising by ``n_atoms`` (not by E) and dropping ``log1p``
+        keeps the gradient O(1/n_atoms) per unit of soft count in BOTH
+        regimes, because d(c_k/n_atoms)/dp does not shrink as more
+        cycles appear.
+
+        ⚠️ The same measurement is also the warning: at p=0.90 the
+        per_atom loss is 5,314 and its gradient 226, because an excess
+        term grows with the over-production it is meant to remove.
+        Wf-A107's GPU arm measured grad_norm 3,605 on a real batch.  The
+        form fixes vanishing, not magnitude; clipping or a saturating
+        excess term is still OPEN.
+
+        Asymmetry: sizes in ``deficit_sizes`` (default 5, 6) are
+        penalised only when the prediction has FEWER rings than the
+        truth molecule — they are promoted.  Every other size is
+        penalised only when the prediction has MORE — 3- and 4-rings
+        are suppressed.  The asymmetry is what makes the term bounded:
+        a deficit term can never exceed ``t_k**2``, while an excess
+        term grows with the over-production it is meant to remove.
+        """
+        n = max(int(n_atoms), 1)
+        loss = torch.zeros(
+            (), device=next(iter(soft_counts.values())).device,
+            dtype=next(iter(soft_counts.values())).dtype,
+        )
+        for k in self.config.sizes:
+            soft = soft_counts[k] / float(n)
+            # Value from the hard graph, gradient from the soft graph
+            # (same straight-through contract as the count form).
+            u = hard_counts[k] / float(n) + soft - soft.detach()
+            t = truth_counts[k] / float(n)
+            if k in self.config.deficit_sizes:
+                err = torch.relu(t - u)
+            else:
+                err = torch.relu(u - t)
+            loss = loss + self.config.weight_for(k) * err ** 2
+        return loss
 
     def compute_batch(
         self,

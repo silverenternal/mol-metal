@@ -370,6 +370,95 @@ def _z_to_onehot(z: torch.Tensor) -> torch.Tensor:
 #: Wf-A90 (2026-10-19) — see :func:`_metal_pair_features`.
 METAL_PAIR_FEATURE_DIM: int = 3
 
+#: Wf-A107 (2026-10-21) — RBF distance expansion (Wf-A72 Operator 2).
+#: 8 centres log-spaced over [0.9, 3.5] A, the candidate-edge range.
+RBF_FEATURE_DIM: int = 8
+RBF_MIN_DISTANCE: float = 0.9
+RBF_MAX_DISTANCE: float = 3.5
+RBF_SIGMA: float = 0.25
+
+#: Wf-A107 — per-pair chemistry context (Wf-A72 Operator 3).  Five
+#: binary columns, see :func:`_pair_chemistry_features`.
+PAIR_CHEMISTRY_DIM: int = 5
+
+_HETERO_ZS = frozenset({7, 8, 15, 16, 34})  # N, O, P, S, Se
+
+
+def rbf_expand(
+    d: torch.Tensor,
+    n_rbf: int = RBF_FEATURE_DIM,
+    d_min: float = RBF_MIN_DISTANCE,
+    d_max: float = RBF_MAX_DISTANCE,
+    sigma: float = RBF_SIGMA,
+) -> torch.Tensor:
+    """Gaussian RBF expansion of a distance vector, ``(E,) -> (E, n_rbf)``.
+
+    Wf-A72 Operator 2 (shipped Wf-A107).  The head used to see the raw
+    distance plus two hard flags (``d < 1.7``, ``d > 3.0``).  Two flags
+    cannot express "1.9 A is not 2.1 A" inside the 1.7-3.0 band, which is
+    exactly the band where a metal-donor bond and a non-bonded contact
+    are separated.  Centres are log-spaced so the short end (where bond
+    lengths cluster) gets the same resolution as the long end.
+    """
+    if n_rbf < 1:
+        raise ValueError(f"n_rbf must be >= 1, got {n_rbf}")
+    if d_min <= 0.0 or d_max <= d_min:
+        raise ValueError(f"need 0 < d_min < d_max, got {d_min}, {d_max}")
+    lo = float(torch.log(torch.tensor(d_min)))
+    hi = float(torch.log(torch.tensor(d_max)))
+    if n_rbf == 1:
+        centres = torch.tensor([(lo + hi) / 2.0], device=d.device, dtype=d.dtype)
+    else:
+        centres = torch.exp(
+            torch.linspace(lo, hi, n_rbf, device=d.device, dtype=d.dtype)
+        )
+    gamma = 1.0 / (2.0 * float(sigma) ** 2)
+    return torch.exp(-gamma * (d.unsqueeze(-1) - centres.unsqueeze(0)) ** 2)
+
+
+def _pair_chemistry_features(
+    z_i: torch.Tensor,
+    z_j: torch.Tensor,
+    metal_set: "frozenset",
+) -> torch.Tensor:
+    """``(E, 5)`` binary pair-type context.
+
+    Wf-A72 Operator 3 (shipped Wf-A107).  The atom encoder turns Z into
+    a learned embedding, so the pair head can in principle recover the
+    element pair — but only through a linear map of two embeddings, and
+    the 5-metal cohort spends most of its atom-encoder capacity on the
+    metal.  These columns state the pair class directly:
+
+      0. both carbon
+      1. carbon + heteroatom (N/O/P/S/Se)
+      2. both heteroatoms
+      3. either endpoint is a project metal
+      4. either endpoint is hydrogen
+
+    Columns overlap on purpose (H-C sets 4 only; Pt-N sets 3 only).  They
+    are computed from Z alone, so they cost no new input and cannot
+    disagree with the dative rule.
+    """
+    z_i = z_i.long()
+    z_j = z_j.long()
+    is_c_i = z_i == 6
+    is_c_j = z_j == 6
+    het_i = torch.isin(z_i, torch.as_tensor(sorted(_HETERO_ZS), device=z_i.device))
+    het_j = torch.isin(z_j, torch.as_tensor(sorted(_HETERO_ZS), device=z_i.device))
+    metal_t = torch.as_tensor(sorted(metal_set), device=z_i.device, dtype=z_i.dtype)
+    metal_i = torch.isin(z_i, metal_t)
+    metal_j = torch.isin(z_j, metal_t)
+    return torch.stack(
+        [
+            (is_c_i & is_c_j),
+            ((is_c_i & het_j) | (is_c_j & het_i)),
+            (het_i & het_j),
+            (metal_i | metal_j),
+            ((z_i == 1) | (z_j == 1)),
+        ],
+        dim=-1,
+    ).to(torch.float32)
+
 
 def _metal_pair_features(
     cloud: "AtomCloud",
@@ -493,6 +582,14 @@ class YuelBondDecoderHead(nn.Module):
         # bit-exactly; the trainer turns it ON for new runs through
         # --use-metal-pair-features (YAML flow.use_metal_pair_features).
         use_metal_features: bool = False,
+        # Wf-A107 (2026-10-21) — Wf-A72 Operators 2 + 3, never shipped
+        # before this point.  ``use_rbf_distance`` appends an 8-centre
+        # Gaussian expansion of d; ``use_pair_chemistry`` appends the
+        # 5 binary pair-type columns.  Both default False, so every
+        # existing checkpoint is bit-exact and loadable.
+        use_rbf_distance: bool = False,
+        use_pair_chemistry: bool = False,
+        n_rbf: int = RBF_FEATURE_DIM,
         # Wf-A95 (2026-10-19) — the donor set is now a CONSTRUCTOR input so a
         # checkpoint can decode with the set it was TRAINED with.  Before
         # this, ``forward`` read the module-global ``_DONOR_ZS``; extending
@@ -530,11 +627,21 @@ class YuelBondDecoderHead(nn.Module):
         )
         # Atom encoder: Z one-hot -> hidden_dim
         self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
+        # Wf-A107 — optional distance / pair-chemistry blocks.
+        self.use_rbf_distance = bool(use_rbf_distance)
+        self.use_pair_chemistry = bool(use_pair_chemistry)
+        self.n_rbf = int(n_rbf)
+        _rbf_dim = self.n_rbf if self.use_rbf_distance else 0
+        _chem_dim = PAIR_CHEMISTRY_DIM if self.use_pair_chemistry else 0
+        self._msg_extra_dim = _rbf_dim + _chem_dim
         # Message MLP: input [h_i, h_j, d_ij, is_short, is_long, is_dative]
+        # (+ RBF / pair-chemistry when enabled)
         self.msg_mlps = nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(hidden_dim * 2 + 4, hidden_dim),
+                    nn.Linear(
+                        hidden_dim * 2 + 4 + self._msg_extra_dim, hidden_dim
+                    ),
                     nn.ReLU(),
                     nn.Linear(hidden_dim, hidden_dim),
                 )
@@ -544,8 +651,11 @@ class YuelBondDecoderHead(nn.Module):
         # Pair head: [h_i, h_j, d_ij, dative] -> NUM_BOND_CLASSES logits
         # Wf-A90 — +3 metal-geometry columns when use_metal_features.
         self.use_metal_features = bool(use_metal_features)
-        _pair_in_dim = hidden_dim * 2 + 3 + (
-            METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
+        _pair_in_dim = (
+            hidden_dim * 2
+            + 3
+            + (METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0)
+            + self._msg_extra_dim
         )
         self.pair_head = nn.Sequential(
             nn.Linear(_pair_in_dim, hidden_dim),
@@ -720,6 +830,15 @@ class YuelBondDecoderHead(nn.Module):
             torch.isin(_z_i, metal_t) & torch.isin(_z_j, donor_t)
         )
         is_dative = is_dative.float().unsqueeze(-1)
+        # Wf-A107 — optional per-edge blocks (computed once, reused by the
+        # message loop and the pair head).  None when disabled, which
+        # keeps the concatenation list identical to the pre-A107 path.
+        _rbf = rbf_expand(d, self.n_rbf) if self.use_rbf_distance else None
+        _chem = (
+            _pair_chemistry_features(_z_i, _z_j, self.metal_set).to(h.dtype)
+            if self.use_pair_chemistry
+            else None
+        )
         # K message-passing iterations.
         #
         # 2026-10-05 — this loop is the variant the trainer's
@@ -737,17 +856,19 @@ class YuelBondDecoderHead(nn.Module):
         # implementation aggregate each edge in BOTH directions and add a
         # residual), so the patch is the better of the two on its own terms.
         for k in range(self.n_layers):
-            msg_in = torch.cat(
-                [
-                    h[i_idx],
-                    h[j_idx],
-                    d.unsqueeze(-1),
-                    is_short,
-                    is_long,
-                    is_dative,
-                ],
-                dim=-1,
-            )
+            _msg_parts = [
+                h[i_idx],
+                h[j_idx],
+                d.unsqueeze(-1),
+                is_short,
+                is_long,
+                is_dative,
+            ]
+            if _rbf is not None:
+                _msg_parts.append(_rbf)
+            if _chem is not None:
+                _msg_parts.append(_chem)
+            msg_in = torch.cat(_msg_parts, dim=-1)
             msg = self.msg_mlps[k](msg_in)
             h = h.clone()
             h = h + torch.zeros_like(h).index_add_(
@@ -772,6 +893,10 @@ class YuelBondDecoderHead(nn.Module):
             is_dative,
             is_short,
         ]
+        if _rbf is not None:
+            _pair_parts.append(_rbf)
+        if _chem is not None:
+            _pair_parts.append(_chem)
         if self.use_metal_features:
             _pair_parts.append(
                 _metal_pair_features(
@@ -1074,6 +1199,11 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # more capacity to converge.  Default False preserves the
         # Wf-A70/Wf-A71 2-layer MLP bit-exact compat.
         use_residual_pair_head: bool = False,
+        # Wf-A107 (2026-10-21) — same optional RBF / pair-chemistry blocks
+        # as YuelBondDecoderHead.  Default False = bit-exact.
+        use_rbf_distance: bool = False,
+        use_pair_chemistry: bool = False,
+        n_rbf: int = RBF_FEATURE_DIM,
         # Wf-A90 (2026-10-19) — same 3-d metal-geometry block as the
         # atom-MPNN head.  Default False keeps every existing checkpoint
         # loadable; the trainer turns it ON with the rest of the heads.
@@ -1119,7 +1249,16 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # schema at the input layer)
         self.use_metal_features = bool(use_metal_features)
         _edge_extra = METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
-        self.edge_init = nn.Linear(hidden_dim * 2 + 4 + _edge_extra, hidden_dim)
+        # Wf-A107 — optional per-edge blocks.
+        self.use_rbf_distance = bool(use_rbf_distance)
+        self.use_pair_chemistry = bool(use_pair_chemistry)
+        self.n_rbf = int(n_rbf)
+        _rbf_dim = self.n_rbf if self.use_rbf_distance else 0
+        _chem_dim = PAIR_CHEMISTRY_DIM if self.use_pair_chemistry else 0
+        self._feat_extra_dim = _rbf_dim + _chem_dim
+        self.edge_init = nn.Linear(
+            hidden_dim * 2 + 4 + _edge_extra + self._feat_extra_dim, hidden_dim
+        )
         # Edge MP.  Input is [h_e, h_nbr_e_max, d, is_short, is_long,
         # is_dative] (2*H + 4 = 132 at H=64 — h_e and h_nbr_e_max
         # plus 4 flag scalars).  Output is a residual on h_e via ReLU.
@@ -1128,7 +1267,9 @@ class YuelBondEdgeMPNNHead(nn.Module):
         self.edge_mp = nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(hidden_dim * 2 + 4, hidden_dim),
+                    nn.Linear(
+                        hidden_dim * 2 + 4 + self._feat_extra_dim, hidden_dim
+                    ),
                     nn.ReLU(),
                     nn.Linear(hidden_dim, hidden_dim),
                 )
@@ -1151,9 +1292,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # pair head while keeping the message-passing backbone
         # unchanged.
         _pair_extra = METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
+        _pair_in_dim = hidden_dim + 3 + _pair_extra + self._feat_extra_dim
         if self.use_residual_pair_head:
             self.pair_head = nn.Sequential(
-                nn.Linear(hidden_dim + 3 + _pair_extra, hidden_dim),
+                nn.Linear(_pair_in_dim, hidden_dim),
                 nn.LayerNorm(hidden_dim),
                 nn.ReLU(),
                 nn.Dropout(p=0.1),
@@ -1165,7 +1307,7 @@ class YuelBondEdgeMPNNHead(nn.Module):
             )
         else:
             self.pair_head = nn.Sequential(
-                nn.Linear(hidden_dim + 3 + _pair_extra, hidden_dim),
+                nn.Linear(_pair_in_dim, hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, NUM_BOND_CLASSES),
             )
@@ -1263,6 +1405,13 @@ class YuelBondEdgeMPNNHead(nn.Module):
             torch.isin(_z_i, metal_t) & torch.isin(_z_j, donor_t)
         )
         is_dative_f = is_dative.float().unsqueeze(-1)
+        # Wf-A107 — optional per-edge blocks, computed once.
+        _rbf = rbf_expand(d, self.n_rbf) if self.use_rbf_distance else None
+        _chem = (
+            _pair_chemistry_features(_z_i, _z_j, self.metal_set).to(d.dtype)
+            if self.use_pair_chemistry
+            else None
+        )
         # 5-d edge feature vector (d, is_short, is_long, is_dative,
         # dative_onehot-dummy) — same layout as the atom-MPNN head's
         # msg_in tail so the two are drop-in comparable.
@@ -1287,6 +1436,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         _edge_init_parts = [h_atom[i_idx], h_atom[j_idx], edge_flags]
         if _metal_feats is not None:
             _edge_init_parts.append(_metal_feats)
+        if _rbf is not None:
+            _edge_init_parts.append(_rbf)
+        if _chem is not None:
+            _edge_init_parts.append(_chem)
         edge_init_in = torch.cat(_edge_init_parts, dim=-1)
         h_e = self.edge_init(edge_init_in)  # (E, H)
         # Pre-build the line-graph neighbour map.  This is O(E^2) which
@@ -1312,10 +1465,12 @@ class YuelBondEdgeMPNNHead(nn.Module):
         for k in range(self.n_edge_layers):
             if nbr_e1.numel() == 0:
                 # No neighbours — pass-through residual only.
-                msg_in = torch.cat(
-                    [h_e, torch.zeros_like(h_e), edge_flags],
-                    dim=-1,
-                )
+                _msg_parts = [h_e, torch.zeros_like(h_e), edge_flags]
+                if _rbf is not None:
+                    _msg_parts.append(_rbf)
+                if _chem is not None:
+                    _msg_parts.append(_chem)
+                msg_in = torch.cat(_msg_parts, dim=-1)
                 h_e = h_e + torch.relu(self.edge_mp[k](msg_in))
                 continue
             h_nbr = h_e[nbr_e2]
@@ -1334,10 +1489,12 @@ class YuelBondEdgeMPNNHead(nn.Module):
             h_nbr_max = torch.where(
                 torch.isinf(h_nbr_max), torch.zeros_like(h_nbr_max), h_nbr_max
             )
-            msg_in = torch.cat(
-                [h_e, h_nbr_max, edge_flags],
-                dim=-1,
-            )
+            _msg_parts = [h_e, h_nbr_max, edge_flags]
+            if _rbf is not None:
+                _msg_parts.append(_rbf)
+            if _chem is not None:
+                _msg_parts.append(_chem)
+            msg_in = torch.cat(_msg_parts, dim=-1)
             h_e = h_e + torch.relu(self.edge_mp[k](msg_in))
         # Pair head: read edge state + d/is_short/is_dative (3-d) →
         # NUM_BOND_CLASSES logits.  Reading is_dative (not is_long)
@@ -1348,6 +1505,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         _pair_parts = [h_e, d.unsqueeze(-1), is_short, is_dative_f]
         if _metal_feats is not None:
             _pair_parts.append(_metal_feats)
+        if _rbf is not None:
+            _pair_parts.append(_rbf)
+        if _chem is not None:
+            _pair_parts.append(_chem)
         pair_in = torch.cat(_pair_parts, dim=-1)
         logits = self.pair_head(pair_in)
         return logits, (i_idx, j_idx)
@@ -1417,6 +1578,11 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
         z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
         metal_set: str = "all7",
         use_metal_features: bool = False,
+        # Wf-A107 — forward the parent's optional blocks.
+        use_rbf_distance: bool = False,
+        use_pair_chemistry: bool = False,
+        n_rbf: int = RBF_FEATURE_DIM,
+        donor_zs: Optional[Tuple[int, ...]] = None,
     ) -> None:
         super().__init__(
             hidden_dim=hidden_dim,
@@ -1427,6 +1593,10 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
             metal_set=metal_set,
             use_residual_pair_head=True,
             use_metal_features=use_metal_features,
+            use_rbf_distance=use_rbf_distance,
+            use_pair_chemistry=use_pair_chemistry,
+            n_rbf=n_rbf,
+            donor_zs=donor_zs,
         )
 
 

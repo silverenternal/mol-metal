@@ -1867,6 +1867,12 @@ class CFMJointModel(nn.Module):
         # (d_to_metal / angle_to_metal / is_metal_edge).  Default False so
         # every pre-Wf-A90 checkpoint rebuilds with its original width.
         use_metal_pair_features: bool = False,
+        # Wf-A107 (2026-10-21) — Wf-A72 Operators 2 + 3 on the bond head:
+        # 8-centre RBF distance expansion and 5 binary pair-chemistry
+        # columns.  Default False keeps every pre-A107 checkpoint width.
+        bond_rbf_features: bool = False,
+        bond_pair_chemistry: bool = False,
+        n_rbf: int = 8,
         # Wf-A69 W2 (2026-10-17) Fix 5 — metal-set preset passed to
         # :class:`YuelBondDecoderHead`.  Default ``"all7"`` covers
         # Pt/Ru/Ir/Os/Rh/Re/Pd so the dative-bond rule lights up the
@@ -2038,6 +2044,9 @@ class CFMJointModel(nn.Module):
                 # checkpoints.
                 metal_set=str(bond_z_metal_set),
                 use_metal_features=bool(use_metal_pair_features),
+                use_rbf_distance=bool(bond_rbf_features),
+                use_pair_chemistry=bool(bond_pair_chemistry),
+                n_rbf=int(n_rbf),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn":
             # Wf-A70 W1 (2026-10-17) — Fix 6: YuelBond B.1 edge-state
@@ -2057,6 +2066,9 @@ class CFMJointModel(nn.Module):
                 z_table=z_table,
                 metal_set=str(bond_z_metal_set),
                 use_metal_features=bool(use_metal_pair_features),
+                use_rbf_distance=bool(bond_rbf_features),
+                use_pair_chemistry=bool(bond_pair_chemistry),
+                n_rbf=int(n_rbf),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn_residual":
             # Wf-A74 (2026-10-18) — Architecture 1 (3-layer residual
@@ -2081,6 +2093,9 @@ class CFMJointModel(nn.Module):
                 z_table=z_table,
                 metal_set=str(bond_z_metal_set),
                 use_metal_features=bool(use_metal_pair_features),
+                use_rbf_distance=bool(bond_rbf_features),
+                use_pair_chemistry=bool(bond_pair_chemistry),
+                n_rbf=int(n_rbf),
             )
         else:
             raise ValueError(
@@ -3854,6 +3869,12 @@ def train_one_epoch(
     # a run that does not set flow.ring_template_weight is bit-exact with
     # the pre-Wf-A78 trainer.
     ring_template_weight: float = 0.0,
+    # Wf-A107 (2026-10-21) — ring-prior formulation.  "count" is the
+    # Wf-A78 behaviour (bit-exact); "per_atom" normalises by the atom
+    # count and uses one-sided excess(3,4) / deficit(5,6) errors so the
+    # gradient does not vanish when triangles are over-produced (see
+    # molmetal/loss/ring_template.py, Wf-A107).
+    ring_template_formulation: str = "count",
     # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the aux-MSE
     # softmax inside `_maybe_stash_bond_aux_bo_linear`.  Default 1.0
     # = bit-exact Wf-A68 (no temperature applied).  τ<1 sharpens,
@@ -5435,9 +5456,14 @@ def train_one_epoch(
         # stash is never populated, so the sum below is bit-exact.
         _ring_weight = float(ring_template_weight)
         if _ring_weight > 0.0 and getattr(model, "last_ring_prior_inputs", None):
-            ring_prior_term = RingTemplatePrior(weight=_ring_weight).compute_batch(
-                model.last_ring_prior_inputs, device=device
-            )
+            from molmetal.loss.ring_template import RingTemplatePriorConfig
+
+            ring_prior_term = RingTemplatePrior(
+                weight=_ring_weight,
+                config=RingTemplatePriorConfig(
+                    formulation=str(ring_template_formulation)
+                ),
+            ).compute_batch(model.last_ring_prior_inputs, device=device)
         else:
             ring_prior_term = torch.zeros((), device=device)
         model.last_ring_prior_term = ring_prior_term.detach()
@@ -9209,6 +9235,22 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--ring-template-formulation",
+        dest="ring_template_formulation",
+        type=str,
+        default="count",
+        choices=["count", "per_atom"],
+        help=(
+            "2026-10-21 NEW (Wf-A107): ring-prior formulation.  'count' "
+            "(default) is the Wf-A78 behaviour.  'per_atom' normalises by "
+            "the atom count and uses one-sided excess(3,4) / deficit(5,6) "
+            "errors, so the gradient does not vanish when the bond head "
+            "over-produces triangles (MEASURED on a synthetic over-producing "
+            "graph: 361x the count form's gradient).  Opt-in via YAML "
+            "flow.ring_template_formulation."
+        ),
+    )
+    p.add_argument(
         "--ring-template-weight",
         dest="ring_template_weight",
         type=float,
@@ -9794,6 +9836,44 @@ def parse_args() -> argparse.Namespace:
             "set false (YAML flow.use_metal_pair_features) to reproduce a "
             "pre-Wf-A90 architecture.  A checkpoint written before this "
             "flag existed rebuilds with the feature OFF automatically."
+        ),
+    )
+    p.add_argument(
+        "--bond-rbf-features",
+        dest="bond_rbf_features",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Wf-A107 (2026-10-21) — Wf-A72 Operator 2: append an 8-centre "
+            "log-spaced Gaussian RBF expansion of the pair distance to the "
+            "bond head's message and pair inputs.  The shipped head sees "
+            "the raw distance plus two hard flags (d<1.7, d>3.0), which "
+            "cannot separate 1.9 A from 2.1 A inside the band where a "
+            "metal-donor bond and a non-bonded contact live.  Default "
+            "False = bit-exact with pre-A107 checkpoints.  YAML: "
+            "flow.bond_rbf_features."
+        ),
+    )
+    p.add_argument(
+        "--bond-pair-chemistry",
+        dest="bond_pair_chemistry",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Wf-A107 (2026-10-21) — Wf-A72 Operator 3: append 5 binary "
+            "pair-type columns (C-C / C-hetero / hetero-hetero / involves "
+            "metal / involves H) to the bond head inputs.  Default False = "
+            "bit-exact.  YAML: flow.bond_pair_chemistry."
+        ),
+    )
+    p.add_argument(
+        "--n-rbf",
+        dest="n_rbf",
+        type=int,
+        default=8,
+        help=(
+            "Wf-A107 — number of RBF centres (only used when "
+            "--bond-rbf-features is on).  YAML: flow.n_rbf."
         ),
     )
     p.add_argument(
@@ -12157,6 +12237,11 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         use_metal_pair_features=bool(
             getattr(args, "use_metal_pair_features", False)
         ),
+        # Wf-A107 (2026-10-21) — Wf-A72 Operators 2 + 3.  Default False in
+        # this getattr so a pre-A107 checkpoint rebuilds at its own width.
+        bond_rbf_features=bool(getattr(args, "bond_rbf_features", False)),
+        bond_pair_chemistry=bool(getattr(args, "bond_pair_chemistry", False)),
+        n_rbf=int(getattr(args, "n_rbf", 8)),
     )
     return model.to(device) if device is not None else model
 
@@ -13684,6 +13769,30 @@ def main() -> int:
             f"({type(_head_obj).__name__}: pre-Wf-A90 architecture; the head "
             f"sees the metal only through the Z embedding + is_dative)"
         )
+    # Wf-A107 (2026-10-21) — report the head's ACTUAL feature blocks, not
+    # the launch flags.  A flag that reached argparse but not the head is
+    # exactly the failure mode this line makes visible.
+    _rbf_on = bool(getattr(_head_obj, "use_rbf_distance", False))
+    _chem_on = bool(getattr(_head_obj, "use_pair_chemistry", False))
+    if _rbf_on or _chem_on:
+        print(
+            f"[cfm-head] bond_features=ON "
+            f"({type(_head_obj).__name__}: "
+            f"rbf={int(getattr(_head_obj, 'n_rbf', 0)) if _rbf_on else 0} "
+            f"pair_chemistry={int(_chem_on)})"
+        )
+    else:
+        print(
+            f"[cfm-head] bond_features=OFF "
+            f"({type(_head_obj).__name__}: raw d + is_short/is_long only; "
+            f"pre-Wf-A107 architecture)"
+        )
+    _ring_w = float(getattr(args, "ring_template_weight", 0.0))
+    if _ring_w > 0.0:
+        print(
+            f"[cfm-head] ring_prior=ON weight={_ring_w:g} "
+            f"formulation={getattr(args, 'ring_template_formulation', 'count')}"
+        )
     # BLK-C5 (2026-10-09) — 用户建议二: '检查解码策略'.  Echo the decode knobs
     # actually in force so the log says what the decoder was doing, plus the
     # alternative to try if decode_ratio keeps falling (the BLK-C4 signature
@@ -14140,6 +14249,9 @@ def main() -> int:
             # Wf-A78 (OPT-5) — ring-template prior weight (default 0.0 =
             # exact zero term, bit-exact with the pre-Wf-A78 trainer).
             ring_template_weight=float(getattr(args, "ring_template_weight", 0.0)),
+            ring_template_formulation=str(
+                getattr(args, "ring_template_formulation", "count")
+            ),
             # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the
             # aux-MSE softmax inside the per-cloud stash.
             # Default 1.0 = bit-exact Wf-A68 (no temperature applied).
@@ -15989,6 +16101,24 @@ def main() -> int:
             "seed": args.seed,
             "device": str(device),
             "target_decode_ratio": args.target_decode_ratio,
+            # Wf-A107 — the ring prior and the bond-head feature switches were
+            # config-only knobs recorded NOWHERE in the run's own artifact, so
+            # a metrics file could not tell a weight-0.01 run from a
+            # weight-1e-4 one (both write `ring_prior_term`).  Recorded
+            # verbatim; all four default to the pre-A107 behaviour.
+            "ring_template_weight": float(
+                getattr(args, "ring_template_weight", 0.0)
+            ),
+            "ring_template_formulation": str(
+                getattr(args, "ring_template_formulation", "count")
+            ),
+            "bond_rbf_features": bool(
+                getattr(args, "bond_rbf_features", False)
+            ),
+            "bond_pair_chemistry": bool(
+                getattr(args, "bond_pair_chemistry", False)
+            ),
+            "n_rbf": int(getattr(args, "n_rbf", 8)),
         },
         # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #

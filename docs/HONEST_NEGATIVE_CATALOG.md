@@ -9473,3 +9473,122 @@ narrative in `TODO/completed/ext_phase_results.md`; claims C8/C9/C10 in
 
 **Workflow** | EXT-1..EXT-8 (2026-10-21; CPU only, no GPU; §5.2: every number is an artifact
 field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.152 — Wf-A107: the ring prior's gradient vanishes exactly where it is needed, and fixing that makes it dominate the step (2026-10-21)
+
+**What was under test.** Two things the CFM plan had shipped without a GPU gate:
+OPT-5 / Wf-A78's ring-template prior (only a 5-epoch "PASS direction only" from Wf-A96,
+where the 3-ring share stayed at 0.44 against a real 0.005) and Wf-A72 Operators 2+3
+(RBF distance encoding + per-pair chemistry in the bond head), which had never been run.
+Six arms on the Wf-A96 protocol: n_train=200, n_val=64, 5 metals, seed 0, 5 epochs,
+batch 8, `yuelbond_edge_mpnn_residual`, `metal_placement: legacy`. One factor per arm.
+
+**Defect 1 — the count form's gradient collapses as rings appear.** Synthetic 20-atom
+cloud, complete candidate graph (190 pairs), truth = one hexagon. Sweeping the bond
+probability (`metrics/by_metric/wfa107_ring_gradient_probe.json`):
+
+| bond p | hard triangles | `count` grad norm | `per_atom` grad norm |
+|---:|---:|---:|---:|
+| 0.50 (no hard edge) | 0 | **0.782** | 0.536 |
+| 0.90 (hard graph = K20) | 1,140 | **1.04e-4** | 226.0 |
+
+The shipped form's gradient falls ~7,500x exactly in the over-produced regime it exists
+to correct, while `per_atom` rises ~420x. `log1p(c)` and the `/E` denominator are why.
+
+**Defect 2 — the triangle correction zeroed the 6-ring term, not just its value.** The
+pre-A107 code subtracted `0.5 * raw[3]`, which is exact only on a 0/1 graph; on a soft
+graph a triangle contributes `0.5 * (p1p2p3)**2`. Measured on a 6-atom hexagon (p=0.35)
+plus one chord at the same probability:
+
+| | raw 6-count | correction | corrected 6-count | d(count6)/d(hex-edge logit) |
+|---|---:|---:|---:|---:|
+| old | 0.002757 | 0.021437 | **0.0** (clamped) | **0.0** |
+| new | 0.002757 | 0.000919 | 0.001838 (= 0.35**6) | **-0.001195** |
+
+So the 6-ring term had no gradient at all whenever ring edges also sat in partial
+triangles — i.e. in every dense predicted graph.
+
+**The A/B, decoded val molecules (96 per epoch, last epoch = 5th):**
+
+| arm | grad norm (peak) | bond AP | best F1 | rings/mol | 3-share | 5/6-share |
+|---|---:|---:|---:|---:|---:|---:|
+| control (w=0, no features) | 2.62 | **0.5617** | **0.7157** | 6.542 | 0.5096 | 0.1720 |
+| count w=1e-4 | 3.58 | 0.5365 | 0.6935 | 6.417 | 0.5065 | 0.1818 |
+| count w=1e-3 | 27.87 | 0.4513 | 0.5585 | 6.802 | 0.4487 | 0.1853 |
+| count w=1e-2 | **280.11** | 0.4670 | 0.5830 | 7.052 | 0.4372 | 0.1905 |
+| per_atom w=1e-2 | **3,605.68** | **0.0436** | 0.1139 | **0.0** | 0.0 | 0.0 |
+| features (w=0, RBF+chem) | 2.36 | **0.7556** | **0.7743** | 6.615 | 0.2630 | **0.2520** |
+
+Read three ways:
+
+1. **The prior never pays for itself.** Peak grad norm scales with weight (2.6 → 3.6 →
+   27.9 → 280.1) and bond AP falls with it (0.562 → 0.536 → 0.451 → 0.467) while the 5/6
+   share it is supposed to raise moves 0.172 → 0.182 → 0.185 → 0.191. Best case it buys
+   **+0.019** of ring composition for **−0.095** of bond AP. At w=1e-4 it is inert on
+   rings *and* −0.025 on AP.
+2. **`per_atom` fixes the vanishing and inherits the magnitude.** It never collapses
+   (grad norm 610 → 972 → 3,606 → 1,660 → 560 over five epochs) and the model never
+   learns bonds: AP 0.0436 is the positive rate (0.057), rings/mol 0.0. This is the
+   probe's prediction — at p=0.90 the `per_atom` loss is 5,314 — realised on real data.
+3. **Wf-A96's "rings/mol 0.0 → 7.05" was a within-run trajectory, not a prior effect.**
+   The matched no-prior control reaches **6.542** rings/mol by the same epoch on its own.
+   The prior's marginal contribution is **+0.51**, not +7.05.
+
+**Mechanism, on the bond head's own graph over the 63 val clouds' truth geometry**
+(threshold 0.5, SSSR on the un-sanitised predicted edge set;
+`metrics/by_metric/wfa107_bond_graph_profile.json`):
+
+| arm | rings/mol | 3-share | 5/6-share | bond F1 | precision | recall |
+|---|---:|---:|---:|---:|---:|---:|
+| control | 23.81 | 0.369 | 0.191 | **0.688** | 0.555 | 0.904 |
+| count w=1e-4 | 28.02 | 0.258 | 0.171 | 0.642 | 0.493 | 0.918 |
+| count w=1e-3 | 48.84 | 0.169 | 0.165 | 0.458 | 0.306 | 0.918 |
+| count w=1e-2 | 76.13 | 0.179 | 0.156 | 0.365 | 0.227 | 0.930 |
+| per_atom w=1e-2 | 34.25 | 0.293 | 0.065 | 0.051 | 0.039 | 0.073 |
+| features | 27.22 | 0.261 | **0.252** | 0.654 | 0.508 | 0.916 |
+
+The prior buys ring count by adding edges: recall is pinned at 0.90–0.93 in every arm
+while precision falls 0.555 → 0.227. Rings of **every** size grow (total 1,500 → 4,796;
+3-rings 553 → 858, 6-rings 220 → 352, 44+-membered 111 → 155), so the 5/6 share *falls*.
+A count-matching
+prior on a soft graph cannot say "close THIS ring"; it can only say "add edges until the
+count matches", and every added edge creates rings of all sizes.
+
+**The one positive result is not the prior.** RBF distance + pair chemistry
+(Wf-A72 Op2/Op3), with the prior off: bond AP **0.5617 → 0.7556** (+0.194), best F1
+0.7157 → 0.7743, `bond_ce` 0.798 → 0.745, and ring composition improves as a side effect
+(3-share 0.510 → 0.263, 5/6 0.172 → 0.252). On truth geometry the bond F1 is flat
+(0.688 → 0.654) but the 5/6 share rises 0.191 → 0.252. The rare classes gain most:
+class-2 AP 0.017 → 0.120, class-4 AP 0.532 → 0.729.
+
+**Honest boundaries (ACTIVE).**
+  * **5 epochs, 1 seed, 200 training clouds.** This is a direction test. No delta here is
+    a quality result, and the 1e-3 vs 1e-2 ordering (0.451 vs 0.467 AP) is inside the
+    run-to-run spread this protocol has never measured (n_seeds = 1).
+  * **The C7 verdict is untouched.** SA≤4.5 0.28%, joint gate 0/10,190 were measured on
+    an 18-epoch full-corpus pool. Nothing here re-opens it.
+  * **"No weight helps" is scoped to 5 epochs.** At w=1e-4 the AP trajectory is still
+    climbing (0.286 → 0.536 in the last two epochs) and could catch control given more
+    epochs — but at that weight the prior also does nothing to rings, so the arm that
+    might catch up is the arm with no effect.
+  * **The bond head over-connects on its own.** Control reaches 23.81 rings/mol on truth
+    geometry against the corpus's **4.19** (`docs/CFM_SIX_ROUND_CONCLUSION_2026_10_13.md`
+    §6), so over-connection does not need the prior to explain it. The prior makes an
+    existing defect worse, not a new one.
+  * **The features arm's decoded gain and truth-geometry loss disagree** (AP +0.194 vs
+    F1 −0.034). The decoded number is downstream of the ODE sampler; the truth-geometry
+    number is not. Both are reported because neither alone is the bond head's quality.
+
+**Artifacts.** `metrics/by_metric/wfa107_ring_gradient_probe.json`,
+`metrics/by_metric/wfa107_ring_prior_ab.json`,
+`metrics/by_metric/wfa107_bond_graph_profile.json`;
+`results/wfa107_{control,count,count_w1e3,count_w1e4,per_atom,features}/`;
+tests `molmetal/tests/test_wfa107_{ring_prior_per_atom,bond_pair_features,wiring}.py` (27).
+
+**§6.152 catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**206 → 207**. ACTIVE count **162 → 163**.
+
+**Workflow** | Wf-A107 (2026-10-21; GPU0: 6 × 5-epoch arms, ~60–110 s/epoch; §5.2: every
+number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
