@@ -40,6 +40,7 @@ Splitting strategies
 
 from __future__ import annotations
 
+import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -633,6 +634,26 @@ class ScaffoldSplitter:
         RNG seed for the ``'random'`` strategy.
     include_chirality : bool
         Forwarded to RDKit's Murcko scaffold routine (default False).
+    coverage : dict of str -> array-like of bool, optional
+        Per-row label-coverage masks, e.g. ``{"A549": active[:, 1] >= 0, ...}``.
+        When given, the assignment targets these masks' shares instead of
+        scaffold counts: every scaffold still lands in exactly one split, but
+        *which* split takes it is chosen to hit ``fractions`` of each key's
+        labelled rows.  Row counts (not scaffold counts) are what the fractions
+        apply to in this mode.
+
+        Why this exists: ``largest_first`` budgets capacities in scaffolds, and
+        it sorts with a *stable* sort.  When most scaffolds are singletons --
+        76 % of them in the PlatinAI 4-cell cohort -- the tie order among
+        equal-size groups is whatever order the input file happens to be in.
+        That silently decides per-cell coverage: on that cohort A2780cis got 27
+        test rows and could not be scored at all, while the same compounds in a
+        different file order gave 45-77.  Passing ``coverage`` removes both
+        dependencies: the tie-break is a content hash, and the choice of split
+        is driven by the label shares the evaluation actually needs.
+
+        See ``molmetal/scripts/wf_a61_split_coverage_audit.py`` and
+        ``metrics/by_metric/split_coverage_4cell.json``.
     """
 
     def __init__(
@@ -641,6 +662,7 @@ class ScaffoldSplitter:
         fractions: Tuple[float, float, float] = DEFAULT_FRACTIONS,
         seed: int = 42,
         include_chirality: bool = False,
+        coverage: Optional[Dict[str, np.ndarray]] = None,
     ) -> None:
         if strategy not in ("largest_first", "random"):
             raise ValueError(
@@ -653,6 +675,7 @@ class ScaffoldSplitter:
         self.fractions = fractions
         self.seed = int(seed)
         self.include_chirality = bool(include_chirality)
+        self.coverage = None if coverage is None else dict(coverage)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -685,6 +708,69 @@ class ScaffoldSplitter:
             seed=self.seed,
         )._assign_groups(groups)
 
+    def _assign_groups_by_coverage(
+        self,
+        keyed_groups: List[Tuple[str, List[int]]],
+        n_rows: int,
+    ) -> Dict[int, str]:
+        """Assign scaffolds to hit ``fractions`` of each coverage key's rows.
+
+        Same invariant as ``largest_first`` -- one scaffold, one split -- but
+        the objective is per-key label coverage plus the row budget, and the
+        order among equal-size scaffolds is a hash of the scaffold, so the
+        result does not depend on the order of the input file.
+        """
+        names = ("train", "val", "test")
+        masks: Dict[str, np.ndarray] = {}
+        for key, mask in self.coverage.items():  # type: ignore[union-attr]
+            arr = np.asarray(mask, dtype=bool)
+            if arr.shape != (n_rows,):
+                raise ValueError(
+                    f"coverage[{key!r}] has length {arr.size}, expected {n_rows}"
+                )
+            if arr.any():
+                masks[key] = arr
+        if not masks:
+            raise ValueError(
+                "coverage was given but every key is empty; nothing to stratify on"
+            )
+
+        totals = {k: int(m.sum()) for k, m in masks.items()}
+        target = {
+            s: {k: self.fractions[i] * totals[k] for k in masks}
+            for i, s in enumerate(names)
+        }
+        cap = {s: self.fractions[i] * n_rows for i, s in enumerate(names)}
+        rows = {s: 0 for s in names}
+        have = {s: {k: 0 for k in masks} for s in names}
+
+        def _tiebreak(key: str) -> str:
+            return hashlib.blake2b(key.encode(), digest_size=8).hexdigest()
+
+        ordered = sorted(keyed_groups, key=lambda kv: (-len(kv[1]), _tiebreak(kv[0])))
+        assignment: Dict[int, str] = {}
+        for _, group in ordered:
+            vec = {k: int(masks[k][group].sum()) for k in masks}
+            feasible = [s for s in names if rows[s] + len(group) <= cap[s] + 1e-9]
+            pool = feasible or list(names)
+            best = min(
+                pool,
+                key=lambda s: (
+                    sum(
+                        (target[s][k] - have[s][k] - vec[k]) ** 2 / totals[k]
+                        for k in masks
+                    )
+                    + (cap[s] - rows[s] - len(group)) ** 2 / n_rows,
+                    names.index(s),
+                ),
+            )
+            for i in group:
+                assignment[int(i)] = best
+            rows[best] += len(group)
+            for k in masks:
+                have[best][k] += vec[k]
+        return assignment
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -713,7 +799,12 @@ class ScaffoldSplitter:
             scaffold_to_rows[scaf].append(i)
         groups = list(scaffold_to_rows.values())
 
-        split_assignment = self._assign_groups(groups)
+        if self.coverage is None:
+            split_assignment = self._assign_groups(groups)
+        else:
+            split_assignment = self._assign_groups_by_coverage(
+                list(scaffold_to_rows.items()), n
+            )
         train_idx = np.array(
             sorted([i for i, s in split_assignment.items() if s == "train"]),
             dtype=np.int64,

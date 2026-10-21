@@ -1,0 +1,86 @@
+# 3-cell-line resistance classifier on the REAL-label PlatinAI cohort,
+# coverage-stratified scaffold split — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS
+# ----------------------
+# `configs/train_cisplatin_resistance_real_v1.yaml` trains the same model on the
+# same cohort with the historical `largest_first` scaffold split, and reports
+# MEASURED_2_OF_3_CELLS: A2780cis has 27 labelled test rows against
+# MIN_EVAL_ROWS (30), so the cell is never scored.
+#
+# `metrics/by_metric/split_coverage_4cell.json` (audit, 2026-10-21) measures
+# why.  A2780cis has 600 of the cohort's 4,370 labelled rows — not a data gap.
+# Two mechanisms starve it:
+#   1. 543 of those 600 (90.5%) sit in scaffolds ranked inside the block that
+#      `largest_first` hands to train, because A2780cis evidence is on large
+#      scaffolds and largest-first sends large scaffolds to train first.
+#   2. `_assign_groups` sorts by size with a *stable* sort, and 76% of the 1,053
+#      scaffolds are singletons, so equal-size ties are broken by first
+#      appearance in the CSV.  This cohort file is written sorted by descending
+#      cell-line coverage, which puts the multi-label compounds first — into
+#      train.  Re-ordering the same compounds moves A2780cis from 27 to a
+#      median of 60.
+#
+# So this config changes the split protocol, not the data and not the model:
+#   --split scaffold_coverage  ->  ScaffoldSplitter(coverage={cell: labelled})
+#
+# The invariant is unchanged: one Bemis-Murcko scaffold, exactly one split, no
+# leakage.  What changes is the objective — 70/10/20 of each cell line's
+# labelled rows instead of 70/10/20 of the scaffold count — and the tie-break,
+# which is a hash of the scaffold instead of file order.  The split is now
+# invariant to row order (verified: three random permutations of the cohort
+# give an identical scaffold -> split map).
+#
+# Measured effect on this cohort (1,966 compounds, before the trainer's
+# three-column filter):
+#
+#            train   val   test     (labelled rows)
+#   rows      1376   197    393
+#   A549       663    86    122
+#   A2780      517   124    219
+#   A2780cis   343    86    171     <- was 571 / 2 / 27
+#   MCF-7      599    54    160
+#
+# Every cell line clears MIN_EVAL_ROWS in both val and test, so the run can
+# report a genuine 3-cell mean.
+#
+# OUTPUT IS A NEW PATH ON PURPOSE (AGENTS.md §5.5 + §5.6).  The published
+# `platinai_3cell_resistance_real.json` is a measurement on a different split
+# and is not overwritten; it keeps its number, its provenance and its
+# MEASURED_2_OF_3_CELLS status.
+
+entry:
+  script: molmetal/scripts/train_cisplatin_resistance.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_cisplatin_resistance.py
+    --config {yaml_path}
+
+# Top-level scalar → --data dest.
+data: .data/molmetal/platinai_4cell_real_trainer.csv
+
+# Top-level scalar → --split dest.
+split: scaffold_coverage
+
+# Sections required by scripts/_pre_flight_check.sh.
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: false
+
+# --- run hyperparameters (leaf names bind to the script's argparse dests) -----
+# Identical to configs/train_cisplatin_resistance_real_v1.yaml.  The split
+# protocol is the only variable, so the two runs differ in one thing.
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch: 64
+  lr: 5.0e-4
+  eval_every: 10
+
+output:
+  base_dir: molmetal/reports/platinai_3cell_resistance_real_strat
+  log_master: molmetal/reports/platinai_3cell_resistance_real_strat/master.log
+  training_summary: molmetal/reports/platinai_3cell_resistance_real_strat/training_summary.json
+
+out: metrics/by_metric/platinai_3cell_resistance_real_strat.json

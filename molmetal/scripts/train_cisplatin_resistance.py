@@ -531,6 +531,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--lr", type=float, default=LR)
     p.add_argument("--eval-every", type=int, default=EVAL_EVERY)
     p.add_argument(
+        "--split",
+        choices=("scaffold", "scaffold_coverage"),
+        default="scaffold",
+        help=(
+            "scaffold: Bemis-Murcko groups, 70/10/20 by scaffold count, "
+            "largest-first (the historical protocol). "
+            "scaffold_coverage: same groups, but the assignment targets "
+            "70/10/20 of each cell line's labelled rows and breaks size ties "
+            "on a hash instead of file order. See "
+            "metrics/by_metric/split_coverage_4cell.json."
+        ),
+    )
+    p.add_argument(
         "--limit", type=int, default=None, help="Debug: cap n rows (post-split)"
     )
     p.add_argument(
@@ -595,6 +608,17 @@ def main() -> int:
             return len(self.smiles)
 
     splitter = ScaffoldSplitter(fractions=(0.7, 0.1, 0.2))
+    if args.split == "scaffold_coverage":
+        # Target each cell line's labelled rows, not scaffold counts.  Without
+        # this, a cell whose measurements sit on large scaffolds -- and whose
+        # small-scaffold ties happen to fall late in the CSV -- can land below
+        # MIN_EVAL_ROWS in test and never be scored (A2780cis: 27 of 600).
+        splitter = ScaffoldSplitter(
+            fractions=(0.7, 0.1, 0.2),
+            coverage={
+                cl: active[:, c] >= 0 for c, cl in enumerate(CELL_LINES)
+            },
+        )
     ds = _SmilesAdapter(smiles)
 
     seed_results: List[Dict[str, float]] = []
@@ -833,7 +857,18 @@ def main() -> int:
         "encoder_init": f"tmqm_pretrained_encoder.pt ({n_loaded}/12 backbone tensors)",
         "model": "dmpnn_3cell_resistance_with_sidefeat",
         "focal_loss_gamma": FOCAL_GAMMA,
-        "split": "scaffold_70_10_20",
+        "split": (
+            "scaffold_70_10_20_by_cell_coverage"
+            if args.split == "scaffold_coverage"
+            else "scaffold_70_10_20"
+        ),
+        "split_protocol": (
+            "Bemis-Murcko groups, one scaffold per split, 70/10/20 of each cell "
+            "line's labelled rows, size ties broken by a hash of the scaffold"
+            if args.split == "scaffold_coverage"
+            else "Bemis-Murcko groups, one scaffold per split, 70/10/20 by "
+                 "scaffold count, largest-first (size ties follow file order)"
+        ),
         "timestamp": time.strftime("%Y-%m-%d"),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
