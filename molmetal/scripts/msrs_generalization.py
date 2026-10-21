@@ -157,14 +157,24 @@ def scheme_folds(
 # ---------------------------------------------------------------------------
 # Paired-delta accuracy
 # ---------------------------------------------------------------------------
-def pair_table(frame: pd.DataFrame, ligand_key: str = "ligand_canonical") -> pd.DataFrame:
+def pair_table(
+    frame: pd.DataFrame,
+    ligand_key: str = "ligand_canonical",
+    key: Optional[Sequence[str]] = None,
+) -> pd.DataFrame:
     """Cross-metal pairs sharing (ligand, cell, DOI, duration).
 
     Same construction as ``msrs_surface_model.matched_delta_pairs`` but keyed on
     the complex rather than the main fragment, because the features are built
     on ``ligand_canonical``.
+
+    ``key`` overrides the default match key.  UP-2 uses
+    ``("ligand_canonical", "cell_line_key")`` to pair across papers: that
+    doubles the usable pairs (218 -> 436 at |delta| >= 0.2091) at the cost of
+    letting a paper-level offset into the observed delta.  The strict key stays
+    the default so every existing caller is byte-identical.
     """
-    key = [ligand_key, "cell_line_key", "doi", "time_h"]
+    key = list(key) if key is not None else [ligand_key, "cell_line_key", "doi", "time_h"]
     rank = {m: i for i, m in enumerate(sorted(frame["metal"].unique()))}
     rows: List[Dict[str, object]] = []
     for _, g in frame.groupby(key, dropna=False):

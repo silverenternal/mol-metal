@@ -11,10 +11,13 @@
 ## §1 一句话结论
 
 - **跨论文绝对强度预测过关**：整篇 DOI 留出 R² **0.3767**（5 seed，MACCS+RDKit 树）/ **0.3811**（+GNN 融合），门槛 0.36。
-- **"换哪个金属更好"不可学**：门内 218 对的多数类率 **0.6009**，三条路线（相减 0.5826 / 融合 0.5505 / 直接回归 0.5183）**全部低于恒定预测**。
+- **"换哪个金属更好"点估计不可学、balanced 口径可学**：门内 218 对的多数类率 **0.6009**，三条点估计路线（相减 0.5826 / 融合 0.5505 / 直接回归 0.5183）**全部低于恒定预测**；但同一批折改 listwise 目标后 balanced **0.5985 [0.5262, 0.6663]**，首次显著优于 0.5（raw 仍只有 0.5417）。**这是"方向学到了、精度没到"，不是"可用了"。** 详见 §2.7。
 - **跨金属迁移不到可用水平**：可入闸的 Ru/Ir LOMO **0.5974** < 0.6；within-metal 稳定超过 Krasnov（Ru 0.8271 vs 0.81，Ir 0.8430 vs 0.73）。
+- **加性约束不是 metal_out 的瓶颈**（UP-1，2026-10-21）：放开 ligand×metal 交互三个臂全部**更差**（free −0.097 / pair −0.113 / product −0.164 R²），最好的 free_onehot 只 +0.0204 且 CI 含 0。**方差分解里 0.712 的交互份额，在留出金属上不可外推。**
+- **校准的失败层是 cohort size，不是金属**（UP-6）：`cohort_metal` Mondrian 把最差层 0.8096 → **0.8956**，中位宽只涨 0.65%（2.0052 → 2.0183）。
 
 按 `todo.json::north_star.decision_rule`（门槛在看到结果前写死）：4 条里过 2 条 → **边界论文**。
+UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，UP-1 是**新增诚实负结果**，UP-2b 是**部分翻案但未过门**。
 
 ---
 
@@ -143,9 +146,83 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "C9.ir_new_dois", "value": 1, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.n_new_dois"},
   {"id": "C9.ir_identical_rows", "value": 0.8943, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.row_agreement.share_within_0p01"},
   {"id": "C9.ir_median_abs_diff", "value": 0.0, "artifact": "metrics/by_metric/msrs_external_cohort_probe.json", "path": "ircytotoxdb.row_agreement.median_abs_diff_log10"},
-  {"id": "C9.unmatchable_rows", "value": 0.2194, "artifact": "metrics/by_metric/msrs_cell_feature_probe.json", "path": "identity_mismatch.unmatchable_row_share"}
+  {"id": "C9.unmatchable_rows", "value": 0.2194, "artifact": "metrics/by_metric/msrs_cell_feature_probe.json", "path": "identity_mismatch.unmatchable_row_share"},
+  {"id": "UP1.reference_r2", "value": -0.0719, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.reference_weighted_r2"},
+  {"id": "UP1.free_desc_delta", "value": -0.0971, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.free_desc.delta_r2_weighted"},
+  {"id": "UP1.pair_desc_delta", "value": -0.1128, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.pair_desc.delta_r2_weighted"},
+  {"id": "UP1.product_desc_delta", "value": -0.1637, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.product_desc.delta_r2_weighted"},
+  {"id": "UP1.free_onehot_delta", "value": 0.0204, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.free_onehot.delta_r2_weighted"},
+  {"id": "UP1.free_onehot_ci_low", "value": -0.0154, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.free_onehot.bootstrap.ci95.0"},
+  {"id": "UP1.free_onehot_ligand_disjoint", "value": -0.0202, "artifact": "metrics/by_metric/msrs_interaction_ab.json", "path": "primary.candidates.free_onehot.delta_r2_ligand_disjoint"},
+  {"id": "UP2a.ligand_cell_n_pairs", "value": 360, "artifact": "metrics/by_metric/msrs_ranking_expanded.json", "path": "pairs.ligand_cell.overall.n_pairs"},
+  {"id": "UP2a.ligand_cell_raw", "value": 0.5333, "artifact": "metrics/by_metric/msrs_ranking_expanded.json", "path": "pairs.ligand_cell.overall.raw_sign_accuracy"},
+  {"id": "UP2a.ligand_cell_balanced", "value": 0.4705, "artifact": "metrics/by_metric/msrs_ranking_expanded.json", "path": "pairs.ligand_cell.overall.balanced_accuracy"},
+  {"id": "UP2a.ligand_cell_ceiling_raw", "value": 0.6222, "artifact": "metrics/by_metric/msrs_ranking_expanded.json", "path": "pairs.ligand_cell.additive_ceiling.raw_sign_accuracy"},
+  {"id": "UP2b.ligand_cell_raw", "value": 0.5417, "artifact": "metrics/by_metric/msrs_listwise_ranker.json", "path": "pairs.ligand_cell.overall.raw_sign_accuracy"},
+  {"id": "UP2b.ligand_cell_balanced", "value": 0.5985, "artifact": "metrics/by_metric/msrs_listwise_ranker.json", "path": "pairs.ligand_cell.overall.balanced_accuracy"},
+  {"id": "UP2b.ligand_cell_balanced_ci_low", "value": 0.5262, "artifact": "metrics/by_metric/msrs_listwise_ranker.json", "path": "pairs.ligand_cell.bootstrap.balanced_ci95.0"},
+  {"id": "UP2b.ligand_cell_balanced_ci_high", "value": 0.6663, "artifact": "metrics/by_metric/msrs_listwise_ranker.json", "path": "pairs.ligand_cell.bootstrap.balanced_ci95.1"},
+  {"id": "UP2b.strict_balanced", "value": 0.5055, "artifact": "metrics/by_metric/msrs_listwise_ranker.json", "path": "pairs.strict.overall.balanced_accuracy"},
+  {"id": "UP6.reference_worst_stratum", "value": 0.8096, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "design.reference.worst_stratum"},
+  {"id": "UP6.cohort_metal_coverage", "value": 0.8996, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.cohort_metal.coverage"},
+  {"id": "UP6.cohort_metal_worst_stratum", "value": 0.8956, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.cohort_metal.worst_stratum.coverage"},
+  {"id": "UP6.cohort_metal_width", "value": 2.0183, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.cohort_metal.median_width"},
+  {"id": "UP6.width_change", "value": 0.0065, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "gate.width_change_vs_reference"},
+  {"id": "UP6.metal_worst_stratum", "value": 0.8331, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.metal.worst_stratum.coverage"}
 ]
 ```
+
+### 2.7 UP 强化轮（2026-10-21，四臂全部预注册门槛）
+
+三个 artifact 的门槛都写在 `todo.json::gates_frozen_at = 2026-10-21T15:10+08:00`，**在看到任何结果之前**。
+
+**UP-1 交互约束消融**（`msrs_interaction_ab.json`，6 臂 × 5 金属 × 2 split × 2 endpoint，单 seed 筛选 + 5 seed 确认）：
+
+| 臂 | 约束 | ΔR² vs additive_desc（potency/metal_out） | 95% CI |
+|---|---|---:|---|
+| additive_desc（参照，= 生产模型） | `[[lig],[met],[cell]]` | — | — |
+| free_desc | 无 | **−0.0971** | [−0.1438, −0.0682] |
+| pair_desc | `[[lig,met],[cell]]` | **−0.1128** | [−0.1674, −0.0814] |
+| product_desc | 无（显式乘积特征） | **−0.1637** | [−0.3715, −0.0530] |
+| free_onehot | 无 | **+0.0204** | [−0.0154, +0.0440] |
+
+参照臂 R² = **−0.0719**，与 `msrs_lomo_surface.json` 的 Ru descriptors −0.0777 同源，**说明参照臂复现了生产模型**，Δ 是可信的。
+判据（best ≥ +0.05 且 CI 下界 > 0 且 ligand-disjoint 同号）**三项全不满足** ⇒ `CONSTRAINT_IS_NOT_THE_LEVER`。
+**关键机制**：留出金属上，`additive_onehot`（−0.0708）与 `additive_desc`（−0.0719）几乎相同 —— 金属描述符块在 metal_out 上贡献 **0.0011 R²**。放开交互只会把训练金属之间的差异当信号外推，方差涨得比偏差掉得快。
+
+**UP-2a 排序重测**（`msrs_ranking_expanded.json`，不重训，只重算已有 5-seed OOF）：
+
+| 配对键 | n 对 | raw | balanced | 加性上限 raw | balanced |
+|---|---:|---:|---:|---:|---:|
+| strict（ligand, cell, doi, time_h） | 218 | 0.5826 | 0.5272 | 0.6055 | 0.5 |
+| ligand_cell（ligand, cell） | **360** | 0.5333 | **0.4705** | 0.6222 | 0.5 |
+
+放宽配对键把 n 从 218 提到 360，**结论更差**：balanced 0.4705 低于 0.5。**加性上限的 balanced 恒为 0.5**，所以任何"balanced > 0.5"都是非加性信号 —— 这条对照基线是判据的核心。
+
+**UP-2b listwise 排序**（`msrs_listwise_ranker.json`，LightGBM `lambdarank`，group = (ligand, cell)，DOI 分组 5 折，同一批对）：
+
+| 配对键 | n 对 | raw | balanced | 95% CI (balanced) |
+|---|---:|---:|---:|---|
+| strict | 218 | 0.4312 | 0.5055 | — |
+| ligand_cell | 360 | 0.5417 | **0.5985** | **[0.5262, 0.6663]** |
+
+**这是本线第一次有 balanced 显著高于 0.5 的排序结果**（pointwise 同批对只有 0.4705，+0.128）。
+但预注册三条要求同时满足：`balanced ≥ 0.58` ✓、`CI 下界 > 0.52` ✓、`raw ≥ 0.63` ✗（0.5417）⇒ verdict 仍为 **FAIL**。
+方向自检 `corr(score, y) = −0.156`，分数没反号。strict 键下 balanced 只有 0.5055，**说明增益依赖放宽后的配对定义**，这是它的脆弱点。
+
+**UP-6 条件覆盖**（`msrs_calibration_shift.json`，复用 `msrs_generalization` 的 OOF，不重训）：
+
+| 变体 | 覆盖 | 中位宽 | 最差层 | 最差层覆盖 |
+|---|---:|---:|---|---:|
+| global（参照） | 0.9004 | 2.0052 | cohort_size=2 (n=851) | 0.8096 |
+| metal | 0.9002 | 2.0231 | cohort_size=2 | 0.8331 |
+| difficulty | 0.8789 | 1.9195 | cohort_size=2 | 0.8073 |
+| cohort | 0.8994 | 1.9847 | Os (n=900) | 0.8844 |
+| **cohort_metal** | 0.8996 | 2.0183 | Os (n=900) | **0.8956** |
+
+**metal-Mondrian 只把 0.8096 抬到 0.8331 —— 失败层不是金属。** 按 cohort size 分箱后最差层才真的被抬起来。
+`cohort_metal` 宽度只涨 **0.65%**，过门槛的第二分支（宽度增幅 <5% 且最差层 ≥0.88）⇒ **PASS**。
+**宽度本身改不了**：90% 区间宽 2.0052 ⇒ 残差 SD ≈ 0.61，与 R²=0.38 一致；校准只能改条件覆盖，不能凭空缩窄。
 
 ---
 
@@ -158,6 +235,8 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 | 2026-10-20 | 「0.5826 接近 0.65 门槛」 | 多数类率 **0.6009** | 门内 218 对只有两个金属对，正号占 60.1%。0.5826 **低于"永远答正号"**，不是"接近门槛" |
 | 2026-10-20 | 生成 **SA≤4.5 = 33.7%** | **0.28%** | 33.7% 是键头重建池（给定真实 tmQM 几何只跑键头），从不调用采样器 |
 | 2026-10-19 | 「LOMO 0.5575，差 0.04」 | 可解析子集 **0.5974** | 0.5575 把 Rh(51)/Os(36)/Re(74) 三个低于 `MIN_UNIQUE_FOR_GATE=200` 的折等权平均进去 |
+| 2026-10-21 | 「换哪个金属更好**不可学**」（无条件全称） | 「**点估计不可学（raw 低于多数类率），balanced 口径可学但未达可用**」 | UP-2b 在同一批折上改 listwise 目标后 balanced 0.5985 [0.5262, 0.6663]，CI 不含 0.5。**但没有撤回 0.5826/0.5333 那三行**：它们仍是 raw 口径的正确读数。说"不可学"而不说口径，是这次的错误 |
+| 2026-10-21 | 「交互份额 0.712 ⇒ 放开加性约束能救 metal_out」 | **约束不是杠杆**（free −0.097 / pair −0.113 / product −0.164） | 方差分解测的是**观测到的**交互，metal_out 要求把它**外推到没见过的金属**；这两件事不是同一个量。以后引用 0.712 必须同时说它只描述训练金属内部 |
 
 **这五条里前两条是同一个根因**：单 seed + ligand 划分。凡是看到预测线数字没有写协议、没有写 seed 数的，先假定它属于这一类。
 

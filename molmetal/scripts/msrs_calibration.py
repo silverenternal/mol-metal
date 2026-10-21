@@ -57,6 +57,7 @@ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E40
 PROTOCOLS = ("doi", "ligand")
 ARM = "ligand+both"
 MIN_METAL_CAL = 30
+MIN_COHORT_CAL = 50
 N_BINS = 10
 SEED = 20261018
 COVERAGE_TOL = 0.02
@@ -196,9 +197,19 @@ def run_protocol(
     cell: np.ndarray,
     cohort_k: np.ndarray,
     alpha: float = ALPHA,
+    extra_variants: Sequence[str] = (),
 ) -> Dict[str, object]:
+    """Cross-conformal intervals.
+
+    ``extra_variants`` adds interval families without changing the three that
+    the published artifact reports.  UP-6 uses it because the coverage failure
+    is stratified by **cohort size** (rows whose ligand+cell pair was measured
+    with two metals: n=851, coverage 0.8096) and not by metal, which is why the
+    existing ``metal`` Mondrian does nothing.
+    """
     n = len(y)
-    half = {name: np.full(n, np.nan) for name in ("global", "metal", "difficulty")}
+    names = ("global", "metal", "difficulty") + tuple(extra_variants)
+    half = {name: np.full(n, np.nan) for name in names}
     pit = {name: np.full(n, np.nan) for name in half}
 
     for k in sorted(set(fold[fold >= 0].tolist())):
@@ -257,6 +268,50 @@ def run_protocol(
         q_te = np.array([q_d_metal.get(m, q_d) for m in metal[test]])
         half["difficulty"][test] = q_te * sig_te
         pit["difficulty"][test] = _pit(scores, score_te)
+
+        # 4) Mondrian on cohort size — the stratum that actually fails
+        q_k = None
+        if "cohort" in extra_variants or "cohort_metal" in extra_variants:
+            q_k = {}
+            for kk in np.unique(cohort_k[cal]):
+                mask = cohort_k[cal] == kk
+                q_k[kk] = (
+                    conformal_quantile(resid_cal[mask], alpha)
+                    if mask.sum() >= MIN_COHORT_CAL
+                    else q
+                )
+        if "cohort" in extra_variants:
+            half["cohort"][test] = np.array(
+                [q_k.get(kk, q) for kk in cohort_k[test]]
+            )
+            pit_c = np.full(int(test.sum()), np.nan)
+            te_k = cohort_k[test]
+            for kk in np.unique(te_k):
+                m_te = te_k == kk
+                m_cal = cohort_k[cal] == kk
+                if m_cal.sum() >= MIN_COHORT_CAL:
+                    pit_c[m_te] = _pit(resid_cal[m_cal], resid_te[m_te])
+                else:
+                    pit_c[m_te] = _pit(resid_cal, resid_te[m_te])
+            pit["cohort"][test] = pit_c
+
+        # 5) Mondrian on (cohort size, metal), falling back to cohort then global
+        if "cohort_metal" in extra_variants:
+            q_cm = {}
+            for kk in np.unique(cohort_k[cal]):
+                for m in np.unique(metal[cal]):
+                    mask = (cohort_k[cal] == kk) & (metal[cal] == m)
+                    if mask.sum() >= MIN_METAL_CAL:
+                        q_cm[(kk, m)] = conformal_quantile(resid_cal[mask], alpha)
+            half["cohort_metal"][test] = np.array(
+                [
+                    q_cm.get((kk, m), q_k.get(kk, q))
+                    for kk, m in zip(cohort_k[test], metal[test])
+                ]
+            )
+            # PIT against the global pool: this variant has no single
+            # calibration pool per test row, so the histogram is indicative.
+            pit["cohort_metal"][test] = _pit(resid_cal, resid_te)
 
     evaluated = np.isfinite(half["global"])
     out: Dict[str, object] = {

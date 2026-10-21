@@ -1,0 +1,110 @@
+{
+  "artifact": "msrs_calibration_shift",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L4 uncertainty / UP-6",
+  "generated_utc": "2026-10-21T07:28:07+00:00",
+  "provenance": {
+    "oof": "/home/hugo/codes/mol-metal/results/msrs_generalization/oof.npz",
+    "oof_sha256": "2a512e3ff6dfbbe8c4ba04b56e66e0af009896fc7b5daaaeba87260d6600fef5",
+    "script": "molmetal/scripts/msrs_calibration_shift.py",
+    "git_commit": "4505c5e47642bbddb9b3e660c5bc941af2293bec",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "protocol": "doi",
+    "arm": "ligand+both",
+    "alpha": 0.1,
+    "extra_variants": [
+      "cohort",
+      "cohort_metal"
+    ],
+    "reference": {
+      "coverage": 0.9004,
+      "median_width": 2.0052,
+      "worst_stratum": 0.8096
+    },
+    "gate": {
+      "worst_stratum_coverage": 0.87,
+      "width": 1.75,
+      "width_tolerance": 0.05,
+      "coverage_strong": 0.88,
+      "frozen_at": "2026-10-21T15:10+08:00"
+    },
+    "why_cohort": "the failing group is cohort size 2 (n=851, 0.8096), not a metal; metal-Mondrian only moves it to 0.8331"
+  },
+  "variants": {
+    "global": {
+      "coverage": 0.9004,
+      "median_width": 2.0052,
+      "mean_width": 2.0139,
+      "winkler": 2.7362,
+      "worst_stratum": {
+        "stratum": "by_cohort_size:2.0",
+        "coverage": 0.8096,
+        "n": 851
+      }
+    },
+    "metal": {
+      "coverage": 0.9002,
+      "median_width": 2.0231,
+      "mean_width": 2.0099,
+      "winkler": 2.7328,
+      "worst_stratum": {
+        "stratum": "by_cohort_size:2.0",
+        "coverage": 0.8331,
+        "n": 851
+      }
+    },
+    "difficulty": {
+      "coverage": 0.8789,
+      "median_width": 1.9195,
+      "mean_width": 1.9846,
+      "winkler": 2.8587,
+      "worst_stratum": {
+        "stratum": "by_cohort_size:2.0",
+        "coverage": 0.8073,
+        "n": 851
+      }
+    },
+    "cohort": {
+      "coverage": 0.8994,
+      "median_width": 1.9847,
+      "mean_width": 2.0027,
+      "winkler": 2.7271,
+      "worst_stratum": {
+        "stratum": "by_group:Os",
+        "coverage": 0.8844,
+        "n": 900
+      }
+    },
+    "cohort_metal": {
+      "coverage": 0.8996,
+      "median_width": 2.0183,
+      "mean_width": 2.0038,
+      "winkler": 2.7298,
+      "worst_stratum": {
+        "stratum": "by_group:Os",
+        "coverage": 0.8956,
+        "n": 900
+      }
+    }
+  },
+  "best_extra_variant": "cohort_metal",
+  "gate": {
+    "coverage_pass": true,
+    "width_pass": true,
+    "worst_stratum": 0.8956,
+    "width": 2.0183,
+    "width_change_vs_reference": 0.0065
+  },
+  "verdict": "PASS",
+  "verdict_rule": "worst stratum >= 0.87 AND (width <= 1.75 OR (width increase < 5% AND worst stratum >= 0.88))",
+  "caveats": [
+    "Base predictions are out-of-fold from the same models used to fit the calibration quantiles, so residuals are mildly optimistic and coverage is a lower bound.",
+    "Width cannot be improved by calibration alone: a 90% interval of width W implies a residual SD of about W/3.29, and that SD is set by the model's R2.",
+    "The cohort_metal PIT is computed against the global pool because that variant has no single calibration pool per test row; treat its histogram as indicative."
+  ]
+}

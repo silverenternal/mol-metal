@@ -9595,3 +9595,100 @@ tests `molmetal/tests/test_wfa107_{ring_prior_per_atom,bond_pair_features,wiring
 
 **Workflow** | Wf-A107 (2026-10-21; GPU0: 6 × 5-epoch arms, ~60–110 s/epoch; §5.2: every
 number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.153 — UP-1: the additive constraint was never the thing holding metal_out back (2026-10-21)
+
+**Claim under test.** `msrs_variance_decomposition.json` reports the metal×ligand interaction
+at **0.712** of the Δ variance, while `msrs_surface_model.py:213-233` fits an
+`interaction_constraints=[[ligand],[metal],[cell]]` model that **structurally forbids a
+ligand×metal split**. If the interaction were the missing signal, releasing the constraint
+should raise held-out-metal R².
+
+**Measured.** `metrics/by_metric/msrs_interaction_ab.json`, six arms, same features / learner /
+split / endpoint as the production model, ligand-clustered bootstrap (2,000 reps):
+
+| arm | constraint | ΔR² vs additive_desc | 95% CI |
+|---|---|---:|---|
+| additive_desc (reference) | `[[lig],[met],[cell]]` | — | — |
+| free_desc | none | **−0.0971** | [−0.1438, −0.0682] |
+| pair_desc | `[[lig,met],[cell]]` | **−0.1128** | [−0.1674, −0.0814] |
+| product_desc | none (explicit bit×descriptor products) | **−0.1637** | [−0.3715, −0.0530] |
+| free_onehot | none | **+0.0204** | [−0.0154, +0.0440] |
+
+Reference R² = **−0.0719**, matching `msrs_lomo_surface.json` (Ru descriptors −0.0777), so the
+reference arm reproduces production rather than an easier task. Five-seed confirmation of the
+best arm: mean Δ **+0.0172** (sd 0.0067, min 0.0055, max 0.0224) — consistent but far under the
+frozen +0.05 gate, and the ligand-disjoint delta is **−0.0202** (opposite sign).
+
+**Verdict: `CONSTRAINT_IS_NOT_THE_LEVER`.** All three gate clauses fail.
+
+**Why the interaction share does not transfer.** 0.712 describes interactions the model can
+*observe* between metals it has labels for. metal_out asks it to *extrapolate* the interaction
+to a metal with no labels. Releasing the constraint lets the tree memorise train-metal
+interactions, so variance grows faster than bias falls. Supporting evidence inside the same
+artifact: `additive_onehot` (−0.0708) ≈ `additive_desc` (−0.0719) — the metal descriptor block
+contributes **0.0011 R²** to a held-out metal. There is no metal-level signal to interact with.
+
+**Do not** cite 0.712 as evidence that an interaction model would help the cross-metal line
+without this counter-measurement attached.
+
+**Artifacts.** `metrics/by_metric/msrs_interaction_ab.json`;
+`molmetal/scripts/msrs_interaction_ab.py` (480 LOC, 6 arms × 5 metals × 2 splits × 2 endpoints).
+
+**§6.153 catalog-count math.** Net **+1**. Cumulative **207 → 208**. ACTIVE **163 → 164**.
+
+---
+
+## §6.154 — UP-2: the ranking metric was partly the wrong objective, but raw accuracy still loses to a constant (2026-10-21)
+
+**Claim under test.** §6.142 (C3) concluded the Δ-sign is unlearnable. Two levers were never
+tried: (a) a wider pair definition, (b) a listwise objective instead of pointwise regression.
+
+**Measured (a) — wider pairs, same 5-seed OOF, no refit** (`msrs_ranking_expanded.json`):
+
+| pair key | n pairs | raw | balanced | additive-oracle raw | oracle balanced |
+|---|---:|---:|---:|---:|---:|
+| strict (ligand, cell, doi, time_h) | 218 | 0.5826 | 0.5272 | 0.6055 | 0.5 |
+| ligand_cell | **360** | 0.5333 | **0.4705** | 0.6222 | 0.5 |
+
+The planning note said 436 pairs. It is **360**: 436 used the raw complex SMILES and counted
+every numeric row; 360 uses `ligand_canonical` (desalted parent) and requires both rows to have
+been evaluated under the same DOI protocol. The parent fragment is the correct key — the salt
+counter-ion otherwise splits one ligand into several.
+
+**Measured (b) — LambdaRank on the same folds and pairs** (`msrs_listwise_ranker.json`,
+LightGBM `lambdarank`, group = (ligand, cell), label = within-group rank of −y):
+
+| pair key | n pairs | raw | balanced | 95% CI (balanced) |
+|---|---:|---:|---:|---|
+| strict | 218 | 0.4312 | 0.5055 | — |
+| ligand_cell | 360 | 0.5417 | **0.5985** | **[0.5262, 0.6663]** |
+
+**The objective was costing 0.128 balanced accuracy** (0.4705 pointwise → 0.5985 listwise on
+identical folds). This is the first ranking result on this line whose balanced CI excludes 0.5.
+
+**Verdict: still FAIL.** The pre-registered gate required all three of `balanced ≥ 0.58`,
+`CI low > 0.52`, `raw ≥ 0.63`; the third fails at **0.5417**. And raw is the number that matters
+against the constant predictor: answering the majority sign scores **0.6222** on this pair set.
+So the honest sentence is *"the sign is learned at better-than-chance balanced accuracy, and is
+still worse than a constant when the classes are imbalanced."*
+
+**Fragility, stated up front.** On the strict key balanced is only 0.5055 — the gain lives in
+the wider pair definition. A reviewer who insists on the strict key sees no gain. Both are
+reported; neither is the headline alone.
+
+**Artifacts.** `metrics/by_metric/msrs_ranking_expanded.json`,
+`metrics/by_metric/msrs_listwise_ranker.json` (161 s, CPU, `OMP_NUM_THREADS=1`);
+`molmetal/scripts/msrs_{ranking_expanded,listwise_ranker}.py`.
+
+**§6.154 catalog-count math.** Net **+1**. Cumulative **208 → 209**. ACTIVE **164 → 165**.
+
+**Companion pass, not a negative.** UP-6 (`msrs_calibration_shift.json`) lifts the worst
+coverage stratum **0.8096 → 0.8956** with median width **2.0052 → 2.0183** (+0.65%), by
+conditioning on cohort size rather than metal. Recorded here only because it changes §6.127's
+"the interval is honest and useless" reading: the interval's *marginal* width is unchanged
+(and cannot be changed without new information), but the **conditional** coverage is now
+defensible. `metal`-Mondrian alone moves 0.8096 → 0.8331 — the failing stratum is cohort size 2
+(n=851), not a metal.
