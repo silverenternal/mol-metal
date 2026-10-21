@@ -30,7 +30,7 @@
   "current_position": {
     "measured_facts": [
       "FIX-C8（新发现）：--consistency-term-weight 默认 0.05，但 sample_edm_sigma 默认 device=cpu，每步抛 RuntimeError 被吞，该项自上线起恒为 0。",
-      "C7 v1.1：全语料池全部是 wf_cfm_decode_dump_smiles.py 的键头重建（metal_z 表头），SA 5.032 是构造产物；真生成池最大 n_train=256，SA≤4.5 = 16/2,330 = 0.69% [0.42,1.11]；gen_validity 全语料 0.074-0.086 未高于 256 样本 0.083-0.292。",
+      "C7（2026-10-21 终态）：全语料自由生成池已存在 —— cfm_c7_fullgen_2026_10_20，18/18 epoch，12,669 行 / 12,668 可打分 / 10,190 唯一 SMILES，SA≤4.5 = 36/12,668 = 0.28% [0.21,0.39]，低于 n_train=256 池的 0.69% [0.42,1.11]；联合闸（SA≤4.5 且 novelty≥0.90）= 0/10,190。⚠️ 旧条目「真生成池最大 n_train=256 / 全语料池全是键头重建」写于 2026-10-20，已过期；全语料键头重建池（n=83，SA 5.032）仍是构造产物，不能当生成性质引用。",
       "FIX-C7（生成溯源）：三个被打分的池来自 n_train=64/256/256（语料 26,715）。全语料池 n=83：SA 5.032、SA≤4.5 33.7% [24.5,44.4]、QED 0.2042–0.2275；小规模池 n=2,396：SA 6.44–7.55、0.67%。但 SA 子集 novelty 0.8677→0.6977，联合门槛 0/83、0/2,396。cfm_r9_fix_v2（type-F1 0.947）无 checkpoint。",
       "FIX-C6（LOMO 可解析性 + seed 集成）：按 MIN_UNIQUE_FOR_GATE=200，只有 Ru(1,311)/Ir(538) 可入闸，LOMO=0.5974（all-metals 0.5576）；seed 集成 resolvable=0.5957（Ru 0.5901 / Ir 0.6012）。Rh n=51、AUC 0.3812 CI [0.2217,0.5407] 含 0.5。重跑与已发布面板差 0.0158（CUDA 非确定性）。",
       "FIX-C3（Δ 符号指标）：门内 218 对多数类率 0.6009（Os-Ru 153 / Ir-Rh 64）；水平相减 raw 0.5826 但平衡仅 0.5272 [0.4359,0.6198]（TPR 0.80/TNR 0.25）；直接回归 raw 0.5183 / 平衡 0.5162 [0.3939,0.6430]；lambdarank 0.0734 且 |Δ̂| 0.045（退化）。0.5826 低于恒定预测 0.018。",
@@ -899,7 +899,7 @@
         "STR-6"
       ],
       "result": {
-        "verdict": "NOT SUPPORTED (re-attributed v1.1: no full-corpus generation pool)",
+        "verdict": "NOT SUPPORTED (v1.2: full-corpus generation pool now EXISTS; SA<=4.5 0.28% < small 0.69%)",
         "pipeline_split": {
           "generation": {
             "n": 2342,
@@ -931,7 +931,7 @@
             "note": "bond-head reconstruction of real tmQM geometry; SA inherited"
           }
         },
-        "full_corpus_generation_pool_exists": false,
+        "full_corpus_generation_pool_exists": true,
         "gen_validity": {
           "full_corpus": [
             0.0859,
@@ -952,9 +952,23 @@
           "metrics/by_metric/c7_scale_matched_pools.json"
         ],
         "doc": "TODO/completed/fix_c7_generator_scale.md",
-        "note": "盘上无全语料自由生成池；真生成最大只到 n_train=256。gen_validity 全语料 0.074-0.086 vs 256 样本 0.083-0.292，未随规模改善。cfm_r9_fix_v2 仍无 checkpoint。"
+        "note": "v1.1（2026-10-20）：盘上无全语料自由生成池；真生成最大只到 n_train=256。gen_validity 全语料 0.074-0.086 vs 256 样本 0.083-0.292，未随规模改善。cfm_r9_fix_v2 仍无 checkpoint。 ⚠️ 2026-10-21 更新：全语料自由生成池已存在（18/18 epoch，12,668 可打分），SA≤4.5 = 0.28% [0.21,0.39]，仍低于 256 样本的 0.69%。判定不变，理由从「artifact 不存在」改为「测到了且更低」。",
+        "v1_2_resolution": {
+          "date": "2026-10-21",
+          "run": "molmetal/reports/cfm_c7_fullgen_2026_10_20 (18/18 epochs, exit=0, wall 11,232 s)",
+          "gate_as_written": "若存在全语料 generation 池且 SA≤4.5 显著高于小规模层，C7 可改写为 SUPPORTED。",
+          "clause_1_pool_exists": "SATISFIED — 12,668 scored, tiers_missing=[]",
+          "clause_2_significantly_higher": "FAILED — 0.28% [0.21,0.39] vs 0.69% [0.42,1.11]; CIs do not overlap, direction is lower",
+          "conclusion": "The gate was written before the run and it resolves to NOT SUPPORTED on its second clause. The kill branch ('no full-corpus pool ⇒ artifact missing') no longer applies; the verdict now rests on a measured rate, not on an absent artifact.",
+          "artifacts": [
+            "metrics/by_metric/c7_scale_matched_pools.json",
+            "metrics/by_metric/c7_fullgen_pool_quality.json",
+            "docs/CLAIM_LEDGER.md C7",
+            "docs/HONEST_NEGATIVE_CATALOG.md §6.150b/§6.150c"
+          ]
+        }
       },
-      "acceptance_result": "重新归因 v1.1 — 全语料池为键头重建；真生成 SA≤4.5 = 0.69% [0.42,1.11]；C7 判定所需 artifact 不存在。"
+      "acceptance_result": "v1.1 重新归因（全语料池为键头重建）；v1.2（2026-10-21）全语料真生成池跑完 18/18 epoch，预登记闸的第一条满足、第二条失败（0.28% < 0.69%，CI 不重叠），C7 维持 NOT SUPPORTED。"
     },
     {
       "id": "FIX-C8",

@@ -9363,12 +9363,18 @@ statement that every weighted term contributed. The warning behaviour is deliber
     capping the pair tensors, which is a model change, not an allocator one.
   * **Every number here was taken with a foreign 11.3 GB resident on the same GPU** (the user's
     `lineageflow` run), and some arms raced a second agent's cold C7 launch that was later stopped.
-  * **The +51% `empty_cache` cost is a 4,096-cloud number; at 26,715 clouds it is UNMEASURED.**
-    Every arm in this entry ran at `n_train=4096`. The full-corpus run that followed used
-    `empty_cache_every: 8` and completed 18/18 epochs at 1,064-1,140 s/epoch with 46 recoverable
-    OOMs, but no matched no-`empty_cache` arm was run at that scale, so the *ratio* is a PROJECTED
-    extrapolation. What is MEASURED at full corpus is only the outcome (it fit and finished); the
-    cost of the lever at that scale is not.
+  * **The +51% `empty_cache` cost is a 4,096-cloud number; at 26,715 clouds the ratio does not
+    exist — the comparison arm cannot run on this card.** Every arm in this entry ran at
+    `n_train=4096`. The full-corpus run that followed used `empty_cache_every: 8` and completed
+    18/18 epochs at 1,064-1,140 s/epoch with 46 recoverable OOMs, peaking at **96,102 MiB
+    `peak_alloc` / 97,331 MiB `nvidia-smi` reserved** on a 98 GB card. A matched no-lever arm has to
+    allocate *at least* that much, so it needs ≥96 GB free — and on 2026-10-21 GPU0 had **48.7 GB
+    free** (two foreign processes holding 36.6 GB and 11.3 GB). So the honest statement is not
+    "the ratio is unmeasured" but **"the ratio is undefined at this scale on this hardware: without
+    the lever the run does not fit."** So the lever's cost at full corpus has no measured upper
+    bound; what *is* measured is the outcome (it fit and finished). Quoting +51% there would be an
+    extrapolation across a 6.5× step-count change (64 → 418 steps/epoch), which is exactly the kind
+    of extrapolation §6.150b got burned by.
   * **The run that finished did NOT use `expandable_segments`.** §6.150c calls it the single
     largest lever, so it would be natural to assume the completed run used it. It did not: the
     resume config sets `empty_cache_every: 8` and no `PYTORCH_CUDA_ALLOC_CONF` is exported by
