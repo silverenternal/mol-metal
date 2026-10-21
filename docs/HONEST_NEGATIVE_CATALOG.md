@@ -9930,7 +9930,7 @@ repo.
 
 ---
 
-## §6.158 — UP-8: adapting on k points is worse than not adapting, on every metal (2026-10-21)
+## §6.158 — UP-8: adapting on k points is worse than not adapting, on four of five metals (2026-10-21)
 
 **Claim under test.** EXT-3 (`msrs_kshot_calibration.json`) found 0/5 metals at R² ≥ 0 with k=50
 under offset / linear / isotonic recalibration, and concluded few-shot was infeasible. That

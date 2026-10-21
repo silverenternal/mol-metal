@@ -17,7 +17,7 @@
   },
   "north_star": {
     "thesis": "跨金属活性外推的失败位置已经定位在 shape（配体-金属交互），不是 level（金属整体强弱）。所以本轮唯一值得投入的方向是「让模型能表达并学到这个交互」，而不是继续校准水平。",
-    "phase": "UP 强化阶段（2026-10-21 起）",
+    "phase": "UP 强化阶段已结束（2026-10-21）；结果：4 条判据仍 2/4，DP-2 判 NO。",
     "current_goal": "把 DOI 留出 R² 从 0.3767 推到 ≥0.42（headline 0.45），把 metal_out 绝对 R² 从 −0.0734 推到 ≥0，把排序平衡准确率从 0.5272 推到 ≥0.58。三条都过 → 一区强指标路径；只过一条 → 机制论文（比 EXT 的 boundary 强一档）。",
     "immediate_goal": "先跑 UP-1（交互约束 A/B，CPU 1 小时）与 UP-2（排序扩样本，CPU 3 小时）。这两个包便宜且能立刻改变后续路线：UP-1 若证明形状是「模型结构自缚」，UP-3/UP-5 的 GPU 投入才值得。",
     "decision_rule": {
@@ -77,7 +77,20 @@
         "target": "≥0（且 ≥3/5 金属 ≥0）",
         "artifact": "msrs_lomo_surface.json",
         "lever": "UP-1 交互约束 A/B + UP-4 eRAC/部分池化",
-        "why_weak": "metal_out 的 LightGBM 被 interaction_constraints 限制成 ligand / metal / cell 三块互不相交，结构上无法表达占 Δ 方差 0.712 的交互项。"
+        "why_weak": "metal_out 的 LightGBM 被 interaction_constraints 限制成 ligand / metal / cell 三块互不相交，结构上无法表达占 Δ 方差 0.712 的交互项。",
+        "post_up": {
+          "after_up": -0.0734,
+          "target_met": false,
+          "tested_by": [
+            "UP-1",
+            "UP-4"
+          ],
+          "reading": "约束放开后 free −0.0971 / pair −0.1128 / product −0.1637，全部比加性参照更差；eRAC 桥 −0.0744 vs 原始 −0.0734。水平项没有可动的杠杆，失败在 shape。",
+          "artifacts": [
+            "msrs_interaction_ab.json",
+            "msrs_erac_metal.json"
+          ]
+        }
       },
       {
         "metric": "DOI 留出 R²",
@@ -85,7 +98,22 @@
         "target": "≥0.42（headline 0.45）",
         "artifact": "msrs_feature_expansion_5seed.json",
         "lever": "UP-3 3D 配位图 + UP-5 预训练 + UP-9 集成",
-        "why_weak": "2D 指纹 + 手写配位块；D-MPNN 与 LightGBM 打平（+0.0019），说明换模型类没有用，要换表示。"
+        "why_weak": "2D 指纹 + 手写配位块；D-MPNN 与 LightGBM 打平（+0.0019），说明换模型类没有用，要换表示。",
+        "post_up": {
+          "after_up": 0.3767,
+          "target_met": false,
+          "tested_by": [
+            "UP-3",
+            "UP-5",
+            "UP-9"
+          ],
+          "reading": "3D 配位被语料封死（金属原子 0/200）；Pt 预训练 +0.0095（门槛 +0.03）；三臂集成 0.3328 且低于两臂 0.3337。0.42 的门槛没有一条路走到。",
+          "artifacts": [
+            "msrs_complex3d_probe.json",
+            "msrs_pretrain_transfer.json",
+            "msrs_final_stack.json"
+          ]
+        }
       },
       {
         "metric": "排序平衡准确率",
@@ -93,7 +121,19 @@
         "target": "≥0.58（436 对上）",
         "artifact": "msrs_delta_metric_audit.json",
         "lever": "UP-2 扩样本 + listwise LambdaRank",
-        "why_weak": "218 对、3 个金属对、多数类 0.6009；模型退化成恒答正号（TPR 0.80 / TNR 0.25）。raw sign 在类不平衡下不是可比的指标。"
+        "why_weak": "218 对、3 个金属对、多数类 0.6009；模型退化成恒答正号（TPR 0.80 / TNR 0.25）。raw sign 在类不平衡下不是可比的指标。",
+        "post_up": {
+          "after_up": 0.5985,
+          "target_met": "partial",
+          "tested_by": [
+            "UP-2"
+          ],
+          "reading": "放宽配对键到 (ligand, cell) 得 360 对后，listwise 平衡 0.5985 [0.5262,0.6663] ≥0.58，首次 CI 不含 0.5；但 raw 0.5417 仍低于多数类 0.6222，预注册三条件未同时满足。写论文必须同时给两个口径。",
+          "artifacts": [
+            "msrs_ranking_expanded.json",
+            "msrs_listwise_ranker.json"
+          ]
+        }
       },
       {
         "metric": "LOMO AUC（可解析子集）",
@@ -101,7 +141,20 @@
         "target": "≥0.63",
         "artifact": "lomo_resolvability_audit.json",
         "lever": "UP-4 eRAC 跨周期迁移 + UP-5 预训练",
-        "why_weak": "5 金属、秩 ≤4；Ru/Ir 之外三个折在测量地板上。"
+        "why_weak": "5 金属、秩 ≤4；Ru/Ir 之外三个折在测量地板上。",
+        "post_up": {
+          "after_up": 0.5974,
+          "target_met": false,
+          "tested_by": [
+            "UP-4",
+            "UP-5"
+          ],
+          "reading": "eRAC 与 Pt 预训练都没有改动 LOMO 的可解析子集；0.63 未达。",
+          "artifacts": [
+            "msrs_erac_metal.json",
+            "msrs_pretrain_transfer.json"
+          ]
+        }
       },
       {
         "metric": "conformal 中位宽度 / 子群覆盖",
@@ -109,7 +162,21 @@
         "target": "≤1.75 / ≥0.87",
         "artifact": "msrs_calibration.json",
         "lever": "UP-6 label-shift conformal",
-        "why_weak": "宽度由残差 SD 决定（R²=0.38 ⇒ 宽 2.0），校准改不了精度；能改的是条件覆盖。"
+        "why_weak": "宽度由残差 SD 决定（R²=0.38 ⇒ 宽 2.0），校准改不了精度；能改的是条件覆盖。",
+        "post_up": {
+          "after_up": {
+            "median_width": 2.0183,
+            "worst_stratum_coverage": 0.8956
+          },
+          "target_met": "coverage_only",
+          "tested_by": [
+            "UP-6"
+          ],
+          "reading": "cohort_metal Mondrian 把最差层 0.8096 → 0.8956（≥0.87 达标），宽度 2.0052 → 2.0183（≤1.75 不可能：宽度由残差 SD 0.61 决定）。覆盖可以修，精度不能。",
+          "artifacts": [
+            "msrs_calibration_shift.json"
+          ]
+        }
       },
       {
         "metric": "k-shot 可用金属数（k=50）",
@@ -117,13 +184,26 @@
         "target": "≥3/5",
         "artifact": "msrs_kshot_calibration.json",
         "lever": "UP-8 meta-learning（不是 post-hoc 校准）",
-        "why_weak": "EXT-3 只测了事后校准；偏差只占 MSE 5-10%，估它的噪声大于偏差本身。"
+        "why_weak": "EXT-3 只测了事后校准；偏差只占 MSE 5-10%，估它的噪声大于偏差本身。",
+        "post_up": {
+          "after_up": "1/5",
+          "target_met": false,
+          "tested_by": [
+            "UP-8"
+          ],
+          "reading": "k=50 时可用金属仍只有 Os 一个（0.3479 → 0.1958，仍为正但掉 0.152）；Ru/Ir/Re 更差（−0.078→−0.476、−0.128→−0.223、−0.103→−0.128），Rh 改善但仍为负（−0.159→−0.083）。target ≥3/5 未达，且可用金属数与 zero-shot 相同。",
+          "artifacts": [
+            "msrs_meta_kshot.json"
+          ]
+        }
       }
     ],
     "gates": {
       "frozen_at": "2026-10-21T15:10+08:00",
       "rule": "结果产生后不得改数值；只允许在结果产生前写 amendment_note（时间 + 理由）。"
-    }
+    },
+    "closed_at": "2026-10-21",
+    "summary": "六行全部被 UP 轮检验过：0 行达标、2 行部分（排序 balanced、校准覆盖）、4 行未动。没有任何一行还留着未试的杠杆。"
   },
   "literature": {
     "note": "2026-10-21 检索（arXiv API + Europe PMC）。只列被某个 work_package 直接使用的条目；标 id_verified=true 的是从 arXiv API 返回的原始条目，false 的是检索摘要里出现但未记下 ID，引用前需补 ID。",
@@ -660,7 +740,7 @@
           "os_share_worse_offset": 0.85,
           "os_share_worse_ridge": 1.0
         },
-        "reading": "在 k 个点上做适配比不适配更差，而且每一个金属都更差 —— 包括唯一为正的 Os（0.348 → 0.196，85% 重复更差）。1/5 金属 R²≥0，和 zero-shot 同数。",
+        "reading": "在 k 个点上做适配比不适配更差：5 个金属里 4 个变差（Ru −0.078→−0.476、Ir −0.128→−0.223、Os 0.348→0.196、Re −0.103→−0.128），只有 Rh 改善但仍为负（−0.159→−0.083）。可用金属数 1/5，与 zero-shot 相同 —— 适配没有把一个金属从负翻成正。Os 的 85% 重复更差。",
         "degeneracy": "proto 臂与 offset 数值完全相同（diagnostics.proto_equals_offset=true）：2048-bit Morgan 空间里余弦相似度近乎常数，softmax 退化成均匀权重，所以 proto 就是均值。三个臂实际只有两个估计量。",
         "combined": "EXT-3（输出重标定）与 UP-8（模型适配）两个设计合起来，结论比「few-shot 不可行」窄：在这份语料上，k≤50 个标签点既不能靠平移输出、也不能靠重拟合头来修正留出金属的水平。"
       }
@@ -776,7 +856,9 @@
         "UP-9"
       ],
       "note": "P2，DP-2 之前只做 UP-9 的预演；UP-7/UP-8 在主结果出来后再跑，避免摊薄。"
-    }
+    },
+    "status": "COMPLETE (2026-10-21)",
+    "note": "三波 9 项全部执行并留下 artifact；wave_1 的 UP-1 与 UP-2 没有改变后续路线（UP-1 FAIL 但 UP-3/UP-5 仍按计划执行，见 decision_points.DP-1.deviation）。"
   },
   "open_decisions": [
     "是否接受「先跑 UP-1/UP-2 再决定是否投 GPU」的顺序（约 4 小时 CPU 换掉 3 天 GPU 的风险）。",
