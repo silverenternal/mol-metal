@@ -92,26 +92,29 @@ def _capture_parser(script_path: Path):
         "parse_known_args": _ap.ArgumentParser.parse_known_args,
     }
 
-    # Each spy must call its OWN original: parse_args delegates to
-    # parse_known_args, so a shared original recurses forever. (This bit the
-    # gate's own first draft; the sibling _yaml_only_gate tests cover it.)
-    def make(which: str):
+    # Both hooks share one body: the parse is abandoned before it runs, so the
+    # old recursion trap (parse_args delegating to parse_known_args) cannot fire.
+    def make():
         def spy(self, args=None, namespace=None):
-            result = originals[which](self, args, namespace)
-            # parse_known_args returns (namespace, extras); parse_args returns the
-            # namespace. Storing the tuple makes every hasattr() below False, so
-            # every key in every config reads as dead — a total false negative
-            # that looks like a catastrophic config regression.
-            captured["ns"] = result[0] if isinstance(result, tuple) else result
-            # `self` IS the trainer's parser; its actions are the only record of
-            # nargs=/type= per dest. Captured here because the spy is the only
-            # place the gate ever holds a reference to the parser itself.
+            # Capture BEFORE parsing. MEASURED 2026-10-21: two trainers declare
+            # `--config` with required=True, so `parse_args([])` exits 2 before
+            # the capture line ever ran, and the gate reported "could not
+            # capture a parser namespace" — a config it then could not check at
+            # all. The dest set does not depend on the values, so it is built
+            # from the actions and the parse is abandoned.
             captured["actions"] = _actions_by_dest(self)
+            captured["ns"] = _ap.Namespace(
+                **{
+                    a.dest: a.default
+                    for a in self._actions
+                    if a.dest not in ("help", _ap.SUPPRESS)
+                }
+            )
             raise _Stop()
         return spy
 
-    _ap.ArgumentParser.parse_args = make("parse_args")
-    _ap.ArgumentParser.parse_known_args = make("parse_known_args")
+    _ap.ArgumentParser.parse_args = make()
+    _ap.ArgumentParser.parse_known_args = make()
     old_argv = sys.argv
 
     def captured_result():
@@ -334,12 +337,74 @@ def _is_empty_container(value) -> bool:
     return isinstance(value, (list, dict, tuple, set)) and len(value) == 0
 
 
-def audit_config(config_path: Path, ns, actions: dict | None = None) -> tuple[list[dict], list[str]]:
+_DIRECT_READ = re.compile(r"""(?:\.get\(\s*|\[\s*)["']([A-Za-z0-9_]+)["']""")
+#: `cfg["model"]` NOT followed by another subscript or a method call — the
+#: whole sub-mapping is handed to a consumer (`model_cfg=cfg["model"]`).
+_DIRECT_SUBTREE = re.compile(r"""\[\s*["']([A-Za-z0-9_]+)["']\s*\](?![\[.])""")
+
+
+def _direct_loader_keys(script_path: Path) -> set[str] | None:
+    """Keys a script reads out of the loaded YAML mapping by name.
+
+    Not every config names a trainer whose hyperparameters arrive through
+    ``apply_yaml_overrides``.  Some scripts load the file themselves and read
+    ``cfg["train"]["epochs"]``; those keys are delivered, but they never touch
+    an argparse dest, so the dest test reports them as dead.  MEASURED
+    2026-10-21: the eight ``configs/msrs_dmpnn_*.yaml`` files name no
+    ``entry.script`` at all, so the gate skipped them — ``n_configs_skipped``
+    was 8 and ``test_every_config_is_actually_checked`` failed.  A gate that
+    skips a config is not checking it.
+
+    This is a *weaker* claim than resolution and is reported separately: a
+    string literal of the right name can still be ignored downstream.  It is
+    used only where no dest exists, and only to distinguish "read by the script
+    the config names" from "read by nothing", which is the failure the gate is
+    for.
+
+    Returns ``None`` when the source cannot be read, so the caller falls back
+    to the strict behaviour rather than silently accepting every key.
+    """
+    try:
+        source = script_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    return set(_DIRECT_READ.findall(source))
+
+
+def _direct_subtree_keys(script_path: Path) -> set[str]:
+    """Keys whose whole sub-mapping the script takes and passes on.
+
+    ``msrs_dmpnn_protocols.py`` does ``model_cfg=cfg["model"]`` — the leaves
+    under ``model:`` are delivered, but no single line mentions ``hidden``.
+    Treating them as dead would be a false positive, which is how a gate gets
+    switched off.  The rule is deliberately narrow: a parent counts only when
+    it is subscripted and then *not* indexed or method-called further, so
+    ``cfg["train"]["epochs"]`` does **not** license every key under ``train:``.
+    """
+    try:
+        source = script_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return set()
+    return set(_DIRECT_SUBTREE.findall(source))
+
+
+def audit_config(
+    config_path: Path,
+    ns,
+    actions: dict | None = None,
+    direct_keys: set[str] | None = None,
+    direct_out: list[str] | None = None,
+    subtree_keys: set[str] | None = None,
+) -> tuple[list[dict], list[str]]:
     """Return (violations, declared_inert) for one config.
 
     Four dispositions, deliberately distinct:
 
     * resolved to a dest — the key is live.
+    * read by name from the loaded mapping — the key is live, but through the
+      script's own ``cfg["..."]`` access rather than an argparse dest. Weaker
+      than resolution and reported separately (``direct_out``): it proves the
+      script mentions the key, not that the value reaches the model.
     * registered non-trainer consumer — the key is live, read by something that
       is not the trainer (scripts/start.sh, an aggregator, pre-flight).
     * DECLARED-INERT — no dest and no consumer anywhere in the repo, but
@@ -388,6 +453,19 @@ def audit_config(config_path: Path, ns, actions: dict | None = None) -> tuple[li
         if any(p in L.DECLARED_INERT_PATHS for p in prefixes):
             inert.append(dotted)
             continue
+        if direct_keys and (
+            path[-1] in direct_keys
+            or (len(path) > 1 and subtree_keys and path[-2] in subtree_keys)
+        ):
+            # No argparse dest, but the script the config names reads this leaf
+            # by name out of the loaded mapping — directly, or by taking the
+            # whole parent dict (`model_cfg=cfg["model"]`) and handing it to a
+            # builder. Weaker than resolution: a typo inside a passed sub-dict
+            # still slips through. Reported on its own line, never counted as a
+            # dest hit.
+            if direct_out is not None:
+                direct_out.append(dotted)
+            continue
         violations.append(
             {
                 "config": _rel(config_path),
@@ -397,8 +475,16 @@ def audit_config(config_path: Path, ns, actions: dict | None = None) -> tuple[li
     return violations, inert
 
 
-def audit(configs: list[Path] | None = None) -> dict:
-    """Audit every config against the trainer its own entry.script names."""
+def audit(configs: list[Path] | None = None, strict: bool = False) -> dict:
+    """Audit every config against the trainer its own entry.script names.
+
+    ``strict`` turns a skipped config into a violation.  The flag used to be
+    accepted and ignored ("interface parity"), which meant the one failure mode
+    this gate cannot see — a config it never opened — was the one failure mode
+    it never reported.  MEASURED 2026-10-21: eight ``configs/msrs_dmpnn_*.yaml``
+    files named no ``entry.script``, so they were skipped and the gate said
+    PASS while checking nothing about them.
+    """
     if configs is None:
         seen: list[Path] = []
         for pattern in CONFIG_GLOBS:
@@ -407,6 +493,7 @@ def audit(configs: list[Path] | None = None) -> dict:
 
     violations: list[dict] = []
     declared_inert: list[str] = []
+    direct_keys_seen: list[str] = []
     checked: list[str] = []
     skipped: list[str] = []
     ns_cache: dict[Path, object] = {}
@@ -422,6 +509,14 @@ def audit(configs: list[Path] | None = None) -> dict:
         script, command = _entry_script_and_command(entry)
         if not script:
             skipped.append(f"{cfg.name} (no entry.script and no .py in entry.command_template)")
+            if strict:
+                violations.append(
+                    {
+                        "config": cfg.name,
+                        "key": "entry.script absent — config cannot be bound to a trainer",
+                        "reason": "skipped",
+                    }
+                )
             continue
 
         # §5.11's third escape route. `--extra-flags` is closed in start.sh and
@@ -444,7 +539,13 @@ def audit(configs: list[Path] | None = None) -> dict:
 
         if script_path not in ns_cache:
             ns, actions, err = _capture_parser(script_path)
-            if ns is None:
+            if ns is None and err and err.startswith("could not capture"):
+                # A script with no argparse at all: it reads the mapping
+                # itself. Auditing it against an empty namespace is exactly
+                # right — every key must then be justified by a direct read.
+                ns_cache[script_path] = argparse.Namespace()
+                act_cache[script_path] = {}
+            elif ns is None:
                 violations.append({"config": cfg.name, "key": f"trainer: {err}"})
                 ns_cache[script_path] = False
                 act_cache[script_path] = {}
@@ -455,7 +556,17 @@ def audit(configs: list[Path] | None = None) -> dict:
         if ns is False:
             continue
 
-        found, inert = audit_config(cfg, ns, act_cache[script_path])
+        before_direct = len(direct_keys_seen)
+        found, inert = audit_config(
+            cfg,
+            ns,
+            act_cache[script_path],
+            direct_keys=_direct_loader_keys(script_path),
+            direct_out=direct_keys_seen,
+            subtree_keys=_direct_subtree_keys(script_path),
+        )
+        for i in range(before_direct, len(direct_keys_seen)):
+            direct_keys_seen[i] = f"{cfg.name}: {direct_keys_seen[i]}"
         violations.extend(found)
         for k in inert:
             declared_inert.append(f"{cfg.name}: {k}")
@@ -484,6 +595,8 @@ def audit(configs: list[Path] | None = None) -> dict:
         "skipped": skipped,
         "n_declared_inert": len(declared_inert),
         "declared_inert": declared_inert,
+        "n_direct_loader_keys": len(direct_keys_seen),
+        "direct_loader_keys": direct_keys_seen,
         "n_type_violations": sum(1 for v in violations if v.get("reason") == "type"),
         "n_violations": len(violations),
         "violations": violations,
@@ -494,10 +607,14 @@ def audit(configs: list[Path] | None = None) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--strict", action="store_true", help="accepted for interface parity")
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="a config with no entry.script fails instead of being skipped",
+    )
     args = ap.parse_args(argv)
 
-    report = audit()
+    report = audit(strict=args.strict)
     if args.json:
         import json
 

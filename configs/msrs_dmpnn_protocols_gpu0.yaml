@@ -11,6 +11,10 @@
 # GPU policy: cuda:0 only (user directive 2026-10-16). This script calls torch
 # directly, so compute.device is the only device knob; do not add compute.gpu.
 
+entry:
+  script: molmetal/scripts/msrs_dmpnn_protocols.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/msrs_dmpnn_protocols.py --config {yaml_path}"
+
 data:
   long: data/msrs/measurements.parquet
   endpoint: potency
@@ -36,16 +40,14 @@ compute:
   num_threads: 1
   deterministic: true
 
-eval:
-  splits:
-    - canonical_grouped
-  baseline_arm: complex
-
-arms:
-  metal_state:
-    metal_mode: state
-    use_metal_node: true
-    metal_injection: message
-
-output:
-  path: results/msrs_dmpnn_protocols/
+# REMOVED 2026-10-21 (config-binding gate).  This block used to carry
+# `eval.splits / eval.baseline_arm / arms.metal_state.* / output.path`.
+# `msrs_dmpnn_protocols.py` reads none of them: the four protocols are the
+# module constant `SCHEMES = ("ligand", "doi", "scaffold", "year")`, the arm is
+# `ARM_NAME = "gnn_metal_state"` with `use_metal_node=True` hardcoded, and the
+# artifact path defaults to `results/msrs_dmpnn_protocols/seed{N}.json`.
+#
+# They were not merely inert, they were wrong: `eval.splits: [canonical_grouped]`
+# names a protocol this script never runs, and none of the four it does run is
+# called `canonical_grouped`.  A config that describes a different experiment
+# from the one the script performs is worse than no config.

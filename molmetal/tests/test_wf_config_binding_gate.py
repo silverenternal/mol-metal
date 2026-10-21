@@ -431,3 +431,101 @@ class TestEndToEnd:
     def test_exit_code_follows_the_stdout_invariant(self, capsys):
         assert gate.main([]) == 0
         assert "PASS" in capsys.readouterr().out
+
+
+class TestSkippedConfigsAreNotSilent:
+    """A gate that skips a config is not checking it.
+
+    MEASURED 2026-10-21: eight tracked ``configs/msrs_dmpnn_*.yaml`` files
+    declared no ``entry.script``. ``n_configs_skipped`` was 8, the gate printed
+    PASS, and nothing had looked at them.
+    """
+
+    def test_a_config_without_an_entry_script_is_skipped_by_default(self, tmp_path):
+        cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
+        report = gate.audit(configs=[cfg])
+        assert report["n_configs_skipped"] == 1
+        assert report["verdict"] == "PASS"
+
+    def test_strict_turns_a_skip_into_a_failure(self, tmp_path):
+        cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
+        report = gate.audit(configs=[cfg], strict=True)
+        assert report["verdict"] == "FAIL"
+        assert report["violations"][0]["reason"] == "skipped"
+
+    def test_the_repo_has_no_skipped_configs(self):
+        report = gate.audit()
+        assert report["n_configs_skipped"] == 0, report["skipped"]
+
+
+class TestDirectLoaderConfigs:
+    """Scripts that load the YAML themselves have no argparse dest to resolve.
+
+    They still consume the keys, so reporting them as dead would be a false
+    positive — and false positives are how a gate gets switched off.
+    """
+
+    def test_reads_are_found_by_name(self, tmp_path):
+        script = tmp_path / "loader.py"
+        script.write_text(
+            'cfg = load("x.yaml")\n'
+            'epochs = int(cfg["train"]["epochs"])\n'
+            'hidden = cfg.get("model", {}).get("hidden", 64)\n'
+        )
+        keys = gate._direct_loader_keys(script)
+        assert {"train", "epochs", "model", "hidden"} <= keys
+
+    def test_an_unreadable_script_falls_back_to_strict(self, tmp_path):
+        assert gate._direct_loader_keys(tmp_path / "missing.py") is None
+
+    def test_a_direct_read_key_is_not_a_violation(self, tmp_path):
+        script = tmp_path / "loader.py"
+        script.write_text('def run(cfg):\n    return cfg["train"]["epochs"]\n')
+        cfg = _write(
+            tmp_path,
+            "direct.yaml",
+            {"entry": {"script": str(script)}, "train": {"epochs": 3}},
+        )
+        report = gate.audit(configs=[cfg])
+        assert report["n_violations"] == 0, report["violations"]
+        assert report["n_direct_loader_keys"] == 1
+        assert "train.epochs" in report["direct_loader_keys"][0]
+
+    def test_a_key_the_script_never_mentions_is_still_a_violation(self, tmp_path):
+        script = tmp_path / "loader.py"
+        script.write_text('def run(cfg):\n    return cfg["train"]["epochs"]\n')
+        cfg = _write(
+            tmp_path,
+            "partial.yaml",
+            {
+                "entry": {"script": str(script)},
+                "train": {"epochs": 3, "patience": 10},
+            },
+        )
+        report = gate.audit(configs=[cfg])
+        keys = {v["key"] for v in report["violations"]}
+        assert keys == {"train.patience"}, report["violations"]
+
+
+class TestRequiredConfigFlagStillYieldsAParser:
+    """`--config` is `required=True` in the scripts this gate now checks.
+
+    The spy used to capture the namespace *after* calling the real parse, so a
+    required flag made argparse exit 2 first and the gate reported "could not
+    capture a parser namespace" — a config it then could not check at all.
+    """
+
+    def test_surface_script_is_captured(self):
+        ns, actions, err = gate._capture_parser(
+            REPO_ROOT / "molmetal" / "scripts" / "msrs_dmpnn_surface.py"
+        )
+        assert err is None, err
+        assert ns is not None
+        assert "config" in actions
+
+    def test_protocols_script_is_captured(self):
+        ns, actions, err = gate._capture_parser(
+            REPO_ROOT / "molmetal" / "scripts" / "msrs_dmpnn_protocols.py"
+        )
+        assert err is None, err
+        assert "config" in actions and "seed" in actions
