@@ -126,6 +126,12 @@ PIC50_COLS: Tuple[str, ...] = (
 ACTIVE_THRESHOLD_PIC50: float = 5.0
 #: SMILES column in the live CSV (capitalised SMILES_Ligands, not `smiles`).
 SMILES_COL: str = "SMILES_Ligands"
+#: Fewest labelled rows a cell line needs before its test AUC is reported.
+#: Below this the AUC is not a measurement of anything -- it is the variance of
+#: a handful of pairs -- so `_per_cell_auc` returns nothing for that cell rather
+#: than a number.  Named rather than inlined because the split-coverage audit
+#: quotes it and a test pins the two together.
+MIN_EVAL_ROWS: int = 30
 
 # Encoder dimensions — **must** match tmQM pretrain checkpoint
 # (see ``models/tmqm_pretrained/tmqm_pretrained_encoder.pt`` config).
@@ -501,7 +507,7 @@ def _per_cell_auc(
 
     for c, cl in enumerate(cell_lines):
         m = active[:, c] >= 0
-        if m.sum() < 30:
+        if m.sum() < MIN_EVAL_ROWS:
             continue
         y = active[m, c]
         s = probs[m, c]

@@ -1,0 +1,474 @@
+{
+  "metric": "split_coverage_4cell",
+  "description": "Per-cell-line coverage of the 70/10/20 Bemis-Murcko scaffold split used by train_cisplatin_resistance.py on the REAL PlatinAI 4-cell cohort, plus the order-sensitivity and counterfactual measurements that explain why A2780cis lands below the 30-row evaluation bar.",
+  "unit": "labelled rows per split (one row = one compound; a compound can carry up to four cell-line labels)",
+  "scope": "data_protocol_audit",
+  "source": "molmetal/scripts/wf_a61_split_coverage_audit.py over .data/molmetal/platinai_4cell_real_trainer.csv",
+  "cohort": {
+    "path": ".data/molmetal/platinai_4cell_real_trainer.csv",
+    "n_compounds": 1966,
+    "n_scaffolds": 1053,
+    "n_singleton_scaffolds": 801,
+    "row_order": "sorted by (-n_cells, compound_code) in build_platinai_4cell_real_cohort.py"
+  },
+  "evaluation_bar": {
+    "min_labelled_rows": 30,
+    "requires_both_classes": true,
+    "source": "molmetal/scripts/train_cisplatin_resistance.py::MIN_EVAL_ROWS (enforced in _per_cell_auc)"
+  },
+  "as_is": {
+    "train": {
+      "rows": 1650,
+      "row_fraction": 0.8393,
+      "cells": {
+        "A549": {
+          "labelled": 717,
+          "positive": 337,
+          "negative": 380,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 791,
+          "positive": 573,
+          "negative": 218,
+          "evaluable": true
+        },
+        "A2780cis": {
+          "labelled": 571,
+          "positive": 320,
+          "negative": 251,
+          "evaluable": true
+        },
+        "MCF-7": {
+          "labelled": 713,
+          "positive": 418,
+          "negative": 295,
+          "evaluable": true
+        }
+      },
+      "compounds_with_n_cells": {
+        "1": 733,
+        "2": 748,
+        "3": 113,
+        "4": 56
+      },
+      "single_cell_share": 0.4442
+    },
+    "val": {
+      "rows": 105,
+      "row_fraction": 0.0534,
+      "cells": {
+        "A549": {
+          "labelled": 60,
+          "positive": 28,
+          "negative": 32,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 13,
+          "positive": 8,
+          "negative": 5,
+          "evaluable": false
+        },
+        "A2780cis": {
+          "labelled": 2,
+          "positive": 1,
+          "negative": 1,
+          "evaluable": false
+        },
+        "MCF-7": {
+          "labelled": 30,
+          "positive": 13,
+          "negative": 17,
+          "evaluable": true
+        }
+      },
+      "compounds_with_n_cells": {
+        "1": 105
+      },
+      "single_cell_share": 1.0
+    },
+    "test": {
+      "rows": 211,
+      "row_fraction": 0.1073,
+      "cells": {
+        "A549": {
+          "labelled": 94,
+          "positive": 44,
+          "negative": 50,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 56,
+          "positive": 35,
+          "negative": 21,
+          "evaluable": true
+        },
+        "A2780cis": {
+          "labelled": 27,
+          "positive": 12,
+          "negative": 15,
+          "evaluable": false
+        },
+        "MCF-7": {
+          "labelled": 70,
+          "positive": 36,
+          "negative": 34,
+          "evaluable": true
+        }
+      },
+      "compounds_with_n_cells": {
+        "1": 175,
+        "2": 36
+      },
+      "single_cell_share": 0.8294
+    }
+  },
+  "trainer_view": {
+    "modelled_cells": [
+      "MCF-7",
+      "A549",
+      "A2780cis"
+    ],
+    "dropped_rows": 162,
+    "dropped_share": 0.0824,
+    "dropped_because": "no measurement in any modelled cell line (A2780-only)",
+    "train": {
+      "rows": 1522,
+      "cells": {
+        "A549": {
+          "labelled": 717,
+          "positive": 337,
+          "negative": 380,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 663,
+          "positive": 502,
+          "negative": 161,
+          "evaluable": true
+        },
+        "A2780cis": {
+          "labelled": 571,
+          "positive": 320,
+          "negative": 251,
+          "evaluable": true
+        },
+        "MCF-7": {
+          "labelled": 713,
+          "positive": 418,
+          "negative": 295,
+          "evaluable": true
+        }
+      }
+    },
+    "val": {
+      "rows": 92,
+      "cells": {
+        "A549": {
+          "labelled": 60,
+          "positive": 28,
+          "negative": 32,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 0,
+          "positive": 0,
+          "negative": 0,
+          "evaluable": false
+        },
+        "A2780cis": {
+          "labelled": 2,
+          "positive": 1,
+          "negative": 1,
+          "evaluable": false
+        },
+        "MCF-7": {
+          "labelled": 30,
+          "positive": 13,
+          "negative": 17,
+          "evaluable": true
+        }
+      }
+    },
+    "test": {
+      "rows": 190,
+      "cells": {
+        "A549": {
+          "labelled": 94,
+          "positive": 44,
+          "negative": 50,
+          "evaluable": true
+        },
+        "A2780": {
+          "labelled": 35,
+          "positive": 27,
+          "negative": 8,
+          "evaluable": true
+        },
+        "A2780cis": {
+          "labelled": 27,
+          "positive": 12,
+          "negative": 15,
+          "evaluable": false
+        },
+        "MCF-7": {
+          "labelled": 70,
+          "positive": 36,
+          "negative": 34,
+          "evaluable": true
+        }
+      }
+    }
+  },
+  "concentration": {
+    "n_groups": 1053,
+    "train_block_ranks": 526,
+    "per_cell": {
+      "A549": {
+        "labelled_scaffolds": 512,
+        "labelled_rows": 871,
+        "rows_per_scaffold": 1.7,
+        "rows_in_train_block": 626,
+        "share_in_train_block": 0.7187,
+        "rows_in_singleton_scaffolds": 362,
+        "median_size_rank": 474
+      },
+      "A2780": {
+        "labelled_scaffolds": 440,
+        "labelled_rows": 860,
+        "rows_per_scaffold": 1.95,
+        "rows_in_train_block": 737,
+        "share_in_train_block": 0.857,
+        "rows_in_singleton_scaffolds": 329,
+        "median_size_rank": 405
+      },
+      "A2780cis": {
+        "labelled_scaffolds": 315,
+        "labelled_rows": 600,
+        "rows_per_scaffold": 1.9,
+        "rows_in_train_block": 543,
+        "share_in_train_block": 0.905,
+        "rows_in_singleton_scaffolds": 230,
+        "median_size_rank": 356
+      },
+      "MCF-7": {
+        "labelled_scaffolds": 454,
+        "labelled_rows": 813,
+        "rows_per_scaffold": 1.79,
+        "rows_in_train_block": 639,
+        "share_in_train_block": 0.786,
+        "rows_in_singleton_scaffolds": 304,
+        "median_size_rank": 373
+      }
+    }
+  },
+  "order_sensitivity": {
+    "n_permutations": 500,
+    "method": "permute the order in which scaffolds are first seen, which is exactly what permuting the CSV rows does; the size-descending sort is stable, so this changes only the tie order among equal-size scaffolds",
+    "test_labelled_rows": {
+      "A549": {
+        "min": 77,
+        "p05": 86.0,
+        "median": 95.0,
+        "mean": 95.3,
+        "p95": 106.0,
+        "max": 116
+      },
+      "A2780": {
+        "min": 64,
+        "p05": 77.0,
+        "median": 87.0,
+        "mean": 86.5,
+        "p95": 97.0,
+        "max": 107
+      },
+      "A2780cis": {
+        "min": 45,
+        "p05": 50.0,
+        "median": 60.0,
+        "mean": 60.5,
+        "p95": 70.0,
+        "max": 77
+      },
+      "MCF-7": {
+        "min": 63,
+        "p05": 69.95,
+        "median": 80.0,
+        "mean": 79.8,
+        "p95": 90.0,
+        "max": 96
+      }
+    }
+  },
+  "assignment_randomness": {
+    "n_seeds": 500,
+    "method": "strategy='random' over the same scaffold groups; also randomises which scaffolds are large, so it is an upper bound on what re-ordering alone can buy",
+    "test_labelled_rows": {
+      "A549": {
+        "min": 121,
+        "p05": 137.0,
+        "median": 168.0,
+        "mean": 175.7,
+        "p95": 233.0,
+        "max": 272
+      },
+      "A2780": {
+        "min": 93,
+        "p05": 119.95,
+        "median": 168.0,
+        "mean": 173.4,
+        "p95": 239.0,
+        "max": 284
+      },
+      "A2780cis": {
+        "min": 63,
+        "p05": 80.95,
+        "median": 117.0,
+        "mean": 121.3,
+        "p95": 177.04999999999995,
+        "max": 211
+      },
+      "MCF-7": {
+        "min": 107,
+        "p05": 128.0,
+        "median": 160.0,
+        "mean": 163.3,
+        "p95": 204.0,
+        "max": 246
+      }
+    }
+  },
+  "counterfactual_hash_tiebreak": {
+    "n_salts": 200,
+    "method": "sort by (-group_size, sha1('<salt>:<scaffold>')) before the unchanged greedy assignment",
+    "salt_0_split": {
+      "train": {
+        "rows": 1650,
+        "labelled": {
+          "A549": 736,
+          "A2780": 726,
+          "A2780cis": 506,
+          "MCF-7": 687
+        }
+      },
+      "val": {
+        "rows": 105,
+        "labelled": {
+          "A549": 44,
+          "A2780": 43,
+          "A2780cis": 30,
+          "MCF-7": 48
+        }
+      },
+      "test": {
+        "rows": 211,
+        "labelled": {
+          "A549": 91,
+          "A2780": 91,
+          "A2780cis": 64,
+          "MCF-7": 78
+        }
+      }
+    },
+    "test_labelled_rows": {
+      "A549": {
+        "min": 77,
+        "p05": 86.0,
+        "median": 95.0,
+        "max": 112,
+        "share_below_bar": 0.0
+      },
+      "A2780": {
+        "min": 66,
+        "p05": 77.0,
+        "median": 86.5,
+        "max": 101,
+        "share_below_bar": 0.0
+      },
+      "A2780cis": {
+        "min": 43,
+        "p05": 51.95,
+        "median": 61.0,
+        "max": 77,
+        "share_below_bar": 0.0
+      },
+      "MCF-7": {
+        "min": 67,
+        "p05": 71.0,
+        "median": 81.0,
+        "max": 98,
+        "share_below_bar": 0.0
+      }
+    }
+  },
+  "counterfactual_stratified": {
+    "train": {
+      "rows": 1375,
+      "labelled": {
+        "A549": 666,
+        "A2780": 520,
+        "A2780cis": 346,
+        "MCF-7": 594
+      }
+    },
+    "val": {
+      "rows": 197,
+      "labelled": {
+        "A549": 86,
+        "A2780": 121,
+        "A2780cis": 83,
+        "MCF-7": 57
+      }
+    },
+    "test": {
+      "rows": 394,
+      "labelled": {
+        "A549": 119,
+        "A2780": 219,
+        "A2780cis": 171,
+        "MCF-7": 162
+      }
+    }
+  },
+  "value": 27,
+  "value_basis": "as_is.test.cells.A2780cis.labelled",
+  "status": "MEASURED",
+  "verdict": {
+    "as_is_test_labelled": {
+      "A549": 94,
+      "A2780": 56,
+      "A2780cis": 27,
+      "MCF-7": 70
+    },
+    "evaluable_as_is": {
+      "A549": true,
+      "A2780": true,
+      "A2780cis": false,
+      "MCF-7": true
+    },
+    "a2780cis_is_a_data_gap": false,
+    "a2780cis_labelled_rows_in_cohort": 600,
+    "explanation": "A2780cis is not short of measurements: 600 of the cohort's 4,370 labelled rows are A2780cis. It is short of measurements in the test fold. Re-ordering the same compounds moves its test coverage from 27 to a median of 60 (p05 50, max 77), and dealing the same scaffold groups without regard to size gives a mean of 121.3. So most of the shortfall is the stable-sort tie order, which the cohort file decides because it is written sorted by descending cell-line coverage; the rest is that A2780cis evidence sits on large scaffolds, which largest-first sends to train.",
+    "secondary_finding": "The same tie order decides how many cell lines a test compound carries. As written, val is 100% single-cell compounds and test is 82.9% single-cell, while all 56 four-cell compounds sit in train. That is not a per-cell coverage problem; it is the evaluation set being the least multi-task subset of the cohort.",
+    "split_fractions_are_group_fractions": {
+      "declared": [
+        0.7,
+        0.1,
+        0.2
+      ],
+      "achieved_by_rows": {
+        "train": 0.8393,
+        "val": 0.0534,
+        "test": 0.1073
+      },
+      "note": "`_assign_groups` budgets capacities in scaffolds, not rows, so 70/10/20 scaffolds is 84/5/11 rows on this cohort: val receives 105 singleton scaffolds and therefore 105 rows."
+    },
+    "not_a_fix": "Lowering MIN_EVAL_ROWS would make A2780cis report a number from 27 rows; the split would still have 27. The bar is not what starved the cell.",
+    "fix_options": {
+      "hash_tiebreak": "Deterministic tie-break on a hash of the scaffold instead of first appearance. Same groups, same fractions, same greedy, no leakage. Over 200 salts A2780cis test coverage never falls below 43 (median 61), so the cell becomes evaluable and stays evaluable. Cost: it changes the split for EVERY ScaffoldSplitter caller, so any number measured on a largest-first scaffold split has to be re-run or pinned.",
+      "stratified_assignment": "Choose the split per group to hit each cell line's label share. Here: A2780cis 171 test rows, all four cells evaluable, rows still 70/10/20 (1375/197/394). Cost: a protocol change, not a bug fix, and it makes the split depend on the label columns.",
+      "reorder_only": "Shuffle the cohort file's row order. Removes the correlation between descending label coverage and train membership, but gives no guarantee: A2780cis ranges 45-77 over permutations."
+    }
+  }
+}
