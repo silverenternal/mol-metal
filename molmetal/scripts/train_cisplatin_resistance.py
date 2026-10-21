@@ -694,8 +694,12 @@ def main() -> int:
         )
         print(
             f"[train] seed={seed} TEST AUCs="
-            + "  ".join(f"{cl}={test_aucs.get(cl, 0):.3f}" for cl in CELL_LINES)
+            + "  ".join(
+                f"{cl}=" + (f"{test_aucs[cl]:.3f}" if cl in test_aucs else "n/a")
+                for cl in CELL_LINES
+            )
             + f"  mean={seed_results[-1]['test_auc_mean']:.4f}"
+            + f"  (mean over {len(test_aucs)} of {len(CELL_LINES)} cells)"
         )
 
     elapsed = time.time() - t_start
@@ -722,11 +726,33 @@ def main() -> int:
         per_cell[cl]["auc_std"] = float(np.std(finite)) if finite else float("nan")
         per_cell[cl]["n_seeds_evaluated"] = len(finite)
 
+    n_cells_evaluated = len([cl for cl in CELL_LINES if per_cell[cl]["n_seeds_evaluated"]])
+    status = {
+        3: "MEASURED",
+        2: "MEASURED_2_OF_3_CELLS",
+    }.get(n_cells_evaluated, "MEASURED_PARTIAL_CELL_COVERAGE")
+    # Labelled rows per cell in the test fold.  All seeds share one split, so
+    # this is the count that `_per_cell_auc` actually applied its >=30 bar to.
+    test_labelled = {
+        cl: int((active[te_idx][:, j] >= 0).sum())
+        for j, cl in enumerate(CELL_LINES)
+    }
+    cells_not_evaluated = [
+        cl for cl in CELL_LINES if per_cell[cl]["n_seeds_evaluated"] == 0
+    ]
+
     out = {
         # Derived from --out so a run on a different cohort cannot silently
         # claim the same metric id as the shipped one.  The legacy config
         # writes .../platinai_3cell_resistance.json and is unchanged.
         "metric": Path(args.out).stem,
+        # Same model, same hyperparameters, same splitter -- only the labels
+        # differ.  That is the one case where supersession is the right word:
+        # the synthetic row is a valid measurement of a null test, and this row
+        # replaces it as the number to quote.
+        "supersedes": "platinai_3cell_resistance"
+        if Path(args.out).stem != "platinai_3cell_resistance"
+        else None,
         "dataset": str(args.data),
         "description": (
             f"Test ROC-AUC per cell line on {Path(args.data).name} after "
@@ -735,6 +761,17 @@ def main() -> int:
         ),
         "unit": "ROC-AUC (0-1, higher better) per cell line",
         "scope": "tier1_precious_metal_anticancer",
+        # The name says 3-cell; the evaluation often cannot support 3 cells.
+        # `_per_cell_auc` needs >=30 labelled rows with both classes, and a
+        # Bemis-Murcko split over 1,966 compounds can leave one cell below that
+        # in the test fold.  Naming the count in the status keeps the file from
+        # reading as a 3-cell result it never measured.
+        "status": status,
+        "status_basis": (
+            "mean test ROC-AUC over the cell lines that had >=30 labelled "
+            "test rows with both classes; a cell that failed that bar is null, "
+            "not 0"
+        ),
         "source": (
             "molmetal/scripts/train_cisplatin_resistance.py "
             f"(seeds={args.seeds}, epochs={args.epochs}, "
@@ -760,6 +797,19 @@ def main() -> int:
         "value_a2780cis_auc": _finite_or_none(per_cell["A2780cis"]["auc_mean"]),
         "value_a2780cis_std": _finite_or_none(per_cell["A2780cis"]["auc_std"]),
         "per_cell_line": per_cell,
+        "verdict": {
+            "n_cells_evaluated": n_cells_evaluated,
+            "cells_not_evaluated": cells_not_evaluated,
+            "test_labelled_rows_per_cell": test_labelled,
+            "why": (
+                "A cell is evaluated only when its test fold has >=30 labelled "
+                "rows spanning both classes. With one Bemis-Murcko split over "
+                "1,966 compounds, a cell can fall below that bar -- its "
+                "measurements concentrate in scaffolds the splitter put in "
+                "train. The value is then a mean over the cells that remain, "
+                "and the status says how many."
+            ),
+        },
         "per_seed": seed_results,
         "n_seeds": len(seed_results),
         "n_rows": len(smiles),

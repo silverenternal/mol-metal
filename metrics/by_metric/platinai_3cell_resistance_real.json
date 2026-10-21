@@ -1,0 +1,151 @@
+{
+  "metric": "platinai_3cell_resistance_real",
+  "supersedes": "platinai_3cell_resistance",
+  "dataset": ".data/molmetal/platinai_4cell_real_trainer.csv",
+  "description": "Test ROC-AUC per cell line on platinai_4cell_real_trainer.csv after dropping the A2780 column. 3-cell-line D-MPNN with chemoinformatic resistance side-features and tmQM-pretrained init.",
+  "unit": "ROC-AUC (0-1, higher better) per cell line",
+  "scope": "tier1_precious_metal_anticancer",
+  "source": "molmetal/scripts/train_cisplatin_resistance.py (seeds=[0, 1, 2, 3, 4], epochs=100, batch=64, lr=0.0005)",
+  "diagnosis": {
+    "a2780_dropped": true,
+    "reason": "A2780 is dropped by this script's cell-line list. The original justification (4-cell AUC 0.350; log(IC50) Pearson r vs A2780cis = 0.003) was measured on the SYNTHETIC platinai_4cell cohort and has NOT been re-derived on real labels.",
+    "reference": "metrics/by_metric/platinai_4cell_auc.json"
+  },
+  "value_overall_mean_auc": 0.6682846108140226,
+  "value_overall_mean_std": 0.012542619157046525,
+  "value_a2780cis_auc": null,
+  "value_a2780cis_std": null,
+  "per_cell_line": {
+    "MCF-7": {
+      "per_seed": [
+        0.7491830065359477,
+        0.6879084967320263,
+        0.6919934640522876,
+        0.6584967320261438,
+        0.693218954248366
+      ],
+      "auc_mean": 0.6961601307189543,
+      "auc_std": 0.0294076794548444,
+      "n_seeds_evaluated": 5
+    },
+    "A549": {
+      "per_seed": [
+        0.6311363636363636,
+        0.6211363636363636,
+        0.6529545454545455,
+        0.6586363636363637,
+        0.6381818181818182
+      ],
+      "auc_mean": 0.6404090909090909,
+      "auc_std": 0.013798580595346818,
+      "n_seeds_evaluated": 5
+    },
+    "A2780cis": {
+      "per_seed": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "auc_mean": null,
+      "auc_std": null,
+      "n_seeds_evaluated": 0
+    }
+  },
+  "per_seed": [
+    {
+      "seed": 0,
+      "test_auc_per_cell": {
+        "MCF-7": 0.7491830065359477,
+        "A549": 0.6311363636363636
+      },
+      "test_auc_mean": 0.6901596850861557,
+      "best_mean_val_auc": 0.7171390190691662,
+      "n_loaded_backbone": 12,
+      "n_train": 1522,
+      "n_val": 92,
+      "n_test": 190
+    },
+    {
+      "seed": 1,
+      "test_auc_per_cell": {
+        "MCF-7": 0.6879084967320263,
+        "A549": 0.6211363636363636
+      },
+      "test_auc_mean": 0.654522430184195,
+      "best_mean_val_auc": 0.6901715012928248,
+      "n_loaded_backbone": 12,
+      "n_train": 1522,
+      "n_val": 92,
+      "n_test": 190
+    },
+    {
+      "seed": 2,
+      "test_auc_per_cell": {
+        "MCF-7": 0.6919934640522876,
+        "A549": 0.6529545454545455
+      },
+      "test_auc_mean": 0.6724740047534166,
+      "best_mean_val_auc": 0.7200074741435036,
+      "n_loaded_backbone": 12,
+      "n_train": 1522,
+      "n_val": 92,
+      "n_test": 190
+    },
+    {
+      "seed": 3,
+      "test_auc_per_cell": {
+        "MCF-7": 0.6584967320261438,
+        "A549": 0.6586363636363637
+      },
+      "test_auc_mean": 0.6585665478312537,
+      "best_mean_val_auc": 0.7007375666612798,
+      "n_loaded_backbone": 12,
+      "n_train": 1522,
+      "n_val": 92,
+      "n_test": 190
+    },
+    {
+      "seed": 4,
+      "test_auc_per_cell": {
+        "MCF-7": 0.693218954248366,
+        "A549": 0.6381818181818182
+      },
+      "test_auc_mean": 0.6657003862150921,
+      "best_mean_val_auc": 0.6879267331932772,
+      "n_loaded_backbone": 12,
+      "n_train": 1522,
+      "n_val": 92,
+      "n_test": 190
+    }
+  ],
+  "n_seeds": 5,
+  "n_rows": 1966,
+  "split_sizes": {
+    "n_train": 1522,
+    "n_val": 92,
+    "n_test": 190,
+    "note": "one split shared by all seeds; seed std measures init/shuffle/dropout, not split variance"
+  },
+  "wall_clock_minutes": 51.9,
+  "encoder_init": "tmqm_pretrained_encoder.pt (12/12 backbone tensors)",
+  "model": "dmpnn_3cell_resistance_with_sidefeat",
+  "focal_loss_gamma": 2.0,
+  "split": "scaffold_70_10_20",
+  "timestamp": "2026-10-21",
+  "status": "MEASURED_2_OF_3_CELLS",
+  "status_basis": "mean test ROC-AUC over the cell lines that had >=30 labelled test rows with both classes; a cell that failed that bar is null, not 0",
+  "verdict": {
+    "n_cells_evaluated": 2,
+    "cells_not_evaluated": [
+      "A2780cis"
+    ],
+    "test_labelled_rows_per_cell": {
+      "MCF-7": 70,
+      "A549": 94,
+      "A2780cis": 27
+    },
+    "why": "A cell is evaluated only when its test fold has >=30 labelled rows spanning both classes. With one Bemis-Murcko split over 1,966 compounds, a cell can fall below that bar -- its measurements concentrate in scaffolds the splitter put in train. The value is then a mean over the cells that remain, and the status says how many."
+  }
+}
