@@ -335,6 +335,21 @@ def _regularizer_fallbacks() -> Dict[str, int]:
     return dict(FALLBACK_COUNTS)
 
 
+def _regularizer_fallback_reasons() -> Dict[str, Dict[str, int]]:
+    """Cumulative swallows split by exception type, per class.
+
+    FIX-C12b (2026-10-21).  ``_regularizer_fallbacks`` says a term was lost;
+    this says why.  The repair differs: a CUDA OOM inside a term calls for
+    chunking or a smaller batch, a numerical/solver failure calls for fixing
+    the term.  Without the split, the only record of the cause is a single
+    warning line that fires once per (class, exception) pair and then goes
+    quiet.
+    """
+    from molmetal.loss.regularization_losses import FALLBACK_REASONS
+
+    return {cls: dict(by_type) for cls, by_type in FALLBACK_REASONS.items()}
+
+
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
 #: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
 #: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
@@ -15468,6 +15483,11 @@ def main() -> int:
                 # means every weighted regulariser was live.  Without this a
                 # run can claim "six terms on" while two of them return 0.
                 regularizer_fallbacks=_regularizer_fallbacks(),
+                # FIX-C12b (2026-10-21) — the same swallows split by exception
+                # type.  A lost term is either a memory problem or a maths
+                # problem and the two need different repairs; the count alone
+                # cannot tell them apart.
+                regularizer_fallback_reasons=_regularizer_fallback_reasons(),
                 train_w2=float(w2_val),
                 grad_norm=float(grad_norm),
                 catherine_pass=float(catherine_rate),

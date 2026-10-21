@@ -55,6 +55,17 @@ _IMPORT_WARNED: set = set()
 #: auditable after the fact instead of inferable from a single warning line.
 FALLBACK_COUNTS: Dict[str, int] = {}
 
+#: FIX-C12b (2026-10-21) — the same swallows, split by exception type.
+#:
+#: ``FALLBACK_COUNTS`` says *how often* a term was lost; it cannot say *why*,
+#: and the two reasons need opposite fixes: a CUDA OOM inside the term means
+#: the term needs chunking or a smaller batch, while a ``cusolver`` / numerical
+#: failure means the term's math is wrong at that input.  MEASURED on the
+#: 2026-10-20 full-corpus run, ``EnergyConservation`` was lost to CUDA OOM and
+#: ``SBOO3Term`` to a solver error — same counter, two different repairs.
+#: Shape: ``{class_name: {exception_type_name: count}}``.
+FALLBACK_REASONS: Dict[str, Dict[str, int]] = {}
+
 
 def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
     """Count the swallow, and warn once per (class, exception-type) pair.
@@ -66,7 +77,10 @@ def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
     so a run can report how many steps it actually lost.
     """
     FALLBACK_COUNTS[cls_name] = FALLBACK_COUNTS.get(cls_name, 0) + 1
-    key = (cls_name, type(exc).__name__)
+    exc_name = type(exc).__name__
+    by_type = FALLBACK_REASONS.setdefault(cls_name, {})
+    by_type[exc_name] = by_type.get(exc_name, 0) + 1
+    key = (cls_name, exc_name)
     if key in _IMPORT_WARNED:
         return
     _IMPORT_WARNED.add(key)

@@ -42,6 +42,7 @@ def _boom(_x):
 
 def _reset() -> None:
     rl.FALLBACK_COUNTS.clear()
+    rl.FALLBACK_REASONS.clear()
     rl._IMPORT_WARNED.clear()
 
 
@@ -91,3 +92,53 @@ def test_a_term_that_does_not_raise_leaves_the_counter_empty():
     out = healthy.compute(pred_fn=lambda v: v * 0.5, x_t=x)
     assert torch.isfinite(out).all()
     assert rl.FALLBACK_COUNTS == {}
+
+
+def test_the_reason_is_recorded_per_exception_type():
+    """A lost term is either a memory problem or a maths problem.
+
+    MEASURED 2026-10-21: ``EnergyConservation`` died of CUDA OOM and
+    ``SBOO3Term`` of a cusolver error in the same run.  The class-level count
+    cannot tell them apart, and they need different repairs.
+    """
+    _reset()
+    x = torch.randn(4, 3)
+    oom = rl.EnergyConservation(weight=0.05, enabled=True)
+    solver = rl.SBOO3Term(weight=0.05, enabled=True)
+
+    def _raise_oom(_v):
+        raise MemoryError("CUDA out of memory. Tried to allocate 2.00 GiB")
+
+    def _raise_solver(_v):
+        raise RuntimeError("cusolver error: 6")
+
+    oom.compute(pred_fn=_raise_oom, x_t=x)
+    oom.compute(pred_fn=_raise_oom, x_t=x)
+    solver.compute(
+        per_sample_loss=torch.randn(4, 1), pred_fn=_raise_solver, x_t=x
+    )
+
+    assert rl.FALLBACK_COUNTS == {"EnergyConservation": 2, "SBOO3Term": 1}
+    assert rl.FALLBACK_REASONS["EnergyConservation"] == {"MemoryError": 2}
+    assert rl.FALLBACK_REASONS["SBOO3Term"] == {"RuntimeError": 1}
+
+
+def test_two_exception_types_on_one_class_are_counted_separately():
+    _reset()
+    x = torch.randn(4, 3)
+    term = rl.EnergyConservation(weight=0.05, enabled=True)
+    calls = [RuntimeError, MemoryError, RuntimeError]
+
+    def _raise(kind):
+        def _fn(_v):
+            raise kind("boom")
+        return _fn
+
+    for kind in calls:
+        term.compute(pred_fn=_raise(kind), x_t=x)
+
+    assert rl.FALLBACK_COUNTS["EnergyConservation"] == 3
+    assert rl.FALLBACK_REASONS["EnergyConservation"] == {
+        "RuntimeError": 2,
+        "MemoryError": 1,
+    }
