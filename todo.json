@@ -1231,6 +1231,11 @@
             "cfm_fullcorpus_b64": 1.35,
             "cfm_objective_terms": 1.488,
             "n": 83
+          },
+          "regularizer_fallback_reasons": {
+            "wired": true,
+            "evidence": "1-epoch CPU smoke (configs/cfm_5metal_wfa80_per_class_cpu_smoke.yaml copy, 31 steps, 67.7 s, exit 0): train_epoch carries both regularizer_fallbacks={} and regularizer_fallback_reasons={}",
+            "why": "FALLBACK_COUNTS says how often a term was lost; the reasons dict says why. CUDA OOM and a cusolver error need opposite repairs."
           }
         },
         "retracted": [
@@ -1244,7 +1249,9 @@
           "metrics/by_metric/c7_fullgen_pool_quality.json",
           "docs/HONEST_NEGATIVE_CATALOG.md §6.150b",
           "docs/CLAIM_LEDGER.md C7",
-          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2 / 2e8a87d5 / c4b038d7 / 78fad531"
+          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2 / 2e8a87d5 / c4b038d7 / 78fad531",
+          "molmetal/loss/regularization_losses.py (FALLBACK_REASONS)",
+          "scripts/_config_binding_gate.py (skip hole / --strict / required --config)"
         ]
       },
       "acceptance_result": "显存机制查清：峰值随训练步数增长，expandable_segments 在修好后的代码上把 4096 云峰值从 92,431 降到 70,324 MiB 且消除 OOM。C7 全语料自由生成池跑到 18/18 epoch（exit=0，wall 11,232 s，46 次可恢复 OOM，12,668 可打分）：SA≤4.5 = 0.28% [0.21,0.39]，低于 256 样本的 0.69%；联合闸 0/10,190；单片段率升到 12.22%。判定 NOT SUPPORTED。"
