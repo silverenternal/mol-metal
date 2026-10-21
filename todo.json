@@ -34,9 +34,11 @@
       "配对支持（potency，同 (配体,细胞系) 至少两个金属）：**539 组 / 1,175 行 / 204 个配体**，只覆盖 3 个金属对：Os–Ru 354、Ir–Rh 170、Rh–Ru 15。",
       "10 个金属对里 **7 个零配对证据**：Ru–Ir、Ru–Re、Os–Ir、Os–Rh、Os–Re、Ir–Re、Rh–Re。Re 不参与任何配对组。",
       "跨金属配体占比 **3.6%**（217/5,965，ligand_canonical 全量，potency）；`msrs_metal_embedding.json` 里的 13.3% 是同一量在 2,846 个「有 ligand×metal 矩阵覆盖」的配体上算的（379/2,846）——分母不同，不能混用。配对建模必须用 3.6% 这个口径。",
-      "metal_out 训练侧可用的配对数：留出 Ru 只剩 Ir–Rh（170 组）；留出 Ir 有 Os–Ru + Rh–Ru（369）；留出 Rh 只剩 Os–Ru（354）；留出 Os 有 Ir–Rh + Rh–Ru（185）；留出 Re 有全部 3 对（539）。",
+      "metal_out 训练侧可用的配对数（只计 n_groups≥20 的 OK 对，UP-10 实测）：留出 Ru → Ir–Rh（170 组，1 对）；留出 Ir → Ru–Os（354，1 对）；留出 Rh → Ru–Os（354，1 对）；留出 Os → Ir–Rh（170，1 对）；留出 Re → Ru–Os + Ir–Rh（524，2 对）。**四个场景只剩 1 个金属对 ⇒ 金属描述符最多定 1 个自由度**，这是 metal_out 上 onehot 与 descriptors 只差 0.0011 R² 的机制（msrs_support_audit.json:/metal_out_scenarios）。",
       "排序的 360 对**全部**落在 539 个支持组内（658/658 原始对 = 100%）——这解释了为什么排序是唯一有信号的指标，也说明它不能外推到未观测金属对。",
-      "另外两个端点的配对：phototoxicity 0 组；cisplatin_ratio 169 组 / 353 行，金属对与 potency 完全相同（Os–Ru 128 / Ir–Rh 34 / Rh–Ru 7）。"
+      "另外两个端点的配对：phototoxicity 0 组；cisplatin_ratio 169 组 / 353 行，金属对与 potency 完全相同（Os–Ru 128 / Ir–Rh 34 / Rh–Ru 7）。",
+      "可分性（|Δ|/SD，UP-10）：Ru–Os 0.592（354 组、121 配体）、Ir–Rh **0.115**（170 组、73 配体）——两个「有支持」的金属对，其典型替换效应都不大于各自化验重复散布。Ru–Rh 可分性 2.464 但只有 15 组，按冻结规则 UNSUPPORTED（msrs_support_audit.json:/endpoints/potency/pairs）。",
+      "shape 来源（UP-17）：加性残差上四路分解，配体×金属 0.8015 [0.7884,0.8151]（结构优先）、论文×金属 0.5484 [0.5801,0.6297]（批次优先）、细胞×金属 0.0（两种顺序）、配体×细胞 0.1269/0.4106。两块各自在自己优先的顺序下都 >0.5 ⇒ 不存在唯一主导分量；kill 触发但推论不成立（msrs_shape_decomposition.json:/gate, /verdict）。"
     ],
     "measured_facts": [
       "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811（msrs_seed_ensemble.json, msrs_feature_expansion_5seed.json, msrs_feature_fusion.json）。scaffold 0.4733 / year 0.3946。ligand 0.5596 是内插，不可当泛化报。",
@@ -309,7 +311,9 @@
         "UP-10",
         "UP-17"
       ],
-      "note": "纯 CPU，约 4 小时。先测支持度与 shape 的来源；这两个结果决定 UP-11 的特征怎么搭。"
+      "note": "纯 CPU，约 4 小时。先测支持度与 shape 的来源；这两个结果决定 UP-11 的特征怎么搭。",
+      "status": "DONE",
+      "result": "UP-10 PASS（支持度审计）、UP-17 FAIL（gate 0.0716>0.05，verdict 共享）。wave_2 可启动。"
     },
     "wave_2_transfer": {
       "items": [
@@ -355,7 +359,11 @@
       ],
       "gate": "artifact 落盘且三类端点 × 5 个留出场景全部有数；无阈值。",
       "kill": "若某金属对 n_groups < 20，则该对在后续所有包中标记为 UNSUPPORTED，不得进入训练集。",
-      "deliverable": "metrics/by_metric/msrs_support_audit.json"
+      "deliverable": "metrics/by_metric/msrs_support_audit.json",
+      "status": "DONE-PASS",
+      "completed": "2026-10-21",
+      "artifact": "metrics/by_metric/msrs_support_audit.json",
+      "result": "artifact 落盘，3 端点 × 5 留出场景全部有数（gate 无阈值 ⇒ PASS）。potency 只有 Ru–Os(354)/Ir–Rh(170) 两对 OK，Ru–Rh(15) UNSUPPORTED，其余 7 对 EMPTY；phototoxicity 0 对、0 个跨金属配体；cisplatin_ratio 2 对 OK。kill 规则未对任何「有支持」对生效，但它把 Ru–Rh（sep 2.464）挡在门外。"
     },
     {
       "id": "UP-11",
@@ -519,7 +527,11 @@
       ],
       "gate": "四个分量之和与残差方差相差 <5%；每个分量有 CI。",
       "kill": "若 paper×metal >0.5，则 shape 主要是论文批次，任何建模都是在拟合噪声。",
-      "deliverable": "metrics/by_metric/msrs_shape_decomposition.json"
+      "deliverable": "metrics/by_metric/msrs_shape_decomposition.json",
+      "status": "DONE-FAIL",
+      "completed": "2026-10-21",
+      "artifact": "metrics/by_metric/msrs_shape_decomposition.json",
+      "result": "gate FAIL：结构优先顺序 1−explained=0.0716 > 0.05（批次优先 0.0410 过），两序都要过才算过。verdict=SHAPE_SHARED_STRUCTURE_AND_PAPER_BATCH；kill_triggered=true 但 kill_consequence_valid=false：配体×金属 0.8015 与论文×金属 0.5484 各自在自己优先的顺序下都 >0.5、在对方优先下都归 0。cell×金属 两序皆 0 ⇒ 细胞系特异的金属响应不存在。"
     }
   ],
   "open_decisions": [

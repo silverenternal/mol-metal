@@ -1,0 +1,255 @@
+{
+ "metric": "wfa107d_decode_head_swap",
+ "tag": "MEASURED",
+ "date": "2026-10-21",
+ "what": "The trainer's own decode path (sampler -> bond head -> assemble -> RDKit -> SMILES -> SSSR) run with the two arms' heads crossed against the two arms' models.  Same val compositions, same eval seeds, same n_samples as the training loop; the numbers are directly comparable to `gen_ring_*` in per_epoch_metrics.json.",
+ "arms": [
+  "control",
+  "edge_ring_w1"
+ ],
+ "checkpoints": {
+  "control": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "edge_ring_w1": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt"
+ },
+ "epoch": 4,
+ "device": "cuda:0",
+ "table": {
+  "model=control|head=control": {
+   "per_seed": [
+    {
+     "eval_seed": 0,
+     "template_offset": 0,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.4954545454545455,
+     "ring_5_6_share": 0.18636363636363637,
+     "rings_per_mol_mean": 6.875,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    },
+    {
+     "eval_seed": 1,
+     "template_offset": 32,
+     "n_ok": 31,
+     "n_total": 31,
+     "ring_3_share": 0.4772727272727273,
+     "ring_5_6_share": 0.20909090909090908,
+     "rings_per_mol_mean": 7.096774193548387,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 31
+    },
+    {
+     "eval_seed": 2,
+     "template_offset": 64,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.5256410256410257,
+     "ring_5_6_share": 0.14957264957264957,
+     "rings_per_mol_mean": 7.3125,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    }
+   ],
+   "last_seed": {
+    "eval_seed": 2,
+    "template_offset": 64,
+    "n_ok": 32,
+    "n_total": 32,
+    "ring_3_share": 0.5256410256410257,
+    "ring_5_6_share": 0.14957264957264957,
+    "rings_per_mol_mean": 7.3125,
+    "single_fragment_ratio": 0.0,
+    "n_chemistry_scored": 32
+   },
+   "mean_over_seeds": {
+    "ring_3_share": 0.4994560994560995,
+    "ring_5_6_share": 0.18167573167573167,
+    "rings_per_mol_mean": 7.094758064516129
+   }
+  },
+  "model=control|head=edge_ring_w1": {
+   "per_seed": [
+    {
+     "eval_seed": 0,
+     "template_offset": 0,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.3857566765578635,
+     "ring_5_6_share": 0.18694362017804153,
+     "rings_per_mol_mean": 10.53125,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    },
+    {
+     "eval_seed": 1,
+     "template_offset": 32,
+     "n_ok": 31,
+     "n_total": 31,
+     "ring_3_share": 0.4019607843137255,
+     "ring_5_6_share": 0.2647058823529412,
+     "rings_per_mol_mean": 9.870967741935484,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 31
+    },
+    {
+     "eval_seed": 2,
+     "template_offset": 64,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.4045584045584046,
+     "ring_5_6_share": 0.21082621082621084,
+     "rings_per_mol_mean": 10.96875,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    }
+   ],
+   "last_seed": {
+    "eval_seed": 2,
+    "template_offset": 64,
+    "n_ok": 32,
+    "n_total": 32,
+    "ring_3_share": 0.4045584045584046,
+    "ring_5_6_share": 0.21082621082621084,
+    "rings_per_mol_mean": 10.96875,
+    "single_fragment_ratio": 0.0,
+    "n_chemistry_scored": 32
+   },
+   "mean_over_seeds": {
+    "ring_3_share": 0.39742528847666453,
+    "ring_5_6_share": 0.22082523778573118,
+    "rings_per_mol_mean": 10.456989247311828
+   }
+  },
+  "model=edge_ring_w1|head=control": {
+   "per_seed": [
+    {
+     "eval_seed": 0,
+     "template_offset": 0,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.4954545454545455,
+     "ring_5_6_share": 0.18636363636363637,
+     "rings_per_mol_mean": 6.875,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    },
+    {
+     "eval_seed": 1,
+     "template_offset": 32,
+     "n_ok": 31,
+     "n_total": 31,
+     "ring_3_share": 0.4772727272727273,
+     "ring_5_6_share": 0.20909090909090908,
+     "rings_per_mol_mean": 7.096774193548387,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 31
+    },
+    {
+     "eval_seed": 2,
+     "template_offset": 64,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.5256410256410257,
+     "ring_5_6_share": 0.14957264957264957,
+     "rings_per_mol_mean": 7.3125,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    }
+   ],
+   "last_seed": {
+    "eval_seed": 2,
+    "template_offset": 64,
+    "n_ok": 32,
+    "n_total": 32,
+    "ring_3_share": 0.5256410256410257,
+    "ring_5_6_share": 0.14957264957264957,
+    "rings_per_mol_mean": 7.3125,
+    "single_fragment_ratio": 0.0,
+    "n_chemistry_scored": 32
+   },
+   "mean_over_seeds": {
+    "ring_3_share": 0.4994560994560995,
+    "ring_5_6_share": 0.18167573167573167,
+    "rings_per_mol_mean": 7.094758064516129
+   }
+  },
+  "model=edge_ring_w1|head=edge_ring_w1": {
+   "per_seed": [
+    {
+     "eval_seed": 0,
+     "template_offset": 0,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.3857566765578635,
+     "ring_5_6_share": 0.18694362017804153,
+     "rings_per_mol_mean": 10.53125,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    },
+    {
+     "eval_seed": 1,
+     "template_offset": 32,
+     "n_ok": 31,
+     "n_total": 31,
+     "ring_3_share": 0.4019607843137255,
+     "ring_5_6_share": 0.2647058823529412,
+     "rings_per_mol_mean": 9.870967741935484,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 31
+    },
+    {
+     "eval_seed": 2,
+     "template_offset": 64,
+     "n_ok": 32,
+     "n_total": 32,
+     "ring_3_share": 0.4045584045584046,
+     "ring_5_6_share": 0.21082621082621084,
+     "rings_per_mol_mean": 10.96875,
+     "single_fragment_ratio": 0.0,
+     "n_chemistry_scored": 32
+    }
+   ],
+   "last_seed": {
+    "eval_seed": 2,
+    "template_offset": 64,
+    "n_ok": 32,
+    "n_total": 32,
+    "ring_3_share": 0.4045584045584046,
+    "ring_5_6_share": 0.21082621082621084,
+    "rings_per_mol_mean": 10.96875,
+    "single_fragment_ratio": 0.0,
+    "n_chemistry_scored": 32
+   },
+   "mean_over_seeds": {
+    "ring_3_share": 0.39742528847666453,
+    "ring_5_6_share": 0.22082523778573118,
+    "rings_per_mol_mean": 10.456989247311828
+   }
+  }
+ },
+ "effects": {
+  "ring_3_share": {
+   "head_effect_with_model_a": -0.12108262108262108,
+   "head_effect_with_model_b": -0.12108262108262108,
+   "model_effect_with_head_a": 0.0,
+   "model_effect_with_head_b": 0.0
+  },
+  "ring_5_6_share": {
+   "head_effect_with_model_a": 0.06125356125356127,
+   "head_effect_with_model_b": 0.06125356125356127,
+   "model_effect_with_head_a": 0.0,
+   "model_effect_with_head_b": 0.0
+  },
+  "rings_per_mol_mean": {
+   "head_effect_with_model_a": 3.65625,
+   "head_effect_with_model_b": 3.65625,
+   "model_effect_with_head_a": 0.0,
+   "model_effect_with_head_b": 0.0
+  }
+ },
+ "honest_limits": [
+  "Single checkpoint per arm (last epoch); this is a mechanism probe, not a 3-seed test.",
+  "`last_seed` is the value the trainer records as the epoch's gen_ring_*; the other two eval seeds are reported per-row.",
+  "The two arms' velocity fields are bit-identical (Wf-A107c), so the `model=` dimension should be a no-op.  It is measured, not assumed: a non-zero model effect means the decode path carries state that the weights do not show."
+ ]
+}

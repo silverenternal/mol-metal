@@ -19,7 +19,10 @@
 按 `todo.json::north_star.decision_rule`（门槛在看到结果前写死）：4 条里过 2 条 → **边界论文**。
 UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没有一个过门。
 
-**UP 强化轮记分牌（9 项，门槛全部在 2026-10-21T15:10+08:00 写死）**
+- **"shape 学不会"的真实原因是支持度，不是模型**（UP-10，2026-10-21）：10 个金属对里 **7 个的配对组数是 0**，只有 Ru–Os（354 组）与 Ir–Rh（170 组）过 20 组门槛；跨 ≥2 金属的配体只占 **3.64%**。而且这两个"有支持"的对，典型替换效应**不大于自身化验重复散布**（可分性 0.592 / **0.115**）。
+- **shape 里结构与论文批次各自都超过 50%**（UP-17）：配体×金属 0.8015 [0.7884, 0.8151]、论文×金属 0.5484 [0.5801, 0.6297]，**两块在自己的优先顺序下都过 0.5、在对方的顺序下都归 0**；细胞×金属两种顺序都是 0.0。冻结的 kill 规则触发，但它的推论（"建模即拟合噪声"）**不成立**。
+
+**UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
 | 项 | 问题 | 判决 | 一个数字 |
 |---|---|---|---|
@@ -34,6 +37,13 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-9 | 第三个基学习器能不能加性 | FAIL | stack3 − stack2 = −0.0009 |
 
 **唯一的真增益仍是 UP-2b 的 balanced 0.5985**，而它在 raw 口径上仍输给恒定预测。
+
+**UP 第二轮记分牌（支持度阶段，门槛在 2026-10-21T20:30+08:00 写死）**
+
+| 项 | 问题 | 判决 | 一个数字 |
+|---|---|---|---|
+| UP-10 | 配对支持到底有多少 | **PASS**（审计无阈值） | 10 个金属对里 **7 个组数为 0**，只有 Ru–Os 354 / Ir–Rh 170 |
+| UP-17 | shape 是不是论文批次 | **FAIL**（gate 0.0716 > 0.05） | 配体×金属 0.8015 vs 论文×金属 0.5484，两块各自在自己顺序下都 >0.5 |
 
 ---
 
@@ -225,7 +235,25 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP7.cis_only_r2", "value": 0.1318, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.cis_only.cisplatin_ratio.r2"},
   {"id": "UP7.cis_leak", "value": 1.0, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "leakage.cisplatin_ratio_pairs_also_in_potency"},
   {"id": "UP7.aux_both_delta", "value": 0.0358, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "potency_delta_vs_single.aux_both"},
-  {"id": "UP7.aux_photo_delta", "value": 0.0132, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "potency_delta_vs_single.aux_photo"}
+  {"id": "UP7.aux_photo_delta", "value": 0.0132, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "potency_delta_vs_single.aux_photo"},
+  {"id": "UP10.potency.pairs_observed", "value": 2, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.n_pairs_observed"},
+  {"id": "UP10.potency.share_ligands_ge2", "value": 0.0364, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.share_ligands_ge2_metals"},
+  {"id": "UP10.potency.ruos_groups", "value": 354, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.pairs.2.n_groups"},
+  {"id": "UP10.potency.ruos_separability", "value": 0.592, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.pairs.2.separability"},
+  {"id": "UP10.potency.irrh_groups", "value": 170, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.pairs.4.n_groups"},
+  {"id": "UP10.potency.irrh_separability", "value": 0.115, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.pairs.4.separability"},
+  {"id": "UP10.potency.rurh_groups", "value": 15, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.potency.pairs.1.n_groups"},
+  {"id": "UP10.photo.pairs_observed", "value": 0, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.phototoxicity.n_pairs_observed"},
+  {"id": "UP10.cis.ruos_groups", "value": 128, "artifact": "metrics/by_metric/msrs_support_audit.json", "path": "endpoints.cisplatin_ratio.pairs.2.n_groups"},
+  {"id": "UP17.additive_r2", "value": 0.2837, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "additive_fit.oof_r2"},
+  {"id": "UP17.noise_sigma2", "value": 0.043712, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "additive_fit.noise_sigma2"},
+  {"id": "UP17.ligand_metal_indep", "value": 0.7556, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.ligand_x_metal.share_of_residual"},
+  {"id": "UP17.ligand_metal_forward", "value": 0.8015, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.ligand_x_metal.share_forward"},
+  {"id": "UP17.paper_metal_indep", "value": 0.5258, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.paper_x_metal.share_of_residual"},
+  {"id": "UP17.paper_metal_batch_first", "value": 0.5484, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.paper_x_metal.share_batch_first"},
+  {"id": "UP17.cell_metal_forward", "value": 0.0, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.cell_x_metal.share_forward"},
+  {"id": "UP17.unexplained_structure_first", "value": 0.0716, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "gate.unexplained_share.structure_first"},
+  {"id": "UP17.unexplained_batch_first", "value": 0.041, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "gate.unexplained_share.batch_first"}
 ]
 ```
 
@@ -336,6 +364,86 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 **结论**：辅助任务在本数据上**没有跨任务迁移价值**；`aux_both` 的 +0.0358 是"同源标签加密度"的效应，写论文时不能当作多任务正则的收益引用。
 
 **逐折复核**（`molmetal/reports/up7_fold_check/fold_check.json`，只重跑 `single` 与 `aux_both`）：pooled 数字**逐位复现**（0.2365 / 0.2723），逐折 Δ = **+0.0640 / −0.0320 / +0.0723 / +0.0674 / +0.0118**，4/5 折为正。方向一致但**符号检验 p≈0.16**，且 phototoxicity 的逐折 R² 在 **−0.230 到 +0.103** 之间跳 —— 辅助头本身是不稳定的，这比 pooled 均值更能说明它提供不了稳定梯度。
+
+### 2.11 UP-10 支持度审计：10 个金属对里只有 2 个有配对证据（2026-10-21）
+
+`msrs_support_audit.json`。一个"配对组"的定义是 `(ligand_canonical, cell_line_key)` 下**至少两个金属**都有测量；`Δ = mean(y|metal_a) − mean(y|metal_b)`。这是所有"金属替换效应"建模的样本单位 —— 第一轮 9 个包全部默认它够用，没人数过。
+
+**potency（21,777 行 / 5,965 配体 / 717 细胞系 / 1,801 论文）**
+
+| 金属对 | 组数 | 配体 | 细胞系 | 中位 \|Δ\| | 可分性 \|Δ\|/SD | 交互份额 [95% CI] | 状态 |
+|---|---:|---:|---:|---:|---:|---|---|
+| Ru–Os | **354** | 121 | 36 | 0.2769 | **0.592** | 0.7732 [0.7045, 0.8122] | OK |
+| Ir–Rh | **170** | 73 | 33 | 0.1908 | **0.115** | 0.1748 [0.0, 0.4145] | OK |
+| Ru–Rh | 15 | 10 | 8 | 0.7013 | 2.464 | 0.9086 [0.6962, 0.9501] | UNSUPPORTED（<20 组） |
+| 其余 7 对 | **0** | 0 | 0 | — | — | — | EMPTY |
+
+只有 **217 / 5,965 = 3.64%** 的配体在 ≥2 个金属下被测过。**7 个金属对的组数是零，不是"少"，是零** —— 那 7 对在语料里从未被同一配体、同一细胞系、同一论文下比较过。
+
+**可分性是这里最刺眼的数**：Ir–Rh 的 `separability = 0.115`，即**典型替换效应（中位 |Δ| = 0.19 log 单位）小于该对自身的化验重复散布（noise_sd_delta = 0.40）**。Ru–Os 好一些（0.592）也仍是同一量级。逐金属噪声地板（来自未去重表的重复组）：Ru σ=0.2219（235 组）、Ir 0.1403（52）、Rh **0.3764（仅 4 组）**、Os 0.0449（20）、Re 0.2388（5）。**Rh 的噪声地板几乎没被约束住**，而 Ir–Rh 是仅有的两个"有支持"对之一。
+
+**另外两个端点更差**：
+
+| 端点 | 行数 | ≥2 金属的配体 | 有支持的金属对 |
+|---|---:|---:|---|
+| potency | 21,777 | 217（3.64%） | Ru–Os（354 组，sep 0.592）、Ir–Rh（170 组，sep 0.115） |
+| cisplatin_ratio | 11,723 | 65（1.95%） | Ru–Os（128 组，sep 0.726）、Ir–Rh（34 组，sep 0.443） |
+| phototoxicity | 1,150 | **0（0.00%）** | **无** |
+
+phototoxicity 的 **479 个配体里没有一个在两种金属下被测过** —— 这个端点在结构上就不可能做金属替换分析，只能做单金属内的配体排序。
+
+**金属留出场景（这是 metal_out 协议的真正约束）**：
+
+| 留出金属 | 训练侧可用金属对 | 训练侧组数 |
+|---|---|---:|
+| Ru | Ir–Rh | 170 |
+| Ir | Ru–Os | 354 |
+| Rh | Ru–Os | 354 |
+| Os | Ir–Rh | 170 |
+| Re | Ru–Os + Ir–Rh | 524 |
+
+**四个留出场景的训练侧只剩 1 个金属对**。一个金属对给出 1 个约束，金属描述符块最多只能定 1 个自由度 —— 这解释了 §2.7 里 `additive_onehot` 与 `additive_desc` 在 metal_out 上只差 0.0011 R²：**不是描述符不好，是训练侧没有第二个金属对来校准它**。
+
+`metal_lomo.csv` 队列（5,460 行 / 1,968 配体）是同一个事实的另一面：只有 **42 个配体（2.13%）** 跨 ≥2 金属，且只有 Ru–Os（17 个共享配体）与 Ir–Rh（25 个）两个对非零（SMILES 未规范化，是下界）。
+
+### 2.12 UP-17 shape 来源分解：结构块与论文批次块**各自**都超过 50%，顺序决定谁是第一（2026-10-21）
+
+`msrs_shape_decomposition.json`。在**加性模型（ECFP4 + 金属块 + 细胞块 + **DOI 主效应**）的 OOF 残差**上做四路分解，不是原始 y。加性 OOF R² = 0.2837，残差方差 0.4145，噪声地板 σ² = 0.0437（df=371，取自**未去重**表）。
+
+| 分量 | 独立矩估计份额 | 结构优先顺序 [CI] | 批次优先顺序 [CI] |
+|---|---:|---|---|
+| ligand × metal | **0.7556** | **0.8015** [0.7884, 0.8151] | 0.0 [0.0, 0.0] |
+| cell × metal | 0.0745 | 0.0 [0.0, 0.0278] | 0.0 [0.0, 0.0] |
+| ligand × cell | **0.8733** | 0.1269 [0.1203, 0.1627] | 0.4106 [0.3386, 0.3887] |
+| paper × metal | **0.5258** | 0.0 [0.0, 0.0] | **0.5484** [0.5801, 0.6297] |
+
+**冻结门槛（`gates_frozen_at = 2026-10-21T20:30+08:00`）：四个分量之和与残差方差相差 <5%，且每个分量有 CI。**
+
+| 顺序 | 1 − explained_total | <5%？ |
+|---|---:|---|
+| 结构优先 | 0.0716 | ✗ |
+| 批次优先 | 0.0410 | ✓ |
+
+⇒ `gate_pass = false`（两个顺序都要过才算过）。结构优先顺序下 7.16% 的残差方差没有被这四块解释，超过 5% 的容差。
+
+**kill 条款：「paper×metal > 0.5 ⇒ shape 主要是论文批次」。它触发了，但它的推论不成立。**
+
+- 批次优先顺序：paper×metal = **0.5484** > 0.5 ✓ 触发。
+- 同一顺序下 ligand×metal = **0.0**；反过来结构优先顺序下 ligand×metal = **0.8015**、paper×metal = **0.0**。
+- 两个块**各自在自己的优先顺序下都超过 0.5**，且 ligand×metal 的 0.8015 > paper×metal 的 0.5484。
+
+⇒ `verdict = SHAPE_SHARED_STRUCTURE_AND_PAPER_BATCH`，`kill_triggered = true`，`kill_consequence_valid = false`。
+**"任何建模都是在拟合噪声"这句话在这里是错的**：批次块真实存在（0.53–0.55），但配体特异的结构块更大（0.76–0.80），所以学金属替换效应不是学噪声。
+
+**顺序敏感度本身就是结论**：`order_spread` = ligand×metal [0.8015, 0.0]、paper×metal [0.0, 0.5484]、ligand×cell [0.1269, 0.4106]。四个块在构造上互相重叠（一个 ligand-metal 单元同时也是一个 ligand-cell 单元），所以**不存在唯一的"主导分量"**。论文里只能写成范围，不能写成单点。
+
+**两条必须一起报的读数**：
+- `cell × metal` 在任何顺序下都是 **0.0**（独立估计也只有 0.0745）—— **细胞系特异的金属响应不存在**，这与 §2.7 的 `pair_desc`（放开 ligand×metal 交互）反而变差 −0.1128 一致。
+- 独立矩估计之和不等于 1（0.7556 + 0.0745 + 0.8733 + 0.5258 = **2.2292**），这不是错误，是重叠块的定义。**独立份额只能当上界读**。
+
+**CI 的一个诚实的瑕疵**：批次优先顺序下 bootstrap 区间不包住点估计（paper×metal 点 0.5484、CI [0.5801, 0.6297]；ligand×cell 点 0.4106、CI [0.3386, 0.3887]）。原因是按配体整簇重采样会复制配体、放大组大小 n，而可靠性权重 `w = σ²_b/(σ²_b + σ²_noise/n)` 依赖 n，所以**被重采样的估计量不是原点估计量**。区间只能当方向性证据（paper×metal 在批次优先下稳定高于 0.5），不能当 0.5484 的误差棒。
+
+
 
 ---
 

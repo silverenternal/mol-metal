@@ -1,0 +1,787 @@
+{
+  "artifact": "msrs_support_audit",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L0 support audit (UP-10)",
+  "generated_utc": "2026-10-21T12:43:59+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_support_audit.py",
+    "git_commit": "fb4ef21a49270723f9706f166d3ef9db332362fc",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "unit": "(ligand_canonical, cell_line_key) measured under >=2 metals",
+    "delta": "mean(y|metal_a) - mean(y|metal_b) within the unit",
+    "noise": "pooled within-replicate variance per metal (same ligand, metal, cell, duration, DOI)",
+    "interaction_share": "max(0, Var(Delta) - sampling noise) / Var(Delta)",
+    "separability": "|mean Delta| / noise SD",
+    "bootstrap": "1000 ligand-clustered resamples, seed 20261021",
+    "min_groups": 20,
+    "gate": "every endpoint x every metal-out scenario reported; pairs below min_groups are UNSUPPORTED"
+  },
+  "summary": {
+    "pairs_observed_potency": [
+      "Ru-Os",
+      "Ir-Rh"
+    ],
+    "pairs_unsupported_potency": [
+      "Ru-Ir",
+      "Ru-Rh",
+      "Ru-Re",
+      "Ir-Os",
+      "Ir-Re",
+      "Rh-Os",
+      "Rh-Re",
+      "Os-Re"
+    ],
+    "share_ligands_ge2_metals_potency": 0.0364,
+    "min_groups_required": 20
+  },
+  "endpoints": {
+    "potency": {
+      "n_rows": 21777,
+      "n_ligands": 5965,
+      "n_cells": 717,
+      "n_dois": 1801,
+      "n_ligands_ge2_metals": 217,
+      "share_ligands_ge2_metals": 0.0364,
+      "noise_floor_per_metal": {
+        "Ru": {
+          "n_replicate_groups": 235,
+          "df": 275,
+          "sigma2": 0.049223,
+          "sigma": 0.2219
+        },
+        "Ir": {
+          "n_replicate_groups": 52,
+          "df": 62,
+          "sigma2": 0.019672,
+          "sigma": 0.1403
+        },
+        "Rh": {
+          "n_replicate_groups": 4,
+          "df": 8,
+          "sigma2": 0.141691,
+          "sigma": 0.3764
+        },
+        "Os": {
+          "n_replicate_groups": 20,
+          "df": 21,
+          "sigma2": 0.002018,
+          "sigma": 0.0449
+        },
+        "Re": {
+          "n_replicate_groups": 5,
+          "df": 5,
+          "sigma2": 0.057024,
+          "sigma": 0.2388
+        }
+      },
+      "pairs": [
+        {
+          "pair": "Ru-Ir",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ru-Rh",
+          "endpoint": "potency",
+          "n_groups": 15,
+          "n_rows": 35,
+          "n_ligands": 10,
+          "n_cells": 8,
+          "median_abs_delta": 0.7013,
+          "mean_delta": 1.0767,
+          "sd_delta": 1.4003,
+          "noise_sd_delta": 0.4369,
+          "separability": 2.464,
+          "interaction_share": 0.9086,
+          "interaction_share_ci95": [
+            0.6962,
+            0.9501
+          ],
+          "status": "UNSUPPORTED",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ru-Os",
+          "endpoint": "potency",
+          "n_groups": 354,
+          "n_rows": 791,
+          "n_ligands": 121,
+          "n_cells": 36,
+          "median_abs_delta": 0.2769,
+          "mean_delta": 0.134,
+          "sd_delta": 0.4641,
+          "noise_sd_delta": 0.2264,
+          "separability": 0.592,
+          "interaction_share": 0.7732,
+          "interaction_share_ci95": [
+            0.7045,
+            0.8122
+          ],
+          "status": "OK",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ru-Re",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Rh",
+          "endpoint": "potency",
+          "n_groups": 170,
+          "n_rows": 349,
+          "n_ligands": 73,
+          "n_cells": 33,
+          "median_abs_delta": 0.1908,
+          "mean_delta": -0.0461,
+          "sd_delta": 0.4395,
+          "noise_sd_delta": 0.4017,
+          "separability": 0.115,
+          "interaction_share": 0.1748,
+          "interaction_share_ci95": [
+            0.0,
+            0.4145
+          ],
+          "status": "OK",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ir-Os",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Re",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Os",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Re",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Os-Re",
+          "endpoint": "potency",
+          "n_groups": 0,
+          "status": "EMPTY"
+        }
+      ],
+      "n_pairs_observed": 2,
+      "n_pairs_total": 10,
+      "observed_pairs": [
+        "Ru-Os",
+        "Ir-Rh"
+      ],
+      "unsupported_pairs": [
+        "Ru-Ir",
+        "Ru-Rh",
+        "Ru-Re",
+        "Ir-Os",
+        "Ir-Re",
+        "Rh-Os",
+        "Rh-Re",
+        "Os-Re"
+      ]
+    },
+    "phototoxicity": {
+      "n_rows": 1150,
+      "n_ligands": 479,
+      "n_cells": 88,
+      "n_dois": 196,
+      "n_ligands_ge2_metals": 0,
+      "share_ligands_ge2_metals": 0.0,
+      "noise_floor_per_metal": {
+        "Ru": {
+          "n_replicate_groups": 86,
+          "df": 95,
+          "sigma2": 0.157364,
+          "sigma": 0.3967
+        },
+        "Ir": {
+          "n_replicate_groups": 34,
+          "df": 41,
+          "sigma2": 0.277456,
+          "sigma": 0.5267
+        },
+        "Rh": {
+          "n_replicate_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Os": {
+          "n_replicate_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Re": {
+          "n_replicate_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        }
+      },
+      "pairs": [
+        {
+          "pair": "Ru-Ir",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ru-Rh",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ru-Os",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ru-Re",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Rh",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Os",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Re",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Os",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Re",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Os-Re",
+          "endpoint": "phototoxicity",
+          "n_groups": 0,
+          "status": "EMPTY"
+        }
+      ],
+      "n_pairs_observed": 0,
+      "n_pairs_total": 10,
+      "observed_pairs": [],
+      "unsupported_pairs": [
+        "Ru-Ir",
+        "Ru-Rh",
+        "Ru-Os",
+        "Ru-Re",
+        "Ir-Rh",
+        "Ir-Os",
+        "Ir-Re",
+        "Rh-Os",
+        "Rh-Re",
+        "Os-Re"
+      ]
+    },
+    "cisplatin_ratio": {
+      "n_rows": 11723,
+      "n_ligands": 3332,
+      "n_cells": 544,
+      "n_dois": 939,
+      "n_ligands_ge2_metals": 65,
+      "share_ligands_ge2_metals": 0.0195,
+      "noise_floor_per_metal": {
+        "Ru": {
+          "n_replicate_groups": 96,
+          "df": 113,
+          "sigma2": 0.042464,
+          "sigma": 0.2061
+        },
+        "Ir": {
+          "n_replicate_groups": 24,
+          "df": 31,
+          "sigma2": 0.038624,
+          "sigma": 0.1965
+        },
+        "Rh": {
+          "n_replicate_groups": 4,
+          "df": 8,
+          "sigma2": 0.141691,
+          "sigma": 0.3764
+        },
+        "Os": {
+          "n_replicate_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Re": {
+          "n_replicate_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        }
+      },
+      "pairs": [
+        {
+          "pair": "Ru-Ir",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ru-Rh",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 7,
+          "n_rows": 14,
+          "n_ligands": 2,
+          "n_cells": 7,
+          "median_abs_delta": 0.3775,
+          "mean_delta": 0.3248,
+          "sd_delta": 0.2889,
+          "noise_sd_delta": 0.4291,
+          "separability": 0.757,
+          "interaction_share": 0.0,
+          "interaction_share_ci95": [
+            0.0,
+            0.0
+          ],
+          "status": "UNSUPPORTED",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ru-Os",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 128,
+          "n_rows": 270,
+          "n_ligands": 45,
+          "n_cells": 16,
+          "median_abs_delta": 0.3095,
+          "mean_delta": 0.1497,
+          "sd_delta": 0.4973,
+          "noise_sd_delta": 0.2061,
+          "separability": 0.726,
+          "interaction_share": 0.8327,
+          "interaction_share_ci95": [
+            0.752,
+            0.8764
+          ],
+          "status": "OK",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ru-Re",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Rh",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 34,
+          "n_rows": 69,
+          "n_ligands": 14,
+          "n_cells": 13,
+          "median_abs_delta": 0.3293,
+          "mean_delta": -0.1881,
+          "sd_delta": 0.5313,
+          "noise_sd_delta": 0.4246,
+          "separability": 0.443,
+          "interaction_share": 0.366,
+          "interaction_share_ci95": [
+            0.0,
+            0.6372
+          ],
+          "status": "OK",
+          "min_groups_required": 20
+        },
+        {
+          "pair": "Ir-Os",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Ir-Re",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Os",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Rh-Re",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        },
+        {
+          "pair": "Os-Re",
+          "endpoint": "cisplatin_ratio",
+          "n_groups": 0,
+          "status": "EMPTY"
+        }
+      ],
+      "n_pairs_observed": 2,
+      "n_pairs_total": 10,
+      "observed_pairs": [
+        "Ru-Os",
+        "Ir-Rh"
+      ],
+      "unsupported_pairs": [
+        "Ru-Ir",
+        "Ru-Rh",
+        "Ru-Re",
+        "Ir-Os",
+        "Ir-Re",
+        "Rh-Os",
+        "Rh-Re",
+        "Os-Re"
+      ]
+    }
+  },
+  "metal_out_scenarios": {
+    "potency": {
+      "Ru": {
+        "train_metals": [
+          "Ir",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Rh": 170,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 170
+      },
+      "Ir": {
+        "train_metals": [
+          "Ru",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Rh-Ru": 0,
+          "Os-Ru": 354,
+          "Re-Ru": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 354
+      },
+      "Rh": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Os-Ru": 354,
+          "Re-Ru": 0,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 354
+      },
+      "Os": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Re-Ru": 0,
+          "Ir-Rh": 170,
+          "Ir-Re": 0,
+          "Re-Rh": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 170
+      },
+      "Re": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Os"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Os-Ru": 354,
+          "Ir-Rh": 170,
+          "Ir-Os": 0,
+          "Os-Rh": 0
+        },
+        "n_pairs_with_evidence": 2,
+        "n_groups_total": 524
+      }
+    },
+    "phototoxicity": {
+      "Ru": {
+        "train_metals": [
+          "Ir",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Rh": 0,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 0,
+        "n_groups_total": 0
+      },
+      "Ir": {
+        "train_metals": [
+          "Ru",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Rh-Ru": 0,
+          "Os-Ru": 0,
+          "Re-Ru": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 0,
+        "n_groups_total": 0
+      },
+      "Rh": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Os-Ru": 0,
+          "Re-Ru": 0,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 0,
+        "n_groups_total": 0
+      },
+      "Os": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Re-Ru": 0,
+          "Ir-Rh": 0,
+          "Ir-Re": 0,
+          "Re-Rh": 0
+        },
+        "n_pairs_with_evidence": 0,
+        "n_groups_total": 0
+      },
+      "Re": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Os"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Os-Ru": 0,
+          "Ir-Rh": 0,
+          "Ir-Os": 0,
+          "Os-Rh": 0
+        },
+        "n_pairs_with_evidence": 0,
+        "n_groups_total": 0
+      }
+    },
+    "cisplatin_ratio": {
+      "Ru": {
+        "train_metals": [
+          "Ir",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Rh": 34,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 34
+      },
+      "Ir": {
+        "train_metals": [
+          "Ru",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Rh-Ru": 0,
+          "Os-Ru": 128,
+          "Re-Ru": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 128
+      },
+      "Rh": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Os",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Os-Ru": 128,
+          "Re-Ru": 0,
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Os-Re": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 128
+      },
+      "Os": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Re"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Re-Ru": 0,
+          "Ir-Rh": 34,
+          "Ir-Re": 0,
+          "Re-Rh": 0
+        },
+        "n_pairs_with_evidence": 1,
+        "n_groups_total": 34
+      },
+      "Re": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Os"
+        ],
+        "available_pairs": {
+          "Ir-Ru": 0,
+          "Rh-Ru": 0,
+          "Os-Ru": 128,
+          "Ir-Rh": 34,
+          "Ir-Os": 0,
+          "Os-Rh": 0
+        },
+        "n_pairs_with_evidence": 2,
+        "n_groups_total": 162
+      }
+    }
+  },
+  "lomo_classification": {
+    "status": "OK",
+    "path": "molmetal/data/metal_lomo.csv",
+    "n_rows": 5460,
+    "n_ligands": 1968,
+    "n_ligands_ge2_metals": 42,
+    "share_ligands_ge2_metals": 0.0213,
+    "shared_ligands_per_pair": {
+      "Ru-Ir": 0,
+      "Ru-Rh": 0,
+      "Ru-Os": 17,
+      "Ru-Re": 0,
+      "Ir-Rh": 25,
+      "Ir-Os": 0,
+      "Ir-Re": 0,
+      "Rh-Os": 0,
+      "Rh-Re": 0,
+      "Os-Re": 0
+    },
+    "caveat": "SMILES strings are not canonicalised, so shared-ligand counts are a lower bound; this cohort also has no duration key, so no cell-matched Delta is defined."
+  },
+  "caveats": [
+    "A unit is cell-matched but not DOI-matched: the same ligand measured under two metals in two different papers still counts, so part of Delta can be a paper effect. The interaction_share subtracts replicate noise, not between-paper drift.",
+    "n_groups counts units, not independent ligands; a ligand measured in ten cell lines contributes ten units. n_ligands is reported next to it.",
+    "Pairs below 20 units are marked UNSUPPORTED. That threshold is a rule of thumb for estimating a variance, not a power calculation."
+  ]
+}

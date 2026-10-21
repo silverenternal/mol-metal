@@ -1,0 +1,306 @@
+{
+ "metric": "wfa107_head_swap_probe",
+ "tag": "MEASURED",
+ "date": "2026-10-21",
+ "what": "2x2 head-swap: both arms' bond heads run on BOTH the val clouds' own geometry and the sampler's generated geometry (same noise seed, same compositions, threshold 0.5).  Separates 'the head changed' from 'the geometry changed'.",
+ "arms": [
+  "control",
+  "edge_ring_w1"
+ ],
+ "checkpoints": {
+  "control": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "edge_ring_w1": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt"
+ },
+ "epochs": {
+  "control": 4,
+  "edge_ring_w1": 4
+ },
+ "sampler": {
+  "method": "rk4",
+  "n_steps": 100,
+  "seed": 402,
+  "noise_sigma": 1.0
+ },
+ "n_clouds": 32,
+ "threshold": 0.5,
+ "sampler_max_abs_deviation": 0.0,
+ "table": {
+  "truth_geometry": {
+   "control": {
+    "ring_profile": {
+     "ring_size_distribution": {
+      "3": 270,
+      "4": 28,
+      "5": 36,
+      "6": 114,
+      "7": 47,
+      "8": 49,
+      "9": 17,
+      "10": 24,
+      "11": 15,
+      "12": 12,
+      "13": 6,
+      "14": 4,
+      "15": 4,
+      "16": 2,
+      "17": 1,
+      "20": 1
+     },
+     "rings_per_mol_mean": 19.6875,
+     "ring_5_6_share": 0.23809523809523808,
+     "ring_3_share": 0.42857142857142855
+    },
+    "bond": {
+     "tp": 868,
+     "fp": 559,
+     "fn": 105,
+     "precision": 0.6082690960056062,
+     "recall": 0.8920863309352518,
+     "f1": 0.7233333333333333
+    }
+   },
+   "edge_ring_w1": {
+    "ring_profile": {
+     "ring_size_distribution": {
+      "3": 243,
+      "4": 44,
+      "5": 32,
+      "6": 121,
+      "7": 55,
+      "8": 58,
+      "9": 37,
+      "10": 31,
+      "11": 22,
+      "12": 16,
+      "13": 5,
+      "14": 4,
+      "15": 5,
+      "16": 4,
+      "17": 4,
+      "18": 4,
+      "19": 6,
+      "20": 5,
+      "21": 4,
+      "22": 1,
+      "23": 4,
+      "24": 1,
+      "25": 2,
+      "26": 1,
+      "27": 1
+     },
+     "rings_per_mol_mean": 22.1875,
+     "ring_5_6_share": 0.21549295774647886,
+     "ring_3_share": 0.34225352112676055
+    },
+    "bond": {
+     "tp": 886,
+     "fp": 650,
+     "fn": 87,
+     "precision": 0.5768229166666666,
+     "recall": 0.9105858170606372,
+     "f1": 0.7062574730968513
+    }
+   },
+   "head_edge_jaccard": 0.9374825375209798,
+   "cutoff_stats": {
+    "frac_pairs_in_cutoff": 0.4122504643164575,
+    "mean_pair_distance": 4.9983691200613976
+   }
+  },
+  "generated_geometry": {
+   "control": {
+    "ring_profile": {
+     "ring_size_distribution": {
+      "3": 350,
+      "4": 302,
+      "5": 273,
+      "6": 250,
+      "7": 237,
+      "8": 226,
+      "9": 227,
+      "10": 218,
+      "11": 203,
+      "12": 186,
+      "13": 193,
+      "14": 187,
+      "15": 170,
+      "16": 155,
+      "17": 150,
+      "18": 137,
+      "19": 128,
+      "20": 110,
+      "21": 107,
+      "22": 95,
+      "23": 94,
+      "24": 74,
+      "25": 70,
+      "26": 62,
+      "27": 57,
+      "28": 58,
+      "29": 52,
+      "30": 44,
+      "31": 47,
+      "32": 40,
+      "33": 39,
+      "34": 35,
+      "35": 37,
+      "36": 33,
+      "37": 29,
+      "38": 26,
+      "39": 28,
+      "40": 25,
+      "41": 27,
+      "42": 22,
+      "43": 17,
+      "44": 23,
+      "45": 23,
+      "46": 21,
+      "47": 20,
+      "48": 14,
+      "49": 13,
+      "50": 12,
+      "51": 10,
+      "52": 7,
+      "53": 10,
+      "54": 9,
+      "55": 7,
+      "56": 5,
+      "57": 3,
+      "58": 3,
+      "59": 3,
+      "60": 1,
+      "61": 2,
+      "62": 1
+     },
+     "rings_per_mol_mean": 156.46875,
+     "ring_5_6_share": 0.10445376472937887,
+     "ring_3_share": 0.06990213700818854
+    },
+    "bond": {
+     "tp": 378,
+     "fp": 5488,
+     "fn": 595,
+     "precision": 0.06443914081145585,
+     "recall": 0.38848920863309355,
+     "f1": 0.1105424769703173
+    }
+   },
+   "edge_ring_w1": {
+    "ring_profile": {
+     "ring_size_distribution": {
+      "3": 387,
+      "4": 337,
+      "5": 292,
+      "6": 300,
+      "7": 270,
+      "8": 256,
+      "9": 243,
+      "10": 252,
+      "11": 236,
+      "12": 236,
+      "13": 229,
+      "14": 216,
+      "15": 216,
+      "16": 195,
+      "17": 160,
+      "18": 163,
+      "19": 139,
+      "20": 132,
+      "21": 127,
+      "22": 111,
+      "23": 96,
+      "24": 97,
+      "25": 92,
+      "26": 89,
+      "27": 80,
+      "28": 67,
+      "29": 63,
+      "30": 61,
+      "31": 59,
+      "32": 56,
+      "33": 49,
+      "34": 44,
+      "35": 32,
+      "36": 35,
+      "37": 38,
+      "38": 37,
+      "39": 30,
+      "40": 39,
+      "41": 36,
+      "42": 35,
+      "43": 23,
+      "44": 23,
+      "45": 24,
+      "46": 22,
+      "47": 21,
+      "48": 15,
+      "49": 16,
+      "50": 15,
+      "51": 16,
+      "52": 14,
+      "53": 14,
+      "54": 13,
+      "55": 10,
+      "56": 12,
+      "57": 11,
+      "58": 10,
+      "59": 8,
+      "60": 5,
+      "61": 3,
+      "62": 3,
+      "63": 2,
+      "64": 1
+     },
+     "rings_per_mol_mean": 184.78125,
+     "ring_5_6_share": 0.10011838322340605,
+     "ring_3_share": 0.0654490106544901
+    },
+    "bond": {
+     "tp": 431,
+     "fp": 6344,
+     "fn": 542,
+     "precision": 0.06361623616236162,
+     "recall": 0.44295991778006166,
+     "f1": 0.11125451729478575
+    }
+   },
+   "head_edge_jaccard": 0.8654302824978367,
+   "cutoff_stats": {
+    "frac_pairs_in_cutoff": 0.8912188615649939,
+    "mean_pair_distance": 2.2636814899742603
+   }
+  }
+ },
+ "effects": {
+  "ring_3_share": {
+   "head_effect_on_truth": -0.086317907444668,
+   "head_effect_on_generated": -0.004453126353698433,
+   "geometry_effect_head_a": -0.35866929156324,
+   "geometry_effect_head_b": -0.27680451047227045
+  },
+  "ring_5_6_share": {
+   "head_effect_on_truth": -0.02260228034875922,
+   "head_effect_on_generated": -0.0043353815059728185,
+   "geometry_effect_head_a": -0.13364147336585921,
+   "geometry_effect_head_b": -0.11537457452307281
+  },
+  "rings_per_mol_mean": {
+   "head_effect_on_truth": 2.5,
+   "head_effect_on_generated": 28.3125,
+   "geometry_effect_head_a": 136.78125,
+   "geometry_effect_head_b": 162.59375
+  },
+  "bond_f1": {
+   "head_effect_on_truth": -0.017075860236482,
+   "head_effect_on_generated": 0.0007120403244684492,
+   "geometry_effect_head_a": -0.612790856363016,
+   "geometry_effect_head_b": -0.5950029558020655
+  }
+ },
+ "honest_limits": [
+  "Single checkpoint per arm (last epoch); this is a mechanism probe, not a 3-seed test.",
+  "Ring perception is SSSR on an un-sanitised RWMol built from the predicted edges; no valence or dative-bond handling.",
+  "bond precision/recall on generated geometry compares against the template's bond table, so it is only meaningful if the sampler reproduced the composition's connectivity — read it next to the cutoff statistics, not on its own.",
+  "The sampler deviation column is the leak test: non-zero means the ring prior reached the velocity field and the 2x2 is confounded."
+ ]
+}

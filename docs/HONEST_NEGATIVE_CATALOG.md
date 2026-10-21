@@ -10187,3 +10187,132 @@ on untrained-sampler output.
 **Workflow** | Wf-A107c/d (2026-10-21; GPU0: 2 retrains reproducing the archived seed-0
 pair bit-exactly, 1 decode 2x2 on GPU, 2 head-swap probes on CPU; §5.2 every number is an
 artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.163 — UP-10: seven of ten metal pairs have zero paired evidence, not little (2026-10-21)
+
+**Claim that was being made implicitly.** Nine work packages in the first strengthening
+round (UP-1 … UP-9) all assumed that "metal substitution response" was learnable because
+the corpus contains ligands measured under several metals. Nobody had counted the sample
+unit that assumption needs: a `(ligand_canonical, cell_line_key)` group with at least two
+metals measured.
+
+**Measured** (`metrics/by_metric/msrs_support_audit.json`, potency 21,777 rows / 5,965
+ligands / 717 cell lines / 1,801 DOIs):
+
+| metal pair | groups | ligands | separability \|Δ\|/SD | interaction share [95% CI] | status |
+|---|---:|---:|---:|---|---|
+| Ru–Os | 354 | 121 | 0.592 | 0.7732 [0.7045, 0.8122] | OK |
+| Ir–Rh | 170 | 73 | **0.115** | 0.1748 [0.0, 0.4145] | OK |
+| Ru–Rh | 15 | 10 | 2.464 | 0.9086 [0.6962, 0.9501] | UNSUPPORTED (<20 groups) |
+| other 7 pairs | **0** | 0 | — | — | EMPTY |
+
+Only **217 / 5,965 = 3.64%** of ligands were measured under ≥2 metals. `phototoxicity`
+(1,150 rows / 479 ligands) has **0** such ligands — the endpoint cannot support a
+substitution analysis at all. `cisplatin_ratio` is 65 / 3,332 = 1.95%.
+
+**Why this is a negative, not a table.** Two consequences that close doors:
+
+  * **The metal-out protocol has one degree of freedom.** Leave one of {Ru, Ir, Rh, Os}
+    out and the training side keeps exactly **one** metal pair (Ru out → Ir–Rh, 170
+    groups; Ir/Rh out → Ru–Os, 354; Os out → Ir–Rh, 170). Only Re-out leaves two (524).
+    One pair = one constraint = the descriptor block can pin at most one parameter. That
+    is the mechanism behind §2.7's finding that `additive_onehot` and `additive_desc`
+    differ by 0.0011 R² on metal_out — not a weak descriptor, a starved calibration set.
+  * **The two "supported" pairs are barely above their own assay noise.** Ir–Rh's median
+    |Δ| is 0.19 log units against a within-pair noise SD of 0.40 (`separability` 0.115);
+    Ru–Os is 0.28 against 0.23 (0.592). Any model that has to resolve a metal swap on
+    these pairs is resolving a signal smaller than the replicate scatter.
+
+**Honest boundaries (ACTIVE).**
+  * **`separability` is per-pair, not per-ligand.** A high-variance pair can still contain
+    individual ligands with a clean swap; the audit says nothing about them. It bounds the
+    *average* achievable R²_Δ, which is what a descriptor bridge would be scored on.
+  * **The 3.64% is a lower bound on coverage, not an upper bound on learnability.** It
+    counts canonical-SMILES identity; a scaffold-level match would be larger. It was not
+    computed, so no scaffold-transfer claim is made.
+  * **Rh's noise floor is 0.3764 from 4 replicate groups.** Ir–Rh is one of only two
+    supported pairs and its heavier partner has the least-constrained noise estimate in
+    the corpus. The separability of 0.115 inherits that uncertainty.
+  * **`Ru–Rh` is UNSUPPORTED by the frozen rule (n < 20), despite the best separability
+    in the table (2.464).** The rule is group-count, not effect size; 15 groups over 10
+    ligands cannot train anything even if the effect is large. Do not quote 2.464 as
+    evidence that the pair is learnable.
+
+**Artifacts.** `molmetal/scripts/msrs_support_audit.py`,
+`metrics/by_metric/msrs_support_audit.json`.
+
+**§6.163 catalog-count math.** Net **+1**. Cumulative **217 → 218**. ACTIVE **173 → 174**.
+
+**Workflow** | UP-10 (2026-10-21; CPU only, ~6 min; §5.2 every number is an artifact
+field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.164 — UP-17: the "is the shape a batch effect?" kill rule fires, but its consequence does not follow (2026-10-21)
+
+**The question the kill rule was written to answer.** If the metal-substitution "shape"
+is mostly a `paper × metal` offset, it is a lab artefact and any model learning it is
+fitting noise. The rule was frozen at `2026-10-21T20:30+08:00` as "paper × metal > 0.5 ⇒
+the shape is paper batch". It was written assuming one decomposition. The blocks overlap,
+so there is no single decomposition, and the rule's answer depends on the order.
+
+**Measured** (`metrics/by_metric/msrs_shape_decomposition.json`). Decomposition is on the
+**OOF residual of an additive model that already contains a DOI main effect** — without
+that main effect the `(paper, metal)` block absorbs the between-paper offset and gets
+mislabelled as interaction (this was a real bug in the first version of the script).
+21,045 rows / 5,861 ligands / 711 cell lines / 1,784 DOIs; additive OOF R² = 0.2837;
+residual variance 0.4145; noise σ² = 0.0437 (df = 371, from the **undeduplicated** table —
+the dedup table has n = 1 per group and returns df = 0).
+
+| component | independent (upper bound) | structure-first | batch-first |
+|---|---:|---:|---:|
+| ligand × metal | 0.7556 | **0.8015** [0.7884, 0.8151] | 0.0 [0.0, 0.0] |
+| cell × metal | 0.0745 | 0.0 [0.0, 0.0278] | 0.0 [0.0, 0.0] |
+| ligand × cell | 0.8733 | 0.1269 [0.1203, 0.1627] | 0.4106 [0.3386, 0.3887] |
+| paper × metal | 0.5258 | 0.0 [0.0, 0.0] | **0.5484** [0.5801, 0.6297] |
+
+**Both blocks exceed 0.5 under their own priority and both collapse to 0.0 under the
+other's.** Ligand × metal (0.8015) is larger than paper × metal (0.5484), so the sentence
+"the shape is mainly paper batch" is false even though the numeric trigger fires.
+
+**Verdict.** `SHAPE_SHARED_STRUCTURE_AND_PAPER_BATCH`; `kill_triggered = true`;
+`kill_consequence_valid = false`. The kill rule as written cannot distinguish the two
+hypotheses it was meant to separate, and that is the finding.
+
+**Gate.** Frozen gate was "the four components account for the residual to within 5%,
+every component has a CI". `1 − explained_total` = **0.0716** structure-first (fails) and
+**0.0410** batch-first (passes) ⇒ `gate_pass = false`. The first implementation compared
+`explained_total` against the sum of its own sequential steps, which telescopes to exactly
+0 by construction — a tautology, not a gate. It was replaced with `1 − explained_total`.
+
+**Honest boundaries (ACTIVE).**
+  * **No unique dominant component exists.** Blocks overlap by construction (a
+    ligand-metal cell is also a ligand-cell cell); the independent shares sum to 2.2292,
+    not 1. They are upper bounds. Report the two orders as a range, never a point.
+  * **The batch-first bootstrap intervals do not bracket the point estimates** (paper ×
+    metal point 0.5484 vs CI [0.5801, 0.6297]). Ligand-clustered resampling duplicates
+    ligands, which inflates group sizes `n`, and the reliability weight
+    `w = σ²_b/(σ²_b + σ²_noise/n)` depends on `n`. The resampled estimand is not the
+    original one. The intervals support the direction (batch-first paper × metal stays
+    above 0.5), not the point estimate's error bar.
+  * **`cell × metal` is 0.0 in both orders and 0.0745 independently.** Cell-line-specific
+    metal response is absent from this corpus. This is consistent with §2.7's `pair_desc`
+    arm getting worse (−0.1128) when ligand × metal interactions were opened up.
+  * **CV is grouped by `ligand_main_fragment`, not DOI.** The additive model sees the
+    same DOIs in train and test, so its DOI main effect is fitted in-sample. The
+    decomposition describes in-distribution residual structure and says nothing about
+    transfer to an unseen paper.
+  * **σ²_noise is pooled across metals.** Rh (4 replicate groups) and Re (5) are barely
+    constrained individually; pooling is the conservative choice but it makes the
+    reliability weights for Rh/Re cells less trustworthy.
+
+**Artifacts.** `molmetal/scripts/msrs_shape_decomposition.py`,
+`metrics/by_metric/msrs_shape_decomposition.json`.
+
+**§6.164 catalog-count math.** Net **+1**. Cumulative **218 → 219**. ACTIVE **174 → 175**.
+
+**Workflow** | UP-17 (2026-10-21; CPU only, 1 min 16 s including 200 ligand-clustered
+resamples in each of two orders; §5.2 every number is an artifact field; §5.3 + §5.4: 0
+`paper/*` + 0 wet-lab).

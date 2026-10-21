@@ -1,0 +1,269 @@
+{
+  "artifact": "msrs_shape_decomposition",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L2 residual decomposition (UP-17)",
+  "generated_utc": "2026-10-21T12:50:51+00:00",
+  "provenance": {
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "molmetal/data/metal_chemistry_5.csv",
+    "script": "molmetal/scripts/msrs_shape_decomposition.py",
+    "git_commit": "26598016fc7a9de4259ce04fb4f4078553e0fcd2",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "n_rows": 21045,
+    "additive_model": "LightGBM on ECFP4 + metal block + cell block, interaction_constraints=[[ligand],[metal],[cell]]",
+    "cv": "GroupKFold(5) grouped by ligand_main_fragment (same as msrs_surface_model)",
+    "estimator": "method-of-moments variance component per block, reliability-shrunk cell effects, sequential subtraction",
+    "blocks": [
+      {
+        "name": "ligand_x_metal",
+        "keys": [
+          "ligand_canonical",
+          "metal"
+        ]
+      },
+      {
+        "name": "cell_x_metal",
+        "keys": [
+          "cell_line_key",
+          "metal"
+        ]
+      },
+      {
+        "name": "ligand_x_cell",
+        "keys": [
+          "ligand_canonical",
+          "cell_line_key"
+        ]
+      },
+      {
+        "name": "paper_x_metal",
+        "keys": [
+          "doi",
+          "metal"
+        ]
+      }
+    ],
+    "bootstrap": "200 ligand-clustered resamples per order (structure-first and batch-first), seed 20261021",
+    "gate_frozen_at": "2026-10-21T20:30+08:00"
+  },
+  "additive_fit": {
+    "oof_r2": 0.2837,
+    "oof_mae": 0.4987,
+    "residual_var": 0.414534,
+    "noise_sigma2": 0.043712,
+    "noise_source": "data/msrs/measurements.parquet",
+    "noise_sigma": 0.2091,
+    "noise_df": 371,
+    "residual_over_noise": 9.483
+  },
+  "independent": {
+    "ligand_x_metal": {
+      "n_cells": 6075,
+      "mean_cell_size": 3.464,
+      "var_cell_means": 0.333133,
+      "sampling_correction": 0.019911,
+      "sigma2": 0.313222,
+      "share_of_residual": 0.7556,
+      "mean_reliability": 0.9417,
+      "share_forward_ci95_clustered": [
+        0.7884,
+        0.8151
+      ],
+      "share_batch_first_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "share_forward": 0.8015,
+      "share_batch_first": 0.0
+    },
+    "cell_x_metal": {
+      "n_cells": 1016,
+      "mean_cell_size": 20.714,
+      "var_cell_means": 0.052705,
+      "sampling_correction": 0.02181,
+      "sigma2": 0.030895,
+      "share_of_residual": 0.0745,
+      "mean_reliability": 0.658,
+      "share_forward_ci95_clustered": [
+        0.0,
+        0.0278
+      ],
+      "share_batch_first_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "share_forward": 0.0,
+      "share_batch_first": 0.0
+    },
+    "ligand_x_cell": {
+      "n_cells": 19414,
+      "mean_cell_size": 1.084,
+      "var_cell_means": 0.404149,
+      "sampling_correction": 0.04212,
+      "sigma2": 0.36203,
+      "share_of_residual": 0.8733,
+      "mean_reliability": 0.896,
+      "share_forward_ci95_clustered": [
+        0.1203,
+        0.1627
+      ],
+      "share_batch_first_ci95_clustered": [
+        0.3386,
+        0.3887
+      ],
+      "share_forward": 0.1269,
+      "share_batch_first": 0.4106
+    },
+    "paper_x_metal": {
+      "n_cells": 1915,
+      "mean_cell_size": 10.99,
+      "var_cell_means": 0.227577,
+      "sampling_correction": 0.009603,
+      "sigma2": 0.217974,
+      "share_of_residual": 0.5258,
+      "mean_reliability": 0.9596,
+      "share_forward_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "share_batch_first_ci95_clustered": [
+        0.5801,
+        0.6297
+      ],
+      "share_forward": 0.0,
+      "share_batch_first": 0.5484
+    }
+  },
+  "sequential_structure_first": {
+    "order": [
+      "ligand_x_metal",
+      "cell_x_metal",
+      "ligand_x_cell",
+      "paper_x_metal"
+    ],
+    "steps": {
+      "ligand_x_metal": {
+        "explained_var": 0.332236,
+        "share_of_residual": 0.8015,
+        "sigma2": 0.313222,
+        "mean_reliability": 0.9417,
+        "n_cells": 6075
+      },
+      "cell_x_metal": {
+        "explained_var": 0.0,
+        "share_of_residual": 0.0,
+        "sigma2": 0.0,
+        "mean_reliability": 0.0,
+        "n_cells": 1016
+      },
+      "ligand_x_cell": {
+        "explained_var": 0.052599,
+        "share_of_residual": 0.1269,
+        "sigma2": 0.033016,
+        "mean_reliability": 0.4433,
+        "n_cells": 19414
+      },
+      "paper_x_metal": {
+        "explained_var": 0.0,
+        "share_of_residual": 0.0,
+        "sigma2": 0.0,
+        "mean_reliability": 0.0,
+        "n_cells": 1915
+      }
+    },
+    "explained_total": 0.9284,
+    "residual_after": 0.029698
+  },
+  "sequential_batch_first": {
+    "order": [
+      "paper_x_metal",
+      "ligand_x_cell",
+      "cell_x_metal",
+      "ligand_x_metal"
+    ],
+    "steps": {
+      "paper_x_metal": {
+        "explained_var": 0.227328,
+        "share_of_residual": 0.5484,
+        "sigma2": 0.217974,
+        "mean_reliability": 0.9596,
+        "n_cells": 1915
+      },
+      "ligand_x_cell": {
+        "explained_var": 0.1702,
+        "share_of_residual": 0.4106,
+        "sigma2": 0.137446,
+        "mean_reliability": 0.7664,
+        "n_cells": 19414
+      },
+      "cell_x_metal": {
+        "explained_var": 0.0,
+        "share_of_residual": 0.0,
+        "sigma2": 0.0,
+        "mean_reliability": 0.0,
+        "n_cells": 1016
+      },
+      "ligand_x_metal": {
+        "explained_var": 0.0,
+        "share_of_residual": 0.0,
+        "sigma2": 0.0,
+        "mean_reliability": 0.0,
+        "n_cells": 6075
+      }
+    },
+    "explained_total": 0.959,
+    "residual_after": 0.017007
+  },
+  "dominant_component": {
+    "structure_first": "ligand_x_metal",
+    "batch_first": "paper_x_metal"
+  },
+  "verdict": "SHAPE_SHARED_STRUCTURE_AND_PAPER_BATCH",
+  "gate": {
+    "unexplained_share": {
+      "structure_first": 0.0716,
+      "batch_first": 0.041
+    },
+    "unexplained_within_5pct": {
+      "structure_first": false,
+      "batch_first": true
+    },
+    "gate_pass": false,
+    "every_component_has_ci_both_orders": true,
+    "paper_x_metal_share_batch_first": 0.5484,
+    "ligand_x_metal_share_structure_first": 0.8015,
+    "kill_triggered": true,
+    "kill_consequence_valid": false,
+    "order_spread": {
+      "ligand_x_metal": [
+        0.8015,
+        0.0
+      ],
+      "cell_x_metal": [
+        0.0,
+        0.0
+      ],
+      "ligand_x_cell": [
+        0.1269,
+        0.4106
+      ],
+      "paper_x_metal": [
+        0.0,
+        0.5484
+      ]
+    }
+  },
+  "caveats": [
+    "Blocks overlap by construction (a ligand-metal cell is also a ligand-cell cell). Read the independent shares as upper bounds and the two sequential passes as the order-dependent range. sequential_batch_first is the reverse of the block order, so a separate 'reverse' pass would be identical and is not reported.",
+    "sigma2_noise is pooled across metals; Rh and Re have few replicate groups, so their own noise floor is barely constrained. The pooled value is the conservative choice.",
+    "The additive model is fitted on ligand_main_fragment folds, not DOI folds, so this decomposition describes in-distribution residual structure. It says nothing about whether the components transfer to an unseen paper.",
+    "Both ligand x metal and paper x metal exceed 0.5 of the residual under their own priority and drop to 0.0 under the other's. The kill rule fires on the batch-first order but its consequence ('any model is fitting noise') does not follow, because ligand x metal explains strictly more when it goes first."
+  ]
+}

@@ -1,0 +1,315 @@
+{
+ "metric": "wfa107e_ring_prior_with_trained_sampler",
+ "tag": "MEASURED",
+ "date": "2026-10-21",
+ "what": "One-factor A/B (ring_template_weight 0 vs 1.0, formulation edge_ring) with a TRAINED velocity field (use_fm_objective true, fm_t_per_cloud 1, tmqm init, wasserstein 0.1) and per-module gradient clipping.  Same protocol otherwise as Wf-A107: 200 train clouds, 64 val, 5 epochs, seed 0.",
+ "arms": [
+  "control",
+  "edge_ring_w1"
+ ],
+ "config": {
+  "control": {
+   "grad_clip_scope": "per_module",
+   "max_norm": 5.0,
+   "ring_template_weight": 0.0,
+   "ring_template_formulation": "count",
+   "use_fm_objective": true,
+   "wasserstein_weight": 0.1
+  },
+  "treatment": {
+   "grad_clip_scope": "per_module",
+   "max_norm": 5.0,
+   "ring_template_weight": 1.0,
+   "ring_template_formulation": "edge_ring",
+   "use_fm_objective": true,
+   "wasserstein_weight": 0.1
+  }
+ },
+ "series": {
+  "control": {
+   "gen_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.6561514195583596,
+    0.5016077170418006
+   ],
+   "gen_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.11356466876971609,
+    0.16881028938906753
+   ],
+   "gen_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    3.3020833333333335,
+    6.479166666666667
+   ],
+   "bond_class_1_pr_auc": [
+    0.021715644867718358,
+    0.04267595613883881,
+    0.23073033436582135,
+    0.31598126421481426,
+    0.34651623130149767
+   ],
+   "bond_f1": [
+    0.0,
+    0.0,
+    0.0,
+    0.17317797578249947,
+    0.4895995032598572
+   ],
+   "bond_precision": [
+    0.0,
+    0.0,
+    0.0,
+    0.47434292866082606,
+    0.5506284916201117
+   ],
+   "bond_recall": [
+    0.0,
+    0.0,
+    0.0,
+    0.10592509782001118,
+    0.44074902179988823
+   ],
+   "gen_validity": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gen_single_fragment_ratio": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "grad_norm": [
+    17.126279284204752,
+    10.170365991102656,
+    11.891830502035036,
+    8.055413236452988,
+    7.516549778613145
+   ],
+   "train_loss": [
+    8.151226978302002,
+    8.068309478759765,
+    8.228164443969726,
+    8.053710174560546,
+    8.009040775299072
+   ],
+   "bond_ce_loss": [
+    1.027773561477661,
+    1.0047542691230773,
+    0.9518146920204162,
+    0.889073326587677,
+    0.7994744682312012
+   ],
+   "ring_prior_term": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "wasserstein_loss": [
+    0.7922478914260864,
+    0.7907920742034912,
+    0.7883499526977539,
+    0.7854864048957825,
+    0.7818226790428162
+   ]
+  },
+  "edge_ring_w1": {
+   "gen_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.5429769392033543,
+    0.3647932131495228
+   ],
+   "gen_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.14255765199161424,
+    0.21208907741251326
+   ],
+   "gen_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    4.96875,
+    9.822916666666666
+   ],
+   "bond_class_1_pr_auc": [
+    0.021760620803637505,
+    0.0383318702789512,
+    0.14718579466252749,
+    0.13462573298725378,
+    0.17678361369428092
+   ],
+   "bond_f1": [
+    0.0,
+    0.0,
+    0.0,
+    0.42969432314410483,
+    0.4824075460398263
+   ],
+   "bond_precision": [
+    0.0,
+    0.0,
+    0.0,
+    0.5728924080111784,
+    0.5195098355369235
+   ],
+   "bond_recall": [
+    0.0,
+    0.0,
+    0.0,
+    0.3437674678591392,
+    0.45025153717160427
+   ],
+   "gen_validity": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gen_single_fragment_ratio": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "grad_norm": [
+    20.133276581462876,
+    13.090544427178253,
+    14.306545498167486,
+    9.65037754191134,
+    8.466413562598285
+   ],
+   "train_loss": [
+    9.427070045471192,
+    9.289680843353272,
+    9.325382308959961,
+    8.956356620788574,
+    8.720746059417724
+   ],
+   "bond_ce_loss": [
+    1.0278833389282227,
+    1.00517596244812,
+    0.9507763433456421,
+    0.8797757053375244,
+    0.777929093837738
+   ],
+   "ring_prior_term": [
+    1.4121390581130981,
+    0.8422109484672546,
+    1.1386595964431763,
+    0.7588526606559753,
+    0.7190353870391846
+   ],
+   "wasserstein_loss": [
+    0.7922478914260864,
+    0.7907920718193054,
+    0.7883499550819397,
+    0.7854863953590393,
+    0.7818226671218872
+   ]
+  }
+ },
+ "last_epoch_deltas": {
+  "gen_ring_3_share": {
+   "control": 0.5016077170418006,
+   "treatment": 0.3647932131495228,
+   "delta": -0.13681450389227784
+  },
+  "gen_ring_5_6_share": {
+   "control": 0.16881028938906753,
+   "treatment": 0.21208907741251326,
+   "delta": 0.04327878802344573
+  },
+  "gen_rings_per_mol": {
+   "control": 6.479166666666667,
+   "treatment": 9.822916666666666,
+   "delta": 3.343749999999999
+  },
+  "bond_class_1_pr_auc": {
+   "control": 0.34651623130149767,
+   "treatment": 0.17678361369428092,
+   "delta": -0.16973261760721675
+  },
+  "bond_f1": {
+   "control": 0.4895995032598572,
+   "treatment": 0.4824075460398263,
+   "delta": -0.007191957220030909
+  },
+  "bond_precision": {
+   "control": 0.5506284916201117,
+   "treatment": 0.5195098355369235,
+   "delta": -0.0311186560831882
+  },
+  "bond_recall": {
+   "control": 0.44074902179988823,
+   "treatment": 0.45025153717160427,
+   "delta": 0.009502515371716036
+  },
+  "gen_validity": {
+   "control": 1.0,
+   "treatment": 1.0,
+   "delta": 0.0
+  },
+  "gen_single_fragment_ratio": {
+   "control": 0.0,
+   "treatment": 0.0,
+   "delta": 0.0
+  },
+  "grad_norm": {
+   "control": 7.516549778613145,
+   "treatment": 8.466413562598285,
+   "delta": 0.9498637839851405
+  },
+  "train_loss": {
+   "control": 8.009040775299072,
+   "treatment": 8.720746059417724,
+   "delta": 0.7117052841186524
+  },
+  "bond_ce_loss": {
+   "control": 0.7994744682312012,
+   "treatment": 0.777929093837738,
+   "delta": -0.021545374393463157
+  },
+  "ring_prior_term": {
+   "control": 0.0,
+   "treatment": 0.7190353870391846,
+   "delta": 0.7190353870391846
+  },
+  "wasserstein_loss": {
+   "control": 0.7818226790428162,
+   "treatment": 0.7818226671218872,
+   "delta": -1.1920929021691506e-08
+  }
+ },
+ "weights": {
+  "checked": true,
+  "vel_field_max_abs_delta": 5.3085386753082275e-08,
+  "head_max_abs_delta": 0.0029514357447624207,
+  "n_vel_tensors": 51,
+  "n_head_tensors": 30,
+  "reading": "vel_field must be 0.0: the ring term touches only the head and per-module clipping keeps its clip factor independent.  A non-zero value means the A/B is confounded again."
+ },
+ "honest_limits": [
+  "1 seed, 5 epochs, 200 training clouds: a direction test, not an effect size.  Wf-A107b measured the run-to-run spread of this protocol to be as large as the single-seed effect.",
+  "5 epochs of FM training on 200 clouds is a weak sampler.  The claim this artifact can support is 'the metric is now measured on trained-sampler geometry', not 'the prior improves generation'.",
+  "No held-out generation set: the val clouds are the ones the trainer scores every epoch."
+ ]
+}
