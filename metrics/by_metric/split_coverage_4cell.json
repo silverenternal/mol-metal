@@ -467,9 +467,10 @@
     "not_a_fix": "Lowering MIN_EVAL_ROWS would make A2780cis report a number from 27 rows; the split would still have 27. The bar is not what starved the cell.",
     "applied": {
       "mode": "scaffold_coverage",
+      "is_default_since": "2026-10-21",
       "config": "configs/train_cisplatin_resistance_real_strat_v1.yaml",
       "metric": "metrics/by_metric/platinai_3cell_resistance_real_strat.json",
-      "what_changed": "`ScaffoldSplitter(coverage={...})` targets fractions of each cell line's labelled rows instead of fractions of the scaffold count, and breaks size ties on a hash of the scaffold. One scaffold still lands in exactly one split, and the split no longer depends on the cohort file's row order.",
+      "what_changed": "`ScaffoldSplitter(coverage={...})` targets fractions of each cell line's labelled rows instead of fractions of the scaffold count, and breaks size ties on a hash of the scaffold. One scaffold still lands in exactly one split, and the split no longer depends on the cohort file's row order. This is the script default since 2026-10-21; the legacy protocol is pinned in configs/train_cisplatin_resistance_real_v1.yaml.",
       "split": {
         "train": {
           "rows": 1376,

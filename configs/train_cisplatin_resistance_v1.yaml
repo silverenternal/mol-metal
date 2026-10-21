@@ -24,6 +24,11 @@ entry:
 # Top-level scalar → --data dest.
 data: molmetal/data/platinai_4cell.csv
 
+# PINNED: this is the synthetic-label legacy reproduction. The script default
+# became `scaffold_coverage` on 2026-10-21; pin the historical split so the
+# number this config exists to reproduce does not silently move.
+split: scaffold
+
 # Sections required by scripts/_pre_flight_check.sh.
 model:
   scaffold_split: true

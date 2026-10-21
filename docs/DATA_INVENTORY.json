@@ -152,7 +152,7 @@
       "status": "ACTIVE",
       "rows": 7823,
       "bytes": 787626,
-      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. An opt-in per-cell-row split exists (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); see section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded."
+      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. The DEFAULT split is now the per-cell-row coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); the legacy protocol is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded."
     },
     {
       "id": "nci60_gi50_raw",

@@ -11,9 +11,11 @@
 # has no val rows at all. MEASURED in
 # `metrics/by_metric/nci60_split_coverage_audit.json`.
 #
-# This config changes exactly one thing: the split strategy. It uses
-# `scaffold_coverage_70_10_20`, which targets 70/10/20 of each cell line's
-# labelled rows and keeps the same one-scaffold-one-split invariant.
+# This config changes exactly one thing vs the shipped m21 config: the split
+# strategy. It uses `scaffold_coverage_70_10_20`, which targets 70/10/20 of
+# each cell line's labelled rows and keeps the same one-scaffold-one-split
+# invariant. That split is now the loader DEFAULT (2026-10-21); this config
+# states it explicitly so a future default change cannot silently move the run.
 # MEASURED split: 5,371 / 920 / 1,532 rows; every cell >= 25 test and >= 22
 # val rows; 0 of 1,151 scaffolds span two splits.
 #

@@ -11,7 +11,7 @@
 # Update via: .venv/bin/python molmetal/scripts/registry.py generate
 #
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-21T06:36:47+00:00'
+generated_at: '2026-10-21T12:39:50+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -141,13 +141,16 @@ datasets:
     lifecycle_status: ACTIVE
     role: eval_pt
     lifecycle_source: docs/DATA_INVENTORY.json
-    lifecycle_note: REAL structures + REAL IC50 labels for the four PlatinAI cell
+    lifecycle_note: 'REAL structures + REAL IC50 labels for the four PlatinAI cell
       lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py.
       1,966 compounds / 3,144 unique (compound, cell) pairs from 4,370 raw biodata
       rows (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2
       cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure captions;
-      pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace pt_4cell_synthetic
-      (which carries simulated labels).
+      pIC50 = 6 - log10(IC50_uM). 1,935 unique SMILES, not 1,966: 28 SMILES appear
+      under 2-3 compound codes (59 rows), with per-cell labels up to 1.45 log units
+      apart. The split groups by scaffold, so duplicates cannot cross train/test,
+      but the compound count overstates chemical diversity by 1.6 %. This is the cohort
+      that can replace pt_4cell_synthetic (which carries simulated labels).'
   platinai_4cell.csv:
     path: .data/molmetal/platinai_4cell.csv
     md5: 5a5d8da8d1b05a9647546a5c2101f6f2
@@ -410,8 +413,12 @@ datasets:
     lifecycle_source: docs/DATA_INVENTORY.json
     lifecycle_note: '9-cell precious-metal panel. It is a subset of MetalCytoToxDB
       (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko
-      scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules. The older
-      3,645/521/1,041 figure is superseded by the BLK-PA12 fix.'
+      scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343
+      rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. The DEFAULT
+      split is now the per-cell-row coverage split (--nci60-split-strategy scaffold_coverage_70_10_20:
+      5,371/920/1,532 rows); the legacy protocol is pinned in the shipped configs.
+      See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level
+      split and is superseded.'
     labels: REAL
     label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB precious-metal subset
       restricted to 9 NCI-60-overlapping cell lines — metrics/by_metric/nci60_precious_9cell_auc.json

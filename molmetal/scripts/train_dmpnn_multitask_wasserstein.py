@@ -920,7 +920,7 @@ NCI60_COVERAGE_SALT = 231
 
 def load_nci60_9cell_split_table(
     csv_path: Path,
-    split_strategy: str = "scaffold_70_10_10",
+    split_strategy: str = "scaffold_coverage_70_10_20",
 ) -> pd.DataFrame:
     """Load the NCI-60 precious-metal 9-cell long-form cohort + scaffold split.
 
@@ -939,13 +939,20 @@ def load_nci60_9cell_split_table(
 
     Split protocols
     ---------------
-    ``scaffold_70_10_10`` (default) — the shipped m21 protocol: a
-    ``ScaffoldSplitter`` (Bemis-Murcko, ``largest_first``, seed=0) run on the
-    **unique canonical SMILES**, so a molecule lands in exactly one split and
-    all of its cell rows follow (no cross-cell leakage).
+    ``scaffold_coverage_70_10_20`` (default since 2026-10-21) — the splitter
+    targets 70/10/20 of **each cell line's labelled rows**, with equal-size
+    scaffolds ordered by a salted content hash and a whole-scaffold refinement
+    pass.  A molecule still lands in exactly one split, so all of its cell rows
+    follow (no cross-cell leakage).      MEASURED: 5,371 / 920 / 1,532 rows and
+    3,636 / 548 / 1,023 molecules; every cell has >= 25 test and >= 22 val
+    rows; 0 of 1,151 scaffolds span two splits.
 
-    Two things that docstring used to claim are now false and were measured
-    on 2026-10-21:
+    ``scaffold_70_10_10`` — the shipped m21 protocol: a ``ScaffoldSplitter``
+    (Bemis-Murcko, ``largest_first``, seed=0) run on the **unique canonical
+    SMILES**, with fractions budgeted in **scaffold counts**.  It is kept as an
+    explicit option because every shipped m21 artifact was measured on it, but
+    it is no longer the default.  Two things that its old docstring claimed
+    are false and were measured on 2026-10-21:
 
       * It claimed a byte-for-byte reproduction of 3645/521/1041 molecules.
         That was the *pre-BLK-PA12* splitter, which silently returned an empty
@@ -957,15 +964,8 @@ def load_nci60_9cell_split_table(
         the largest scaffolds.  Test therefore receives the leftover singleton
         scaffolds: SKOV3 gets 3 rows, DU145 7, HL60 11, PC3 18, A2780cis 28.
         Five of nine cells sit below the 30-row bar this project uses
-        elsewhere, and two of them can only return AUC ∈ {0, 1/3, 2/3, 1}.
-
-    ``scaffold_coverage_70_10_20`` — opt-in fix for that: same scaffold
-    grouping and the same one-scaffold-one-split invariant, but the splitter
-    targets 70/10/20 of **each cell line's labelled rows** (via
-    ``ScaffoldSplitter(coverage=...)``), with equal-size scaffolds ordered by
-    a content hash rather than file order.  It is a different protocol and a
-    different number; the default is left untouched so every shipped m21
-    artifact stays reproducible.
+        elsewhere, two can only return AUC ∈ {0, 1/3, 2/3, 1}, and SKOV3 has
+        no val rows at all.
 
     Labels — use the CSV's own ``active`` column, do NOT re-derive it
     -----------------------------------------------------------------
@@ -1051,7 +1051,7 @@ def load_nci60_9cell_split_table(
 
 def build_nci60_cell_line_axis(
     csv_path: Path,
-    split_strategy: str = "scaffold_70_10_10",
+    split_strategy: str = "scaffold_coverage_70_10_20",
 ) -> Tuple[pd.DataFrame, "MetalCytotoxDataset"]:
     """Build ``(split_df, ds)`` for the NCI-60 9-cell cohort on a cell-line axis.
 
@@ -3436,22 +3436,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--nci60-split-strategy",
         choices=("scaffold_70_10_10", "scaffold_coverage_70_10_20"),
-        default="scaffold_70_10_10",
+        default="scaffold_coverage_70_10_20",
         help=(
             "How the nci60_9cell rows are split (2026-10-21 audit). "
-            "'scaffold_70_10_10' (default) is the shipped m21 protocol: a "
-            "Bemis-Murcko scaffold split on unique SMILES with fractions "
-            "budgeted in SCAFFOLD COUNTS. MEASURED: that yields 7,320 / 160 / "
-            "343 rows (93.6 / 2.0 / 4.4 %%), and five of nine cells fall "
-            "below 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis "
-            "28). It stays the default so every shipped m21 artifact remains "
-            "reproducible. 'scaffold_coverage_70_10_20' targets 70/10/20 of "
-            "each cell line's labelled rows instead, with equal-size "
-            "scaffolds ordered by a salted content hash (salt 60, chosen on "
-            "coverage only). MEASURED: 5,379 / 862 / 1,582 rows and every "
-            "cell has >= 31 test rows; one scaffold still goes to exactly one "
-            "split (0 of 1,151 span two). Choosing it changes the cohort "
-            "split and therefore invalidates the 0.7294 m21 number."
+            "'scaffold_coverage_70_10_20' (default since 2026-10-21) targets "
+            "70/10/20 of each cell line's labelled rows, with equal-size "
+            "scaffolds ordered by a salted content hash and a whole-scaffold "
+            "refinement pass. MEASURED: 5,371 / 920 / 1,532 rows, every cell "
+            ">= 25 test and >= 22 val rows, 0 of 1,151 scaffolds spanning two "
+            "splits. 'scaffold_70_10_10' is the shipped m21 protocol: "
+            "fractions budgeted in SCAFFOLD COUNTS, which MEASURED gives "
+            "7,320 / 160 / 343 rows (93.6 / 2.0 / 4.4 %%) and five of nine "
+            "cells below 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, "
+            "A2780cis 28); SKOV3 has no val rows. It is kept as an explicit "
+            "option so every shipped m21 artifact stays reproducible, but it "
+            "is no longer the default."
         ),
     )
     p.add_argument(
@@ -3467,11 +3466,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "synthetic, so treat any AUC from it as a pipeline null test, not "
             "a measurement. 'nci60_9cell' loads the REAL-labelled NCI-60 "
             "precious-metal 9-cell cohort (molmetal/data/"
-            "nci60_precious_9cell.csv). Its DEFAULT split is the shipped m21 "
-            "protocol (scaffold counts budgeted 70/10/20, which MEASURED gives "
-            "7,320/160/343 rows); '--nci60-split-strategy "
-            "scaffold_coverage_70_10_20' is the per-cell-row variant that "
-            "does not starve small cell lines."
+            "nci60_precious_9cell.csv). Its DEFAULT split is the per-cell-row "
+            "coverage split (5,371/920/1,532 rows, every cell >= 25 test); "
+            "'--nci60-split-strategy scaffold_70_10_10' restores the shipped "
+            "m21 protocol (7,320/160/343 rows) for reproducing old artifacts."
         ),
     )
     p.add_argument(

@@ -38,6 +38,10 @@ data:
   cohort_filter:
     cells: [MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3, DU145]
   expected_columns_subset: [smiles, cell_line, pIC50, active]
+  # PINNED: the loader default became scaffold_coverage on 2026-10-21. This
+  # probe was measured on the legacy scaffold-count split; pin it so the
+  # probe's number stays reproducible.
+  nci60_split_strategy: scaffold_70_10_10
   split:
     type: bemis_murcko_scaffold
     implementation: molmetal.data.splits.ScaffoldSplitter

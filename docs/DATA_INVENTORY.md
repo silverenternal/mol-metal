@@ -104,7 +104,7 @@ docking), not by a train/test AUC.
 - **`moleculenet_bbbp`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_clintox`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_hiv`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
-- **`nci60_9cell`** (ACTIVE) — 9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. An opt-in per-cell-row split exists (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); see section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded.
+- **`nci60_9cell`** (ACTIVE) — 9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. The DEFAULT split is now the per-cell-row coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); the legacy protocol is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded.
 - **`nci60_gi50_raw`** (UNUSED) — Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used.
 - **`drugood_lbap_scaffold`** (ACTIVE) — OOD control; iid/ood train/val/test split is a column.
 - **`drugood_lbap_assay`** (ACTIVE) — The same 266,522 LBAP records as the scaffold split, partitioned by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml.
@@ -132,10 +132,11 @@ Open:
   rows) go to train and test receives the singleton leftovers:
   **7,320 / 160 / 343 rows** (93.6 / 2.0 / 4.4 %). Five of nine cells
   have < 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28)
-  and SKOV3 has 0 val rows. An opt-in coverage split exists
+  and SKOV3 has 0 val rows. The coverage split
   (`--nci60-split-strategy scaffold_coverage_70_10_20`: 5,371 / 920 /
-  1,532 rows, every cell >= 25 test and >= 22 val), but **no model has
-  been retrained on it**. Measured:
+  1,532 rows, every cell >= 25 test and >= 22 val) is now the loader
+  default; the shipped configs pin the legacy protocol. **No model has
+  been retrained on the new default yet.** Measured:
   `metrics/by_metric/nci60_split_coverage_audit.json`; risk
   `TODO/risks.md` R11.
 - **CFM v3/v4 `scaffold_id` is a full-complex, stereo-aware key**, so

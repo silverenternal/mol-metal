@@ -533,14 +533,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--split",
         choices=("scaffold", "scaffold_coverage"),
-        default="scaffold",
+        default="scaffold_coverage",
         help=(
-            "scaffold: Bemis-Murcko groups, 70/10/20 by scaffold count, "
-            "largest-first (the historical protocol). "
-            "scaffold_coverage: same groups, but the assignment targets "
-            "70/10/20 of each cell line's labelled rows and breaks size ties "
-            "on a hash instead of file order. See "
-            "metrics/by_metric/split_coverage_4cell.json."
+            "scaffold_coverage (default since 2026-10-21): Bemis-Murcko "
+            "groups assigned to hit 70/10/20 of each cell line's labelled "
+            "rows, with size ties broken on a hash instead of file order. "
+            "MEASURED on the REAL 4-cell cohort: all three modelled cells are "
+            "evaluable (A2780cis 171 test rows instead of 27). "
+            "scaffold: the historical protocol (70/10/20 by scaffold count, "
+            "largest-first), kept so every shipped artifact stays "
+            "reproducible. See metrics/by_metric/split_coverage_4cell.json."
         ),
     )
     p.add_argument(

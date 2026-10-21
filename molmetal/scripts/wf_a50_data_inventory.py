@@ -124,9 +124,10 @@ DECLARED: List[tuple] = [
      "(5,207/5,207 canonical molecules), not an independent corpus. Split is a "
      "Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 "
      "molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine "
-     "cells have < 30 test rows. An opt-in per-cell-row split exists "
-     "(--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 "
-     "rows); see section 5. The older 3,645/521/1,041 figure is the "
+     "cells have < 30 test rows. The DEFAULT split is now the per-cell-row "
+     "coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: "
+     "5,371/920/1,532 rows); the legacy protocol is pinned in the shipped "
+     "configs. See section 5. The older 3,645/521/1,041 figure is the "
      "pre-BLK-PA12 molecule-level split and is superseded."),
     ("nci60_gi50_raw", DATA / "NCI60_GI50" / "GI50.csv", "reference", "UNUSED",
      "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."),
@@ -546,10 +547,11 @@ def render_md(doc: Dict[str, Any]) -> str:
         "  rows) go to train and test receives the singleton leftovers:",
         "  **7,320 / 160 / 343 rows** (93.6 / 2.0 / 4.4 %). Five of nine cells",
         "  have < 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28)",
-        "  and SKOV3 has 0 val rows. An opt-in coverage split exists",
+        "  and SKOV3 has 0 val rows. The coverage split",
         "  (`--nci60-split-strategy scaffold_coverage_70_10_20`: 5,371 / 920 /",
-        "  1,532 rows, every cell >= 25 test and >= 22 val), but **no model has",
-        "  been retrained on it**. Measured:",
+        "  1,532 rows, every cell >= 25 test and >= 22 val) is now the loader",
+        "  default; the shipped configs pin the legacy protocol. **No model has",
+        "  been retrained on the new default yet.** Measured:",
         "  `metrics/by_metric/nci60_split_coverage_audit.json`; risk",
         "  `TODO/risks.md` R11.",
         "- **CFM v3/v4 `scaffold_id` is a full-complex, stereo-aware key**, so",

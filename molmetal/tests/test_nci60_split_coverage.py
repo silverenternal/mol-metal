@@ -117,6 +117,13 @@ def test_coverage_salt_is_recorded_and_nonzero() -> None:
     assert NCI60_COVERAGE_SALT != 0
 
 
+def test_default_is_now_the_coverage_split() -> None:
+    """The loader's default flipped on 2026-10-21; the legacy path is opt-in."""
+    default = load_nci60_9cell_split_table(CSV)
+    assert _counts(default) == {"train": 5371, "val": 920, "test": 1532}
+    assert min(_per_cell(default, "test").values()) >= 20
+
+
 def test_audit_artifact_agrees_with_the_loader() -> None:
     path = ROOT / "metrics" / "by_metric" / "nci60_split_coverage_audit.json"
     audit = json.loads(path.read_text())

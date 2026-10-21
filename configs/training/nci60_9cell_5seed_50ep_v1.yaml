@@ -66,6 +66,13 @@ data:
     # appear in MetalCytoToxDB's precious-metal subset.
     cells: [MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3, DU145]
   expected_columns_subset: [smiles, cell_line, pIC50, active]
+  # PINNED (2026-10-21): the loader default became
+  # `scaffold_coverage_70_10_20`. This config reproduces the shipped m21
+  # artifact, which was measured on the legacy scaffold-count split
+  # (7,320/160/343 rows). Removing this line silently changes the split and
+  # makes 0.7294 unreproducible. New runs should use
+  # `configs/training/nci60_9cell_coverage_5seed_50ep_v1.yaml`.
+  nci60_split_strategy: scaffold_70_10_10
   split:
     # m21 protocol — see honest-framing note 1. Do not change without also
     # re-deriving the 0.8007 baseline, or the two are not comparable.

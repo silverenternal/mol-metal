@@ -1,6 +1,6 @@
 {
  "metric": "nci60_split_coverage_audit",
- "description": "Per-cell-line coverage of the two NCI-60 9-cell split protocols: the shipped m21 scaffold split (fractions budgeted in scaffold counts) and the opt-in coverage-stratified split (fractions budgeted in per-cell labelled rows, with whole-scaffold refinement).",
+ "description": "Per-cell-line coverage of the two NCI-60 9-cell split protocols: the legacy m21 scaffold split (fractions budgeted in scaffold counts, now opt-in) and the coverage-stratified split (fractions budgeted in per-cell labelled rows, with whole-scaffold refinement), which became the loader default on 2026-10-21.",
  "unit": "labelled rows per split (one row = one (molecule, cell) pair)",
  "scope": "data_protocol_audit",
  "source": "molmetal/scripts/wf_a62_nci60_split_coverage_audit.py over molmetal/data/nci60_precious_9cell.csv, calling train_dmpnn_multitask_wasserstein.load_nci60_9cell_split_table for both protocols",
@@ -726,8 +726,8 @@
    "scaffolds_spanning_splits": 0
   }
  },
- "verdict": "The 3-107 test rows are produced by the split, not by the cohort. Budgeting 70/10/20 in scaffold counts spends the largest 70% of groups on train, so test receives singleton scaffolds: 4.4% of rows and five cells below 30. The coverage split keeps the same one-scaffold-one-split invariant and gives every cell >= 25 test and >= 22 val rows.",
+ "verdict": "The 3-107 test rows are produced by the split, not by the cohort. Budgeting 70/10/20 in scaffold counts spends the largest 70% of groups on train, so test receives singleton scaffolds: 4.4% of rows and five cells below 30. The coverage split keeps the same one-scaffold-one-split invariant and gives every cell >= 25 test and >= 22 val rows. It is the loader default since 2026-10-21; the legacy protocol remains selectable so shipped m21 artifacts stay reproducible.",
  "status": "MEASURED",
  "generated_by": "molmetal/scripts/wf_a62_nci60_split_coverage_audit.py",
- "content_sha256": "32b1d00b57a59f4e"
+ "content_sha256": "738895ba667a5e6b"
 }

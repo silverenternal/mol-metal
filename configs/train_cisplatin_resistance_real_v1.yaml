@@ -39,6 +39,13 @@ data: .data/molmetal/platinai_4cell_real_trainer.csv
 # Top-level scalar → --supersedes dest.
 supersedes: platinai_3cell_resistance
 
+# PINNED to the historical split. The script's default became
+# `scaffold_coverage` on 2026-10-21; this config reproduces the shipped
+# MEASURED_2_OF_3_CELLS artifact, where A2780cis had 27 test rows and was not
+# scored. Do not remove this line: without it the config silently switches to
+# the coverage split and the 0.6683 number stops being reproducible.
+split: scaffold
+
 # Sections required by scripts/_pre_flight_check.sh.
 model:
   scaffold_split: true

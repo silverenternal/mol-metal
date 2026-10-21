@@ -1996,7 +1996,7 @@ Per the Wf-A33 v2 CLOSEOUT, 3 items were queued for the next wave: REGR-1 (per_p
 **RESOLUTION (2026-10-21) — all three sub-blockers closed, m3 re-measured on REAL labels.** (1) SMILES: every one of the 1,966 real-cohort rows parses in RDKit; the builder drops and counts the 168 that do not. (2) MCF-7: present with 813 measurements. (3) long→wide: `build_platinai_4cell_real_cohort.py` now also writes `platinai_4cell_real_trainer.csv` (`SMILES_Ligands` + `pIC50_{a549,a2780,a2780cis,mcf7}` + `metal=Pt`), a column projection with no imputation. Run: `configs/train_cisplatin_resistance_real_v1.yaml`, 5 seeds × 100 epochs on GPU0, 51.9 min, one Bemis-Murcko scaffold 70/10/20 split shared by all seeds (n_train 1522 / n_val 92 / n_test 190).
 **MEASURED** (`metrics/by_metric/platinai_3cell_resistance_real.json`, status `MEASURED_2_OF_3_CELLS`): MCF-7 **0.6962 ± 0.0294**, A549 **0.6404 ± 0.0138**, overall **0.6683 ± 0.0125**. Against the synthetic run's MCF-7 0.5030 / A549 0.5046 / overall 0.5459, the two cells that sat exactly at chance on generated labels are now 0.14–0.19 above it. That gap is the finding: the 0.5459 was never a statement about the model, it was a statement about the label generator, and the architecture was fine.
 **THIRD CAVEAT — audited 2026-10-21, root cause was the split, then FIXED 2026-10-21 by an opt-in coverage-stratified split.** A2780cis was **not evaluated** — its test fold had 27 labelled rows against `MIN_EVAL_ROWS` (30; val had 2). `molmetal/scripts/wf_a61_split_coverage_audit.py` (`metrics/by_metric/split_coverage_4cell.json`) measured why. A2780cis has 600 of the cohort's 4,370 labelled rows, so this was never a data gap; 543 of those 600 (90.5%) sat in scaffolds ranked inside the block that `largest_first` hands to train. The rest was tie order: `_assign_groups` sorts by size with a *stable* sort, 76% of scaffolds are singletons, so equal-size ties were broken by first appearance in the CSV — and `build_platinai_4cell_real_cohort.py` writes the file sorted by descending cell-line coverage, which puts the multi-label compounds first and train. Re-ordering the same compounds moved A2780cis from 27 to a median of 60 (min 45 over 500 permutations); the on-disk order was below every one of those 500.
-**RESOLUTION (2026-10-21) — `ScaffoldSplitter(coverage=...)`, opt-in, one scaffold per split preserved.** The new mode targets `fractions` of each cell line's labelled rows instead of `fractions` of the scaffold count, and breaks size ties on a hash of the scaffold. The split is now invariant to row order (three permutations give an identical scaffold→split map) and leaks nothing (0 of 1,053 scaffolds span two splits; 0 of 1,921 canonical SMILES either). Measured: 1,376 / 197 / 393 rows, A2780cis **171 test rows / 86 val rows**, every cell line above the bar in both. The legacy `largest_first` path is untouched and a test pins its 1,650/105/211 output.
+**RESOLUTION (2026-10-21) — `ScaffoldSplitter(coverage=...)`, now the script default, one scaffold per split preserved.** The new mode targets `fractions` of each cell line's labelled rows instead of `fractions` of the scaffold count, and breaks size ties on a hash of the scaffold. The split is now invariant to row order (three permutations give an identical scaffold→split map) and leaks nothing (0 of 1,053 scaffolds span two splits; 0 of 1,921 canonical SMILES either). Measured: 1,376 / 197 / 393 rows, A2780cis **171 test rows / 86 val rows**, every cell line above the bar in both. The legacy `largest_first` path is untouched and a test pins its 1,650/105/211 output; it is now selected explicitly, and `configs/train_cisplatin_resistance_real_v1.yaml` pins it so the shipped 2-of-3-cell artifact stays reproducible.
 **MEASURED** (`metrics/by_metric/platinai_3cell_resistance_real_strat.json`, status `MEASURED`, 5 seeds × 100 epochs, GPU0, 49.5 min, 1,275 / 168 / 361 after the trainer's three-column filter): MCF-7 **0.7318 ± 0.0288**, A549 **0.5494 ± 0.0225**, A2780cis **0.5564 ± 0.0332**, overall **0.6125 ± 0.0184**.
 **Do not read that as a regression from 0.6683, and do not read it as an improvement either.** The two numbers are different experiments: 0.6683 was 2 cells on 190 test rows under the legacy split, 0.6125 is 3 cells on 361. Only MCF-7 is clearly above chance (0.73); A549 fell from 0.6404 to 0.5494 and A2780cis lands at 0.5564, i.e. near chance. The A549 move cannot be decomposed from this run alone — both the test set and the val set (hence model selection) changed — and it is consistent with the legacy A549 figure having been partly a favourable split. The honest statement is: **on a split that does not starve any cell line, the 3-cell-line D-MPNN shows real signal on MCF-7 only.** Two secondary findings from the same audit, both fixed by the same change: the split's 70/10/20 was a *scaffold-count* fraction (84/5/11 of rows), and the test fold was 82.9% single-cell compounds with all 56 four-cell compounds in train — now 169/187/19/18 (1/2/3/4 cells) in test and 70/106/16/5 in val.
 
@@ -10082,15 +10082,19 @@ the largest scaffolds. With 1,151 scaffolds, those 806 groups contain **94.3-100
 every cell line's rows, so test receives the leftover singleton scaffolds. SKOV3 has
 **0 val rows**, which means its best-epoch selection never ran.
 
-**RESOLUTION (opt-in, split implemented; retrain PENDING).**
+**RESOLUTION (now the loader default since 2026-10-21; retrain PENDING).**
 `load_nci60_9cell_split_table(..., split_strategy="scaffold_coverage_70_10_20")` targets
 70/10/20 of **each cell line's labelled rows** via `ScaffoldSplitter(coverage=...)`, with
 a whole-scaffold refinement pass and a salted content-hash tie-break. MEASURED:
 **5,371 / 920 / 1,532 rows**; every cell has **>= 25 test** and **>= 22 val** rows
 (SKOV3 25/47, DU145 31/29); **0 of 1,151 scaffolds** span two splits; the split is
 invariant to CSV row order (pinned by `molmetal/tests/test_nci60_split_coverage.py`,
-9 tests). Salt 231 was chosen by searching 0-299 for the best worst-cell coverage — on
-coverage only, no model was trained or scored to pick it.
+10 tests). Salt 231 was chosen by searching 0-299 for the best worst-cell coverage — on
+coverage only, no model was trained or scored to pick it. **The loader default was
+flipped to this split on 2026-10-21** (user directive); the three shipped NCI-60 configs
+and the probe configs now carry `nci60_split_strategy: scaffold_70_10_10` explicitly, and
+the pre-flight `gate_nci60_split_no_leak` checks both protocols (legacy 4860/115/232 and
+coverage 3636/548/1023 molecules, 0 scaffold leaks each).
 
 **Why no new m21 number yet.** A full 9-cell × 5-seed × 50-epoch re-run measures at
 **7.21 GPU-hours** on the shipped split and ~5.4 h on the coverage split (sum of
@@ -10102,3 +10106,84 @@ declare `supersedes`; it must not be compared with 0.7294, because the test sets
 by roughly 4.5×.
 
 **§6.161 catalog-count math.** Net **+1**. Cumulative **215 → 216**. ACTIVE **171 → 172**.
+
+---
+
+## §6.162 — Wf-A107c/d: the decoded ring gain is a head effect on a sampler that was never trained (2026-10-21)
+
+**The question.** §6.153 reported an edge_ring decoded improvement (3-share −0.1415, 3/3
+seeds, p = 0.016) that its own local probe could not reproduce: on the bond head's graph
+over the val clouds' truth geometry every delta was null. That entry left the mechanism
+unexplained. Two explanations were on the table: (a) the gain is real but lives off the
+data manifold; (b) the gain is not the head — the ring prior leaked into the velocity
+field, the sampler moved, and the head is unchanged.
+
+**Answer: (a), but the "off-manifold" geometry is not a molecule.** Three measurements,
+all from `metrics/by_metric/wfa107c_head_swap_probe{,_gen402}.json` and
+`wfa107d_decode_head_swap.json`.
+
+1. **The velocity field never trains in these configs.** `configs/wfa107_*.yaml` carry
+   `wasserstein_weight: 0.0` and no `use_fm_objective`, so no loss term depends on
+   `vel_field`. MEASURED on the two seed-0 checkpoints: `vel_field` weights are
+   **bit-identical** (max |delta| = 0.0) between control and edge_ring_w1, while the head
+   differs (max |delta| = 2.9e-3). Sampling from noise therefore returns the SAME clouds
+   for both arms (max coordinate deviation **0.000e+00 Å**).
+2. **Those clouds are collapsed, not chemical.** The trainer's last eval batch (seed 402,
+   offset 64, 32 clouds) has **mean pair distance 2.26 Å** and **89.1% of all atom pairs
+   inside the 3.5 Å cutoff** (val truth geometry: 5.00 Å / 41.2%). The head's graph on it
+   is a blob: **156 rings/mol** vs 19.7 on truth geometry.
+3. **The reported metric is assembly-dominated.** On the same clouds, the head's RAW edge
+   graph differs between arms by only **−0.0045** in 3-share (0.070 → 0.065). After
+   `assemble_connectivity` → RDKit → SMILES, the trainer's metric differs by **−0.1211**
+   (0.526 → 0.405), and the model dimension is exactly 0.0 because the models are
+   identical. The 2x2 is therefore:
+
+| model | head | 3-share | 5/6-share | rings/mol |
+|---|---|---:|---:|---:|
+| control | control | 0.526 | 0.150 | 7.31 |
+| control | edge_ring_w1 | 0.405 | 0.211 | 10.97 |
+| edge_ring_w1 | control | 0.526 | 0.150 | 7.31 |
+| edge_ring_w1 | edge_ring_w1 | 0.405 | 0.211 | 10.97 |
+
+So the effect IS the head (swapping the decoder swaps the number, holding the model fixed),
+but it is a ~0.45 pp raw-graph difference amplified 27x by the assembly step, on a point
+cloud that is not a molecule. On the val clouds' own geometry the same head pair differs
+by −0.086 (seed 0) and by ~0 over 3 seeds (p = 0.98) — §6.153's null.
+
+**Honest boundaries (ACTIVE).**
+  * **No claim that the model generates fewer 3-rings.** With an untrained velocity field
+    there is no generation to speak of. `gen_ring_*` in every Wf-A107 arm is a decode of
+    noise; the same defect the c7 configs document ("the velocity field was trained on a
+    zero target because `use_fm_objective` was missing").
+  * **The head effect is real but is not ring chemistry.** It is the head's decision
+    boundary moving on an 89%-within-cutoff blob, then being pruned to valence by the
+    assembler. A prior that only shows up after that pruning cannot be defended as
+    "learning ring templates".
+  * **n = 1 seed for the 2x2.** The 3-seed statement in §6.153 stands for the decoded
+    metric; this entry explains where that metric comes from, it does not re-estimate it.
+  * **The clipping leak is real but was not the cause here.** At w = 1.0 the ring term
+    pushes the global grad norm to 7.94 (control: 2.62) so `clip_grad_norm_(max_norm=5.0)`
+    fires in epochs 0-2 and rescales EVERY parameter's gradient, velocity field included.
+    In these configs it could not matter (the field has no gradient to rescale), but in a
+    config with `use_fm_objective: true` it would silently give the treatment arm a
+    different flow-field learning rate. Any future ring-prior A/B with a trained sampler
+    must either clip per module or keep the total norm under the threshold.
+
+**Follow-up (Wf-A107e).** `configs/wfa107e_fm_{control,edge_ring_w1}.yaml` re-run the same
+one-factor A/B with `use_fm_objective: true`, `fm_t_per_cloud: 1`, `use_tmqm_init: true`,
+`wasserstein_weight: 0.1` — i.e. with a sampler that is actually trained. Until that pair
+lands, the ring prior has **no measured generation benefit**, only a decoded-metric effect
+on untrained-sampler output.
+
+**Artifacts.** `molmetal/scripts/wfa107c_head_swap_probe.py`,
+`molmetal/scripts/wfa107d_decode_head_swap.py`,
+`metrics/by_metric/wfa107c_head_swap_probe.json`,
+`metrics/by_metric/wfa107c_head_swap_probe_gen402.json`,
+`metrics/by_metric/wfa107d_decode_head_swap.json`,
+`configs/wfa107e_fm_{control,edge_ring_w1}.yaml`.
+
+**§6.162 catalog-count math.** Net **+1**. Cumulative **216 → 217**. ACTIVE **172 → 173**.
+
+**Workflow** | Wf-A107c/d (2026-10-21; GPU0: 2 retrains reproducing the archived seed-0
+pair bit-exactly, 1 decode 2x2 on GPU, 2 head-swap probes on CPU; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

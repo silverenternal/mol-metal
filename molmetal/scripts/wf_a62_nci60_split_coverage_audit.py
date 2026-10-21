@@ -21,7 +21,8 @@ The fix measured here is ``scaffold_coverage_70_10_20``: the same scaffold
 grouping and the same one-scaffold-one-split invariant, but the splitter
 targets 70/10/20 of *each cell line's labelled rows* and refines the greedy
 assignment with whole-scaffold moves.  Every cell then gets >= 25 test rows and
->= 22 val rows.
+>= 22 val rows.  It became the loader default on 2026-10-21; the legacy
+protocol stays selectable so the shipped m21 artifacts remain reproducible.
 
 Nothing is reimplemented: both splits come from
 ``train_dmpnn_multitask_wasserstein.load_nci60_9cell_split_table``, the same
@@ -163,10 +164,10 @@ def main() -> int:
         "metric": "nci60_split_coverage_audit",
         "description": (
             "Per-cell-line coverage of the two NCI-60 9-cell split protocols: "
-            "the shipped m21 scaffold split (fractions budgeted in scaffold "
-            "counts) and the opt-in coverage-stratified split (fractions "
+            "the legacy m21 scaffold split (fractions budgeted in scaffold "
+            "counts, now opt-in) and the coverage-stratified split (fractions "
             "budgeted in per-cell labelled rows, with whole-scaffold "
-            "refinement)."
+            "refinement), which became the loader default on 2026-10-21."
         ),
         "unit": "labelled rows per split (one row = one (molecule, cell) pair)",
         "scope": "data_protocol_audit",
@@ -219,7 +220,9 @@ def main() -> int:
             "groups on train, so test receives singleton scaffolds: 4.4% of "
             "rows and five cells below 30. The coverage split keeps the same "
             "one-scaffold-one-split invariant and gives every cell >= 25 test "
-            "and >= 22 val rows."
+            "and >= 22 val rows. It is the loader default since 2026-10-21; "
+            "the legacy protocol remains selectable so shipped m21 artifacts "
+            "stay reproducible."
         ),
         "status": "MEASURED",
         "generated_by": "molmetal/scripts/wf_a62_nci60_split_coverage_audit.py",

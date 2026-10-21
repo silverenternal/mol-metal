@@ -271,9 +271,12 @@ class applies to the NCI-60 9-cell panel, more severely.
 - **Mechanism**: `_assign_groups` budgets fractions in scaffold counts; the largest
   70 % of the 1,151 scaffolds hold 94.3-100 % of every cell's rows, so test receives
   the leftover singletons.
-- **Fix implemented, opt-in**: `--nci60-split-strategy scaffold_coverage_70_10_20`
-  gives 5,371 / 920 / 1,532 rows; every cell >= 25 test and >= 22 val; 0 scaffolds
-  span splits; row-order invariant. Artifact:
+- **Fix implemented and made the default (2026-10-21)**: `--nci60-split-strategy
+  scaffold_coverage_70_10_20` gives 5,371 / 920 / 1,532 rows; every cell >= 25 test
+  and >= 22 val; 0 scaffolds span splits; row-order invariant. The loader default is
+  now this split; the shipped m21 config, the two probe configs and
+  `configs/train_cisplatin_resistance_real_v1.yaml` pin the legacy protocol so old
+  artifacts stay reproducible. The pre-flight NCI-60 gate checks both. Artifact:
   `metrics/by_metric/nci60_split_coverage_audit.json`.
 - **Still open**: the 9-cell × 5-seed × 50-epoch re-run. Measured cost 7.21 GPU-h on
   the old split, ~5.4 h on the new one. Not launched: GPU0 was carrying the CFM

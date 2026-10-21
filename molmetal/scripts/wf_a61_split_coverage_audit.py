@@ -463,6 +463,7 @@ def build() -> dict:
         ),
         "applied": {
             "mode": "scaffold_coverage",
+            "is_default_since": "2026-10-21",
             "config": "configs/train_cisplatin_resistance_real_strat_v1.yaml",
             "metric": "metrics/by_metric/platinai_3cell_resistance_real_strat.json",
             "what_changed": (
@@ -470,7 +471,9 @@ def build() -> dict:
                 "cell line's labelled rows instead of fractions of the scaffold "
                 "count, and breaks size ties on a hash of the scaffold. One "
                 "scaffold still lands in exactly one split, and the split no "
-                "longer depends on the cohort file's row order."
+                "longer depends on the cohort file's row order. This is the "
+                "script default since 2026-10-21; the legacy protocol is "
+                "pinned in configs/train_cisplatin_resistance_real_v1.yaml."
             ),
             "split": s,
             "a2780cis_test_rows": s["test"]["labelled"]["A2780cis"],

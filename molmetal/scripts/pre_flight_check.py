@@ -1939,99 +1939,121 @@ def gate_nci60_split_no_leak(
     problems: List[str] = []
     notes: List[str] = []
 
-    # ---- Part A — shipped Wf-A10 / m21 headline split path ----
+    # ---- Part A — both NCI-60 split paths ----
+    # The loader DEFAULT is the coverage split (2026-10-21).  The legacy
+    # scaffold-count split is still checked: every shipped m21 artifact was
+    # measured on it, and its sizes are a frozen reproducibility reference.
+    _splitter = ScaffoldSplitter(
+        strategy="largest_first",
+        fractions=(0.7, 0.1, 0.2),
+        seed=0,
+    )
+    degenerate_splitter = _splitter._scaffold_for("c1ccccc1") == ""
+    if degenerate_splitter:
+        problems.append(
+            "ScaffoldSplitter is degenerate: benzene produced an empty scaffold "
+            "key, so every 'scaffold' split is molecule-level (BLK-PA12 regression)"
+        )
+
+    def _check_nci60_split(
+        frame: Any, label: str, ref: Tuple[int, int, int]
+    ) -> Dict[str, Any]:
+        n_rows_i = int(len(frame))
+        n_unique_i = int(frame["smiles"].nunique())
+        dup_assign_i = int((frame.groupby("smiles")["split"].nunique() > 1).sum())
+        if dup_assign_i:
+            problems.append(
+                f"{label}: {dup_assign_i} unique SMILES assigned to >1 split "
+                f"(cross-cell leakage)"
+            )
+        by_split = {
+            s: frame[frame["split"] == s]["smiles"].unique()
+            for s in ("train", "val", "test")
+        }
+        got = tuple(len(by_split[s]) for s in ("train", "val", "test"))
+        if got != ref:
+            problems.append(
+                f"{label}: unique-molecule split sizes {got} != frozen "
+                f"reference {ref}"
+            )
+        idx = {
+            s: {int(i) for i in frame.index[frame["split"] == s]}
+            for s in ("train", "val", "test")
+        }
+        for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
+            if idx[a] & idx[b]:
+                problems.append(
+                    f"{label}: row-index overlap {a}/{b}: {len(idx[a] & idx[b])}"
+                )
+        if len(idx["train"] | idx["val"] | idx["test"]) != n_rows_i:
+            problems.append(
+                f"{label}: partition does not cover all {n_rows_i} rows"
+            )
+        # Scaffold disjointness with the SPLITTER'S OWN key, so the measurement
+        # and the grouping agree (see BLK-PA12 note in the docstring).
+        keys: Dict[str, set] = {}
+        for sname, arr in by_split.items():
+            canon = _splitter._canonicalize(np.asarray(arr, dtype=object))
+            ks = set()
+            for smi in canon:
+                sc = _splitter._scaffold_for(str(smi))
+                ks.add(sc if sc else f"__empty__{smi}")
+            keys[sname] = ks
+        leaks = [t for t in _nci60_scaffold_pair_leaks(keys) if t[2]]
+        if leaks and strict_scaffold:
+            problems.append(
+                f"{label}: REAL scaffold leaks (strict mode): "
+                + ", ".join(f"{a}/{b}={n}" for a, b, n in leaks)
+            )
+        notes.append(
+            f"{label}: rows={n_rows_i} unique={n_unique_i} sizes={got} "
+            f"scaffold_leaks={leaks or 0}"
+        )
+        return {
+            "n_rows": n_rows_i,
+            "n_unique": n_unique_i,
+            "sizes": got,
+            "row_idx": idx,
+            "dup": dup_assign_i,
+            "keys": keys,
+            "leaks": leaks,
+        }
+
     try:
-        df = load_nci60_9cell_split_table(csv_path)
+        df = load_nci60_9cell_split_table(csv_path, "scaffold_70_10_10")
     except Exception as exc:  # noqa: BLE001 — surface loader failure as FAIL
         return GateResult(
             name,
             priority,
             pipeline,
             "FAIL",
-            f"load_nci60_9cell_split_table({csv_path.name}) raised "
-            f"{type(exc).__name__}: {exc}",
+            f"load_nci60_9cell_split_table({csv_path.name}, "
+            f"scaffold_70_10_10) raised {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
-    n_rows = int(len(df))
-    n_unique = int(df["smiles"].nunique())
-    dup_assign = int((df.groupby("smiles")["split"].nunique() > 1).sum())
-    if dup_assign:
-        problems.append(
-            f"m21 split: {dup_assign} unique SMILES assigned to >1 split "
-            f"(cross-cell leakage)"
-        )
-    unique_by_split = {
-        s: df[df["split"] == s]["smiles"].unique() for s in ("train", "val", "test")
-    }
-    got_sizes = tuple(len(unique_by_split[s]) for s in ("train", "val", "test"))
-    ref_sizes = tuple(int(x) for x in reference_unique_sizes)
-    if got_sizes != ref_sizes:
-        problems.append(
-            f"m21 split unique-molecule sizes {got_sizes} != frozen reference "
-            f"{ref_sizes} (m21 comparability broken)"
-        )
-    row_idx = {
-        s: {int(i) for i in df.index[df["split"] == s]}
-        for s in ("train", "val", "test")
-    }
-    for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
-        if row_idx[a] & row_idx[b]:
-            problems.append(
-                f"m21 split row-index overlap {a}/{b}: {len(row_idx[a] & row_idx[b])}"
-            )
-    splitter = ScaffoldSplitter(
-        strategy="largest_first",
-        fractions=(0.7, 0.1, 0.2),
-        seed=0,
+    _legacy = _check_nci60_split(
+        df,
+        "m21 legacy (scaffold_70_10_10)",
+        tuple(int(x) for x in reference_unique_sizes),
     )
-    # BLK-PA12 (fixed 2026-10-12): until then `_scaffold_for` called
-    # `MurckoScaffold.GetScaffoldForMol(mol, includeChirality=...)`, which
-    # raises TypeError on the installed rdkit (1-arg binding only); the bare
-    # `except` swallowed it and EVERY molecule got the per-molecule key
-    # `__empty__<canon>`, so the "scaffold" splitter was molecule-level for
-    # EVERY cohort.  The frozen reference was (3645, 521, 1041) — the
-    # molecule-level sizes m21 shipped.  After the fix (`_bemis_murcko_key`,
-    # desalt-aware, via `MurckoScaffoldSmiles`) the reference is re-frozen to
-    # (4860, 115, 232) — the real scaffold-group sizes.  Probe the degeneracy
-    # explicitly (benzene MUST produce a non-empty scaffold key) so the gate
-    # names the mechanism instead of reading stronger than it is.
-    degenerate_splitter = splitter._scaffold_for("c1ccccc1") == ""
-    keys_degenerate: Dict[str, set] = {}
-    for sname, arr in unique_by_split.items():
-        canon = splitter._canonicalize(np.asarray(arr, dtype=object))
-        ks = set()
-        for smi in canon:
-            sc = splitter._scaffold_for(str(smi))
-            ks.add(sc if sc else f"__empty__{smi}")
-        keys_degenerate[sname] = ks
-    # Scaffold-disjointness measured with the SPLITTER'S OWN key
-    # (`_scaffold_for` → `_bemis_murcko_key`), so the measurement and the
-    # grouping agree.  Before the BLK-PA12 fix (2026-10-12) this used
-    # whole-molecule `MurckoScaffoldSmiles`, which (a) was the honest probe
-    # that exposed the molecule-level degeneracy, and (b) on the fixed
-    # splitter would disagree with the desalted key on multi-fragment rows.
-    keys_real: Dict[str, set] = {}
-    for sname, arr in unique_by_split.items():
-        canon = splitter._canonicalize(np.asarray(arr, dtype=object))
-        ks = set()
-        for smi in canon:
-            sc = splitter._scaffold_for(str(smi))
-            ks.add(sc if sc else f"__empty__{smi}")
-        keys_real[sname] = ks
-    leaks_real = [t for t in _nci60_scaffold_pair_leaks(keys_real) if t[2]]
-    if leaks_real and strict_scaffold:
-        problems.append(
-            "m21 split REAL scaffold leaks (strict mode): "
-            + ", ".join(f"{a}/{b}={n}" for a, b, n in leaks_real)
+
+    try:
+        df_cov = load_nci60_9cell_split_table(
+            csv_path, "scaffold_coverage_70_10_20"
         )
-    # BLK-PA12 Step 4 (2026-10-12): `strict_scaffold` now defaults ON.  The
-    # blocking-switch caveat that used to justify leaving it OFF ("do not turn
-    # blocking switches ON while 528 config keys still resolve to no argparse
-    # dest") is discharged: the splitter is fixed and REAL-scaffold-overlap is
-    # MEASURED 0/0/0, so this branch only fires on a regression.  Disable with
-    # env ``NCI60_SPLIT_STRICT_SCAFFOLD=0`` if the report-only behaviour is
-    # wanted for a one-off investigation.
-    _ = keys_degenerate  # kept for evidence / debugging; not an assertion
+    except Exception as exc:  # noqa: BLE001
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"load_nci60_9cell_split_table({csv_path.name}, "
+            f"scaffold_coverage_70_10_20) raised {type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    _coverage = _check_nci60_split(
+        df_cov, "coverage default (scaffold_coverage_70_10_20)", (3636, 548, 1023)
+    )
 
     # ---- Part B — chemprop driver scaffold-helper path ----
     cells = sorted(df["cell_line"].astype(str).unique())
@@ -2097,15 +2119,23 @@ def gate_nci60_split_no_leak(
                 )
 
     notes.append(
-        f"m21/A10 loader: rows={n_rows} unique={n_unique} "
-        f"unique-by-split(train,val,test)={got_sizes} "
-        f"row-by-split=({len(row_idx['train'])},{len(row_idx['val'])},"
-        f"{len(row_idx['test'])}) cross-cell-leaks={dup_assign} "
+        f"m21/A10 loader (legacy scaffold_70_10_10): "
+        f"rows={_legacy['n_rows']} unique={_legacy['n_unique']} "
+        f"unique-by-split(train,val,test)={_legacy['sizes']} "
+        f"row-by-split=({len(_legacy['row_idx']['train'])},"
+        f"{len(_legacy['row_idx']['val'])},{len(_legacy['row_idx']['test'])}) "
+        f"cross-cell-leaks={_legacy['dup']} "
         f"REAL-scaffold-overlap(train/val,train/test,val/test)="
-        f"{tuple(n for _a, _b, n in _nci60_scaffold_pair_leaks(keys_real))} "
+        f"{tuple(n for _a, _b, n in _nci60_scaffold_pair_leaks(_legacy['keys']))} "
         f"splitter_scaffold_for_degenerate={degenerate_splitter}"
     )
-    if leaks_real and not strict_scaffold:
+    notes.append(
+        f"coverage default loader: rows={_coverage['n_rows']} "
+        f"unique={_coverage['n_unique']} sizes={_coverage['sizes']} "
+        f"scaffold-overlap="
+        f"{tuple(n for _a, _b, n in _nci60_scaffold_pair_leaks(_coverage['keys']))}"
+    )
+    if _legacy["leaks"] and not strict_scaffold:
         notes.append(
             "HONEST-NEGATIVE: the shipped split is NOT Bemis-Murcko "
             "scaffold-disjoint (see REAL-scaffold-overlap above). The BLK-PA12 "
@@ -2114,12 +2144,13 @@ def gate_nci60_split_no_leak(
             "through ScaffoldSplitter. Escalate to a hard FAIL via "
             "NCI60_SPLIT_STRICT_SCAFFOLD=1 or strict_scaffold=True."
         )
-    if not leaks_real:
+    if not _legacy["leaks"] and not _coverage["leaks"]:
         notes.append(
             "BLK-PA12 fix confirmed: splitter_scaffold_for_degenerate=False "
-            "and REAL-scaffold-overlap=0/0/0. Reference re-frozen to the "
-            "fixed-splitter sizes (4860, 115, 232); the previous "
-            "(3645, 521, 1041) was the molecule-level split m21 shipped."
+            "and REAL-scaffold-overlap=0/0/0 on BOTH splits. Legacy reference "
+            "(4860, 115, 232) molecules; coverage default (3636, 548, 1023). "
+            "The pre-2026-10-12 (3645, 521, 1041) was the molecule-level split "
+            "m21 shipped."
         )
     notes.append(
         f"chemprop scaffold helper: cells={len(cells)} seeds={list(seeds)} "
