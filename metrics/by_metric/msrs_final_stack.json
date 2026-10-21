@@ -1,0 +1,64 @@
+{
+ "artifact": "msrs_final_stack",
+ "version": "1.0",
+ "framework": "MSRS — Metal Substitution Response Surface",
+ "level": "L3 ensemble / UP-9",
+ "generated_utc": "2026-10-21T09:40:25+00:00",
+ "provenance": {
+  "oof": "results/msrs_generalization/oof.npz",
+  "script": "molmetal/scripts/msrs_final_stack.py",
+  "k_neighbours": 25
+ },
+ "design": {
+  "split": "doi (fold assignment taken from the OOF store, not re-split)",
+  "arms": {
+   "ligand": "existing tree OOF, ligand block",
+   "ligand_both": "existing tree OOF, ligand + metal + cell",
+   "knn": "Tanimoto kNN over Morgan r=2 2048 bits, k=25",
+   "stack2": "fold-wise ridge on [ligand, ligand_both]",
+   "stack3": "fold-wise ridge on [ligand, ligand_both, knn]"
+  },
+  "gate": {
+   "doi_r2": 0.42,
+   "single_arm_tolerance": 0.01,
+   "frozen_at": "2026-10-21T15:10+08:00"
+  }
+ },
+ "results": {
+  "ligand": {
+   "mae": 0.4935,
+   "r2": 0.2898,
+   "rmse": 0.6425
+  },
+  "ligand_both": {
+   "mae": 0.4786,
+   "r2": 0.3321,
+   "rmse": 0.6231
+  },
+  "knn": {
+   "mae": 0.5426,
+   "r2": 0.1326,
+   "rmse": 0.7101
+  },
+  "stack2": {
+   "mae": 0.4801,
+   "r2": 0.3337,
+   "rmse": 0.6223
+  },
+  "stack3": {
+   "mae": 0.4803,
+   "r2": 0.3328,
+   "rmse": 0.6227
+  }
+ },
+ "best_single": "ligand_both",
+ "best_single_r2": 0.3321,
+ "stack3_vs_best_single": 0.0007,
+ "verdict": "STACK_NOT_ADDITIVE",
+ "verdict_rule": "PASS iff stack3 DOI R2 >= 0.42",
+ "caveats": [
+  "The DOI split here has tree OOF only; there is no GNN OOF on this split, so this is not the same blend as msrs_hybrid.json (which is fragment/canonical).",
+  "The kNN arm is fitted on the same rows it predicts within a fold, using only the other four folds' labels; the fold assignment is DOI-grouped, so no paper contributes to its own prediction.",
+  "stack2/stack3 are fitted on the other four folds, which is standard stacking but still mildly optimistic relative to a fully nested protocol."
+ ]
+}

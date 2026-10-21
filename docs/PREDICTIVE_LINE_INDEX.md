@@ -196,7 +196,12 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP8.k50_offset_ru", "value": -0.4761, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Ru.arms.offset.50.mean_r2"},
   {"id": "UP8.k50_offset_os", "value": 0.1958, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.arms.offset.50.mean_r2"},
   {"id": "UP8.k50_offset_ru_worse", "value": 0.5, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Ru.arms.offset.50.share_worse_than_zero_shot"},
-  {"id": "UP8.k50_offset_os_worse", "value": 0.85, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.arms.offset.50.share_worse_than_zero_shot"}
+  {"id": "UP8.k50_offset_os_worse", "value": 0.85, "artifact": "metrics/by_metric/msrs_meta_kshot.json", "path": "results.potency.splits.metal_out.per_metal.Os.arms.offset.50.share_worse_than_zero_shot"},
+  {"id": "UP9.ligand_both", "value": 0.3321, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.ligand_both.r2"},
+  {"id": "UP9.knn", "value": 0.1326, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.knn.r2"},
+  {"id": "UP9.stack2", "value": 0.3337, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.stack2.r2"},
+  {"id": "UP9.stack3", "value": 0.3328, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.stack3.r2"},
+  {"id": "UP9.stack3_vs_single", "value": 0.0007, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "stack3_vs_best_single"}
 ]
 ```
 
@@ -268,6 +273,23 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 **metal-Mondrian 只把 0.8096 抬到 0.8331 —— 失败层不是金属。** 按 cohort size 分箱后最差层才真的被抬起来。
 `cohort_metal` 宽度只涨 **0.65%**，过门槛的第二分支（宽度增幅 <5% 且最差层 ≥0.88）⇒ **PASS**。
 **宽度本身改不了**：90% 区间宽 2.0052 ⇒ 残差 SD ≈ 0.61，与 R²=0.38 一致；校准只能改条件覆盖，不能凭空缩窄。
+
+### 2.9 UP-9 集成：第三个基学习器不可加（2026-10-21）
+
+`msrs_final_stack.json`，DOI 留出，折号直接读 OOF store（不重新划分），kNN 只在折内取邻居：
+
+| 臂 | DOI R² | MAE |
+|---|---:|---:|
+| ligand | 0.2898 | 0.4935 |
+| ligand + metal + cell | **0.3321** | 0.4786 |
+| Tanimoto kNN（k=25, ECFP4 r=2） | 0.1326 | 0.5426 |
+| stack2（两棵树的折内 ridge） | **0.3337** | 0.4801 |
+| stack3（+ kNN） | 0.3328 | 0.4803 |
+
+`stack3` 只比最好单臂高 **+0.0007**，而且**低于 stack2 0.0009** —— kNN 在两棵树在场后贡献为负。
+门槛 0.42，差 0.087 ⇒ **FAIL**，UP-9 自己的 kill clause 生效：「集成 < 最好单臂 → 增益不可加，以单臂为准」。
+
+**口径提醒**：这批数低于 0.3767 / 0.3811 的 headline，因为 DOI OOF store 里只有树臂（这个 split 没有 GNN OOF），且 ligand+both 用的是 ECFP4 而非 MACCS+RDKit。**两组数不可比，本 artifact 不替换 headline。**
 
 ---
 

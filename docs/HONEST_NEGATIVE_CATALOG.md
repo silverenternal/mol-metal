@@ -9968,3 +9968,38 @@ refitting a head.**
 **Artifacts.** `metrics/by_metric/msrs_meta_kshot.json`; `molmetal/scripts/msrs_meta_kshot.py`.
 
 **§6.158 catalog-count math.** Net **+1**. Cumulative **212 → 213**. ACTIVE **168 → 169**.
+
+---
+
+## §6.159 — UP-9: a third base learner is not additive, and the DOI gate is 0.087 away (2026-10-21)
+
+**Claim under test.** `msrs_hybrid.json` blends the tree and the GNN, but both see the same
+ligand representation. A non-parametric learner — Tanimoto kNN over Morgan fingerprints — has
+different errors and might stack.
+
+**Measured.** `metrics/by_metric/msrs_final_stack.json`, DOI holdout, fold assignment read from
+the OOF store so nothing is re-split:
+
+| arm | DOI R² | MAE |
+|---|---:|---:|
+| ligand | 0.2898 | 0.4935 |
+| ligand + metal + cell | **0.3321** | 0.4786 |
+| Tanimoto kNN (k=25) | 0.1326 | 0.5426 |
+| stack of 2 | **0.3337** | 0.4801 |
+| stack of 3 | 0.3328 | 0.4803 |
+
+**Verdict: FAIL.** `stack3` beats the best single arm by **+0.0007**, and it is *worse* than
+`stack2` — the kNN contributes negatively once the two trees are present. The gate was 0.42; the
+gap is 0.087.
+
+**Note on comparability.** These DOI numbers are below the 0.3767 / 0.3811 headline because the
+DOI OOF store holds tree arms only (there is no GNN OOF on this split), and the ligand+both tree
+arm is ECFP4, not MACCS+RDKit. The two sets are not comparable and this artifact is not a
+replacement for the headline.
+
+**Consequence for the plan.** UP-9's own kill clause applies: "集成 < 最好单臂 → 增益不可加，以单臂
+为准". The citable number stays the single best arm; the stacking narrative is dropped.
+
+**Artifacts.** `metrics/by_metric/msrs_final_stack.json`; `molmetal/scripts/msrs_final_stack.py`.
+
+**§6.159 catalog-count math.** Net **+1**. Cumulative **213 → 214**. ACTIVE **169 → 170**.

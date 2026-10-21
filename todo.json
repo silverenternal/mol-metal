@@ -621,7 +621,7 @@
       "priority": "P2",
       "wave": 3,
       "wall": "4 小时 CPU",
-      "status": "PARTIAL-PREDECESSOR-SHIPPED",
+      "status": "DONE-FAIL",
       "why": "stack_foldwise 已经是当前最好（相对单树 +0.0251，msrs_hybrid.json），但基学习器同质。UP-1/3/5 若各自有增益，需要一次折内 stacking 确认可加性；不可加时以配对 CI 裁定。",
       "lever": "折内 stacking（避免折外泄漏）；多样性基学习器（树 / D-MPNN / 指纹 kNN）。",
       "code_points": [
@@ -642,9 +642,20 @@
         "msrs_seed_ensemble.json"
       ],
       "result": {
-        "note": "msrs_hybrid.json 已经做了 tree + D-MPNN 的折内 stacking（blend_equal 无参数、stack_foldwise 有轻微乐观），DOI 0.3811。UP-9 唯一没做的是再加一个 kNN 基学习器。",
-        "why_not_run": "gate 是 DOI ≥0.42（headline 0.45），当前 0.3811，差 0.04。UP-1/UP-3 都没有通过，没有新臂可加；kNN 在 2048-bit Morgan 上做 stacking 不会补 0.04。要真过 0.42 得换表示或加数据，不是加基学习器。",
-        "decision_needed": "是否仍要跑 kNN 臂（4 小时 CPU）以便把「不可加」写成实测而不是推断。"
+        "artifact": "metrics/by_metric/msrs_final_stack.json",
+        "verdict": "STACK_NOT_ADDITIVE",
+        "numbers": {
+          "ligand": 0.2898,
+          "ligand_both": 0.3321,
+          "knn": 0.1326,
+          "stack2": 0.3337,
+          "stack3": 0.3328,
+          "best_single": 0.3321,
+          "stack3_vs_best_single": 0.0007,
+          "gate": 0.42
+        },
+        "reading": "加了第三个结构上不同的基学习器（Tanimoto kNN，单独 R² 0.1326）之后，三臂 stack 只比最好的单臂高 +0.0007（0.3328 vs 0.3321），而 stack2 就已经 0.3337 —— 换句话说 kNN 连在 stack 里都是负贡献。DOI 0.42 的门槛差 0.087。",
+        "note": "这里的 DOI 只有树臂的 OOF（没有 DOI 上的 GNN OOF），所以数字低于 0.3767/0.3811 那条 headline —— 那条用的是 MACCS+RDKit 特征块。两组不可直接比。"
       }
     }
   ],
