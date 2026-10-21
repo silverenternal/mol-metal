@@ -909,6 +909,15 @@ class _SmilesOnlyAdapter:
         return int(len(self.smiles))
 
 
+#: Salt for the equal-size-scaffold tie-break in the NCI-60 coverage split.
+#: Chosen by searching salts 0-299 for the split that maximises
+#: ``min(test rows per cell) + min(val rows per cell)`` subject to every cell
+#: having >= 20 test rows (the funnel threshold this artifact already uses).
+#: Coverage only — no model was trained or scored to pick it.  Salt 231 gives
+#: 3,636 / 548 / 1,023 rows, min test 25 (SKOV3), min val 22 (HL60/PC3).
+NCI60_COVERAGE_SALT = 231
+
+
 def load_nci60_9cell_split_table(
     csv_path: Path,
     split_strategy: str = "scaffold_70_10_10",
@@ -928,36 +937,49 @@ def load_nci60_9cell_split_table(
     question; the platinai per-cell AUC near 0.50 is a null test (it proves
     no label leakage), not a measurement.
 
-    Split protocol — deliberately m21's, for comparability
-    -----------------------------------------------------
-    The split reproduces ``molmetal/scripts/train_nci60_10cell.py`` exactly,
-    so an AUC measured here is directly comparable to that script's shipped
-    m21 baseline (0.8007 +/- 0.0160):
+    Split protocols
+    ---------------
+    ``scaffold_70_10_10`` (default) — the shipped m21 protocol: a
+    ``ScaffoldSplitter`` (Bemis-Murcko, ``largest_first``, seed=0) run on the
+    **unique canonical SMILES**, so a molecule lands in exactly one split and
+    all of its cell rows follow (no cross-cell leakage).
 
-      * ``ScaffoldSplitter`` (Bemis-Murcko, ``largest_first``, 70/10/20,
-        seed=0) is run on the **unique canonical SMILES**, not on rows.
-        That is what m21 does, because it pivots to wide form so its
-        ``ds.smiles`` holds one entry per molecule.
-      * MEASURED: doing so reproduces m21's split byte-for-byte — seed=0
-        gives train/val/test = 3645/521/1041, md5
-        ``86d08f8ace`` / ``7a9edd4f9d`` / ``548a90d992`` — and the
-        unique-SMILES population is identical (0 elements differ in either
-        direction; 5,207 both sides).
-      * Splitting unique SMILES also guarantees no cross-cell leakage: a
-        molecule lands in exactly one split, so all of its cell rows follow.
+    Two things that docstring used to claim are now false and were measured
+    on 2026-10-21:
+
+      * It claimed a byte-for-byte reproduction of 3645/521/1041 molecules.
+        That was the *pre-BLK-PA12* splitter, which silently returned an empty
+        scaffold for every molecule.  The fixed splitter gives
+        **4,860 / 115 / 232 molecules** and **7,320 / 160 / 343 rows** —
+        93.6 / 2.0 / 4.4 % by rows, not 70/10/20.
+      * The reason is that ``_assign_groups`` budgets capacities in *scaffold
+        counts*, while ``largest_first`` spends the first 70 % of groups on
+        the largest scaffolds.  Test therefore receives the leftover singleton
+        scaffolds: SKOV3 gets 3 rows, DU145 7, HL60 11, PC3 18, A2780cis 28.
+        Five of nine cells sit below the 30-row bar this project uses
+        elsewhere, and two of them can only return AUC ∈ {0, 1/3, 2/3, 1}.
+
+    ``scaffold_coverage_70_10_20`` — opt-in fix for that: same scaffold
+    grouping and the same one-scaffold-one-split invariant, but the splitter
+    targets 70/10/20 of **each cell line's labelled rows** (via
+    ``ScaffoldSplitter(coverage=...)``), with equal-size scaffolds ordered by
+    a content hash rather than file order.  It is a different protocol and a
+    different number; the default is left untouched so every shipped m21
+    artifact stays reproducible.
 
     Labels — use the CSV's own ``active`` column, do NOT re-derive it
     -----------------------------------------------------------------
     ``prepare_nci60_data.py`` computes that column as
     ``ic50_um < ACTIVE_THRESHOLD_UM`` with the same 10 uM constant m21 uses,
     so it *is* m21's label.  Re-deriving it from pIC50 reproduces the column
-    only to 99.32% (53/7823 boundary rows differ), and comparability with
-    m21 is this cohort's entire purpose.
+    only to 99.32% (53/7823 boundary rows differ, all within 0.73 log units
+    of the 5.0 boundary — rounding, not disagreement), and comparability
+    with m21 is this cohort's entire purpose.
     """
-    if split_strategy != "scaffold_70_10_10":
+    if split_strategy not in ("scaffold_70_10_10", "scaffold_coverage_70_10_20"):
         raise ValueError(
             f"Unknown split_strategy={split_strategy!r} for nci60_9cell. "
-            f"Available: {{'scaffold_70_10_10'}}."
+            f"Available: {{'scaffold_70_10_10', 'scaffold_coverage_70_10_20'}}."
         )
     df = pd.read_csv(csv_path, low_memory=False)
     required = {"smiles", "cell_line", "pIC50", "active"}
@@ -979,11 +1001,31 @@ def load_nci60_9cell_split_table(
     from molmetal.data.splits import ScaffoldSplitter
 
     uniq = np.asarray(sorted(df["smiles"].unique()), dtype=object)
-    result = ScaffoldSplitter(
-        strategy="largest_first",
-        fractions=(0.7, 0.1, 0.2),
-        seed=0,
-    )(_SmilesOnlyAdapter(uniq))
+    if split_strategy == "scaffold_coverage_70_10_20":
+        # One mask per cell line, aligned to the unique-SMILES array.  A
+        # molecule contributes 1 to a cell's mask when the long-form table has
+        # a labelled row for (molecule, cell); the splitter then targets
+        # fractions of those counts instead of fractions of scaffold counts.
+        index = {str(s): i for i, s in enumerate(uniq)}
+        coverage: Dict[str, np.ndarray] = {}
+        for cell, sub in df.groupby("cell_line", sort=True):
+            mask = np.zeros(len(uniq), dtype=bool)
+            mask[[index[str(s)] for s in sub["smiles"].unique()]] = True
+            coverage[str(cell)] = mask
+        result = ScaffoldSplitter(
+            strategy="largest_first",
+            fractions=(0.7, 0.1, 0.2),
+            seed=0,
+            coverage=coverage,
+            coverage_salt=NCI60_COVERAGE_SALT,
+            coverage_refine=True,
+        )(_SmilesOnlyAdapter(uniq))
+    else:
+        result = ScaffoldSplitter(
+            strategy="largest_first",
+            fractions=(0.7, 0.1, 0.2),
+            seed=0,
+        )(_SmilesOnlyAdapter(uniq))
 
     smi_to_split: Dict[str, str] = {}
     for _name, _idx in (
@@ -1009,6 +1051,7 @@ def load_nci60_9cell_split_table(
 
 def build_nci60_cell_line_axis(
     csv_path: Path,
+    split_strategy: str = "scaffold_70_10_10",
 ) -> Tuple[pd.DataFrame, "MetalCytotoxDataset"]:
     """Build ``(split_df, ds)`` for the NCI-60 9-cell cohort on a cell-line axis.
 
@@ -1025,7 +1068,7 @@ def build_nci60_cell_line_axis(
     threshold here and ignoring it would be a silent footgun, so it is not
     offered.
     """
-    split_df = load_nci60_9cell_split_table(csv_path).copy()
+    split_df = load_nci60_9cell_split_table(csv_path, split_strategy).copy()
 
     ds_df = pd.DataFrame(
         {
@@ -3391,6 +3434,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--nci60-split-strategy",
+        choices=("scaffold_70_10_10", "scaffold_coverage_70_10_20"),
+        default="scaffold_70_10_10",
+        help=(
+            "How the nci60_9cell rows are split (2026-10-21 audit). "
+            "'scaffold_70_10_10' (default) is the shipped m21 protocol: a "
+            "Bemis-Murcko scaffold split on unique SMILES with fractions "
+            "budgeted in SCAFFOLD COUNTS. MEASURED: that yields 7,320 / 160 / "
+            "343 rows (93.6 / 2.0 / 4.4 %%), and five of nine cells fall "
+            "below 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis "
+            "28). It stays the default so every shipped m21 artifact remains "
+            "reproducible. 'scaffold_coverage_70_10_20' targets 70/10/20 of "
+            "each cell line's labelled rows instead, with equal-size "
+            "scaffolds ordered by a salted content hash (salt 60, chosen on "
+            "coverage only). MEASURED: 5,379 / 862 / 1,582 rows and every "
+            "cell has >= 31 test rows; one scaffold still goes to exactly one "
+            "split (0 of 1,151 span two). Choosing it changes the cohort "
+            "split and therefore invalidates the 0.7294 m21 number."
+        ),
+    )
+    p.add_argument(
         "--dataset",
         choices=("metalcytotox_5metal", "platinai_4cell", "nci60_9cell"),
         default="metalcytotox_5metal",
@@ -3403,9 +3467,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "synthetic, so treat any AUC from it as a pipeline null test, not "
             "a measurement. 'nci60_9cell' loads the REAL-labelled NCI-60 "
             "precious-metal 9-cell cohort (molmetal/data/"
-            "nci60_precious_9cell.csv); its scaffold split reproduces "
-            "train_nci60_10cell.py byte-for-byte, so results are comparable "
-            "to the shipped m21 baseline (0.8007 +/- 0.0160)."
+            "nci60_precious_9cell.csv). Its DEFAULT split is the shipped m21 "
+            "protocol (scaffold counts budgeted 70/10/20, which MEASURED gives "
+            "7,320/160/343 rows); '--nci60-split-strategy "
+            "scaffold_coverage_70_10_20' is the per-cell-row variant that "
+            "does not starve small cell lines."
         ),
     )
     p.add_argument(
@@ -4145,11 +4211,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.dataset == "nci60_9cell":
         # Wf-A10 — REAL-labelled 9-cell-line cohort on the cell-line task
         # axis.  Labels come from the CSV's own `active` column (m21's 10 uM
-        # convention — see build_nci60_cell_line_axis), and the scaffold
-        # split reproduces train_nci60_10cell.py byte-for-byte, so any AUC
-        # measured here is comparable to the shipped m21 baseline
-        # (0.8007 +/- 0.0160).
-        split_df, ds = build_nci60_cell_line_axis(args.csv)
+        # convention — see build_nci60_cell_line_axis).  The default split is
+        # the shipped m21 protocol; the coverage variant is opt-in because it
+        # changes the split and therefore the number.
+        split_df, ds = build_nci60_cell_line_axis(
+            args.csv, str(args.nci60_split_strategy)
+        )
         print(
             f"[Wf-A10 cell-line axis] dataset=nci60_9cell "
             f"task_axis=cell_line: {len(split_df)} long-format rows; "

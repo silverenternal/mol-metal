@@ -168,8 +168,12 @@ Fixed 2026-10-19 (Wf-A53):
   legacy `ID1,X1,ID2,X2,Y` spelling.
 
 Still open (needs re-runs, not silent code changes):
-- Pt 4-cell: the honest split exists but **no model has been trained on it**.
-  Every shipped Pt 4-cell number is on the legacy hash split.
+- ~~Pt 4-cell: the honest split exists but no model has been trained on it.~~
+  **Resolved in R10d (2026-10-20).** The headline Pt 4-cell number was already
+  on `bemis_murcko_70_10_10`: `train_platinai_4cell.py --scaffold-split` calls
+  `ScaffoldSplitter`, and its seed-0 split (3,287 / 264 / 527) matches
+  `platinai_4cell_scaffold_split_alignment.json` exactly. What was missing was
+  `split_key` / `split_fingerprint` in the artifact, which R10d added.
 - CFM: a true held-out number needs a checkpoint trained from
   `configs/cfm_5metal_v5_full.yaml`.
 
@@ -254,3 +258,24 @@ the metric payload. Also added the output guard this trainer was missing: a part
 run (any seed set other than `[0,1,2]`, or epochs ≠ 50) now writes
 `<out-dir>/metrics.json` instead of replacing `metrics/by_metric/platinai_4cell_auc.json`.
 Pinned by `molmetal/tests/test_platinai_output_guard.py` (7 tests).
+
+## R11 — m21's split gives test 4.4% of the rows; five of nine cells are under 30 (2026-10-21)
+
+Measured while auditing the A2780cis split on the 4-cell cohort. The same defect
+class applies to the NCI-60 9-cell panel, more severely.
+
+- **Cohort is not short of data**: 7,823 labelled rows / 5,207 molecules / 9 cells.
+- **Shipped split**: 7,320 / 160 / 343 rows (93.6 / 2.0 / 4.4 %). Per-cell test:
+  A2780 48, A2780cis 28, A549 107, DU145 7, HCT116 31, HL60 11, MCF7 90, PC3 18,
+  SKOV3 3. SKOV3 also has **0 val rows**.
+- **Mechanism**: `_assign_groups` budgets fractions in scaffold counts; the largest
+  70 % of the 1,151 scaffolds hold 94.3-100 % of every cell's rows, so test receives
+  the leftover singletons.
+- **Fix implemented, opt-in**: `--nci60-split-strategy scaffold_coverage_70_10_20`
+  gives 5,371 / 920 / 1,532 rows; every cell >= 25 test and >= 22 val; 0 scaffolds
+  span splits; row-order invariant. Artifact:
+  `metrics/by_metric/nci60_split_coverage_audit.json`.
+- **Still open**: the 9-cell × 5-seed × 50-epoch re-run. Measured cost 7.21 GPU-h on
+  the old split, ~5.4 h on the new one. Not launched: GPU0 was carrying the CFM
+  session. 0.7294 / 0.5923 stay live with the caveat until it lands; the new number
+  must be a separate artifact with `supersedes`, never compared with 0.7294.

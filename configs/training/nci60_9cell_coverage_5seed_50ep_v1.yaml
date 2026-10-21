@@ -1,0 +1,267 @@
+# =============================================================================
+# nci60_9cell_coverage_5seed_50ep_v1.yaml — the m21 panel on a split that does
+# not starve small cell lines (2026-10-21)
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The shipped m21 protocol (`nci60_9cell_5seed_50ep_v1.yaml`) budgets its
+# 70/10/20 fractions in SCAFFOLD COUNTS. On this cohort that gives
+# 7,320 / 160 / 343 rows (93.6 / 2.0 / 4.4 %), and five of nine cells fall
+# below 30 test rows: SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28. SKOV3
+# has no val rows at all. MEASURED in
+# `metrics/by_metric/nci60_split_coverage_audit.json`.
+#
+# This config changes exactly one thing: the split strategy. It uses
+# `scaffold_coverage_70_10_20`, which targets 70/10/20 of each cell line's
+# labelled rows and keeps the same one-scaffold-one-split invariant.
+# MEASURED split: 5,371 / 920 / 1,532 rows; every cell >= 25 test and >= 22
+# val rows; 0 of 1,151 scaffolds span two splits.
+#
+# HONEST FRAMING (party-twenty-spirit §3.5)
+# -----------------------------------------
+# 1. THIS IS NOT COMPARABLE TO 0.7294. The test sets differ by ~4.5x in row
+#    count and contain different molecules. The new number must be written to
+#    a NEW artifact with `supersedes: nci60_precious_9cell_auc`, and never
+#    placed in the same column as the shipped value.
+# 2. The model and training protocol are held fixed against m21: hidden 128,
+#    depth 3, batch 32, lr 1e-3, 50 epochs, seeds 0-4, same Wasserstein
+#    machinery. The split is the only declared variable.
+# 3. Labels are the CSV's own `active` column (IC50 < 10 uM), verbatim. It
+#    differs from `pIC50 > 5` on 53/7,823 boundary rows (rounding only).
+# 4. `eval.baseline_per_cell_line_MEASURED` below records the SHIPPED values
+#    for reference, not a target. They were measured on the old split, so a
+#    per-cell difference is expected and is not evidence about the model.
+# =============================================================================
+
+# ============================================================================
+# DATA — REAL-labelled NCI-60 precious-metal 9-cell-line cohort
+# Per AGENTS.md §5.4 + §10: Tier-2 computational-only, no wet-lab planning.
+# ============================================================================
+data:
+  dataset: nci60_9cell  # --dataset {metalcytotox_5metal, platinai_4cell, nci60_9cell}
+  # The task axis IS the cell line. With task_axis=metal the pool cannot even
+  # be built (this cohort has no metal column) — the trainer raises a clear
+  # ValueError rather than silently mis-training.
+  task_axis: cell_line  # --task-axis {metal, cell_line}
+  # two-component path -> argparse dest `metals`; "auto" resolves to the nine
+  # cell lines by reading the CSV's cell_line column (Wf-A6 BLOCKER A).
+  metals: [auto]
+  cohort_filter:
+    # Documentation of what `auto` resolves to; the functional setting is
+    # `metals: [auto]` above. These are NCI-60 panel lines, all nine of which
+    # appear in MetalCytoToxDB's precious-metal subset.
+    cells: [MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3, DU145]
+  expected_columns_subset: [smiles, cell_line, pIC50, active]
+  # The ONE declared variable vs the shipped m21 config.
+  nci60_split_strategy: scaffold_coverage_70_10_20
+  split:
+    # Documentation of the protocol. The functional setting is
+    # `nci60_split_strategy` above (argparse dest of the same name).
+    type: bemis_murcko_scaffold_coverage
+    implementation: molmetal.data.splits.ScaffoldSplitter
+    strategy: largest_first
+    seed: 0
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    grouped_on: unique_canonical_smiles  # NOT rows: guarantees zero cross-cell leakage
+    # Salt 231 and the refinement pass are fixed in
+    # train_dmpnn_multitask_wasserstein.NCI60_COVERAGE_SALT, not YAML knobs:
+    # they define the protocol, and a config that could silently change them
+    # would be able to change the split without changing the strategy name.
+  # 2026-10-04: renamed from `num_workers` to match the trainer flag.
+  # --cpu-num-workers is the DataLoader num_workers knob (its own help
+  # reads 'DataLoader num_workers (default 0 = main process)'); the old key
+  # name resolved to no argparse dest and was silently dropped.
+  cpu_num_workers: 8
+  pin_memory: true  # wired -> --pin-memory / --no-pin-memory (2026-10-04)
+
+# ============================================================================
+# MODEL — D-MPNN multi-task: shared encoder + one head pair per cell line.
+# This is the PECAN-style shared network the field uses for multi-cell-line
+# cytotoxicity (PECAN predicts 59 NCI-60 lines from one shared network),
+# rather than nine independent per-cell models.
+# ============================================================================
+model:
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest in either trainer).
+  ablation_config: mtl_baseline
+  # Must be `hidden`, NOT `hidden_dim`. MEASURED: the argparse dest is
+  # `hidden` (trainer line ~2514, `--hidden`, default DMPNN_HIDDEN=128).
+  # A `model.hidden_dim` key has no matching dest, so the loader skips it
+  # SILENTLY and the value never reaches the model — the sibling platinai
+  # config carries `hidden_dim: 300` and has been running at 128 anyway.
+  # 128 matches train_nci60_10cell.py's MT_HIDDEN (which is DMPNN_HIDDEN),
+  # so the architecture is held fixed against the 0.8007 baseline.
+  hidden: 128
+  depth: 3  # == train_nci60_10cell.py MT_DEPTH
+  task: multi_task
+  wasserstein_weight: 0.05
+  alpha: 0.5  # == train_nci60_10cell.py MT_ALPHA
+  n_mc: 256
+  w2_gradient_mode: sliced
+  use_l2_guard: true
+
+# ============================================================================
+# TRAINING PROTOCOL — 9 × 5 × 50 (cell line × seed × epoch)
+# 50-epoch / 5-seed is the Tier-2 §3–§4 standard, and matches m21's
+# epochs=50 so a re-run is directly comparable.
+# ============================================================================
+protocol:
+  n_seeds: 5
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 50  # == train_nci60_10cell.py MT_EPOCHS
+  # batch_size / lr are held at train_nci60_10cell.py's values (MT_BATCH_SIZE
+  # = 32, MT_LR = 1e-3) rather than the Wf-A5-N4 resource-scaled 128 / 2e-3.
+  # Reason: a comparison against the shipped 0.8007 must vary ONE thing — the
+  # main trainer's loss machinery (Wasserstein pIC2O regularisation, L2 guard,
+  # cosine schedule) — not also the batch size and learning rate. Changing
+  # those too would confound any observed difference. The resource-scaled
+  # variant belongs in a separate config, where it is the declared variable.
+  batch_size: 32
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  max_norm: 5.0
+  gradient_accumulation_steps: 1  # wired -> --gradient-accumulation-steps; 1 = no accumulation
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm above).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-6
+  n_runs_total: 45  # 9 cell lines x 5 seeds
+
+# ============================================================================
+# EVALUATION — per-cell-line AUC on the coverage split.
+# `baseline_per_cell_line_MEASURED` records the LIVE 5-seed values from the
+# OLD split for reference only. A per-cell difference is expected (different
+# test molecules); it is not evidence about the model.
+# ============================================================================
+eval:
+  per_pair_metrics: [test_auc, val_auc, wasserstein_final, best_epoch]
+  per_cell_line_metrics:
+    - MCF7_test_auc
+    - A549_test_auc
+    - A2780_test_auc
+    - A2780cis_test_auc
+    - HCT116_test_auc
+    - PC3_test_auc
+    - HL60_test_auc
+    - SKOV3_test_auc
+    - DU145_test_auc
+  # LIVE values on the OLD (scaffold-count) split, 5 seeds x 50 epochs.
+  # Reference only — do NOT subtract these from the new run.
+  baseline_per_cell_line_MEASURED:
+    MCF7: 0.6690
+    A549: 0.6951
+    A2780: 0.5104
+    A2780cis: 0.3356
+    HCT116: 0.7517
+    PC3: 0.8028
+    HL60: 0.8000
+    SKOV3: 1.0000
+    DU145: 1.0000
+  baseline_overall_MEASURED: 0.7294  # 9-cell mean, old split
+  # Resolvable subset (5 cells with n_test >= 20) on the old split: 0.5923.
+  krasnov_2026_baseline_auc: 0.81  # cite-only reference, per the metric's honest_framing
+  gate_target: 0.7
+
+# ============================================================================
+# OUTPUT
+# ============================================================================
+output:
+  base_dir: results/nci60_9cell_coverage_5seed_50ep
+  # `out_dir` too, not just `base_dir`. MEASURED: the argparse dest is
+  # `out_dir`; `output.base_dir` only drives start.sh's `{out_dir}`
+  # substitution, so a `--config`-only invocation (no start.sh) would
+  # silently train into the trainer's default out_dir
+  # (molmetal/reports/wf131_p1_ru_auc_multitask) and mix cohorts. The
+  # sibling platinai config has exactly that gap. Setting both is safe:
+  # when start.sh passes --out-dir explicitly the CLI value wins, and when
+  # it does not, the YAML supplies it.
+  out_dir: results/nci60_9cell_coverage_5seed_50ep
+  per_metal_dir: results/nci60_9cell_coverage_5seed_50ep/{metal}/per_seed_metrics_seed{seed}.json
+  training_summary: results/nci60_9cell_coverage_5seed_50ep/training_summary.json
+  log_master: results/nci60_9cell_coverage_5seed_50ep/master.log
+  # Checkpoint isolation (Wf-A10): ckpt_dir is pinned to THIS run's output
+  # tree rather than the shared molmetal/checkpoints. MEASURED motivation:
+  # with the shared path, a fresh run silently resumed stale checkpoints from
+  # another cohort and reported train_seconds = 0.0035 (i.e. it trained
+  # nothing). Isolated, that became 15.58 s. Do not repoint this at the
+  # shared directory.
+  ckpt_dir: results/nci60_9cell_coverage_5seed_50ep/checkpoints
+  checkpoint_interval: 50
+  resume_from: auto
+  events_jsonl_path: results/nci60_9cell_coverage_5seed_50ep/events.jsonl
+  events_jsonl: true
+
+# ============================================================================
+# COMPUTE
+# Per AGENTS.md §5.9 single-venv rule: the launch wrapper MUST use the project
+# venv /home/hugo/codes/mol-metal/.venv/bin/python.
+# MEASURED 2026-10-03 (re-checked after the Wf-A10 closeout was written):
+# the venv carries torch==2.14.1+cu130, torch.version.hip is None,
+# torch.cuda.is_available() is True, 2 devices visible, and a real
+# matmul on cuda:0 succeeds. So a GPU launch WORKS — an earlier revision of
+# this comment claimed torch==2.14.0+rocm7.2 / cuda_available=False and is
+# now STALE. Do not re-add that claim without re-measuring.
+# The launch remains USER_OK-gated per AGENTS.md §5.1 — not because of the
+# interpreter, but because the launch is the user's to make.
+# ============================================================================
+compute:
+  device: cuda:0  # Wf-A39-fixup-2 (2026-10-15): moved from command_template literal (per §5.11 YAML-only launch); trainer --device reads this via wfA2_config_loader
+  gpu: cuda:0  # GPU 0 only, per standing user directive "只用gpu0吧"
+  cpu_workers: 8
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
+  torch_compile: false  # wired -> --torch-compile (2026-10-03)
+  cudnn_benchmark: false  # wired -> --cudnn-benchmark (2026-10-03)
+  channels_last: false  # wired -> --channels-last; no-op here (D-MPNN is not a ConvNet)
+
+# ============================================================================
+# STANDING DIRECTIVES
+# ============================================================================
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true  # AGENTS.md §5.1 — the launch is the user's to make
+  per_wave_user_ok_required: false
+  pre_flight_gates_required:
+    - p3_protocol_alignment_user_ok_gate
+    - p3_protocol_alignment_baseline_paper_refs_bib
+    - p3_wf385_scaffold_loss_wire_in_verified
+    - p3_wf343c4_anchor_freshness_24h
+
+# ============================================================================
+# ENTRY POINT — start.sh parses entry.command
+#   USER_OK=1 bash scripts/start.sh configs/training/nci60_9cell_coverage_5seed_50ep_v1.yaml
+# ============================================================================
+entry:
+  # --dataset / --task-axis / --metals arrive from the data: section above via
+  # the Wf-A2 config loader; only the run-scoped flags are spelled out here.
+  # Wf-A39-fixup-2 (2026-10-15): `--device cuda:0` literal removed from
+  # command_template (per §5.11 YAML-only launch + platinai_pt_4cell_5seed_50ep_v1.yaml
+  # pattern). The device now lives in compute.device below (start.sh reads
+  # compute.gpu for CUDA_VISIBLE_DEVICES; the trainer's --device is debug-only
+  # per DEBUG_FLAG_OVERRIDES and would be wrong as a literal here).
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  warm_start_checkpoint: "n/a"  # cold start each seed; --resume-from auto per output.resume_from
+
+# ============================================================================
+# CROSS-REFERENCES
+# ============================================================================
+cross_references:
+  # The split audit that motivated this config (per-cell coverage, both splits)
+  - metrics/by_metric/nci60_split_coverage_audit.json
+  # The shipped baseline this must NOT be compared with (old split, 0.7294)
+  - metrics/by_metric/nci60_precious_9cell_auc.json
+  # The cohort
+  - molmetal/data/nci60_precious_9cell.csv
+  # The scaffold splitter that defines the protocol
+  - molmetal/data/splits.py
+  # Main trainer (cell-line task axis + nci60 loader added by Wf-A10)
+  - molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  # Wf-A2 unified YAML loader
+  - molmetal/scripts/wfA2_config_loader.py
+  # Single canonical launch script
+  - scripts/start.sh
+  # Risk register entry (retrain still pending)
+  - TODO/risks.md

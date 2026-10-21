@@ -654,6 +654,17 @@ class ScaffoldSplitter:
 
         See ``molmetal/scripts/wf_a61_split_coverage_audit.py`` and
         ``metrics/by_metric/split_coverage_4cell.json``.
+    coverage_salt : int
+        Salt for the equal-size-scaffold tie-break in coverage mode.  ``0``
+        (default) reproduces the original hash.  A non-zero salt lets a cohort
+        search tie orders for one that meets a coverage constraint; it changes
+        *which* equally-valid scaffold grouping is picked, never the objective
+        or the one-scaffold-one-split invariant.
+    coverage_refine : bool
+        After the greedy coverage pass, move whole scaffolds between splits
+        while the same objective keeps improving.  Off by default (the 4-cell
+        split was measured without it); the NCI-60 split turns it on because
+        the greedy pass there left DU145 with 3 val rows.
     """
 
     def __init__(
@@ -663,6 +674,8 @@ class ScaffoldSplitter:
         seed: int = 42,
         include_chirality: bool = False,
         coverage: Optional[Dict[str, np.ndarray]] = None,
+        coverage_salt: int = 0,
+        coverage_refine: bool = False,
     ) -> None:
         if strategy not in ("largest_first", "random"):
             raise ValueError(
@@ -676,6 +689,8 @@ class ScaffoldSplitter:
         self.seed = int(seed)
         self.include_chirality = bool(include_chirality)
         self.coverage = None if coverage is None else dict(coverage)
+        self.coverage_salt = int(coverage_salt)
+        self.coverage_refine = bool(coverage_refine)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -745,10 +760,16 @@ class ScaffoldSplitter:
         have = {s: {k: 0 for k in masks} for s in names}
 
         def _tiebreak(key: str) -> str:
-            return hashlib.blake2b(key.encode(), digest_size=8).hexdigest()
+            # ``coverage_salt`` exists so a cohort can search for a tie order
+            # that satisfies a *coverage* constraint (e.g. every cell gets at
+            # least 30 test rows) without touching the split fractions.  The
+            # default 0 keeps the original hash so existing splits reproduce.
+            payload = key if self.coverage_salt == 0 else f"{key}:{self.coverage_salt}"
+            return hashlib.blake2b(payload.encode(), digest_size=8).hexdigest()
 
         ordered = sorted(keyed_groups, key=lambda kv: (-len(kv[1]), _tiebreak(kv[0])))
         assignment: Dict[int, str] = {}
+        group_split: List[str] = []
         for _, group in ordered:
             vec = {k: int(masks[k][group].sum()) for k in masks}
             feasible = [s for s in names if rows[s] + len(group) <= cap[s] + 1e-9]
@@ -769,7 +790,86 @@ class ScaffoldSplitter:
             rows[best] += len(group)
             for k in masks:
                 have[best][k] += vec[k]
+            group_split.append(best)
+
+        if self.coverage_refine and group_split:
+            group_split = self._refine_coverage(
+                ordered, group_split, masks, totals, target, cap, rows, have, n_rows
+            )
+            assignment = {}
+            for (_, group), s in zip(ordered, group_split):
+                for i in group:
+                    assignment[int(i)] = s
         return assignment
+
+    def _refine_coverage(
+        self,
+        ordered: List[Tuple[str, List[int]]],
+        group_split: List[str],
+        masks: Dict[str, np.ndarray],
+        totals: Dict[str, int],
+        target: Dict[str, Dict[str, float]],
+        cap: Dict[str, float],
+        rows: Dict[str, int],
+        have: Dict[str, Dict[str, int]],
+        n_rows: int,
+    ) -> List[str]:
+        """Move whole scaffolds between splits while the objective improves.
+
+        The greedy pass is myopic: it walks scaffolds largest-first, so a large
+        multi-cell scaffold can fill ``val`` early and leave a small cell with
+        3 rows even though moving one singleton would fix it.  This pass keeps
+        the same invariant (one scaffold, one split) and the same objective,
+        and only accepts a move that lowers it.
+        """
+        names = ("train", "val", "test")
+        vecs = [{k: int(masks[k][g].sum()) for k in masks} for _, g in ordered]
+        sizes = [len(g) for _, g in ordered]
+
+        def _term(s: str, d_rows: int = 0, d_have: Optional[Dict[str, int]] = None) -> float:
+            dh = d_have or {}
+            return sum(
+                (target[s][k] - have[s][k] - dh.get(k, 0)) ** 2 / totals[k]
+                for k in masks
+            ) + (cap[s] - rows[s] - d_rows) ** 2 / n_rows
+
+        for _ in range(20):
+            improved = False
+            for gi, _group in enumerate(ordered):
+                a = group_split[gi]
+                n = sizes[gi]
+                if n == 0:
+                    continue
+                vec = vecs[gi]
+                base = _term(a)
+                best_move = None
+                best_delta = -1e-12
+                for b in names:
+                    if b == a:
+                        continue
+                    neg = {k: -vec[k] for k in masks}
+                    pos = {k: vec[k] for k in masks}
+                    delta = (
+                        _term(a, -n, neg)
+                        + _term(b, n, pos)
+                        - base
+                        - _term(b)
+                    )
+                    if delta < best_delta:
+                        best_delta = delta
+                        best_move = b
+                if best_move is not None:
+                    b = best_move
+                    rows[a] -= n
+                    rows[b] += n
+                    for k in masks:
+                        have[a][k] -= vec[k]
+                        have[b][k] += vec[k]
+                    group_split[gi] = b
+                    improved = True
+            if not improved:
+                break
+        return group_split
 
     # ------------------------------------------------------------------
     # Public API

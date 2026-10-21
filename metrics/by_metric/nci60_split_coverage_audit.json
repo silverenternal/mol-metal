@@ -1,0 +1,733 @@
+{
+ "metric": "nci60_split_coverage_audit",
+ "description": "Per-cell-line coverage of the two NCI-60 9-cell split protocols: the shipped m21 scaffold split (fractions budgeted in scaffold counts) and the opt-in coverage-stratified split (fractions budgeted in per-cell labelled rows, with whole-scaffold refinement).",
+ "unit": "labelled rows per split (one row = one (molecule, cell) pair)",
+ "scope": "data_protocol_audit",
+ "source": "molmetal/scripts/wf_a62_nci60_split_coverage_audit.py over molmetal/data/nci60_precious_9cell.csv, calling train_dmpnn_multitask_wasserstein.load_nci60_9cell_split_table for both protocols",
+ "cohort": {
+  "path": "molmetal/data/nci60_precious_9cell.csv",
+  "rows": 7823,
+  "unique_molecules": 5207,
+  "cell_lines": [
+   "A2780",
+   "A2780cis",
+   "A549",
+   "DU145",
+   "HCT116",
+   "HL60",
+   "MCF7",
+   "PC3",
+   "SKOV3"
+  ],
+  "label": "CSV 'active' column (IC50 < 10 uM), used verbatim"
+ },
+ "evaluation_bars": {
+  "nci60_funnel": 20,
+  "m3_min_eval_rows": 30,
+  "note": "Both are reported per cell. The shipped artifact's own funnel uses n_test >= 20; the m3 line uses 30. Neither is silently substituted for the other."
+ },
+ "as_is_scaffold_70_10_10": {
+  "protocol": "ScaffoldSplitter(largest_first, fractions=0.7/0.1/0.2, seed=0) on unique SMILES; capacities are scaffold counts",
+  "rows": {
+   "train": 7320,
+   "val": 160,
+   "test": 343
+  },
+  "row_fraction": {
+   "train": 0.9357,
+   "val": 0.0205,
+   "test": 0.0438
+  },
+  "molecules": {
+   "train": 4860,
+   "val": 115,
+   "test": 232
+  },
+  "per_split": {
+   "train": {
+    "rows": 7320,
+    "molecules": 4860,
+    "row_fraction": 0.9357,
+    "cells": {
+     "A2780": {
+      "labelled": 1031,
+      "positive": 444,
+      "negative": 587,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A2780cis": {
+      "labelled": 530,
+      "positive": 223,
+      "negative": 307,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A549": {
+      "labelled": 2482,
+      "positive": 811,
+      "negative": 1671,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 150,
+      "positive": 78,
+      "negative": 72,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HCT116": {
+      "labelled": 658,
+      "positive": 290,
+      "negative": 368,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HL60": {
+      "labelled": 202,
+      "positive": 114,
+      "negative": 88,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "MCF7": {
+      "labelled": 1829,
+      "positive": 693,
+      "negative": 1136,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 250,
+      "positive": 106,
+      "negative": 144,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "SKOV3": {
+      "labelled": 188,
+      "positive": 64,
+      "negative": 124,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     }
+    }
+   },
+   "val": {
+    "rows": 160,
+    "molecules": 115,
+    "row_fraction": 0.0205,
+    "cells": {
+     "A2780": {
+      "labelled": 16,
+      "positive": 4,
+      "negative": 12,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "A2780cis": {
+      "labelled": 6,
+      "positive": 2,
+      "negative": 4,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "A549": {
+      "labelled": 58,
+      "positive": 21,
+      "negative": 37,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 4,
+      "positive": 2,
+      "negative": 2,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "HCT116": {
+      "labelled": 12,
+      "positive": 5,
+      "negative": 7,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "HL60": {
+      "labelled": 12,
+      "positive": 3,
+      "negative": 9,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "MCF7": {
+      "labelled": 45,
+      "positive": 6,
+      "negative": 39,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 7,
+      "positive": 2,
+      "negative": 5,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "SKOV3": {
+      "labelled": 0,
+      "positive": 0,
+      "negative": 0,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     }
+    }
+   },
+   "test": {
+    "rows": 343,
+    "molecules": 232,
+    "row_fraction": 0.0438,
+    "cells": {
+     "A2780": {
+      "labelled": 48,
+      "positive": 18,
+      "negative": 30,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A2780cis": {
+      "labelled": 28,
+      "positive": 10,
+      "negative": 18,
+      "evaluable": {
+       "20": true,
+       "30": false
+      }
+     },
+     "A549": {
+      "labelled": 107,
+      "positive": 33,
+      "negative": 74,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 7,
+      "positive": 3,
+      "negative": 4,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "HCT116": {
+      "labelled": 31,
+      "positive": 15,
+      "negative": 16,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HL60": {
+      "labelled": 11,
+      "positive": 4,
+      "negative": 7,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "MCF7": {
+      "labelled": 90,
+      "positive": 29,
+      "negative": 61,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 18,
+      "positive": 6,
+      "negative": 12,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     },
+     "SKOV3": {
+      "labelled": 3,
+      "positive": 1,
+      "negative": 2,
+      "evaluable": {
+       "20": false,
+       "30": false
+      }
+     }
+    }
+   }
+  },
+  "min_test_rows": 3,
+  "min_val_rows": 0,
+  "cells_below_30_test": [
+   "A2780cis",
+   "DU145",
+   "HL60",
+   "PC3",
+   "SKOV3"
+  ],
+  "cells_below_20_test": [
+   "DU145",
+   "HL60",
+   "PC3",
+   "SKOV3"
+  ],
+  "scaffolds_spanning_splits": 0,
+  "scaffold_stats": {
+   "n_scaffolds": 1151,
+   "n_singleton_scaffolds": 386,
+   "largest_scaffold_rows": 743,
+   "n_groups_budgeted_to_train": 806,
+   "largest_first_concentration": {
+    "A2780": {
+     "labelled": 1095,
+     "in_largest_70pct_of_groups": 1077,
+     "share": 0.9836
+    },
+    "A2780cis": {
+     "labelled": 564,
+     "in_largest_70pct_of_groups": 563,
+     "share": 0.9982
+    },
+    "A549": {
+     "labelled": 2647,
+     "in_largest_70pct_of_groups": 2495,
+     "share": 0.9426
+    },
+    "DU145": {
+     "labelled": 161,
+     "in_largest_70pct_of_groups": 161,
+     "share": 1.0
+    },
+    "HCT116": {
+     "labelled": 701,
+     "in_largest_70pct_of_groups": 666,
+     "share": 0.9501
+    },
+    "HL60": {
+     "labelled": 225,
+     "in_largest_70pct_of_groups": 193,
+     "share": 0.8578
+    },
+    "MCF7": {
+     "labelled": 1964,
+     "in_largest_70pct_of_groups": 1867,
+     "share": 0.9506
+    },
+    "PC3": {
+     "labelled": 275,
+     "in_largest_70pct_of_groups": 267,
+     "share": 0.9709
+    },
+    "SKOV3": {
+     "labelled": 191,
+     "in_largest_70pct_of_groups": 189,
+     "share": 0.9895
+    }
+   },
+   "scaffolds_spanning_splits": 0
+  }
+ },
+ "applied_coverage_split": {
+  "protocol": "ScaffoldSplitter(coverage=per-cell masks, coverage_salt=231, coverage_refine=True)",
+  "salt_selection": "searched 0-299 for max(min test rows + min val rows) subject to every cell >= 20 test rows; coverage only, no model was trained or scored",
+  "rows": {
+   "train": 5371,
+   "val": 920,
+   "test": 1532
+  },
+  "row_fraction": {
+   "train": 0.6866,
+   "val": 0.1176,
+   "test": 0.1958
+  },
+  "molecules": {
+   "train": 3636,
+   "val": 548,
+   "test": 1023
+  },
+  "per_split": {
+   "train": {
+    "rows": 5371,
+    "molecules": 3636,
+    "row_fraction": 0.6866,
+    "cells": {
+     "A2780": {
+      "labelled": 738,
+      "positive": 329,
+      "negative": 409,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A2780cis": {
+      "labelled": 379,
+      "positive": 160,
+      "negative": 219,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A549": {
+      "labelled": 1848,
+      "positive": 634,
+      "negative": 1214,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 101,
+      "positive": 53,
+      "negative": 48,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HCT116": {
+      "labelled": 477,
+      "positive": 208,
+      "negative": 269,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HL60": {
+      "labelled": 143,
+      "positive": 72,
+      "negative": 71,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "MCF7": {
+      "labelled": 1374,
+      "positive": 534,
+      "negative": 840,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 192,
+      "positive": 85,
+      "negative": 107,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "SKOV3": {
+      "labelled": 119,
+      "positive": 27,
+      "negative": 92,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     }
+    }
+   },
+   "val": {
+    "rows": 920,
+    "molecules": 548,
+    "row_fraction": 0.1176,
+    "cells": {
+     "A2780": {
+      "labelled": 162,
+      "positive": 38,
+      "negative": 124,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A2780cis": {
+      "labelled": 89,
+      "positive": 30,
+      "negative": 59,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A549": {
+      "labelled": 256,
+      "positive": 75,
+      "negative": 181,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 29,
+      "positive": 13,
+      "negative": 16,
+      "evaluable": {
+       "20": true,
+       "30": false
+      }
+     },
+     "HCT116": {
+      "labelled": 96,
+      "positive": 44,
+      "negative": 52,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HL60": {
+      "labelled": 22,
+      "positive": 15,
+      "negative": 7,
+      "evaluable": {
+       "20": true,
+       "30": false
+      }
+     },
+     "MCF7": {
+      "labelled": 190,
+      "positive": 56,
+      "negative": 134,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 29,
+      "positive": 3,
+      "negative": 26,
+      "evaluable": {
+       "20": true,
+       "30": false
+      }
+     },
+     "SKOV3": {
+      "labelled": 47,
+      "positive": 27,
+      "negative": 20,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     }
+    }
+   },
+   "test": {
+    "rows": 1532,
+    "molecules": 1023,
+    "row_fraction": 0.1958,
+    "cells": {
+     "A2780": {
+      "labelled": 195,
+      "positive": 99,
+      "negative": 96,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A2780cis": {
+      "labelled": 96,
+      "positive": 45,
+      "negative": 51,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "A549": {
+      "labelled": 543,
+      "positive": 156,
+      "negative": 387,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "DU145": {
+      "labelled": 31,
+      "positive": 17,
+      "negative": 14,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HCT116": {
+      "labelled": 128,
+      "positive": 58,
+      "negative": 70,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "HL60": {
+      "labelled": 60,
+      "positive": 34,
+      "negative": 26,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "MCF7": {
+      "labelled": 400,
+      "positive": 138,
+      "negative": 262,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "PC3": {
+      "labelled": 54,
+      "positive": 26,
+      "negative": 28,
+      "evaluable": {
+       "20": true,
+       "30": true
+      }
+     },
+     "SKOV3": {
+      "labelled": 25,
+      "positive": 11,
+      "negative": 14,
+      "evaluable": {
+       "20": true,
+       "30": false
+      }
+     }
+    }
+   }
+  },
+  "min_test_rows": 25,
+  "min_val_rows": 22,
+  "cells_below_30_test": [
+   "SKOV3"
+  ],
+  "cells_below_20_test": [],
+  "scaffolds_spanning_splits": 0,
+  "scaffold_stats": {
+   "n_scaffolds": 1151,
+   "n_singleton_scaffolds": 386,
+   "largest_scaffold_rows": 743,
+   "n_groups_budgeted_to_train": 806,
+   "largest_first_concentration": {
+    "A2780": {
+     "labelled": 1095,
+     "in_largest_70pct_of_groups": 1077,
+     "share": 0.9836
+    },
+    "A2780cis": {
+     "labelled": 564,
+     "in_largest_70pct_of_groups": 563,
+     "share": 0.9982
+    },
+    "A549": {
+     "labelled": 2647,
+     "in_largest_70pct_of_groups": 2495,
+     "share": 0.9426
+    },
+    "DU145": {
+     "labelled": 161,
+     "in_largest_70pct_of_groups": 161,
+     "share": 1.0
+    },
+    "HCT116": {
+     "labelled": 701,
+     "in_largest_70pct_of_groups": 666,
+     "share": 0.9501
+    },
+    "HL60": {
+     "labelled": 225,
+     "in_largest_70pct_of_groups": 193,
+     "share": 0.8578
+    },
+    "MCF7": {
+     "labelled": 1964,
+     "in_largest_70pct_of_groups": 1867,
+     "share": 0.9506
+    },
+    "PC3": {
+     "labelled": 275,
+     "in_largest_70pct_of_groups": 267,
+     "share": 0.9709
+    },
+    "SKOV3": {
+     "labelled": 191,
+     "in_largest_70pct_of_groups": 189,
+     "share": 0.9895
+    }
+   },
+   "scaffolds_spanning_splits": 0
+  }
+ },
+ "verdict": "The 3-107 test rows are produced by the split, not by the cohort. Budgeting 70/10/20 in scaffold counts spends the largest 70% of groups on train, so test receives singleton scaffolds: 4.4% of rows and five cells below 30. The coverage split keeps the same one-scaffold-one-split invariant and gives every cell >= 25 test and >= 22 val rows.",
+ "status": "MEASURED",
+ "generated_by": "molmetal/scripts/wf_a62_nci60_split_coverage_audit.py",
+ "content_sha256": "32b1d00b57a59f4e"
+}
