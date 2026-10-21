@@ -10048,7 +10048,15 @@ potency arm is capped at 15,544 rows per epoch, with auxiliary rows taking their
 The fold partition is computed over the three-endpoint union rather than the potency frame alone,
 so the folds are not identical. Comparisons are within this artifact only.
 
+**Fold-level replication.** A two-arm rerun (`molmetal/reports/up7_fold_check/fold_check.json`)
+reproduces both pooled numbers bit-for-bit (0.2365 / 0.2723). Per-fold potency deltas are
+**+0.0640 / −0.0320 / +0.0723 / +0.0674 / +0.0118** — 4/5 positive, sign-test p ≈ 0.16 — and
+phototoxicity's per-fold R² swings between **−0.230 and +0.103**. The direction is consistent, the
+magnitude is not: one fold loses 0.032. So even the leaked-task gain is not fold-stable, which
+removes the last argument for citing it.
+
 **Artifacts.** `metrics/by_metric/msrs_multitask_aux.json`;
+`molmetal/reports/up7_fold_check/fold_check.json`;
 `molmetal/scripts/msrs_multitask_aux.py`.
 
 **§6.160 catalog-count math.** Net **+1**. Cumulative **214 → 215**. ACTIVE **170 → 171**.

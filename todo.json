@@ -53,7 +53,20 @@
       "k-shot：k=50 时 ligand-disjoint 上 R²≥0 的金属 0/5；k=5 时 55-95% 的重复比不校准更差（msrs_kshot_calibration.json）。",
       "学习曲线：10%/25%/50%/100% 数据 R² = 0.0081/0.1014/0.2136/0.3081，plateau_fraction_95pct_of_full = 1.0 —— 100% 仍在爬（msrs_learning_curve.json）。",
       "数据规模：26,801 行 / 6,782 配合物 / 1,921 篇 / 754 细胞系 / 5 金属（MetalCytoToxDB.csv）。5 金属中心化后秩 ≤4；跨 ≥2 金属的配体 13.3%，跨全 5 金属的配体恰好 1 个（msrs_metal_embedding.json）。"
-    ]
+    ],
+    "post_up_round": {
+      "date": "2026-10-21",
+      "scorecard": "9 项，1 项 PASS（UP-6）。门槛全部在 2026-10-21T15:10+08:00 写死。",
+      "what_changed": [
+        "「换哪个金属更好不可学」被限定为口径问题：点估计 raw 仍不可学（0.5826 / 0.5333 都低于多数类 0.6009 / 0.6222），balanced 口径下 listwise 排序 0.5985 [0.5262,0.6663] 首次显著优于 0.5（msrs_listwise_ranker.json）。",
+        "交互份额 0.712 不再被当作「放开加性约束就能救 metal_out」的依据：free −0.097 / pair −0.113 / product −0.164，约束不是杠杆（msrs_interaction_ab.json）。",
+        "3D 配位图路线被数据本身封死：ligand_canonical 里金属原子 0/200，100% 是多点断开片段串；补给体（Cp/芳基碳负离子）ΔR² −0.005（msrs_complex3d_probe.json, msrs_dmpnn_donor_ab.json）。",
+        "预训练与 k-shot 适配都没救小金属：Pt 预训练 +0.0095（门槛 +0.03）；k=50 时 5 个金属没有一个比 zero-shot 好（msrs_pretrain_transfer.json, msrs_meta_kshot.json）。",
+        "多任务与集成都不可加：干净辅助任务 +0.0132，过门的 aux_both 其辅助信号与 potency 的 (配体,细胞系) 重叠 1.000；stack3 − stack2 = −0.0009（msrs_multitask_aux.json, msrs_final_stack.json）。",
+        "唯一可交付的改进是条件覆盖：cohort_metal Mondrian 把最差层 0.8096 → 0.8956，宽度只涨 0.65%（msrs_calibration_shift.json）。"
+      ],
+      "net": "4 条 north_star 判据仍是 2/4 —— UP 轮没有把边界论文推成强指标论文。DP-2 因此判 NO。"
+    }
   },
   "metric_gap_analysis": {
     "note": "六行，按可改进性排序。current 全部是 MEASURED；target 是本轮 gate；lever 指向 work_package。",
@@ -569,10 +582,27 @@
           "aux_both_cisplatin_r2": 0.2442,
           "budget_rows_per_epoch": 15544
         },
-        "reading": "干净的辅助任务是 phototoxicity：+0.0132，低于 0.02 门槛。aux_both 的 +0.0358 看起来过门，但 cisplatin_ratio 的泄漏率是 1.000 —— 每一行 cisplatin_ratio 都和一个 potency 行共享 (配体, 细胞系)，它不是独立任务，那个增益不能算正则化。",
+        "reading": "干净的辅助任务是 phototoxicity：+0.0132，低于 0.02 门槛。aux_both 的 +0.0358 过门，但 cisplatin_ratio 的泄漏率是 1.000 —— 每一行 cisplatin_ratio 都和一个 potency 行共享 (配体, 细胞系)，它不是独立任务，那个增益不能算正则化。逐折复核：4/5 折为正（+0.064/−0.032/+0.072/+0.067/+0.012），符号检验 p≈0.16，且 phototoxicity 逐折 R² 在 −0.230 到 +0.103 之间跳 —— 方向一致、幅度不稳、辅助头本身是噪声。",
         "second_clause": "phototoxicity 自身从 photo_only 的 −0.0432 掉到 aux_photo 的 −0.0734（−0.030，超过 0.02 容差），所以即使只看 aux_photo，两条判据也只过一条。",
         "why_photo_is_weak": "phototoxicity 在所有臂里 R² 都是负的（−0.04 到 −0.07）：共享编码器根本预测不了它，一个预测不了的辅助任务不可能提供有用的梯度。",
-        "budget": "三个 potency 臂每个 epoch 都恰好看 15,544 行（辅助行按自然比例、上限 50% 挤占 potency 行），所以增益不是「看到更多数据」造成的。"
+        "budget": "三个 potency 臂每个 epoch 都恰好看 15,544 行（辅助行按自然比例、上限 50% 挤占 potency 行），所以增益不是「看到更多数据」造成的。",
+        "fold_check": {
+          "artifact": "molmetal/reports/up7_fold_check/fold_check.json",
+          "per_fold_delta": [
+            0.064,
+            -0.032,
+            0.0723,
+            0.0674,
+            0.0118
+          ],
+          "n_folds_positive": "4/5",
+          "sign_test_p": 0.1563,
+          "replication": "pooled 0.2365 / 0.2723 逐位复现",
+          "phototoxicity_per_fold_range": [
+            -0.2304,
+            0.1029
+          ]
+        }
       }
     },
     {
@@ -703,7 +733,12 @@
       "question": "DOI 留出 R² 是否 ≥0.42？",
       "if_yes": "强指标路径：UP-7 / UP-8 作为增量，论文主表用 UP-9 的数字。",
       "if_no": "机制路径：主表写「形状可学、水平不可学」，DOI R² 如实报，不追 0.42。",
-      "status": "OPEN"
+      "status": "RESOLVED-NO (2026-10-21)",
+      "answer": "DOI 留出最高 0.3811（+GNN 融合），UP-9 的集成 0.3328，都没有到 0.42。走 if_no：主表写「形状可学、水平不可学」，DOI R² 如实报。",
+      "evidence": [
+        "metrics/by_metric/msrs_feature_fusion.json",
+        "metrics/by_metric/msrs_final_stack.json"
+      ]
     },
     {
       "id": "DP-3",

@@ -223,26 +223,11 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP7.aux_both_potency", "value": 0.2723, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.aux_both.potency.r2"},
   {"id": "UP7.photo_only_r2", "value": -0.0432, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.photo_only.phototoxicity.r2"},
   {"id": "UP7.cis_only_r2", "value": 0.1318, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.cis_only.cisplatin_ratio.r2"},
-  {"id": "UP7.cis_leak", "value": 1.0, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "leakage.cisplatin_ratio_pairs_also_in_potency"}
+  {"id": "UP7.cis_leak", "value": 1.0, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "leakage.cisplatin_ratio_pairs_also_in_potency"},
+  {"id": "UP7.aux_both_delta", "value": 0.0358, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "potency_delta_vs_single.aux_both"},
+  {"id": "UP7.aux_photo_delta", "value": 0.0132, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "potency_delta_vs_single.aux_photo"}
 ]
 ```
-
-### 2.8 UP-3 探针：3D 配位图在这份数据上做不出来（2026-10-21）
-
-`msrs_complex3d_probe.json`，200 个金属分层抽样的 (配体, 金属) 对：
-
-| 量 | 值 | 含义 |
-|---|---:|---|
-| `explicit_metal_share` | **0.000** | 配体 SMILES 里**根本没有金属原子** |
-| `multi_fragment_share` | **1.000** | 每个"配合物"都是多点断开串（中位 3 段，平均 2.23 个带电荷辅片段） |
-| `organic_embed_success` | 1.000 | 有机片段能嵌入 —— 但片段之间不相连，相对几何完全不受约束 |
-| `legal_embed_success` | 0.250 | 只连 RDKit 能表示的给体（非芳香杂原子 + 卤素）时的成功率 |
-| `complete_embed_success` | **0.065** | 连上真正会配位的给体（含芳香 N 0.84 / Cp、芳基碳负离子 0.335）后 |
-| `complete_fail_graph_rejected` | **0.935** | 失败全部发生在 sanitize（kekulize）阶段，不是嵌入阶段 |
-
-**判据用的是 complete 臂**：一个把 Cp / 吡啶给体丢掉的构造，描述的不是表里那个物种。
-⇒ `ORGANIC_ONLY_FALLBACK`：退回「2D 图 + 显式金属节点 + 配位键」，而这条退路**已经存在**
-（`molmetal/data/metal_graph.py:303-310`），就是 `msrs_dmpnn_surface.json` 的 `metal_state` 臂。
 
 ### 2.7 UP 强化轮（2026-10-21，四臂全部预注册门槛）
 
@@ -296,6 +281,23 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 `cohort_metal` 宽度只涨 **0.65%**，过门槛的第二分支（宽度增幅 <5% 且最差层 ≥0.88）⇒ **PASS**。
 **宽度本身改不了**：90% 区间宽 2.0052 ⇒ 残差 SD ≈ 0.61，与 R²=0.38 一致；校准只能改条件覆盖，不能凭空缩窄。
 
+### 2.8 UP-3 探针：3D 配位图在这份数据上做不出来（2026-10-21）
+
+`msrs_complex3d_probe.json`，200 个金属分层抽样的 (配体, 金属) 对：
+
+| 量 | 值 | 含义 |
+|---|---:|---|
+| `explicit_metal_share` | **0.000** | 配体 SMILES 里**根本没有金属原子** |
+| `multi_fragment_share` | **1.000** | 每个"配合物"都是多点断开串（中位 3 段，平均 2.23 个带电荷辅片段） |
+| `organic_embed_success` | 1.000 | 有机片段能嵌入 —— 但片段之间不相连，相对几何完全不受约束 |
+| `legal_embed_success` | 0.250 | 只连 RDKit 能表示的给体（非芳香杂原子 + 卤素）时的成功率 |
+| `complete_embed_success` | **0.065** | 连上真正会配位的给体（含芳香 N 0.84 / Cp、芳基碳负离子 0.335）后 |
+| `complete_fail_graph_rejected` | **0.935** | 失败全部发生在 sanitize（kekulize）阶段，不是嵌入阶段 |
+
+**判据用的是 complete 臂**：一个把 Cp / 吡啶给体丢掉的构造，描述的不是表里那个物种。
+⇒ `ORGANIC_ONLY_FALLBACK`：退回「2D 图 + 显式金属节点 + 配位键」，而这条退路**已经存在**
+（`molmetal/data/metal_graph.py:303-310`），就是 `msrs_dmpnn_surface.json` 的 `metal_state` 臂。
+
 ### 2.9 UP-9 集成：第三个基学习器不可加（2026-10-21）
 
 `msrs_final_stack.json`，DOI 留出，折号直接读 OOF store（不重新划分），kNN 只在折内取邻居：
@@ -312,6 +314,28 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 门槛 0.42，差 0.087 ⇒ **FAIL**，UP-9 自己的 kill clause 生效：「集成 < 最好单臂 → 增益不可加，以单臂为准」。
 
 **口径提醒**：这批数低于 0.3767 / 0.3811 的 headline，因为 DOI OOF store 里只有树臂（这个 split 没有 GNN OOF），且 ligand+both 用的是 ECFP4 而非 MACCS+RDKit。**两组数不可比，本 artifact 不替换 headline。**
+
+### 2.10 UP-7 多任务辅助终点：过门的那一臂不独立，独立的那一臂不过门（2026-10-21）
+
+`msrs_multitask_aux.json`，DOI GroupKFold(5)，共享编码器 + 3 输出头，**每 epoch 恰好 15,544 行**（辅助行按自然比例挤占，见 `budget_rows_per_epoch`），potency 只在留出折上评分：
+
+| 臂 | potency R² | Δ vs single | phototoxicity R² | cisplatin_ratio R² |
+|---|---:|---:|---:|---:|
+| single | 0.2365 | — | — | — |
+| aux_photo | 0.2497 | +0.0132 | −0.0734 | — |
+| **aux_both** | **0.2723** | **+0.0358** | −0.0430 | **0.2442** |
+| photo_only（参照） | — | — | −0.0432 | — |
+| cis_only（参照） | — | — | — | 0.1318 |
+
+**两条数值判据在 `aux_both` 上都过了**（potency +0.0358 ≥ 0.02；两个辅助终点相对各自单任务都没掉）。裁决仍然是 **FAIL**，原因是这个"过门"不构成辅助任务迁移的证据：
+
+- `cisplatin_ratio` 的 **(配体, 细胞系) 对与 potency 的重叠率 = 1.000**（artifact `leakage`）。它的标签是同一批测量在顺铂敏感/耐药对上的比值 —— 它是 potency 标签的变换，不是另一个域的监督。
+- 唯一独立的辅助任务 `phototoxicity` 只给 **+0.0132**，不到 0.02；而且它在**所有臂里 R² 都是负的**（−0.043 到 −0.073），说明共享编码器根本没学到这个终点，一个预测不了的辅助任务提供不了有用梯度。
+- `aux_photo` 还把 phototoxicity 从 −0.0432 拖到 −0.0734（−0.030 > 0.02 容差），这是"辅助头被主任务挤掉"的直接证据。
+
+**结论**：辅助任务在本数据上**没有跨任务迁移价值**；`aux_both` 的 +0.0358 是"同源标签加密度"的效应，写论文时不能当作多任务正则的收益引用。
+
+**逐折复核**（`molmetal/reports/up7_fold_check/fold_check.json`，只重跑 `single` 与 `aux_both`）：pooled 数字**逐位复现**（0.2365 / 0.2723），逐折 Δ = **+0.0640 / −0.0320 / +0.0723 / +0.0674 / +0.0118**，4/5 折为正。方向一致但**符号检验 p≈0.16**，且 phototoxicity 的逐折 R² 在 **−0.230 到 +0.103** 之间跳 —— 辅助头本身是不稳定的，这比 pooled 均值更能说明它提供不了稳定梯度。
 
 ---
 

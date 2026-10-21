@@ -179,6 +179,8 @@ def main(argv: List[str] | None = None) -> int:
                     default=REPO / "configs" / "msrs_dmpnn_surface_gpu0.yaml")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--arms", type=str, default=None,
+                    help="comma-separated subset of ARMS to run (default: all)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
 
@@ -246,10 +248,18 @@ def main(argv: List[str] | None = None) -> int:
     results: Dict[str, object] = {}
     oof: Dict[str, np.ndarray] = {}
     budget_used: Dict[str, int] = {}
-    for arm, (tasks, scored) in ARMS.items():
+    arm_names = list(ARMS)
+    if args.arms:
+        arm_names = [a.strip() for a in args.arms.split(",") if a.strip()]
+        unknown = [a for a in arm_names if a not in ARMS]
+        if unknown:
+            raise SystemExit(f"unknown arm(s): {unknown}; choose from {list(ARMS)}")
+    for arm in arm_names:
+        tasks, scored = ARMS[arm]
         t_arm = time.time()
         mask_arm = np.isin(task, tasks)
         pred = np.full((len(sub), 3), np.nan, dtype=np.float64)
+        fold_scores: List[Dict[str, float]] = []
         eval_task = int(tasks[0])
         for k in range(5):
             tr = np.flatnonzero((fold_id != k) & mask_arm)
@@ -283,6 +293,13 @@ def main(argv: List[str] | None = None) -> int:
             )
             pred[te] = predict_multi(model, [graphs[i] for i in te], device)
             budget_used[arm] = int(len(fit_idx))
+            frow = {}
+            for name, tid in (("potency", 0), ("phototoxicity", 1), ("cisplatin_ratio", 2)):
+                if name in scored:
+                    m = (fold_id == k) & (task == tid)
+                    if m.any():
+                        frow[name] = round(score(y[m], pred[m, tid])["r2"], 4)
+            fold_scores.append(frow)
             print(f"    {arm:10s} fold={k} n_fit={len(fit_all)} "
                   f"n_aux={len(aux_fit)} budget={len(fit_idx)} ({time.time() - t_arm:.0f}s)")
 
@@ -292,6 +309,7 @@ def main(argv: List[str] | None = None) -> int:
                 m = task == tid
                 entry[name] = score(y[m], pred[m, tid])
         entry["wall_s"] = round(time.time() - t_arm, 1)
+        entry["per_fold"] = fold_scores
         results[arm] = entry
         oof[arm] = pred[:, 0]
         if "potency" in entry:
@@ -302,18 +320,39 @@ def main(argv: List[str] | None = None) -> int:
                   " ".join(f"{k} R2={v['r2']:.4f}" for k, v in entry.items()
                            if isinstance(v, dict) and "r2" in v))
 
-    base = results["single"]["potency"]["r2"]
-    deltas = {a: round(results[a]["potency"]["r2"] - base, 4)
-              for a in ARMS if a != "single" and "potency" in results[a]}
-    aux_ok = True
+    base = results["single"]["potency"]["r2"] if "single" in results else None
     aux_ref = {"phototoxicity": "photo_only", "cisplatin_ratio": "cis_only"}
-    for arm in ("aux_photo", "aux_both"):
+    gate_by_arm: Dict[str, Dict[str, object]] = {}
+    for arm in arm_names:
+        if "potency" not in results[arm] or base is None:
+            continue
+        delta = results[arm]["potency"]["r2"] - base
+        drops = {}
         for name, ref_arm in aux_ref.items():
-            if name in results[arm] and name in results[ref_arm]:
-                if results[arm][name]["r2"] < results[ref_arm][name]["r2"] - GATE["aux_drop"]:
-                    aux_ok = False
-    best = max(deltas, key=deltas.get)
-    verdict = "AUX_HELPS" if (deltas[best] >= GATE["potency_delta"] and aux_ok) else "AUX_DOES_NOT_HELP"
+            if name in results[arm] and name in results.get(ref_arm, {}):
+                drops[name] = round(results[arm][name]["r2"] - results[ref_arm][name]["r2"], 4)
+        gate_by_arm[arm] = {
+            "potency_delta": round(delta, 4),
+            "potency_ok": bool(delta >= GATE["potency_delta"]),
+            "aux_delta_vs_own_single_task": drops,
+            "aux_ok": bool(all(d >= -GATE["aux_drop"] for d in drops.values())),
+        }
+    deltas = {a: v["potency_delta"] for a, v in gate_by_arm.items()}
+    best = max(deltas, key=deltas.get) if deltas else "single"
+    verdict = ("AUX_HELPS"
+               if deltas and gate_by_arm[best]["potency_ok"] and gate_by_arm[best]["aux_ok"]
+               else "AUX_DOES_NOT_HELP")
+    fold_delta = None
+    if "single" in results and best in results and best != "single":
+        a = [f.get("potency") for f in results[best]["per_fold"]]
+        b = [f.get("potency") for f in results["single"]["per_fold"]]
+        if all(x is not None for x in a + b):
+            fold_delta = {
+                "arm": best,
+                "per_fold_delta": [round(x - y, 4) for x, y in zip(a, b)],
+                "n_folds_positive": int(sum(x > y for x, y in zip(a, b))),
+                "n_folds": len(a),
+            }
 
     doc = {
         "artifact": "msrs_multitask_aux",
@@ -347,9 +386,14 @@ def main(argv: List[str] | None = None) -> int:
         },
         "results": results,
         "potency_delta_vs_single": deltas,
+        "gate_by_arm": gate_by_arm,
+        "fold_consistency": fold_delta,
         "best_arm": best,
         "verdict": verdict,
-        "verdict_rule": "PASS iff best potency delta >= 0.02 AND no auxiliary endpoint drops > 0.02",
+        "verdict_rule": "PASS iff the WINNING arm has potency delta >= 0.02 AND neither "
+                        "auxiliary endpoint drops > 0.02 vs its own single-task reference; "
+                        "gate_by_arm records every arm so a losing arm's aux degradation "
+                        "cannot be mistaken for the winning arm's",
         "caveats": [
             "One seed. Optimizer steps per epoch ARE matched (budget_rows_per_epoch), so a "
             "gain cannot come from simply seeing more rows; it can still come from the "

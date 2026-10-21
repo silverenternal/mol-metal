@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | C1 | 金属感知表示（配合物 + 态 + 配位）显著优于配体单独 | **SUPPORTED** | Δ R² +0.1002（p=2.3e-20）；metal_blind 0.4873 vs full 0.5556 | `msrs_complex_features.json:/splits/fragment_grouped/complex/delta_r2_vs_main`；`msrs_metal_ablation.json:/protocols/ligand/arms/metal_blind/r2` |
 | C2 | 跨论文（整篇 DOI 留出）绝对强度预测达 R² 0.36 | **SUPPORTED** | 0.3767（MACCS 树）/ 0.3811（融合） | `msrs_feature_expansion_5seed.json:/protocols/doi/r2_seed_averaged`；`msrs_feature_fusion.json:/protocols/doi/fused_r2` |
-| C3 | 模型能判断同一队列里"哪个金属更好" | **NOT SUPPORTED**（且低于恒定预测） | 多数类 0.6009；相减 0.5826（平衡 0.5272）；直接 0.5183（平衡 0.5162）；lambdarank 0.0734 | `msrs_delta_metric_audit.json:/routes/level_differencing/balanced`；`msrs_delta_metric_audit.json:/baselines/majority_class_rate`；`msrs_rank_within_cohort.json:/ties/sign_accuracy_ties_half`；`msrs_rank_diagnostics.json:/coverage/metal_pairs_gated` |
+| C3 | 模型能判断同一队列里"哪个金属更好" | **NOT SUPPORTED**（且低于恒定预测；balanced 口径下 listwise 显著优于 0.5，但 raw 仍输） | 多数类 0.6009；相减 0.5826（平衡 0.5272）；直接 0.5183（平衡 0.5162）；lambdarank 0.0734。放宽配对键到 (ligand, cell) 得 360 对、多数类 0.6222：pointwise 平衡 0.4705，**listwise 平衡 0.5985 [0.5262,0.6663]**，raw 0.5417 仍低于 0.6222 | `msrs_delta_metric_audit.json:/routes/level_differencing/balanced`；`msrs_delta_metric_audit.json:/baselines/majority_class_rate`；`msrs_rank_within_cohort.json:/ties/sign_accuracy_ties_half`；`msrs_rank_diagnostics.json:/coverage/metal_pairs_gated`；`msrs_listwise_ranker.json:/pairs/ligand_cell/overall/balanced_accuracy` |
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
@@ -51,8 +51,17 @@ Ir–Rh 两个金属对）。水平相减 0.5826 **低于恒定预测**，平衡
 平衡准确率与 0.5 无差别；逐对比看，Os–Ru 是金属先验赢（0.6209 vs 0.4641），
 Ir–Rh 是学习模型赢（0.6562 vs 0.5625），按对比取优的上界也只有 0.6284 < 0.65。」
 
+**UP 轮补充（2026-10-21，可写但要带口径）**：「把配对键从 (ligand, cell, DOI, time)
+放宽到 (ligand, cell) 后，同一批折上有 360 对、4 个金属对，多数类率升到 **0.6222**。
+pointwise 平衡准确率反而降到 **0.4705**；改成 listwise（`lambdarank`，group =
+(ligand, cell)）后平衡准确率 **0.5985 [0.5262, 0.6663]**，是这条线上第一次 CI 不含 0.5
+的排序结果。但 raw 符号准确率只有 **0.5417**，仍低于恒定预测 0.6222，预注册的三条
+门槛（balanced ≥0.58 ✓、CI 下界 >0.52 ✓、raw ≥0.63 ✗）没有同时满足。」
+
 **不能写**：「0.5826 接近 0.65 的门槛」——它比「永远答正号」低 0.018；也不能
 写「模型学到了排序」：它学到的是基准率。也不能写「直接回归显著更差」：区间重叠。
+也不能写「排序已经可用了」——raw 口径仍输给恒定预测；更不能把 0.5985 写成
+「比 0.5826 更好」，两者配对键不同、样本不同，不是同一估计量的两次测量。
 
 ## C4 — 融合
 
