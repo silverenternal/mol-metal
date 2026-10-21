@@ -313,8 +313,124 @@ def build_datasets(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 "source": "configs/locks/protocol_lock.yaml",
                 "locked_for": [metric_key],
             }
+    _add_inventory_only_datasets(out, repo_root)
     _enrich_datasets(out, repo_root, lock)
     return out
+
+
+def _count_lines(path: Path) -> Optional[int]:
+    """Line count of a line-oriented artifact; ``None`` when the unit is records.
+
+    A pretty-printed ``.json`` file has thousands of lines and one record, so
+    its line count is not comparable with ``declared_rows`` and is not
+    reported.  ``.csv`` files can also differ from their record count when a
+    quoted field contains a newline (``hiv.csv``: 82,256 lines, 41,127
+    records), which is exactly why the inventory's ``declared_rows`` is kept
+    as a separate field instead of overwriting this one.
+    """
+    try:
+        if path.suffix == ".gz":
+            import gzip
+
+            with gzip.open(path, "rt", encoding="utf-8", errors="replace") as f:
+                return sum(1 for _ in f)
+        if path.suffix in (".csv", ".tsv", ".jsonl", ".txt"):
+            with path.open("r", encoding="utf-8", errors="replace") as f:
+                return sum(1 for _ in f)
+    except OSError:
+        return None
+    return None
+
+
+def _resolved_paths(rows: Dict[str, Any], repo_root: Path) -> set:
+    out = set()
+    for rec in rows.values():
+        if not isinstance(rec, dict) or not rec.get("path"):
+            continue
+        p = Path(str(rec.get("path") or ""))
+        if not p.is_absolute():
+            p = repo_root / p
+        try:
+            out.add(str(p.resolve()))
+        except OSError:
+            continue
+    return out
+
+
+def _add_inventory_only_datasets(
+    out: Dict[str, Dict[str, Any]], repo_root: Path
+) -> List[str]:
+    """Rows for inventory datasets that no checksum file or lock declares.
+
+    ``docs/DATA_INVENTORY.json`` is the broadest catalogue in the repo — 21
+    entries carrying id / path / role / status / rows — but it was only ever
+    read to *enrich* rows some other source had already created.  Measured
+    2026-10-21: 11 entries had no row at all (``pt_biodata_all`` with 17,735
+    real MB-Finder measurements, ``nci60_9cell``, all four MoleculeNet
+    controls, ``pt_real_label_pool``, ``cfm_5metal_v5``, ``nci60_gi50_raw``,
+    ``crossdocked100``, ``pt_biodata_raw``).  A dataset that is not a row
+    cannot be hash-locked, cannot carry a lifecycle, and cannot block a
+    metric — which is how the paper-line MoleculeNet controls ended up with
+    no provenance at all.
+
+    Deduplication is by *resolved path*, not by basename: the inventory names
+    ``.data/.../parsed/s5_ece.json`` while the hand-added registry row is
+    ``rusanov_2025_s5_ece.json`` — same file, two names.  Comparing basenames
+    would register it twice.
+
+    The digest is computed live; the inventory records row counts, not hashes.
+    """
+    covered = _resolved_paths(out, repo_root)
+    # The previous file matters, but only as an *alias* guard: the ten
+    # hand-added ``rusanov_2025_*`` rows are re-attached after this pass by
+    # ``_preserve_underived_datasets``, and the inventory names two of the same
+    # files more briefly (``s5_ece.json``, ``s7_pt_wet_lab.json``).  Registering
+    # those under the new id would double the row — measured 2026-10-21, 34 rows
+    # instead of 32.  A previous row with the *same* id is not an alias; it is
+    # the row this pass is meant to regenerate, so it must not be skipped.
+    try:
+        prev_rows = _load_yaml(DATASETS_PATH).get("datasets") or {}
+    except Exception:  # noqa: BLE001 — a corrupt previous file must not block a rebuild
+        prev_rows = {}
+    prev_by_path = {}
+    for pid, prec in prev_rows.items():
+        if not isinstance(prec, dict):
+            continue
+        pp = Path(str(prec.get("path") or ""))
+        if not pp.is_absolute():
+            pp = repo_root / pp
+        try:
+            prev_by_path[str(pp.resolve())] = pid
+        except OSError:
+            continue
+    added: List[str] = []
+    for abs_path, inv in (_load_data_inventory() or {}).items():
+        p = Path(abs_path)
+        if abs_path in covered or not p.is_file():
+            continue
+        did = _dataset_id(str(p))
+        if did in out:
+            continue
+        alias = prev_by_path.get(abs_path)
+        if alias and alias != did:
+            # Same file, already registered under a hand-added id.  Keep that
+            # id — docs reference it — and let the preserve pass re-attach it.
+            continue
+        out[did] = {
+            "path": _rel(p),
+            "sha256": _sha256_file(p),
+            "n_lines": _count_lines(p),
+            "source": "docs/DATA_INVENTORY.json",
+            "inventory_id": inv.get("id"),
+            "declared_rows": inv.get("rows"),
+            "role": inv.get("role"),
+            "lifecycle_status": inv.get("status"),
+            "lifecycle_source": "docs/DATA_INVENTORY.json",
+        }
+        if inv.get("note"):
+            out[did]["lifecycle_note"] = inv["note"]
+        added.append(did)
+    return added
 
 
 def _dataset_id(path: str) -> str:
@@ -339,6 +455,7 @@ def _dataset_id(path: str) -> str:
 
 _SYNTHETIC_LABEL_HINTS = ("SYNTHETIC", "SIMULATED", "FABRICATED", "PLACEHOLDER")
 _NON_TRAINABLE_STATUSES = ("DO-NOT-TRAIN", "SUPERSEDED", "UNUSED")
+_LABEL_STATUSES = ("REAL", "SYNTHETIC", "COMPUTED", "NOT_APPLICABLE")
 
 
 def _sidecar_meta(path: Path) -> Optional[Dict[str, Any]]:
@@ -353,28 +470,78 @@ def _sidecar_meta(path: Path) -> Optional[Dict[str, Any]]:
     return obj if isinstance(obj, dict) else None
 
 
-def _dataset_label_status(path: Path) -> tuple:
-    """(labels, evidence) where labels is SYNTHETIC / REAL / UNRECORDED.
+_PROVENANCE_PATH = REPO_ROOT / "docs" / "DATA_PROVENANCE.json"
+_PROVENANCE_CACHE: Optional[Dict[str, Any]] = None
 
-    A sidecar that says SYNTHETIC is authoritative.  A sidecar that exists and
-    does not say so is *not* evidence of real labels — it only means the
-    generator did not warn.  REAL is therefore reserved for a sidecar that
-    positively states a source; everything else is UNRECORDED, which is a gap
-    rather than a claim.
+
+def _data_provenance() -> Dict[str, Any]:
+    """``docs/DATA_PROVENANCE.json`` → {dataset id: record}.
+
+    A sidecar travels with the bytes and therefore wins; this document is the
+    curated fallback for the files whose generator never wrote one (every
+    downloaded cohort: MoleculeNet, NCI-60, DrugOOD, tmQM, the MB-Finder
+    harvest).  Without it those rows can only ever say UNRECORDED, which reads
+    like a warning on a file that is perfectly well understood.
+    """
+    global _PROVENANCE_CACHE
+    if _PROVENANCE_CACHE is not None:
+        return _PROVENANCE_CACHE
+    out: Dict[str, Any] = {}
+    try:
+        obj = json.loads(_PROVENANCE_PATH.read_text(encoding="utf-8"))
+        rows = obj.get("datasets") or {}
+        if isinstance(rows, dict):
+            out = {k: v for k, v in rows.items() if isinstance(v, dict)}
+    except (OSError, json.JSONDecodeError):
+        out = {}
+    _PROVENANCE_CACHE = out
+    return out
+
+
+def _dataset_label_status(path: Path, dataset_id: Optional[str] = None) -> tuple:
+    """(labels, evidence) where labels is REAL / SYNTHETIC / COMPUTED /
+    NOT_APPLICABLE / UNRECORDED.
+
+    Precedence, most specific first:
+
+    1. the sidecar ``*.meta.json`` written by whatever generated the file —
+       it travels with the bytes and is the only source that can see a
+       simulator's parameters;
+    2. ``docs/DATA_PROVENANCE.json``, the curated catalogue, for files whose
+       generator never wrote a sidecar;
+    3. UNRECORDED — a gap, never a claim.
+
+    A sidecar that exists and does *not* mention provenance is not evidence of
+    real labels; it only means the generator did not warn.
     """
     meta = _sidecar_meta(path)
-    if not meta:
-        return "UNRECORDED", "no sidecar meta"
-    text = " ".join(
-        str(meta.get(k) or "")
-        for k in ("honest_framing", "note", "label_provenance", "labels")
-    ).upper()
-    for hint in _SYNTHETIC_LABEL_HINTS:
-        if hint in text:
-            return "SYNTHETIC", f"{path.stem}.meta.json says {hint}"
-    if meta.get("sources") or meta.get("label_source"):
-        return "REAL", f"{path.stem}.meta.json records a label source"
-    return "UNRECORDED", f"{path.stem}.meta.json states no label provenance"
+    if meta:
+        text = " ".join(
+            str(meta.get(k) or "")
+            for k in ("honest_framing", "note", "label_provenance", "labels")
+        ).upper()
+        for hint in _SYNTHETIC_LABEL_HINTS:
+            if hint in text:
+                return "SYNTHETIC", f"{path.stem}.meta.json says {hint}"
+        if meta.get("sources") or meta.get("label_source"):
+            return "REAL", f"{path.stem}.meta.json records a label source"
+    # The catalogue is keyed by registry id, which is the *registered* name and
+    # not always the file's basename: the Rusanov rows were hand-added as
+    # ``rusanov_2025_table_s2_journals.xlsx`` while the file on disk is
+    # ``table s2. supplementary_table_top_journals.xlsx``.
+    curated = _data_provenance().get(dataset_id or "") or _data_provenance().get(
+        path.name
+    )
+    if curated:
+        status = str(curated.get("labels") or "").upper()
+        if status in _LABEL_STATUSES:
+            return status, (
+                f"docs/DATA_PROVENANCE.json: {curated.get('source')} — "
+                f"{curated.get('evidence')}"
+            )
+    if meta:
+        return "UNRECORDED", f"{path.stem}.meta.json states no label provenance"
+    return "UNRECORDED", "no sidecar meta and no entry in docs/DATA_PROVENANCE.json"
 
 
 def _load_data_inventory() -> Dict[str, Dict[str, Any]]:
@@ -448,7 +615,7 @@ def _enrich_datasets(
         path = Path(rec["path"])
         if not path.is_absolute():
             path = repo_root / path
-        labels, evidence = _dataset_label_status(path)
+        labels, evidence = _dataset_label_status(path, did)
         rec["labels"] = labels
         rec["label_evidence"] = evidence
         inv = inventory.get(str(path.resolve()))
@@ -458,6 +625,14 @@ def _enrich_datasets(
             rec["lifecycle_source"] = "docs/DATA_INVENTORY.json"
             if inv.get("note"):
                 rec["lifecycle_note"] = inv["note"]
+        elif rec.get("lifecycle_status"):
+            # Hand-added rows (the ten Rusanov reference tables) and anything
+            # the previous generate already classified.  Overwriting these with
+            # UNCLASSIFIED made the tally flip 10 REFERENCE -> 10 UNCLASSIFIED
+            # on the second generate, which is a regression, not a re-derive.
+            rec.setdefault(
+                "lifecycle_source", "carried over from the previous registry"
+            )
         else:
             rec["lifecycle_status"] = "UNCLASSIFIED"
             rec["lifecycle_source"] = "absent from docs/DATA_INVENTORY.json"
@@ -1274,6 +1449,15 @@ def build_metrics(
         stamp, stamp_source = (
             _metric_timestamp(payload) if isinstance(payload, dict) else (None, None)
         )
+        if stamp is None:
+            # 199 artifact rows carry no measurement date.  The check already
+            # says so in prose, but the row itself said `null`, which reads as
+            # "unknown" next to a `date_added_to_repo` that looks like a date.
+            # Name the fallback so nobody quotes a commit date as a measurement.
+            stamp_source = (
+                "none (date_added_to_repo is the file's commit date, NOT a "
+                "measurement date)"
+            )
         value, value_basis = _extract_value_basis(
             payload if isinstance(payload, dict) else {}
         )
@@ -1384,6 +1568,9 @@ def check_datasets(repo_root: Path = REPO_ROOT) -> CheckResult:
     labels_unrecorded = sum(
         1 for r in rows.values() if r.get("labels") == "UNRECORDED"
     )
+    computed = sum(1 for r in rows.values() if r.get("labels") == "COMPUTED")
+    no_labels = sum(1 for r in rows.values() if r.get("labels") == "NOT_APPLICABLE")
+    real = sum(1 for r in rows.values() if r.get("labels") == "REAL")
     alternates = sum(len(r.get("alternate_serializations") or []) for r in rows.values())
     # A dataset pinned to a paper-line metric that is not trainable is the
     # failure this whole column exists to catch.
@@ -1406,8 +1593,10 @@ def check_datasets(repo_root: Path = REPO_ROOT) -> CheckResult:
         status,
         checks,
         f"{len(checks)-bad}/{len(checks)} datasets verified | {life_txt} | "
-        f"{synthetic} carry synthetic labels, {labels_unrecorded} record no label "
-        f"provenance | {alternates} alternate serialization(s) recorded | "
+        f"{real} carry REAL labels, {synthetic} carry synthetic labels, "
+        f"{computed} carry computed labels, {no_labels} carry no labels, "
+        f"{labels_unrecorded} record no label provenance | {alternates} "
+        f"alternate serialization(s) recorded | "
         f"{len(blocked)} dataset(s) pinned to a paper-line metric but not "
         f"trainable"
         + (f": {', '.join(d for d, _ in blocked)}" if blocked else ""),
@@ -1768,17 +1957,36 @@ def _preserve_underived_datasets(
     except Exception:  # noqa: BLE001 — a corrupt previous file must not block a rebuild
         return []
     kept: List[str] = []
+    covered = _resolved_paths(datasets, REPO_ROOT)
     for did, row in prev.items():
         if did in datasets or not isinstance(row, dict):
             continue
+        p = Path(str(row.get("path") or ""))
+        if not p.is_absolute():
+            p = REPO_ROOT / p
+        if row.get("path"):
+            try:
+                if str(p.resolve()) in covered:
+                    # Same file already registered under another id — the
+                    # inventory's ``s5_ece.json`` vs the hand-added
+                    # ``rusanov_2025_s5_ece.json``.  Preserving it would double
+                    # the row and double its weight in the lifecycle tally.
+                    continue
+            except OSError:
+                pass
         row = dict(row)
         row["preserved_from"] = "previous registry/datasets.yaml"
         row["preserved_reason"] = (
-            "no generator source (configs/data_checksums.json or "
-            "configs/locks/protocol_lock.yaml) declares this row; generate() "
-            "must not delete what it cannot re-derive"
+            "no generator source (configs/data_checksums.json, "
+            "configs/locks/protocol_lock.yaml or docs/DATA_INVENTORY.json) "
+            "declares this row; generate() must not delete what it cannot "
+            "re-derive"
         )
         datasets[did] = row
+        try:
+            covered.add(str(p.resolve()))
+        except OSError:
+            pass
         kept.append(did)
     return kept
 
@@ -1808,6 +2016,11 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     datasets = build_datasets(repo_root)
     preserved = _preserve_underived_datasets(datasets)
     if preserved:
+        # Preserved rows skipped build_datasets' enrichment pass, so they kept
+        # whatever ``labels`` the previous file happened to hold (usually
+        # nothing).  Re-run the pass over the full set: ten Rusanov rows were
+        # reporting ``labels: null`` while the catalogue had an entry for each.
+        _enrich_datasets(datasets, repo_root, _load_yaml(PROTOCOL_LOCK_PATH))
         print(
             f"registry: preserved {len(preserved)} dataset row(s) with no generator "
             f"source: {', '.join(sorted(preserved))}",

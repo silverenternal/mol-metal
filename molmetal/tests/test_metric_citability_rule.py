@@ -701,3 +701,122 @@ def test_alternate_serializations_are_lifted_from_the_lock(tmp_path):
     assert list(out) == ["alt.csv"]
     assert out["alt.csv"][0]["md5"] == "deadbeef"
     assert len(out["alt.csv"][0]["sha256"]) == 64
+
+
+# --- the inventory is a generator source, and the catalogue labels what
+# --- the inventory registers ------------------------------------------------
+
+
+def test_inventory_only_dataset_becomes_a_registry_row(tmp_path, monkeypatch):
+    """A dataset the inventory knows and no checksum file names must still be
+    a row — otherwise it has no hash, no lifecycle and cannot block a metric.
+
+    Measured 2026-10-21: 11 inventory entries (all four MoleculeNet controls,
+    nci60_9cell, the 17,735-row MB-Finder harvest) were in exactly that state.
+    """
+    from molmetal.scripts import registry as reg
+
+    cohort = tmp_path / "cohort.csv"
+    cohort.write_text("a\n1\n2\n", encoding="utf-8")
+    monkeypatch.setattr(
+        reg,
+        "_load_data_inventory",
+        lambda: {
+            str(cohort.resolve()): {
+                "id": "cohort",
+                "role": "control_general",
+                "status": "ACTIVE",
+                "rows": 2,
+            }
+        },
+    )
+    out = {}
+    added = reg._add_inventory_only_datasets(out, tmp_path)
+    assert added == ["cohort.csv"]
+    assert out["cohort.csv"]["lifecycle_status"] == "ACTIVE"
+    assert out["cohort.csv"]["role"] == "control_general"
+    assert out["cohort.csv"]["declared_rows"] == 2
+    assert out["cohort.csv"]["n_lines"] == 3
+    assert len(out["cohort.csv"]["sha256"]) == 64
+
+
+def test_inventory_does_not_register_the_same_file_twice(tmp_path, monkeypatch):
+    """The inventory names `s5_ece.json`; the hand-added row is
+    `rusanov_2025_s5_ece.json`. Same file, two ids — the alias must lose."""
+    from molmetal.scripts import registry as reg
+
+    f = tmp_path / "s5_ece.json"
+    f.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(
+        reg,
+        "_load_data_inventory",
+        lambda: {str(f.resolve()): {"id": "s5_ece", "status": "REFERENCE"}},
+    )
+    # Pretend the previous registry already carries the long id.
+    monkeypatch.setattr(
+        reg,
+        "_load_yaml",
+        lambda p: {"datasets": {"rusanov_2025_s5_ece.json": {"path": str(f)}}},
+    )
+    out = {}
+    assert reg._add_inventory_only_datasets(out, tmp_path) == []
+
+
+def test_catalogue_labels_a_downloaded_cohort(tmp_path, monkeypatch):
+    """A file whose generator wrote no sidecar is not automatically unknown:
+    the curated catalogue can say REAL, with evidence a reader can check."""
+    from molmetal.scripts import registry as reg
+
+    f = tmp_path / "bace.csv"
+    f.write_text("mol,Class\nC,1\n", encoding="utf-8")
+    monkeypatch.setattr(
+        reg,
+        "_PROVENANCE_CACHE",
+        {
+            "bace.csv": {
+                "labels": "REAL",
+                "source": "MoleculeNet BACE",
+                "evidence": "header is the MoleculeNet release schema",
+            }
+        },
+    )
+    labels, evidence = reg._dataset_label_status(f)
+    assert labels == "REAL"
+    assert "MoleculeNet" in evidence
+
+
+def test_sidecar_synthetic_beats_the_catalogue(tmp_path, monkeypatch):
+    """The catalogue is a fallback. A sidecar travels with the bytes and wins."""
+    from molmetal.scripts import registry as reg
+
+    f = tmp_path / "x.csv"
+    f.write_text("a\n", encoding="utf-8")
+    (tmp_path / "x.meta.json").write_text(
+        '{"note": "SYNTHETIC labels for pipeline test"}', encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        reg,
+        "_PROVENANCE_CACHE",
+        {"x.csv": {"labels": "REAL", "source": "s", "evidence": "e"}},
+    )
+    labels, _ = reg._dataset_label_status(f)
+    assert labels == "SYNTHETIC"
+
+
+def test_a_preserved_row_is_not_duplicated_by_an_alias_of_the_same_file(tmp_path):
+    from molmetal.scripts import registry as reg
+
+    f = tmp_path / "real.csv"
+    f.write_text("a\n", encoding="utf-8")
+    prev = tmp_path / "datasets.yaml"
+    prev.write_text(
+        "datasets:\n"
+        "  long_name.json:\n"
+        f"    path: {f}\n"
+        "  alias.json:\n"
+        f"    path: {f}\n",
+        encoding="utf-8",
+    )
+    built = {"long_name.json": {"path": str(f)}}
+    assert reg._preserve_underived_datasets(built, prev) == []
+    assert set(built) == {"long_name.json"}

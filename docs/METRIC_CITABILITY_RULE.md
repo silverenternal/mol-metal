@@ -186,17 +186,52 @@ about whether the response variable in it was measured. Measured 2026-10-21:
 - The registry listed that file as an ordinary dataset, `locked_for`
   `m2_r2_per_cell` and `l5_hilbert_r2`, and both are paper-line metrics.
 
-The registry now reads the two places those facts already live — the sidecar
+The registry reads the two places those facts already live — the sidecar
 `*.meta.json` beside the artifact and the inventory document — into
-`labels` (`SYNTHETIC` / `REAL` / `UNRECORDED`), `label_evidence`,
-`lifecycle_status` and `role`. A metric whose protocol pins a dataset that is
-synthetic or not trainable is demoted with the evidence quoted in the reason;
-it keeps its number, it loses the claim that the number measures the metric.
+`labels`, `label_evidence`, `lifecycle_status` and `role`. A metric whose
+protocol pins a dataset that is synthetic or not trainable is demoted with the
+evidence quoted in the reason; it keeps its number, it loses the claim that the
+number measures the metric.
 
-`REAL` is deliberately hard to earn: a sidecar that exists and does *not* warn
-is `UNRECORDED`, not `REAL`, because silence is not a provenance statement.
-10 of the 21 registered datasets are `UNRECORDED` on this axis — that is a gap
-to close at acquisition time, not something the registry can infer.
+Precedence, most specific first:
+
+1. the sidecar `*.meta.json` written by whatever generated the file — it
+   travels with the bytes and is the only source that can see a simulator's
+   parameters;
+2. `docs/DATA_PROVENANCE.json`, the curated catalogue, for downloaded cohorts
+   whose generator never wrote a sidecar (MoleculeNet, NCI-60, DrugOOD, tmQM,
+   the MB-Finder harvest). Each entry names a `source` and an `evidence` string
+   a reader can check against a column header or a metric JSON;
+3. `UNRECORDED` — a gap, never a claim. Silence is not a provenance statement.
+
+The vocabulary is `REAL` / `SYNTHETIC` / `COMPUTED` / `NOT_APPLICABLE` /
+`UNRECORDED`. `COMPUTED` exists because a DFT or docking score is neither
+measured nor simulated, and lumping the 214,373 predicted complexes in
+Rusanov Table S6 in with measured IC50s is exactly the confusion the column is
+meant to prevent. `NOT_APPLICABLE` covers structure lists and manifests, which
+have no labels to be right or wrong about. State 2026-10-21: **33 datasets,
+0 `UNRECORDED`, 0 `UNCLASSIFIED`** — 18 `REAL`, 1 `SYNTHETIC`, 2 `COMPUTED`,
+12 `NOT_APPLICABLE`.
+
+#### A label is only usable when its unit is known
+
+`pIC50 = 6 - log10(IC50_µM)`. A nM/µM mix-up moves every value by 3, which is
+larger than any effect this project measures. So a cohort builder must be able
+to point at the unit, not infer it from the value distribution.
+
+Measured 2026-10-21: the MB-Finder API exposes **no unit column**
+(`get-ceil-line-bio-data` returns `numeric_value_raw` such as `"1.42 ± 0.81"`),
+and the raw values span `0.00039` to `3.63e7`. The unit comes instead from the
+paper MB-Finder curates — Rusanov 2025 supplementary information, figure
+captions S17-S28: *"Boxplots represent log-scaled IC50 values (µM) for
+individual cell lines"*. That sentence, and the path to the PDF, is recorded in
+`platinai_4cell_real_cohort.meta.json` next to the cohort it produced.
+
+`molmetal/scripts/build_platinai_4cell_real_cohort.py` therefore fails closed:
+it drops rows whose pIC50 falls outside `[3, 10]` (0.1 nM – 1 mM, where a
+cell-viability IC50 cannot live) and counts every drop in the meta file rather
+than filtering silently.
+
 
 ### Optional disclosure field
 

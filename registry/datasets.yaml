@@ -11,7 +11,7 @@
 # Update via: .venv/bin/python molmetal/scripts/registry.py generate
 #
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-21T03:51:08+00:00'
+generated_at: '2026-10-21T06:08:05+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -22,8 +22,12 @@ datasets:
     n_lines: 26802
     frozen_at: 2026-10-03T03:04:13+0000
     source: configs/data_checksums.json
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB.csv via build_paper_cohort()
+      + collapse_duplicates(tie->active) — docs/DATA_INVENTORY.json metalcytotox_raw
+      note names this derivation; the derived files keep the parent''s Cell_line /
+      Metal columns, and the parent''s values are literature IC50s with a DOI per
+      row.'
     lifecycle_status: SUPERSEDED
     role: generative_train
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -34,8 +38,10 @@ datasets:
     n_lines: 26633
     frozen_at: 2026-10-03T03:04:13+0000
     source: configs/data_checksums.json
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB.csv via build_paper_cohort()
+      + collapse_duplicates(tie->active) — Same derivation as metalcytotox_5metal_multitask.csv
+      (docs/DATA_INVENTORY.json metalcytotox_raw note).'
     lifecycle_status: SUPERSEDED
     role: generative_train
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -47,8 +53,10 @@ datasets:
     n_lines: 26633
     frozen_at: 2026-10-03T03:04:13+0000
     source: configs/data_checksums.json
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB.csv via build_paper_cohort()
+      + collapse_duplicates(tie->active) — Same derivation as metalcytotox_5metal_multitask.csv
+      (docs/DATA_INVENTORY.json metalcytotox_raw note).'
     lifecycle_status: ACTIVE
     role: generative_train
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -65,8 +73,10 @@ datasets:
     - m1_ru_auc
     - m19_lomo
     - m21_nci60_9cell
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB.csv via build_paper_cohort()
+      + collapse_duplicates(tie->active) — Same derivation as metalcytotox_5metal_multitask.csv
+      (docs/DATA_INVENTORY.json metalcytotox_raw note).'
     lifecycle_status: ACTIVE
     role: generative_train
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -80,10 +90,16 @@ datasets:
     source: configs/data_checksums.json
     locked_for:
     - m6_kappa
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
-    lifecycle_status: UNCLASSIFIED
-    lifecycle_source: absent from docs/DATA_INVENTORY.json
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: metal-drug structure pool — Header
+      is `smiles,source` and nothing else; there is no activity column, so the file
+      has no labels to be real or synthetic.'
+    lifecycle_status: ACTIVE
+    role: pretrain
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: 449 metal-drug SMILES with a `source` column and no activity column.
+      A structure pool for metallo_pool_scaffold_split.py / r10_cfg_real_crossdocked.py
+      / ablation_runner.py, not a labelled cohort.
   MetalCytoToxDB.csv:
     path: .data/molmetal/MetalCytoToxDB.csv
     md5: f270dc907dbdfede953063a14f0825a7
@@ -94,8 +110,11 @@ datasets:
     locked_for:
     - m1_ru_auc
     - m21_nci60_9cell
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB (Krasnov corpus); docs/DATA_INVENTORY.json
+      id metalcytotox_raw — Every row carries DOI + Year + Cell_line + Time; the value
+      columns are named IC50_Dark(M*10^-6) / IC50_Cisplatin(M*10^-6), i.e. the unit
+      is in the header. Sample row: DOI 10.1021/jm301103y, Year 2012, Cell_line MCF-7.'
     lifecycle_status: ACTIVE
     role: predictive_train
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -135,10 +154,16 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m17_drugood_ood
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
-    lifecycle_status: UNCLASSIFIED
-    lifecycle_source: absent from docs/DATA_INVENTORY.json
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: DrugOOD LBAP refined IC50 split (configs/locks/drugood.yaml)
+      — Header carries `y` (the assay value) and `assay_id`; 266,522 rows. This is
+      the assay-split variant of lbap_refined_ic50_scaffold.csv.'
+    lifecycle_status: ACTIVE
+    role: control_ood
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: The same 266,522 LBAP records as the scaffold split, partitioned
+      by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent
+      from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml.
   lbap_refined_ic50_scaffold.csv:
     path: .data/molmetal/drugood/ic50/csv/lbap_refined_ic50_scaffold.csv
     md5: a639bda8acf1a8c4e807af46e22adc14
@@ -147,8 +172,10 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m17_drugood_ood
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: DrugOOD LBAP refined IC50 split (configs/locks/drugood.yaml)
+      — Header carries `y` (the assay value) and `assay_id`; 266,522 rows. Same schema
+      and row count as the assay / size splits.'
     lifecycle_status: ACTIVE
     role: control_ood
     lifecycle_source: docs/DATA_INVENTORY.json
@@ -161,10 +188,15 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m17_drugood_ood
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
-    lifecycle_status: UNCLASSIFIED
-    lifecycle_source: absent from docs/DATA_INVENTORY.json
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: DrugOOD LBAP refined IC50 split (configs/locks/drugood.yaml)
+      — Header carries `y` (the assay value) and `assay_id`; 266,522 rows. This is
+      the size-split variant of lbap_refined_ic50_scaffold.csv.'
+    lifecycle_status: ACTIVE
+    role: control_ood
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: The same 266,522 LBAP records as the scaffold split, partitioned
+      by size instead of scaffold. Same gap as drugood_lbap_assay.
   tmqm_dblock_subset.csv:
     path: molmetal/data/tmqm_dblock_subset.csv
     md5: 78cf4a1e7dadb100a4c4cf54a79db698
@@ -175,13 +207,221 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - l6_closure
-    labels: UNRECORDED
-    label_evidence: no sidecar meta
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: tmQM (d-block subset) — Header is
+      csd_code, smiles, metal_center, formal_charge, spin, coord_number, n_atoms,
+      mw, logp, qed_score, sa_score, ... — there is no energy or activity column,
+      so nothing here is a label.'
     lifecycle_status: ACTIVE
     role: pretrain
     lifecycle_source: docs/DATA_INVENTORY.json
     lifecycle_note: 5,000 d-block complexes with geometry; TMQM init is OFF in the
       current CFM config (does not transfer to ligand-only rows).
+  metalcytotox_5metal_multitask_v5.csv:
+    path: .data/molmetal/metalcytotox_5metal_multitask_v5.csv
+    sha256: e83b671f7ab04a2f5af10849b8f149a46f6e55fa44f1057814b7cab8e98377f6
+    n_lines: 24484
+    source: docs/DATA_INVENTORY.json
+    inventory_id: cfm_5metal_v5
+    declared_rows: 24483
+    role: generative_train
+    lifecycle_status: UNUSED
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: 'Deduplicated rebuild (24,483 rows) with a desalted stereo-blind
+      ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical
+      SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py.
+      No training config points at it yet, but its test split now HAS a consumer:
+      wf_a53_eval_cfm_test_split.py scores a checkpoint on split=''test'' read-only
+      (4,888 of 4,897 rows embed; 4,888 carry bond truth).'
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB.csv via build_paper_cohort()
+      + collapse_duplicates(tie->active) — Same derivation as metalcytotox_5metal_multitask.csv
+      (docs/DATA_INVENTORY.json metalcytotox_raw note).'
+  platinai_pt_all_cells_with_smiles.jsonl:
+    path: .data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl
+    sha256: d725e8198929e67284ee97542cf922a73b2fa1fe57b7aeaa2e0bef240f4c382e
+    n_lines: 17735
+    source: docs/DATA_INVENTORY.json
+    inventory_id: pt_biodata_all
+    declared_rows: 17735
+    role: eval_pt
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: 17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49).
+      No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate measurements.
+      296 unique SMILES fail RDKit parsing.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder (api.mb-finder.org), underlying
+      paper Rusanov 2025 PlatinAI (DOI 10.26434/chemrxiv-2025-pp32k) — Every row carries
+      doi + method + incubationTime + cell_line; .data/molmetal/wf_a37_platinai_biodata/pt/smiles_join_summary.json
+      records 17,735/17,735 rows with SMILES and 15,953 with a numeric value; harvest_summary_2026-10-16.json
+      records the endpoint and per-cell-line counts.'
+  harvest_summary_2026-10-16.json:
+    path: .data/molmetal/wf_a37_platinai_biodata/harvest_summary_2026-10-16.json
+    sha256: 8bba323fb6b690c467dc1aa0029962fe2d7df0b85ec41e14535558622416a4c7
+    n_lines: null
+    source: docs/DATA_INVENTORY.json
+    inventory_id: pt_biodata_raw
+    declared_rows: 30185
+    role: eval_pt
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: 'All-metal harvest summary: 485 cell lines / 30,185 rows.'
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder harvest (Wf-A37) — The file
+      is the harvest manifest: it counts rows per metal and per cell line (rows_total_all_cells=30185,
+      rows_pt_all_cells=17735) and records the endpoint and wall time. It contains
+      no per-compound measurements; those live in platinai_pt_all_cells_with_smiles.jsonl.'
+  platinai_4cell_real_label_pool.csv:
+    path: .data/molmetal/platinai_4cell_real_label_pool.csv
+    sha256: 4135ea11110f410e214a7112353784a451b319acaf512f9914072f40e71289b9
+    n_lines: 2054
+    source: docs/DATA_INVENTORY.json
+    inventory_id: pt_real_label_pool
+    declared_rows: 2053
+    role: legacy
+    lifecycle_status: SUPERSEDED
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder (Wf-A37 pool build, 2026-10-15)
+      — Rows carry value_mean + value_sd + doi + method + incubationTime. The labels
+      are real; the structures are not: 2,052 of 2,053 rows have smiles == ''__no_smiles__''
+      because the get-substances join had not run yet. Superseded by platinai_pt_all_cells_with_smiles.jsonl
+      (2026-10-19), which has SMILES on every row.'
+  platinai_4cell_real_cohort.csv:
+    path: .data/molmetal/platinai_4cell_real_cohort.csv
+    sha256: 5563b619374aa00bd846e2d3c80939cadc9f5f241a71ef86f9d3d89df3db7a18
+    n_lines: 1967
+    source: docs/DATA_INVENTORY.json
+    inventory_id: pt_4cell_real
+    declared_rows: 1966
+    role: eval_pt
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: REAL structures + REAL IC50 labels for the four PlatinAI cell
+      lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py.
+      1,966 compounds / 3,144 measurements (A549 871, A2780 860, A2780cis 600, MCF-7
+      813); 953 compounds cover >=2 cells, 56 cover all four. Unit is uM per the Rusanov
+      2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that
+      can replace pt_4cell_synthetic (which carries simulated labels).
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder harvest platinai_pt_all_cells_with_smiles.jsonl,
+      collapsed by build_platinai_4cell_real_cohort.py — Every value descends from
+      a row carrying doi + method + incubationTime in platinai_pt_all_cells_with_smiles.jsonl.
+      Unit is uM, stated by the Rusanov 2025 SI figure captions (''log-scaled IC50
+      values (uM) for individual cell lines''); pIC50 = 6 - log10(IC50_uM). The sibling
+      .meta.json records the source sha256, the filters and the drop counts.'
+  bace.csv:
+    path: .data/molmetal/moleculenet/bace.csv
+    sha256: f3fb9ce90bada3e2bd6148b0df13f8f8145a357bf87df0dd5b391ede974fc737
+    n_lines: 1514
+    source: docs/DATA_INVENTORY.json
+    inventory_id: moleculenet_bace
+    declared_rows: 1513
+    role: control_general
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Scaffold 70/10/20, 5 seeds.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MoleculeNet (Wu et al. 2018) BACE
+      release — Header is the MoleculeNet release schema: mol, CID, Class, Model,
+      pIC50, MW, AlogP, HBA, HBD, ... with the official Train/Valid/Test `Model` column.'
+  bbbp.csv:
+    path: .data/molmetal/moleculenet/bbbp.csv
+    sha256: d07a38487aeac5cee5508413e468043ef3097451d2a112701c2d60be9ec6b662
+    n_lines: 2051
+    source: docs/DATA_INVENTORY.json
+    inventory_id: moleculenet_bbbp
+    declared_rows: 2050
+    role: control_general
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Scaffold 70/10/20, 5 seeds.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MoleculeNet (Wu et al. 2018) BBBP
+      release — MoleculeNet BBBP schema and row count (2,050 records) as released.'
+  clintox.csv.gz:
+    path: .data/molmetal/moleculenet/clintox.csv.gz
+    sha256: 7324a84a180ad9068d3847677c85d58e8432e82b3ae6ac95cf0e98b3a58d9697
+    n_lines: 1485
+    source: docs/DATA_INVENTORY.json
+    inventory_id: moleculenet_clintox
+    declared_rows: 1484
+    role: control_general
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Scaffold 70/10/20, 5 seeds.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MoleculeNet (Wu et al. 2018) ClinTox
+      release — MoleculeNet ClinTox schema and row count (1,484 records) as released.'
+  hiv.csv:
+    path: .data/molmetal/moleculenet/hiv.csv
+    sha256: 9ffa7fe57dc86c342627ee1d5255e937e2ab812393c73c4d16c697022f6e1d22
+    n_lines: 82256
+    source: docs/DATA_INVENTORY.json
+    inventory_id: moleculenet_hiv
+    declared_rows: 41127
+    role: control_general
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Scaffold 70/10/20, 5 seeds.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MoleculeNet (Wu et al. 2018) HIV release
+      — MoleculeNet HIV schema; 41,127 records. Note the file has 82,256 physical
+      lines because quoted fields contain newlines.'
+  nci60_precious_9cell.csv:
+    path: molmetal/data/nci60_precious_9cell.csv
+    sha256: 80b98c618f061b44e4a7daf7f8d79a418be5d1ae8e14af210c6c6468a314bfe2
+    n_lines: 7824
+    source: docs/DATA_INVENTORY.json
+    inventory_id: nci60_9cell
+    declared_rows: 7823
+    role: control_general
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: '9-cell precious-metal panel. It is a subset of MetalCytoToxDB
+      (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko
+      scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules. The older
+      3,645/521/1,041 figure is superseded by the BLK-PA12 fix.'
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MetalCytoToxDB precious-metal subset
+      restricted to 9 NCI-60-overlapping cell lines — metrics/by_metric/nci60_precious_9cell_auc.json
+      records data_source = ''MetalCytoToxDB.csv (precious-metal subset, NCI-60-overlapping
+      cells)'' and framing ''NCI-60 raw release has no SMILES; we use the MetalCytoToxDB
+      subset''. The values therefore inherit MetalCytoToxDB''s DOI-backed IC50s.'
+  GI50.csv:
+    path: .data/molmetal/NCI60_GI50/GI50.csv
+    sha256: b6474302f57ab9d49d7a9241410a777c88078580dee2a186171aab04da2bd27f
+    n_lines: 4851918
+    source: docs/DATA_INVENTORY.json
+    inventory_id: nci60_gi50_raw
+    declared_rows: 4851917
+    role: reference
+    lifecycle_status: UNUSED
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually
+      used.
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: NCI-60 Developmental Therapeutics
+      Program screen — Header carries CONCENTRATION_UNIT, PANEL_NAME, CELL_NAME, COUNT,
+      AVERAGE, STDDEV — the unit is an explicit column, so these are normalisable
+      without inference. 4,851,917 records.'
+  crossdocked100_manifest.csv:
+    path: molmetal/data/crossdocked100_manifest.csv
+    sha256: 026bb735e012ab07857b7715e1068d4776bc62908d047763d6d5a60a1434d013
+    n_lines: 101
+    source: docs/DATA_INVENTORY.json
+    inventory_id: crossdocked100
+    declared_rows: 100
+    role: pretrain
+    lifecycle_status: ACTIVE
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: 100-pocket docking manifest for the pocket encoder.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: CrossDocked2020 (100-complex subset)
+      — Header is pocket_id, receptor_path, ligand_path, ref_path, metal_atoms, n_atoms,
+      n_residues, source — paths and counts, no activity column.'
   rusanov_2025_s5_ece.json:
     path: .data/molmetal/rusanov_2025/parsed/s5_ece.json
     md5: 301b6062c468f37c74fb679598a41c47
@@ -195,15 +435,17 @@ datasets:
     source: Rusanov 2025 SI PDF (text extraction 2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
-    role: reference_table
-    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
-      material'
-    lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+    role: reference
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Published ECE values; compared against, never trained on.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S5
+      (ECE) — Parsed supplementary table used as an external comparison baseline;
+      not a cohort.'
   rusanov_2025_s7_pt_wet_lab.json:
     path: .data/molmetal/rusanov_2025/parsed/s7_pt_wet_lab.json
     md5: 24233db146269caaec645fde6b89d468
@@ -220,15 +462,18 @@ datasets:
     source: Rusanov 2025 SI PDF (text extraction 2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
-    role: reference_table
-    lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
-      material'
-    lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+    role: reference
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: Published Pt-1..19 wet-lab panel; reference only (no wet lab per
+      §5.4).
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S7
+      (Pt wet-lab) — Parsed supplementary table used as an external comparison baseline;
+      not a cohort.'
   rusanov_2025_table_s2_journals.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s2. supplementary_table_top_journals.xlsx
     md5: 3fe701fdb332fdac67faade5ed7f78eb
@@ -239,15 +484,18 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S2
+      — Journal-level summary table from the supplementary workbook.'
   rusanov_2025_table_s3_resistance.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s3. supplementary_table_resistance.xlsx
     md5: d20f599f10ee4d74b9d3cbf92c0aff4e
@@ -258,15 +506,18 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S3
+      — Resistance summary table from the supplementary workbook.'
   rusanov_2025_table_s4_5ref_complexes.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s4. supplementary_table_statistics.xlsx
     md5: e47f6ee6da48187003f7646f3e10325b
@@ -279,15 +530,18 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S4
+      — Descriptive statistics table for the 5 reference complexes.'
   rusanov_2025_table_s6_214k_predicted.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s6. predicted cytotoxicity
       of the 214,373 unlabeled platinum complexes (mkano).xlsx
@@ -303,15 +557,20 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: COMPUTED
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S6
+      — The filename states these are predictions for 214,373 unlabelled Pt complexes.
+      They are another model''s outputs, not measurements — never mix them with measured
+      IC50s.'
   rusanov_2025_table_s8_roc_auc.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s8. summary of obtained
       mean roc-auc, precision, recall, and f1 score values.xlsx
@@ -324,15 +583,19 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S8
+      — Mean ROC-AUC / precision / recall / F1 of the published models; the external
+      numbers our results are compared against.'
   rusanov_2025_table_s9_427_de_novo.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s9. predicted de novo
       structures_a549_a2780_a2780cis_mcf-7_72 h_427 complexes.xlsx
@@ -347,15 +610,18 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: COMPUTED
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S9
+      — Predicted values for 427 de-novo structures; predictions, not assays.'
   rusanov_2025_table_s10_signaling.xlsx:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s10. correlated deg-deps
       in a2780cis cells treated with platinai.xlsx
@@ -367,15 +633,18 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary Table S10
+      — Correlated DEGs in A2780cis cells; no compound activity labels.'
   rusanov_2025_supplementary_information_v2.pdf:
     path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/supplementary_information_v2.pdf
     md5: bba8edc36ae8809d15ff55ef2894dce2
@@ -388,12 +657,15 @@ datasets:
     source: ChemRxiv V2 zip (2026-10-16)
     locked_for: []
     preserved_from: previous registry/datasets.yaml
-    preserved_reason: no generator source (configs/data_checksums.json or configs/locks/protocol_lock.yaml)
-      declares this row; generate() must not delete what it cannot re-derive
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
     lifecycle_status: REFERENCE
     role: reference_table
     lifecycle_source: 'manual: Rusanov 2025 (DOI 10.26434/chemrxiv-2025-pp32k) supplementary
       material'
     lifecycle_note: Published comparison baseline / source table. Never a training
-      or evaluation cohort; quoted only as the external reference against which our
-      numbers are compared.
+      or evaluation cohort.
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: Rusanov 2025 supplementary information
+      — PDF document; the parsed tables above are extracted from it.'

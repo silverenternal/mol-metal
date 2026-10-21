@@ -35,7 +35,7 @@
       "status": "UNUSED",
       "rows": 24483,
       "bytes": 5174117,
-      "note": "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet."
+      "note": "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py. No training config points at it yet, but its test split now HAS a consumer: wf_a53_eval_cfm_test_split.py scores a checkpoint on split='test' read-only (4,888 of 4,897 rows embed; 4,888 carry bond truth)."
     },
     {
       "id": "cfm_5metal_v2",
@@ -90,6 +90,15 @@
       "rows": 2053,
       "bytes": 211854,
       "note": "Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all."
+    },
+    {
+      "id": "pt_4cell_real",
+      "path": ".data/molmetal/platinai_4cell_real_cohort.csv",
+      "role": "eval_pt",
+      "status": "ACTIVE",
+      "rows": 1966,
+      "bytes": 212405,
+      "note": "REAL structures + REAL IC50 labels for the four PlatinAI cell lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 measurements (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2 cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace pt_4cell_synthetic (which carries simulated labels)."
     },
     {
       "id": "moleculenet_bace",
@@ -153,6 +162,33 @@
       "rows": 266522,
       "bytes": 34325590,
       "note": "OOD control; iid/ood train/val/test split is a column."
+    },
+    {
+      "id": "drugood_lbap_assay",
+      "path": ".data/molmetal/drugood/ic50/csv/lbap_refined_ic50_assay.csv",
+      "role": "control_ood",
+      "status": "ACTIVE",
+      "rows": 266522,
+      "bytes": 31895094,
+      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml."
+    },
+    {
+      "id": "drugood_lbap_size",
+      "path": ".data/molmetal/drugood/ic50/csv/lbap_refined_ic50_size.csv",
+      "role": "control_ood",
+      "status": "ACTIVE",
+      "rows": 266522,
+      "bytes": 31516153,
+      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by size instead of scaffold. Same gap as drugood_lbap_assay."
+    },
+    {
+      "id": "metallo_drugs_500",
+      "path": "molmetal/data/metallo_drugs_500_train.csv",
+      "role": "pretrain",
+      "status": "ACTIVE",
+      "rows": 449,
+      "bytes": 49439,
+      "note": "449 metal-drug SMILES with a `source` column and no activity column. A structure pool for metallo_pool_scaffold_split.py / r10_cfg_real_crossdocked.py / ablation_runner.py, not a labelled cohort."
     },
     {
       "id": "tmqm_dblock",

@@ -52,7 +52,7 @@ docking), not by a train/test AUC.
 ### 1.4 Controls
 
 - **NCI-60 precious-metal panel**: 7,823 rows / 5,207 unique SMILES / 9 cell lines. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: train 4,860 / val 115 / test 232 molecules. It is a **subset of MetalCytoToxDB** (5,207/5,207 canonical molecules in the 5-metal pool, 5,183 in CFM), not an independent corpus. The older 3,645/521/1,041 figure came from the pre-BLK-PA12 splitter (empty scaffold key).
-- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds. The split key **was stereo-aware until 2026-10-19**; it is now stereo-blind and bit-exact with `MurckoScaffoldSmiles(includeChirality=False)`, the `astartes` reference. Re-keying turned over 63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox) of test molecules across the five seeds; hiv is unchanged (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`). **Re-run under the aligned key (2026-10-19, 512/4, 5 seeds, 40 min):** bbbp 0.9025 ± 0.0350, bace 0.7422 ± 0.0828, hiv 0.7976 ± 0.0170, clintox 0.7957 ± 0.1075, mean 0.8095 (`metrics/by_metric/moleculenet_auc.json`). The pre-alignment artifacts are annotated as superseded; do not mix the columns, because the test sets differ by 59-87 %. No canonical molecule overlap under either key.
+- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds. The split key is **stereo-aware**. At the stereo-blind level up to 0 scaffolds are shared between train and test (0.0 % of test rows, bace); desalting adds a counterion-driven component up to 52 scaffolds (hiv), with a row-level maximum of 35.3 % (bbbp). No canonical molecule overlap.
 - **DrugOOD lbap**: 266,522 rows with iid/ood train/val/test as a column; used as the OOD control, not as a headline result. train vs ood_test has 0 canonical and 0 scaffold_split_id overlap; train vs iid_test shares scaffold IDs by design.
 
 ## 2. File register
@@ -67,12 +67,16 @@ docking), not by a train/test AUC.
 | `cfm_5metal_v1` | generative_train | **SUPERSEDED** | 26,801 | `.data/molmetal/metalcytotox_5metal_multitask.csv` |
 | `pt_biodata_all` | eval_pt | **ACTIVE** | 17,735 | `.data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl` |
 | `pt_biodata_raw` | eval_pt | **ACTIVE** | 30,185 | `.data/molmetal/wf_a37_platinai_biodata/harvest_summary_2026-10-16.json` |
+| `pt_4cell_real` | eval_pt | **ACTIVE** | 1,966 | `.data/molmetal/platinai_4cell_real_cohort.csv` |
 | `moleculenet_bace` | control_general | **ACTIVE** | 1,513 | `.data/molmetal/moleculenet/bace.csv` |
 | `moleculenet_bbbp` | control_general | **ACTIVE** | 2,050 | `.data/molmetal/moleculenet/bbbp.csv` |
 | `moleculenet_clintox` | control_general | **ACTIVE** | 1,484 | `.data/molmetal/moleculenet/clintox.csv.gz` |
 | `moleculenet_hiv` | control_general | **ACTIVE** | 41,127 | `.data/molmetal/moleculenet/hiv.csv` |
 | `nci60_9cell` | control_general | **ACTIVE** | 7,823 | `molmetal/data/nci60_precious_9cell.csv` |
 | `drugood_lbap_scaffold` | control_ood | **ACTIVE** | 266,522 | `.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_scaffold.csv` |
+| `drugood_lbap_assay` | control_ood | **ACTIVE** | 266,522 | `.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_assay.csv` |
+| `drugood_lbap_size` | control_ood | **ACTIVE** | 266,522 | `.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_size.csv` |
+| `metallo_drugs_500` | pretrain | **ACTIVE** | 449 | `molmetal/data/metallo_drugs_500_train.csv` |
 | `tmqm_dblock` | pretrain | **ACTIVE** | 5,000 | `molmetal/data/tmqm_dblock_subset.csv` |
 | `crossdocked100` | pretrain | **ACTIVE** | 100 | `molmetal/data/crossdocked100_manifest.csv` |
 | `nci60_gi50_raw` | reference | **UNUSED** | 4,851,917 | `.data/molmetal/NCI60_GI50/GI50.csv` |
@@ -86,13 +90,14 @@ docking), not by a train/test AUC.
 - **`metalcytotox_raw`** (ACTIVE) — Raw Krasnov corpus. Predictive cohorts are derived from this by build_paper_cohort() + collapse_duplicates(tie->active).
 - **`cfm_5metal_v3`** (ACTIVE) — Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file; it is stereo-aware and full-complex, not a desalted ligand-scaffold split (see docs/DATA_LEAKAGE_AUDIT.md).
 - **`cfm_5metal_v4`** (ACTIVE) — Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired. Same split caveat as v3.
-- **`cfm_5metal_v5`** (UNUSED) — Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet.
+- **`cfm_5metal_v5`** (UNUSED) — Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py. No training config points at it yet, but its test split now HAS a consumer: wf_a53_eval_cfm_test_split.py scores a checkpoint on split='test' read-only (4,888 of 4,897 rows embed; 4,888 carry bond truth).
 - **`cfm_5metal_v2`** (SUPERSEDED) — Same 26,632 rows as v3, differing only in column naming (lowercase smiles/metal vs canonical SMILES_Ligands/Metal). Use v3.
 - **`cfm_5metal_v1`** (SUPERSEDED) — Pre-v2 cohort; only legacy configs.
 - **`pt_biodata_all`** (ACTIVE) — 17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49). No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate measurements. 296 unique SMILES fail RDKit parsing.
 - **`pt_biodata_raw`** (ACTIVE) — All-metal harvest summary: 485 cell lines / 30,185 rows.
 - **`pt_4cell_synthetic`** (DO-NOT-TRAIN) — SYNTHETIC pIC50 (meta says 'synthetic IC50 labels for pipeline test'). Its ~0.50 AUC is a null test, not a measurement.
 - **`pt_real_label_pool`** (SUPERSEDED) — Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all.
+- **`pt_4cell_real`** (ACTIVE) — REAL structures + REAL IC50 labels for the four PlatinAI cell lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 measurements (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2 cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace pt_4cell_synthetic (which carries simulated labels).
 - **`moleculenet_bace`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_bbbp`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_clintox`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
@@ -100,6 +105,9 @@ docking), not by a train/test AUC.
 - **`nci60_9cell`** (ACTIVE) — 9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules. The older 3,645/521/1,041 figure is superseded by the BLK-PA12 fix.
 - **`nci60_gi50_raw`** (UNUSED) — Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used.
 - **`drugood_lbap_scaffold`** (ACTIVE) — OOD control; iid/ood train/val/test split is a column.
+- **`drugood_lbap_assay`** (ACTIVE) — The same 266,522 LBAP records as the scaffold split, partitioned by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml.
+- **`drugood_lbap_size`** (ACTIVE) — The same 266,522 LBAP records as the scaffold split, partitioned by size instead of scaffold. Same gap as drugood_lbap_assay.
+- **`metallo_drugs_500`** (ACTIVE) — 449 metal-drug SMILES with a `source` column and no activity column. A structure pool for metallo_pool_scaffold_split.py / r10_cfg_real_crossdocked.py / ablation_runner.py, not a labelled cohort.
 - **`tmqm_dblock`** (ACTIVE) — 5,000 d-block complexes with geometry; TMQM init is OFF in the current CFM config (does not transfer to ligand-only rows).
 - **`crossdocked100`** (ACTIVE) — 100-pocket docking manifest for the pocket encoder.
 - **`rusanov_s5_ece`** (REFERENCE) — Published ECE values; compared against, never trained on.
@@ -123,12 +131,9 @@ docking), not by a train/test AUC.
 - The CFM `scaffold_id` is a full-complex, stereo-aware key. Rebuilding
   it as a desalted, stereo-blind ligand scaffold would change the split
   and require retraining.
-- The MoleculeNet `_scaffold_split` now uses the stereo-blind `astartes` key
-  (fixed 2026-10-19); the D-MPNN `ScaffoldSplitter` uses the same key. The
-  shipped MoleculeNet metrics were measured before the fix and need a re-run.
-- The Pt 4-cell cohort has a real Bemis-Murcko split available
-  (`--platinai-split-strategy bemis_murcko_70_10_10`, 0.0 % test-row scaffold
-  overlap); the legacy default is still the SMILES hash at 41.9 %.
+- The MoleculeNet `_scaffold_split` uses a stereo-aware key; the D-MPNN
+  `ScaffoldSplitter` uses a stereo-blind key. They are not the same
+  protocol.
 
 ## 6. Leakage audit
 

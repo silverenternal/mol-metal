@@ -87,6 +87,14 @@ DECLARED: List[tuple] = [
     ("pt_real_label_pool", DATA / "platinai_4cell_real_label_pool.csv",
      "legacy", "SUPERSEDED",
      "Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all."),
+    ("pt_4cell_real", DATA / "platinai_4cell_real_cohort.csv", "eval_pt", "ACTIVE",
+     "REAL structures + REAL IC50 labels for the four PlatinAI cell lines, built "
+     "from the 2026-10-19 MB-Finder harvest by "
+     "build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 measurements "
+     "(A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2 "
+     "cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure "
+     "captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace "
+     "pt_4cell_synthetic (which carries simulated labels)."),
     # --- controls --------------------------------------------------------
     ("moleculenet_bace", DATA / "moleculenet" / "bace.csv",
      "control_general", "ACTIVE", "Scaffold 70/10/20, 5 seeds."),
@@ -108,6 +116,22 @@ DECLARED: List[tuple] = [
     ("drugood_lbap_scaffold", DATA / "drugood" / "ic50" / "csv" /
      "lbap_refined_ic50_scaffold.csv", "control_ood", "ACTIVE",
      "OOD control; iid/ood train/val/test split is a column."),
+    ("drugood_lbap_assay", DATA / "drugood" / "ic50" / "csv" /
+     "lbap_refined_ic50_assay.csv", "control_ood", "ACTIVE",
+     "The same 266,522 LBAP records as the scaffold split, partitioned by "
+     "assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was "
+     "absent from this inventory, so it had no lifecycle and no label "
+     "provenance in registry/datasets.yaml."),
+    ("drugood_lbap_size", DATA / "drugood" / "ic50" / "csv" /
+     "lbap_refined_ic50_size.csv", "control_ood", "ACTIVE",
+     "The same 266,522 LBAP records as the scaffold split, partitioned by "
+     "size instead of scaffold. Same gap as drugood_lbap_assay."),
+    # --- pretraining -----------------------------------------------------
+    ("metallo_drugs_500", ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv",
+     "pretrain", "ACTIVE",
+     "449 metal-drug SMILES with a `source` column and no activity column. A "
+     "structure pool for metallo_pool_scaffold_split.py / "
+     "r10_cfg_real_crossdocked.py / ablation_runner.py, not a labelled cohort."),
     # --- pretraining -----------------------------------------------------
     ("tmqm_dblock", ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv",
      "pretrain", "ACTIVE",
