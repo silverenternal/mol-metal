@@ -278,16 +278,27 @@ def staleness(
     """Compare the ledger's latest entry per metric against the registry row.
 
     For each metric in ``registry/metrics.yaml``:
-      - ``no_run``     — no ledger entry exists for this metric.
-      - ``stale``      — the registry's ``source_json_sha256`` differs from the
-                         ledger's latest ``source_json_sha256`` (the registry
-                         was refreshed from a source the ledger has not seen, or
-                         the source changed since the ledger entry was written).
-      - ``current``    — the latest ledger entry's source_json hash matches the
-                         registry row.
+      - ``no_run``      — no ledger entry exists for this metric.
+      - ``stale``       — the registry's ``source_json_sha256`` differs from the
+                          ledger's latest ``source_json_sha256`` **and the value
+                          differs too** (the registry was refreshed from a source
+                          the ledger has not seen, or the source changed since
+                          the ledger entry was written).
+      - ``reformatted`` — the hashes differ but the recorded value is identical:
+                          the JSON gained a field, lost whitespace or was
+                          re-serialised. The number is still the one the ledger
+                          saw, so this is not a provenance gap.
+      - ``current``     — the latest ledger entry's source_json hash matches the
+                          registry row.
+
+    ``reformatted`` exists because MEASURED 2026-10-21 three of four "stale"
+    rows (m7_diversity, m2_r2_per_cell, m21_nci60_9cell) carried byte-identical
+    values and only the file had been rewritten. A staleness gate that cries
+    wolf on a reformat is a gate people stop reading, and the one row that had
+    really changed (l5_hilbert_r2, -5.6625 -> -6.7126) was hidden among them.
 
     Returns ``{metric_id: {status, ledger_timestamp, ledger_source_json_sha256,
-    registry_source_json_sha256}}``.
+    registry_source_json_sha256, ledger_value, registry_value}}``.
     """
     reg = _load_yaml(registry_metrics_path)
     out: Dict[str, Dict[str, Any]] = {}
@@ -299,17 +310,40 @@ def staleness(
             "ledger_timestamp": None,
             "ledger_source_json_sha256": None,
             "registry_source_json_sha256": reg_sha,
+            "ledger_value": None,
+            "registry_value": rec.get("value"),
         }
         if entry is not None:
             info["ledger_timestamp"] = entry.get("timestamp")
             info["ledger_source_json_sha256"] = entry.get("source_json_sha256")
-            info["status"] = (
-                "current"
-                if entry.get("source_json_sha256") == reg_sha
-                else "stale"
-            )
+            info["ledger_value"] = entry.get("value")
+            if entry.get("source_json_sha256") == reg_sha:
+                info["status"] = "current"
+            elif _same_value(entry.get("value"), rec.get("value")):
+                info["status"] = "reformatted"
+            else:
+                info["status"] = "stale"
         out[mid] = info
     return out
+
+
+def _same_value(a: Any, b: Any) -> bool:
+    """True when two recorded values are the same number, list or mapping.
+
+    Compared through a canonical JSON dump rather than ``==``: ``0.123`` and
+    ``"0.123"`` are not the same measurement, while ``1`` and ``1.0`` are, and
+    a nested dict must compare by content rather than by identity.
+    """
+
+    def canon(v: Any) -> str:
+        try:
+            return json.dumps(v, sort_keys=True, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            return repr(v)
+
+    if isinstance(a, bool) != isinstance(b, bool):
+        return False
+    return canon(a) == canon(b)
 
 
 def staleness_summary(
@@ -318,8 +352,8 @@ def staleness_summary(
     ledger_path: Path = LEDGER_PATH,
     repo_root: Path = REPO_ROOT,
 ) -> Dict[str, int]:
-    """Counts of current / stale / no_run across the registry metrics."""
-    counts = {"current": 0, "stale": 0, "no_run": 0}
+    """Counts of current / reformatted / stale / no_run across the registry metrics."""
+    counts = {"current": 0, "reformatted": 0, "stale": 0, "no_run": 0}
     for info in staleness(
         registry_metrics_path, ledger_path=ledger_path, repo_root=repo_root
     ).values():
@@ -394,10 +428,12 @@ def check_ledger(
 ) -> Dict[str, Any]:
     """Report-only staleness check.  Returns {status, counts, detail}."""
     info = staleness(registry_metrics_path, ledger_path=ledger_path, repo_root=repo_root)
-    counts = {"current": 0, "stale": 0, "no_run": 0}
+    counts = {"current": 0, "reformatted": 0, "stale": 0, "no_run": 0}
     for v in info.values():
         counts[v["status"]] = counts.get(v["status"], 0) + 1
     return {
+        # `reformatted` is not a provenance gap: the value the ledger saw is
+        # still the value on disk. Only a changed value or a missing run is.
         "status": "PASS" if counts["stale"] == 0 and counts["no_run"] == 0 else "WARN",
         "counts": counts,
         "detail": info,
@@ -414,7 +450,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if cmd == "status":
         rep = check_ledger()
         c = rep["counts"]
-        print(f"ledger: current={c['current']} stale={c['stale']} no_run={c['no_run']}")
+        print(
+            f"ledger: current={c['current']} reformatted={c['reformatted']} "
+            f"stale={c['stale']} no_run={c['no_run']}"
+        )
         for mid, info in rep["detail"].items():
             if info["status"] != "current":
                 print(f"    {info['status']:6s} {mid}: ledger_ts={info['ledger_timestamp']}")

@@ -174,3 +174,71 @@ def test_preflight_gate_registered():
 
     names = [g[0] for g in build_gates("all")]
     assert "p3_run_ledger_staleness" in names
+
+
+def _mk_registry(tmp_path: Path, metrics: dict) -> Path:
+    import yaml
+
+    path = tmp_path / "metrics.yaml"
+    path.write_text(yaml.safe_dump({"metrics": metrics}, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def test_a_reformat_with_the_same_value_is_not_stale(tmp_path):
+    """MEASURED 2026-10-21: three of four "stale" rows had identical values.
+
+    m7_diversity, m2_r2_per_cell and m21_nci60_9cell had only had their JSON
+    rewritten; the number the ledger saw was still the number on disk. Calling
+    that stale is what makes a provenance gate stop being read — and it hid the
+    one row that had really changed (l5_hilbert_r2).
+    """
+    led = _mk_ledger(tmp_path)
+    reg = _mk_registry(
+        tmp_path,
+        {
+            "m7_diversity": {"value": 0.869, "source_json": "x.json", "source_json_sha256": "a" * 64},
+        },
+    )
+    rl.record_run(
+        "m7_diversity", 0.869, source_json="metrics/by_metric/m7_diversity.json",
+        source_json_sha256="b" * 64, ledger_path=led,
+    )
+    info = rl.staleness(reg, ledger_path=led)
+    assert info["m7_diversity"]["status"] == "reformatted"
+    assert rl.check_ledger(reg, ledger_path=led)["status"] == "PASS"
+
+
+def test_a_changed_value_with_a_changed_hash_is_still_stale(tmp_path):
+    """The one row that really moved must not be reclassified.
+
+    l5_hilbert_r2 went -5.6625 -> -6.7126 in 7e30d6ea with no ledger entry.
+    """
+    led = _mk_ledger(tmp_path)
+    reg = _mk_registry(
+        tmp_path,
+        {
+            "l5_hilbert_r2": {"value": -6.7126, "source_json": "x.json", "source_json_sha256": "a" * 64},
+        },
+    )
+    rl.record_run(
+        "l5_hilbert_r2", -5.6625, source_json="metrics/by_metric/hilbert_4cell_r2.json",
+        source_json_sha256="b" * 64, ledger_path=led,
+    )
+    info = rl.staleness(reg, ledger_path=led)
+    assert info["l5_hilbert_r2"]["status"] == "stale"
+    assert rl.check_ledger(reg, ledger_path=led)["status"] == "WARN"
+
+
+def test_the_summary_counts_reformatted_separately(tmp_path):
+    led = _mk_ledger(tmp_path)
+    reg = _mk_registry(
+        tmp_path,
+        {
+            "a": {"value": 1.0, "source_json": "x.json", "source_json_sha256": "a" * 64},
+            "b": {"value": 2.0, "source_json": "x.json", "source_json_sha256": "a" * 64},
+        },
+    )
+    rl.record_run("a", 1.0, source_json="metrics/by_metric/decode_ratio.json",
+                  source_json_sha256="b" * 64, ledger_path=led)
+    counts = rl.staleness_summary(reg, ledger_path=led)
+    assert counts == {"current": 0, "reformatted": 1, "stale": 0, "no_run": 1}

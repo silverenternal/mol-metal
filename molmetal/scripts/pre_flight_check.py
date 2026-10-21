@@ -8717,7 +8717,12 @@ def gate_run_ledger_staleness(
             time.perf_counter() - t0,
         )
     c = rep["counts"]
-    parts = [f"current={c['current']}", f"stale={c['stale']}", f"no_run={c['no_run']}"]
+    parts = [
+        f"current={c['current']}",
+        f"reformatted={c['reformatted']}",
+        f"stale={c['stale']}",
+        f"no_run={c['no_run']}",
+    ]
     for mid, info in rep["detail"].items():
         if info["status"] != "current":
             parts.append(f"{mid}={info['status']}")
