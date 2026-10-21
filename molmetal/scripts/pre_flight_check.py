@@ -11443,6 +11443,44 @@ _DMPNN_SMOKE_DATA_CSV_CANDIDATES: Tuple[Path, ...] = (
 )
 _DMPNN_SMOKE_MIN_DROP_FRAC = 0.003
 _DMPNN_SMOKE_METAL = "Re"
+
+# ---------------------------------------------------------------------------
+# Device for the trainer smoke gates.
+#
+# These gates passed ``--device cpu`` unconditionally, on the theory that
+# pre-flight might run on a CPU-only host.  On this two-GPU box that meant every
+# pre-flight spawned a 2-epoch D-MPNN run that held ~7 CPU cores while both GPUs
+# sat idle, and under any CPU contention it blew the 90 s / 300 s budgets
+# (measured 2026-10-21: p1_chemprop_smoke 90.6 s TIMEOUT, D-MPNN 300 s
+# TIMEOUT, while nvidia-smi showed GPU0 at 58% and no smoke process on it).
+#
+# The GPU is now the default; CPU remains only as the fallback for a host where
+# torch reports no CUDA device.  ``cuda:0`` is the only device this project uses
+# (AGENTS.md: all GPU work on GPU0).
+# ---------------------------------------------------------------------------
+_SMOKE_DEVICE_CACHE: Optional[str] = None
+
+
+def _smoke_device() -> str:
+    """``cuda:0`` when torch can see a GPU, else ``cpu``.  Probed once."""
+    global _SMOKE_DEVICE_CACHE
+    if _SMOKE_DEVICE_CACHE is not None:
+        return _SMOKE_DEVICE_CACHE
+    device = "cpu"
+    try:
+        probe = subprocess.run(
+            [VENV_PY, "-c", "import torch;print(torch.cuda.is_available())"],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if probe.returncode == 0 and probe.stdout.strip().endswith("True"):
+            device = "cuda:0"
+    except (OSError, subprocess.SubprocessError):
+        device = "cpu"
+    _SMOKE_DEVICE_CACHE = device
+    return device
+
 _DMPNN_STDOUT_LOSS_RE = re.compile(
     r"epoch\s+(\d+)/\d+\s+loss=([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)"
 )
@@ -11631,7 +11669,7 @@ def _gate_dmpnn_quick_smoke(
         VENV_PY,
         str(dmpnn_script),
         "--device",
-        "cpu",
+        _smoke_device(),
         "--epochs",
         "2",
         "--csv",
@@ -14882,7 +14920,7 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
         "--quick",
         "--allow-single-seed",
         "--device",
-        "cpu",
+        _smoke_device(),
         "--out-dir",
         str(smoke_out),
         # Wf-446-H2/L3: pinned so the ckpt the trainer overwrites is known by
@@ -14892,9 +14930,10 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
         _CHEMPROP_SMOKE_METAL,
         "--seeds",
         str(_CHEMPROP_SMOKE_SEED),
-        # Wf-446: explicit --device cpu (the trainer defaults to cuda; pre-flight
-        # gates run on a CPU-only host where cuda is unavailable; --quick is the
-        # canonical CPU smoke per chemprop --quick help text).
+        # Wf-446: device comes from `_smoke_device()` — cuda:0 when this host
+        # has a GPU, cpu only as the fallback.  Pinning "cpu" here made every
+        # pre-flight run a real (if tiny) D-MPNN training on the CPU while both
+        # GPUs idled, which is also why the 90 s budget kept tripping.
     ]
     rc, out, err = _run(args, timeout=90.0, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
