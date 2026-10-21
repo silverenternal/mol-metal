@@ -1,0 +1,127 @@
+{
+ "artifact": "msrs_multitask_aux",
+ "version": "1.0",
+ "framework": "MSRS — Metal Substitution Response Surface",
+ "level": "L3 multitask / UP-7",
+ "generated_utc": "2026-10-21T09:44:04+00:00",
+ "provenance": {
+  "config": "configs/msrs_dmpnn_surface_gpu0.yaml",
+  "script": "molmetal/scripts/msrs_multitask_aux.py",
+  "long": "data/msrs/measurements.parquet",
+  "seed": 20261018,
+  "device": "cuda:0"
+ },
+ "design": {
+  "encoder": "MetalAwareDMPNN (metal_injection=message), shared",
+  "heads": "one linear readout with 3 outputs; loss masked to the arm's task set",
+  "arms": {
+   "single": [
+    "potency"
+   ],
+   "aux_photo": [
+    "potency",
+    "phototoxicity"
+   ],
+   "aux_both": [
+    "potency",
+    "phototoxicity",
+    "cisplatin_ratio"
+   ],
+   "photo_only": [
+    "phototoxicity"
+   ],
+   "cis_only": [
+    "cisplatin_ratio"
+   ]
+  },
+  "folds": "GroupKFold(5) on doi over the union of endpoints",
+  "evaluation": "potency rows only, out-of-fold",
+  "seeds": 1,
+  "budget_matching": "every epoch sees exactly the potency-only row count; auxiliary rows are subsampled to fill the remainder",
+  "budget_rows_per_epoch": {
+   "single": 15544,
+   "aux_photo": 15544,
+   "aux_both": 15544,
+   "photo_only": 939,
+   "cis_only": 9171
+  },
+  "gate": {
+   "potency_delta": 0.02,
+   "aux_drop": 0.02,
+   "frozen_at": "2026-10-21T15:10+08:00"
+  }
+ },
+ "leakage": {
+  "cisplatin_ratio_pairs_also_in_potency": 1.0,
+  "reading": "cisplatin_ratio is derived from the cisplatin-sensitive / resistant pair, so a high share means aux_both is not an independent task"
+ },
+ "results": {
+  "single": {
+   "potency": {
+    "mae": 0.5089,
+    "r2": 0.2365,
+    "rmse": 0.6662
+   },
+   "wall_s": 600.1
+  },
+  "aux_photo": {
+   "potency": {
+    "mae": 0.5047,
+    "r2": 0.2497,
+    "rmse": 0.6604
+   },
+   "phototoxicity": {
+    "mae": 0.638,
+    "r2": -0.0734,
+    "rmse": 0.8125
+   },
+   "wall_s": 460.0
+  },
+  "aux_both": {
+   "potency": {
+    "mae": 0.4962,
+    "r2": 0.2723,
+    "rmse": 0.6504
+   },
+   "phototoxicity": {
+    "mae": 0.6348,
+    "r2": -0.043,
+    "rmse": 0.801
+   },
+   "cisplatin_ratio": {
+    "mae": 0.5329,
+    "r2": 0.2442,
+    "rmse": 0.7081
+   },
+   "wall_s": 684.0
+  },
+  "photo_only": {
+   "phototoxicity": {
+    "mae": 0.6278,
+    "r2": -0.0432,
+    "rmse": 0.801
+   },
+   "wall_s": 26.4
+  },
+  "cis_only": {
+   "cisplatin_ratio": {
+    "mae": 0.5733,
+    "r2": 0.1318,
+    "rmse": 0.759
+   },
+   "wall_s": 632.7
+  }
+ },
+ "potency_delta_vs_single": {
+  "aux_photo": 0.0132,
+  "aux_both": 0.0358
+ },
+ "best_arm": "aux_both",
+ "verdict": "AUX_DOES_NOT_HELP",
+ "verdict_rule": "PASS iff best potency delta >= 0.02 AND no auxiliary endpoint drops > 0.02",
+ "caveats": [
+  "One seed. Optimizer steps per epoch ARE matched (budget_rows_per_epoch), so a gain cannot come from simply seeing more rows; it can still come from the gradient mix within a batch.",
+  "phototoxicity has 2,158 rows against 21,404 potency rows, so its gradient share is ~10% even when it is present.",
+  "The shared encoder is the only thing regularised; each endpoint still has its own output column, so a null result means the shared representation did not improve."
+ ]
+}

@@ -10003,3 +10003,52 @@ replacement for the headline.
 **Artifacts.** `metrics/by_metric/msrs_final_stack.json`; `molmetal/scripts/msrs_final_stack.py`.
 
 **§6.159 catalog-count math.** Net **+1**. Cumulative **213 → 214**. ACTIVE **169 → 170**.
+
+---
+
+## §6.160 — UP-7: the only clean auxiliary task is one the encoder cannot predict (2026-10-21)
+
+**Claim under test.** Potency, cisplatin_ratio and phototoxicity share the ligand–metal
+structure. A shared encoder with three heads might regularise the potency head, especially on
+the small metals.
+
+**Measured.** `metrics/by_metric/msrs_multitask_aux.json`, DOI GroupKFold(5) over the union of
+endpoints, optimizer steps budget-matched at 15,544 rows per epoch for every potency arm:
+
+| arm | potency R² | phototoxicity R² | cisplatin_ratio R² |
+|---|---:|---:|---:|
+| single | 0.2365 | — | — |
+| aux_photo | 0.2497 (**+0.0132**) | −0.0734 | — |
+| aux_both | **0.2723** (+0.0358) | −0.0430 | 0.2442 |
+| photo_only (reference) | — | **−0.0432** | — |
+| cis_only (reference) | — | — | **0.1318** |
+
+**Verdict: FAIL**, for two separate reasons.
+
+1. **The clean arm misses the gate.** `aux_photo` gains +0.0132 against a +0.02 requirement, and
+   phototoxicity itself drops from −0.0432 (photo_only) to −0.0734, i.e. −0.030, past the 0.02
+   tolerance.
+2. **The passing arm is not an auxiliary task.** `aux_both` gains +0.0358, but
+   `leakage.cisplatin_ratio_pairs_also_in_potency = 1.000`: **every** cisplatin_ratio row shares a
+   (ligand, cell line) with a potency row. It is the same measurements re-expressed as a ratio,
+   so its gradient is not independent supervision and the +0.0358 cannot be attributed to
+   regularisation.
+
+**Why phototoxicity is a weak signal, not a broken arm.** Its R² is negative in every arm
+(−0.043 to −0.073): the shared encoder cannot predict it at all. An auxiliary task the model
+cannot learn contributes noise to the shared representation, which is exactly the −0.030
+degradation seen in `aux_photo`.
+
+**Budget matching.** Without it the multi-task arms would simply see more rows per epoch and the
+gain would be a data-size effect — the same trap that flipped the C2 verdict earlier. Every
+potency arm is capped at 15,544 rows per epoch, with auxiliary rows taking their natural share
+(capped at 50%) and potency rows subsampled to make room.
+
+**Note on the baseline.** `single` is 0.2365 here, not the 0.2504 of `msrs_dmpnn_donor_ab.json`.
+The fold partition is computed over the three-endpoint union rather than the potency frame alone,
+so the folds are not identical. Comparisons are within this artifact only.
+
+**Artifacts.** `metrics/by_metric/msrs_multitask_aux.json`;
+`molmetal/scripts/msrs_multitask_aux.py`.
+
+**§6.160 catalog-count math.** Net **+1**. Cumulative **214 → 215**. ACTIVE **170 → 171**.

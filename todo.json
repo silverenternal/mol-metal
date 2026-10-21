@@ -537,7 +537,7 @@
       "priority": "P2",
       "wave": 3,
       "wall": "1 天 GPU",
-      "status": "PENDING",
+      "status": "DONE-FAIL",
       "why": "phototoxicity 2,158 行、cisplatin_ratio 14,309 行，目前各自单独建模；三者共享配体-金属结构，辅助任务可以当正则，尤其在 Ru 之外的小金属上。",
       "lever": "辅助任务正则化在多任务小数据上是标准做法；Pin-Tuning（arXiv:2411.01158）用 Bayesian 权重整合防止少标签微调漂移。",
       "code_points": [
@@ -553,7 +553,27 @@
       "deliverable": "metrics/by_metric/msrs_multitask_aux.json",
       "artifacts_needed": [
         "msrs_endpoints.json"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_multitask_aux.json",
+        "verdict": "AUX_DOES_NOT_HELP",
+        "numbers": {
+          "single_potency_r2": 0.2365,
+          "aux_photo_potency_r2": 0.2497,
+          "aux_both_potency_r2": 0.2723,
+          "delta_aux_photo": 0.0132,
+          "delta_aux_both": 0.0358,
+          "photo_only_r2": -0.0432,
+          "aux_photo_phototoxicity_r2": -0.0734,
+          "cis_only_r2": 0.1318,
+          "aux_both_cisplatin_r2": 0.2442,
+          "budget_rows_per_epoch": 15544
+        },
+        "reading": "干净的辅助任务是 phototoxicity：+0.0132，低于 0.02 门槛。aux_both 的 +0.0358 看起来过门，但 cisplatin_ratio 的泄漏率是 1.000 —— 每一行 cisplatin_ratio 都和一个 potency 行共享 (配体, 细胞系)，它不是独立任务，那个增益不能算正则化。",
+        "second_clause": "phototoxicity 自身从 photo_only 的 −0.0432 掉到 aux_photo 的 −0.0734（−0.030，超过 0.02 容差），所以即使只看 aux_photo，两条判据也只过一条。",
+        "why_photo_is_weak": "phototoxicity 在所有臂里 R² 都是负的（−0.04 到 −0.07）：共享编码器根本预测不了它，一个预测不了的辅助任务不可能提供有用的梯度。",
+        "budget": "三个 potency 臂每个 epoch 都恰好看 15,544 行（辅助行按自然比例、上限 50% 挤占 potency 行），所以增益不是「看到更多数据」造成的。"
+      }
     },
     {
       "id": "UP-8",

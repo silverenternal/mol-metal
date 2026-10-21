@@ -201,7 +201,13 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP9.knn", "value": 0.1326, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.knn.r2"},
   {"id": "UP9.stack2", "value": 0.3337, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.stack2.r2"},
   {"id": "UP9.stack3", "value": 0.3328, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "results.stack3.r2"},
-  {"id": "UP9.stack3_vs_single", "value": 0.0007, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "stack3_vs_best_single"}
+  {"id": "UP9.stack3_vs_single", "value": 0.0007, "artifact": "metrics/by_metric/msrs_final_stack.json", "path": "stack3_vs_best_single"},
+  {"id": "UP7.single_potency", "value": 0.2365, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.single.potency.r2"},
+  {"id": "UP7.aux_photo_potency", "value": 0.2497, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.aux_photo.potency.r2"},
+  {"id": "UP7.aux_both_potency", "value": 0.2723, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.aux_both.potency.r2"},
+  {"id": "UP7.photo_only_r2", "value": -0.0432, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.photo_only.phototoxicity.r2"},
+  {"id": "UP7.cis_only_r2", "value": 0.1318, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "results.cis_only.cisplatin_ratio.r2"},
+  {"id": "UP7.cis_leak", "value": 1.0, "artifact": "metrics/by_metric/msrs_multitask_aux.json", "path": "leakage.cisplatin_ratio_pairs_also_in_potency"}
 ]
 ```
 
