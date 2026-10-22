@@ -11018,3 +11018,190 @@ radial_centroid_masked=...)`, `configs/wfa108_vector_channels.yaml`,
 **Workflow** | Wf-A108a/c (2026-10-22; GPU0: 2 arms x 5 epochs = 970 s for the treatment,
 control already on disk; 6 capacity runs; §5.2 every number is an artifact field;
 §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+## §6.174 — UP-20: CQR buys the coverage back and does not sell any width (2026-10-22)
+
+**The question.** UP-6's difficulty-normalised intervals reach width 1.9195 at coverage
+0.8789; the global conformal arm reaches coverage 0.9004 at width 2.0052. Every arm so far
+trades one for the other. Conformalised quantile regression (Romano/Patterson/Candès 2019)
+models the conditional quantiles directly, so the width can adapt while coverage stays
+conformal by construction. The gate asked for width <= 1.80 at coverage >= 0.90.
+
+**Measured** (`metrics/by_metric/msrs_cqr.json`, CPU, 5 seeds, cross-conformal: outer fold
+k is calibrated on the OOF scores of every other fold, so calibration and evaluation never
+share a row):
+
+| arm | coverage | median width | worst metal-group coverage | Winkler |
+|---|---:|---:|---:|---:|
+| **cqr** | **0.9000** | **1.9871** | **0.8716** | 2.6315 |
+| cqr_metal_mondrian | 0.8999 | 1.9802 | **0.8961** | 2.6357 |
+| global | 0.9003 | 2.0073 | 0.8600 | 2.7346 |
+| metal | 0.9001 | 2.0329 | 0.8970 | 2.7334 |
+| difficulty-normalised | 0.8767 | **1.8981** | 0.8623 | 2.8516 |
+
+**Coverage is solved; width is not.** CQR lands at 0.9000 nominal and 0.8716 on the worst
+metal group — the first arm to clear both — but its width is 1.9871, i.e. **1.0 % narrower
+than global** and **4.7 % wider than the difficulty arm**. The difficulty arm's 1.8981 is
+not a fair comparator: it is bought with 0.0233 of coverage. The frozen gate says so
+explicitly (`beats_difficulty_at_coverage`), and that check fails.
+
+**Mondrian is cheap here and buys the wrong thing.** Grouping calibration by metal moves
+the worst group 0.8716 → 0.8961 (+0.0245) for a width change of −0.0035. That is the same
+result as UP-6: stratification fixes the worst stratum and leaves the width alone. It is a
+consistency repair, not a resolution improvement.
+
+**Gate: FAIL, 2 of 4.** `marginal_coverage` and `worst_metal_group_coverage` pass;
+`median_width` (1.9871 > 1.80) and `beats_difficulty_at_coverage` fail. **Kill triggered**
+(width 1.9871 > 1.82) ⇒ DP-7 takes the "drop the width target" branch: the interval width
+is no longer a success criterion for this round.
+
+**Honest boundaries (ACTIVE).**
+  * **The width is a data-resolution statement.** A 1.99 log10 interval at 90 % is what the
+    corpus supports once paper-level offsets are unknown. No conformal variant can shrink
+    below the irreducible residual spread; the failure is informative about the data, not
+    about CQR.
+  * **`difficulty` is not beaten, it is out-covered.** At 0.8767 it is 0.0233 below nominal,
+    which is a real coverage loss under the same 5 folds. Comparing the two widths without
+    that gap would be a §5.2 violation.
+  * **The point model is the same for every arm**, so this compares interval constructions,
+    not learners. A better point model would move all five rows together.
+  * **Cross-conformal coverage is a lower bound**, not an exact 1−α guarantee, because the
+    calibration set is the OOF scores of other folds rather than a disjoint calibration
+    split.
+
+**Artifacts.** `molmetal/scripts/msrs_cqr.py`, `metrics/by_metric/msrs_cqr.json`.
+
+**§6.174 catalog-count math.** Net **+1**. Cumulative **228 → 229**. ACTIVE **184 → 185**.
+
+**Workflow** | UP-20 (2026-10-22; CPU, 4 quantile models x 5 seeds x 5 folds; §5.2 every
+number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.175 — UP-21: the paper offset is real and large, and it is not a function of the paper's description (2026-10-22)
+
+**The question.** UP-17 put the paper×metal block at 0.5484 of the shape variance. A DOI
+one-hot is useless on a held-out paper (the column is zero), so the plan was to replace
+paper identity with a *description* of the paper — year, metal composition, cell-line
+entropy, scaffold-bucket shares — and regress the offset on that. If the offset is
+predictable from the description, a new paper can be corrected before its assays are read.
+
+**Measured** (`metrics/by_metric/msrs_paper_meta_offset.json`, CPU, 5 seeds, 23 primary
+features, DOI GroupKFold(5), same partition as the 0.3767 headline):
+
+| arm | DOI R² | vs base |
+|---|---:|---:|
+| base (no offset correction) | **0.3670** | — |
+| ridge_design | 0.3557 | **−0.0113** |
+| lgbm_design | 0.3522 | −0.0148 |
+| ridge_design+counts | 0.3538 | −0.0132 |
+| ridge_design+outcome (leaky) | **0.5405** | **+0.1735** |
+| ridge_no_year | 0.3561 | −0.0109 |
+| ridge_no_metal | 0.3572 | −0.0098 |
+| ridge_no_scaffold | 0.3643 | −0.0027 |
+
+**The offset exists.** On fold 0 the held-out papers' offsets have sd **0.2400** and mean
+absolute value **0.2255**; the training papers' sd is 0.2281. This is not a small nuisance
+term — it is a quarter of a log10 unit of potency that no ligand or cell feature can see.
+
+**It is not predictable from the description.** The leave-one-paper-out ridge refit scores
+**R² = −0.0259**, i.e. worse than predicting zero. Applied, the correction *raises* the
+offset MAE from 0.1622 to 0.1695 (−4.55 % "drop", i.e. a rise) and drops the DOI R² by
+0.0113. All three ablations move the number by less than the 5-seed spread
+(0.3472–0.3689): no feature family carries the signal.
+
+**The leaky arm is the proof, not a counter-example.** Allow the offset model the test
+paper's own y mean and deciles and R² jumps to **0.5405** (+0.1735). The information exists;
+it lives in the paper's *labels*, which by construction are absent when the paper is held
+out. "Predict the paper offset from the paper" is therefore not a modelling problem with a
+better feature set — it is a circular one.
+
+**Gate: FAIL, 1 of 3.** `doi_r2` fails (0.3557 < 0.42), `offset_mae_drop` fails (−0.0451 <
+0.10), `no_leak` passes. **Kill triggered** (0.3557 < 0.40) ⇒ the DOI line is closed; no
+further offset model is attempted.
+
+**Honest boundaries (ACTIVE).**
+  * **The 23 features are metadata only**, and the frozen no-leak rule forbids row counts,
+    ligand counts and any y statistic. The `+counts` arm is reported to show what they would
+    have added (0.3538, nothing).
+  * **LOPO R² is computed on the first outer fold only**, to bound runtime. It describes the
+    offset model, not the final prediction; the final prediction is the 5-seed DOI R².
+  * **Offsets are shrunk by n/(n+10)**, so a two-row paper cannot move its own correction.
+    That is deliberate and applies to every arm.
+  * **A negative LOPO R² does not mean the offsets are noise** — it means the offset model
+    is worse than the mean. The offsets themselves are measured, with sd 0.24.
+
+**Artifacts.** `molmetal/scripts/msrs_paper_meta_offset.py`,
+`metrics/by_metric/msrs_paper_meta_offset.json`.
+
+**§6.175 catalog-count math.** Net **+1**. Cumulative **229 → 230**. ACTIVE **185 → 186**.
+
+**Workflow** | UP-21 (2026-10-22; CPU, 5 seeds x 8 arms x 5 folds + LOPO diagnostics on
+fold 0; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.176 — UP-22: UP-8's 1/5 was the sampling unit, and "paired calibration points" still do not help (2026-10-22)
+
+**The hypothesis being tested.** UP-8 drew k = 50 calibration rows uniformly from the new
+metal and got 1 of 5 metals above zero. The round-three plan argued the draw almost never
+contained a row whose `(ligand_canonical, cell_line_key)` was also measured under a
+training metal, and that those are the only rows that carry Δ information. The sweep
+therefore made `n_paired` an independent variable: draw `n_paired` rows from the paired
+pool, fill the rest from the unpaired pool.
+
+**Measured** (`metrics/by_metric/msrs_paired_kshot.json`, CPU, 5 seeds x 7 values of
+`n_paired` x 3 arms x 20 repeats, k = 50, ridge = dual form of `adapt_ridge`):
+
+| held-out metal | zero-shot R² | n_paired=0 | n_paired=3 | paired rows | UP-8 whole-DOI sampler (n=0) |
+|---|---:|---:|---:|---:|---:|
+| Ru | −0.0777 | −0.1809 | −0.2040 | 406 | **−0.3161** |
+| Ir | −0.1283 | −0.1404 | −0.1635 | 177 | **−0.2669** |
+| Rh | −0.1589 | **+0.0709** | **+0.0631** | 192 | −0.0840 |
+| Os | +0.3479 | +0.2805 | +0.2830 | 376 | +0.2816 |
+| Re | −0.1034 | **+0.1734** | **+0.1745** | **0** | −0.0716 |
+
+**The primary check passes and the secondary check fails, and they are about different
+things.** At `n_paired=3`, 3 of 5 metals are above zero (Rh, Os, Re), so the headline
+"1/5" becomes "3/5". But the cross-metal mean R² over `n_paired` = 0/1/2/3 is
+**0.0407 / 0.0313 / 0.0432 / 0.0306** — flat and non-monotone. Adding paired points does
+not add a measurable interaction term.
+
+**The whole gain is at `n_paired=0`.** Rh goes −0.1589 → **+0.0709** and Re goes −0.1034 →
+**+0.1734** with no paired point added at all. **Re has zero paired rows in the corpus**, so
+its gain cannot be a pairing effect by construction. The mechanism is the *sampling unit*:
+UP-8 drew whole DOI groups (right column: −0.3161 / −0.2669 / −0.0840 / +0.2816 / −0.0716),
+this sweep draws rows. Same k, same arm, same folds — only the unit changed, and the count
+of usable metals went from 1/5 to 3/5.
+
+**So UP-8 measured "few-shot adaptation under whole-paper hold-out is hard", not "the
+corpus lacks paired points".** The second reading was the plan's, and it is wrong. The
+corpus does contain paired rows for four of the five metals; what it does not contain is a
+paired row that survives a whole-paper split.
+
+**Gate: FAIL.** `primary` passes (3 >= 3), `secondary` fails (non-monotone). **Kill not
+triggered** (3 >= 2), so the k-shot line stays open — but the paper may only say that
+row-level few-shot adaptation works for 3 of 5 metals. It may **not** say that paired
+calibration points help.
+
+**Honest boundaries (ACTIVE).**
+  * **`n_paired` is a target, not a guarantee**: when the paired pool for a metal is
+    smaller than `n_paired`, the selector takes what exists. Re's pool is empty, so its
+    `n_paired=20` cell is identical to its `n_paired=0` cell.
+  * **The 20 repeats bound the sampling noise, not the model noise**; the 5 seeds do that.
+    Both are reported per cell with `n_seeds`.
+  * **Ridge is the reported arm**; `offset` (metal level only) is actually higher at
+    `n_paired=0` (0.0718 vs 0.0407), which says the interaction features are not paying for
+    themselves.
+  * **Ru and Ir are negative in every cell.** Row-level sampling did not rescue them; the
+    "3/5" is Rh + Os + Re.
+
+**Artifacts.** `molmetal/scripts/msrs_paired_kshot.py`,
+`metrics/by_metric/msrs_paired_kshot.json`.
+
+**§6.176 catalog-count math.** Net **+1**. Cumulative **230 → 231**. ACTIVE **186 → 187**.
+
+**Workflow** | UP-22 (2026-10-22; CPU, ~8 min for 5 seeds x 7 x 3 x 5 x 20 cells; §5.2
+every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

@@ -62,7 +62,10 @@
       "k-shot：k=50 时可用金属 1/5。",
       "噪声地板 σ=0.2091 log10（msrs_variance_decomposition.json）；UP-17 用未去重表测得 σ²=0.0437、df=371。",
       "金属图（UP-18）：观测子图 4 节点 3 边、是树、无环，Re 度数 0。配体簇校正后 t 为 Ru–Os 3.364、Ru–Rh 2.577、Ir–Rh 0.958；精度份额 Ru–Os 0.5903 / Ir–Rh 0.4044 / Ru–Rh 0.0054。「按效应」={Ru–Os, Ru–Rh} 与「按精度」={Ru–Os, Ir–Rh} 不是同一集合。GLS 水平 t 全 <1.8，树上 node-splitting 无定义（msrs_metal_graph.json）。",
-      "metal_out 的真实构成（UP-19）：可识别行（同 (配体, 细胞系) 在训练金属下有测量）只占 5.47%（1,151/21,045），其上 R²_abs=0.3299、去中心化 0.3806；其余 94.5% 上 R²=−0.0913。headline −0.0734 是这两块的加权，不是模型全面失效（msrs_identifiability.json）。去中心化用留出标签，是 oracle-offset 上界。"
+      "metal_out 的真实构成（UP-19）：可识别行（同 (配体, 细胞系) 在训练金属下有测量）只占 5.47%（1,151/21,045），其上 R²_abs=0.3299、去中心化 0.3806；其余 94.5% 上 R²=−0.0913。headline −0.0734 是这两块的加权，不是模型全面失效（msrs_identifiability.json）。去中心化用留出标签，是 oracle-offset 上界。",
+      "校准（UP-20，5 seed）：CQR 覆盖 0.9000 / 中位宽 1.9871 / 最差金属组 0.8716；metal-Mondrian 0.8999 / 1.9802 / 0.8961；global 0.9003 / 2.0073；difficulty 0.8767 / 1.8981。⇒ 覆盖可修、宽度不可修（msrs_cqr.json）。",
+      "论文偏移（UP-21，5 seed）：base DOI R² 0.3670 → ridge_design 0.3557；测试论文偏移 sd 0.2400、平均 |偏移| 0.2255；LOPO ridge R² −0.0259；泄漏臂 0.5405（msrs_paper_meta_offset.json）。",
+      "配对 k-shot（UP-22，5 seed，k=50）：n_paired=3 时 Rh +0.0631 / Os +0.2830 / Re +0.1745（3/5 > 0）；n_paired=0 时 Rh +0.0709 / Re +0.1734；Re 配对行 0；跨金属平均 R² 0.0407→0.0306 不单调（msrs_paired_kshot.json）。"
     ]
   },
   "metric_gap_analysis": {
@@ -308,7 +311,8 @@
       "depends_on": [
         "wave_1_identifiability"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "result": "三项全部 FAIL，两项触发 kill。UP-20：CQR 拿到覆盖 0.9000 / 最差组 0.8716，宽度 1.9871 未过 1.80 ⇒ DP-7 放弃宽度目标。UP-21：论文偏移 sd 0.24 真实存在但 LOPO R² −0.0259 不可预测 ⇒ DOI 线关闭。UP-22：UP-8 的 1/5 是整 DOI 组采样造成的，行级采样 3/5 过零，但 n_paired 0→3 不单调 ⇒ 配对不是机制，kill 未触发。"
     },
     "wave_3_ranking": {
       "items": [
@@ -399,7 +403,7 @@
       "id": "UP-20",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "CQR 条件覆盖：宽度与覆盖不再互换",
       "question": "difficulty-normalized 把宽度从 2.0052 降到 1.9195，但覆盖从 0.9004 掉到 0.8789。能不能同时拿到 ≤1.80 和 ≥0.90？",
       "why_now": "现有做法是手工 σ̂ 代理 + 全局 conformal，本质是在宽度和覆盖之间做交易。CQR 直接建模条件分位数，覆盖由 conformal 保，宽度由分位数模型自适应。",
@@ -420,13 +424,15 @@
       },
       "kill": "若宽度降幅 <5%（即 >1.82）或最差组覆盖 <0.85，CQR 判无效，DP-7 走「放弃宽度目标」分支。",
       "cost": "CPU ~40 min（4 个 quantile 模型 × 5 seed）",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate FAIL（4 条过 2 条）；kill 触发（宽度 1.9871 > 1.82）⇒ DP-7 放弃宽度目标。CQR 覆盖 0.9000 ✓、最差金属组 0.8716 ✓，但中位宽度 1.9871 只比 global 2.0073 窄 1.0%、比 difficulty 的 1.8981 宽 4.7%。difficulty 的窄宽度是用 0.8767 覆盖换的（差 0.0233）。metal-Mondrian 把最差组抬到 0.8961、宽度几乎不动（1.9802）。"
     },
     {
       "id": "UP-21",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "论文元特征偏移模型：不用 DOI identity 也能校正新论文",
       "question": "DOI 留出 R² 0.3767 里，有多少损失来自「测试论文的整体偏移未知」？用论文的组成特征能不能把偏移预测出来？",
       "why_now": "UP-17 测到 paper×metal 在批次优先下占 0.5484，说明论文偏移真实且大。但 DOI one-hot 在留出论文上恒为 0，必须换成可迁移的描述。",
@@ -446,13 +452,15 @@
       },
       "kill": "若 DOI R² < 0.40，元特征偏移无效，DOI 线关闭，不再尝试其他偏移模型。",
       "cost": "CPU ~1.5 hr（5 seed × 2 臂 × 4 个 ablation）",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate FAIL（3 条过 1 条）；kill 触发（DOI R² 0.3557 < 0.40）⇒ DOI 线关闭。论文偏移真实且大（测试论文偏移 sd 0.2400、平均 |偏移| 0.2255），但不可从论文描述预测：LOPO ridge R² = −0.0259，校正后偏移 MAE 从 0.1622 涨到 0.1695（变差 4.55%）、DOI R² 0.3670 → 0.3557。泄漏臂（用测试论文自己的 y 统计量）+0.1735 到 0.5405 —— 信息在标签里，不在描述里。三个消融（去年份/去金属/去 scaffold）都在 5 seed 散布内。"
     },
     {
       "id": "UP-22",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "配对 k-shot：把「k 个点里几个带配对」当自变量",
       "question": "UP-8 的 1/5 是因为模型不行，还是因为那 k 个点里一个配对都没有、只能估水平？",
       "why_now": "UP-8 的 k 个校准点是从新金属的行里随机抽的，几乎不含「同配体+同细胞系在已知金属下也有测量」的点。这类点才是 Δ 的信息源。",
@@ -471,7 +479,9 @@
       },
       "kill": "若 n_paired=3 时仍 <2/5，k-shot 线关闭；论文写「新金属需要配对校准点，而语料里新金属没有配对」。",
       "cost": "CPU ~1.5 hr（5 金属 × 7 个 n_paired × 5 seed）",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate FAIL：primary PASS（n_paired=3 时 3/5 金属 R²>0：Rh +0.0631 / Os +0.2830 / Re +0.1745），secondary FAIL（n_paired 0→3 的跨金属平均 R² 0.0407/0.0313/0.0432/0.0306 不单调）。kill 未触发（3≥2）。核心事实：增益全部在 n_paired=0（Rh −0.1589→+0.0709、Re −0.1034→+0.1734），而 Re 的配对行总数是 0 ⇒ UP-8 的 1/5 来自整 DOI 组采样（−0.3161/−0.2669/−0.0840/+0.2816/−0.0716），不是「语料里缺配对点」。"
     },
     {
       "id": "UP-23",

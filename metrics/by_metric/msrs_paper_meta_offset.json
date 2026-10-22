@@ -1,0 +1,628 @@
+{
+  "artifact": "msrs_paper_meta_offset",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L1 paper-offset transfer (UP-21)",
+  "generated_utc": "2026-10-22T07:01:54+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_paper_meta_offset.py",
+    "git_commit": "ac2267af622a40e82e4a2fd8438165a64f27efbe",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "cohort": "msrs_feature_expansion.select_cohort (21,404 rows, potency, uncensored)",
+    "base_arm": "maccs_rdkit (the arm whose 5-seed DOI R2 is 0.3767)",
+    "split": "scheme_folds('doi'), 5 GroupKFold folds on DOI",
+    "offset_target": "mean(y - pred | paper) * n / (n + 10.0)",
+    "offset_models": [
+      "weighted ridge (primary)",
+      "LightGBM (secondary)"
+    ],
+    "ridge_alpha": 1.0,
+    "seeds": [
+      20261022,
+      20261023,
+      20261024,
+      20261025,
+      20261026
+    ],
+    "primary_features": [
+      "year",
+      "metal_frac_Ru",
+      "metal_frac_Ir",
+      "metal_frac_Rh",
+      "metal_frac_Os",
+      "metal_frac_Re",
+      "cell_entropy",
+      "scaffold_bucket_0",
+      "scaffold_bucket_1",
+      "scaffold_bucket_2",
+      "scaffold_bucket_3",
+      "scaffold_bucket_4",
+      "scaffold_bucket_5",
+      "scaffold_bucket_6",
+      "scaffold_bucket_7",
+      "scaffold_bucket_8",
+      "scaffold_bucket_9",
+      "scaffold_bucket_10",
+      "scaffold_bucket_11",
+      "scaffold_bucket_12",
+      "scaffold_bucket_13",
+      "scaffold_bucket_14",
+      "scaffold_bucket_15"
+    ],
+    "gate_frozen_at": "2026-10-22T12:42+08:00"
+  },
+  "per_seed": {
+    "20261022": {
+      "arms": {
+        "base": {
+          "r2": 0.3642,
+          "mae": 0.4641
+        },
+        "ridge_design": {
+          "r2": 0.3528,
+          "mae": 0.4703,
+          "offset_mae": 0.1695,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0455
+        },
+        "lgbm_design": {
+          "r2": 0.3495,
+          "mae": 0.4702,
+          "offset_mae": 0.1795,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.1068
+        },
+        "ridge_design+counts": {
+          "r2": 0.3508,
+          "mae": 0.4711,
+          "offset_mae": 0.1701,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.049
+        },
+        "ridge_design+outcome": {
+          "r2": 0.5392,
+          "mae": 0.3951,
+          "offset_mae": 0.1414,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": 0.1281
+        },
+        "ridge_no_year": {
+          "r2": 0.3531,
+          "mae": 0.4702,
+          "offset_mae": 0.1694,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0443
+        },
+        "ridge_no_metal": {
+          "r2": 0.3542,
+          "mae": 0.4698,
+          "offset_mae": 0.1684,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0382
+        },
+        "ridge_no_scaffold": {
+          "r2": 0.3616,
+          "mae": 0.4669,
+          "offset_mae": 0.1632,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0064
+        }
+      },
+      "offset_diagnostics_fold0": {
+        "n_train_papers": 1429,
+        "n_test_papers": 355,
+        "lopo_ridge_r2": -0.0259,
+        "train_offset_sd": 0.2281,
+        "test_offset_sd": 0.24,
+        "mean_abs_test_offset": 0.2255,
+        "feature_columns": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ]
+      },
+      "elapsed_seconds": 36.1
+    },
+    "20261023": {
+      "arms": {
+        "base": {
+          "r2": 0.3651,
+          "mae": 0.4644
+        },
+        "ridge_design": {
+          "r2": 0.3545,
+          "mae": 0.4703,
+          "offset_mae": 0.1696,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.0454
+        },
+        "lgbm_design": {
+          "r2": 0.3472,
+          "mae": 0.4726,
+          "offset_mae": 0.1793,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.1051
+        },
+        "ridge_design+counts": {
+          "r2": 0.3529,
+          "mae": 0.4708,
+          "offset_mae": 0.1703,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.0494
+        },
+        "ridge_design+outcome": {
+          "r2": 0.5408,
+          "mae": 0.3951,
+          "offset_mae": 0.1403,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": 0.1355
+        },
+        "ridge_no_year": {
+          "r2": 0.3549,
+          "mae": 0.4702,
+          "offset_mae": 0.1695,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.0446
+        },
+        "ridge_no_metal": {
+          "r2": 0.3559,
+          "mae": 0.4698,
+          "offset_mae": 0.1686,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.039
+        },
+        "ridge_no_scaffold": {
+          "r2": 0.3628,
+          "mae": 0.4672,
+          "offset_mae": 0.1629,
+          "offset_mae_uncorrected": 0.1623,
+          "offset_mae_drop": -0.0039
+        }
+      },
+      "offset_diagnostics_fold0": {
+        "n_train_papers": 1429,
+        "n_test_papers": 355,
+        "lopo_ridge_r2": -0.0243,
+        "train_offset_sd": 0.2281,
+        "test_offset_sd": 0.2419,
+        "mean_abs_test_offset": 0.2266,
+        "feature_columns": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ]
+      },
+      "elapsed_seconds": 36.6
+    },
+    "20261024": {
+      "arms": {
+        "base": {
+          "r2": 0.3682,
+          "mae": 0.4637
+        },
+        "ridge_design": {
+          "r2": 0.3565,
+          "mae": 0.4701,
+          "offset_mae": 0.1691,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.0467
+        },
+        "lgbm_design": {
+          "r2": 0.3519,
+          "mae": 0.4706,
+          "offset_mae": 0.1782,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.1029
+        },
+        "ridge_design+counts": {
+          "r2": 0.3548,
+          "mae": 0.4706,
+          "offset_mae": 0.1696,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.0498
+        },
+        "ridge_design+outcome": {
+          "r2": 0.5405,
+          "mae": 0.3951,
+          "offset_mae": 0.1403,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": 0.1319
+        },
+        "ridge_no_year": {
+          "r2": 0.3569,
+          "mae": 0.4699,
+          "offset_mae": 0.169,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.0458
+        },
+        "ridge_no_metal": {
+          "r2": 0.3581,
+          "mae": 0.4693,
+          "offset_mae": 0.168,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.0402
+        },
+        "ridge_no_scaffold": {
+          "r2": 0.3651,
+          "mae": 0.4667,
+          "offset_mae": 0.1623,
+          "offset_mae_uncorrected": 0.1616,
+          "offset_mae_drop": -0.0047
+        }
+      },
+      "offset_diagnostics_fold0": {
+        "n_train_papers": 1429,
+        "n_test_papers": 355,
+        "lopo_ridge_r2": -0.0248,
+        "train_offset_sd": 0.2265,
+        "test_offset_sd": 0.241,
+        "mean_abs_test_offset": 0.2251,
+        "feature_columns": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ]
+      },
+      "elapsed_seconds": 38.5
+    },
+    "20261025": {
+      "arms": {
+        "base": {
+          "r2": 0.3699,
+          "mae": 0.4626
+        },
+        "ridge_design": {
+          "r2": 0.3585,
+          "mae": 0.4685,
+          "offset_mae": 0.1688,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.042
+        },
+        "lgbm_design": {
+          "r2": 0.3552,
+          "mae": 0.469,
+          "offset_mae": 0.179,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.1048
+        },
+        "ridge_design+counts": {
+          "r2": 0.3565,
+          "mae": 0.4692,
+          "offset_mae": 0.1693,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.0455
+        },
+        "ridge_design+outcome": {
+          "r2": 0.5421,
+          "mae": 0.3933,
+          "offset_mae": 0.1397,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": 0.1377
+        },
+        "ridge_no_year": {
+          "r2": 0.3589,
+          "mae": 0.4684,
+          "offset_mae": 0.1687,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.0412
+        },
+        "ridge_no_metal": {
+          "r2": 0.36,
+          "mae": 0.468,
+          "offset_mae": 0.1677,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.0355
+        },
+        "ridge_no_scaffold": {
+          "r2": 0.3676,
+          "mae": 0.4651,
+          "offset_mae": 0.1628,
+          "offset_mae_uncorrected": 0.162,
+          "offset_mae_drop": -0.005
+        }
+      },
+      "offset_diagnostics_fold0": {
+        "n_train_papers": 1429,
+        "n_test_papers": 355,
+        "lopo_ridge_r2": -0.0264,
+        "train_offset_sd": 0.226,
+        "test_offset_sd": 0.2424,
+        "mean_abs_test_offset": 0.2283,
+        "feature_columns": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ]
+      },
+      "elapsed_seconds": 30.5
+    },
+    "20261026": {
+      "arms": {
+        "base": {
+          "r2": 0.3674,
+          "mae": 0.4635
+        },
+        "ridge_design": {
+          "r2": 0.3562,
+          "mae": 0.4696,
+          "offset_mae": 0.1697,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.046
+        },
+        "lgbm_design": {
+          "r2": 0.357,
+          "mae": 0.4685,
+          "offset_mae": 0.1776,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0947
+        },
+        "ridge_design+counts": {
+          "r2": 0.3538,
+          "mae": 0.4704,
+          "offset_mae": 0.1704,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0505
+        },
+        "ridge_design+outcome": {
+          "r2": 0.54,
+          "mae": 0.3956,
+          "offset_mae": 0.1405,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": 0.1338
+        },
+        "ridge_no_year": {
+          "r2": 0.3567,
+          "mae": 0.4694,
+          "offset_mae": 0.1695,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0448
+        },
+        "ridge_no_metal": {
+          "r2": 0.3578,
+          "mae": 0.4689,
+          "offset_mae": 0.1687,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0403
+        },
+        "ridge_no_scaffold": {
+          "r2": 0.3645,
+          "mae": 0.4665,
+          "offset_mae": 0.1629,
+          "offset_mae_uncorrected": 0.1622,
+          "offset_mae_drop": -0.0044
+        }
+      },
+      "offset_diagnostics_fold0": {
+        "n_train_papers": 1429,
+        "n_test_papers": 355,
+        "lopo_ridge_r2": -0.027,
+        "train_offset_sd": 0.228,
+        "test_offset_sd": 0.2369,
+        "mean_abs_test_offset": 0.2215,
+        "feature_columns": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ]
+      },
+      "elapsed_seconds": 34.1
+    }
+  },
+  "aggregate": {
+    "base": {
+      "r2_mean": 0.367,
+      "r2_min": 0.3642,
+      "r2_max": 0.3699,
+      "offset_mae_drop_mean": null
+    },
+    "ridge_design": {
+      "r2_mean": 0.3557,
+      "r2_min": 0.3528,
+      "r2_max": 0.3585,
+      "offset_mae_drop_mean": -0.0451
+    },
+    "lgbm_design": {
+      "r2_mean": 0.3522,
+      "r2_min": 0.3472,
+      "r2_max": 0.357,
+      "offset_mae_drop_mean": -0.1029
+    },
+    "ridge_design+counts": {
+      "r2_mean": 0.3538,
+      "r2_min": 0.3508,
+      "r2_max": 0.3565,
+      "offset_mae_drop_mean": -0.0488
+    },
+    "ridge_design+outcome": {
+      "r2_mean": 0.5405,
+      "r2_min": 0.5392,
+      "r2_max": 0.5421,
+      "offset_mae_drop_mean": 0.1334
+    },
+    "ridge_no_year": {
+      "r2_mean": 0.3561,
+      "r2_min": 0.3531,
+      "r2_max": 0.3589,
+      "offset_mae_drop_mean": -0.0441
+    },
+    "ridge_no_metal": {
+      "r2_mean": 0.3572,
+      "r2_min": 0.3542,
+      "r2_max": 0.36,
+      "offset_mae_drop_mean": -0.0386
+    },
+    "ridge_no_scaffold": {
+      "r2_mean": 0.3643,
+      "r2_min": 0.3616,
+      "r2_max": 0.3676,
+      "offset_mae_drop_mean": -0.0049
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T12:42+08:00",
+    "checks": {
+      "doi_r2": {
+        "value": 0.3557,
+        "threshold": 0.42,
+        "baseline": 0.367,
+        "delta": -0.0113,
+        "pass": false
+      },
+      "offset_mae_drop": {
+        "value": -0.0451,
+        "threshold": 0.1,
+        "pass": false
+      },
+      "no_leak": {
+        "primary_features": [
+          "year",
+          "metal_frac_Ru",
+          "metal_frac_Ir",
+          "metal_frac_Rh",
+          "metal_frac_Os",
+          "metal_frac_Re",
+          "cell_entropy",
+          "scaffold_bucket_0",
+          "scaffold_bucket_1",
+          "scaffold_bucket_2",
+          "scaffold_bucket_3",
+          "scaffold_bucket_4",
+          "scaffold_bucket_5",
+          "scaffold_bucket_6",
+          "scaffold_bucket_7",
+          "scaffold_bucket_8",
+          "scaffold_bucket_9",
+          "scaffold_bucket_10",
+          "scaffold_bucket_11",
+          "scaffold_bucket_12",
+          "scaffold_bucket_13",
+          "scaffold_bucket_14",
+          "scaffold_bucket_15"
+        ],
+        "uses_counts": false,
+        "uses_outcomes": false,
+        "pass": true,
+        "note": "n_rows, n_ligands and any y statistic are absent from the primary set; the arms that use them are labelled and reported separately."
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "DOI R2 < 0.40 closes the offset line",
+      "value": 0.3557,
+      "triggered": true
+    }
+  },
+  "caveats": [
+    "The offset model is fitted on the training papers' shrunk residuals and applied to the held-out papers' metadata. Because a DOI fold holds out whole papers, a test paper contributes no rows to the offset fit -- but its metadata (which metals, which cells, which scaffolds) is used, and that is only legitimate if the compound set is known before the assay is read.",
+    "n_rows and n_ligands are excluded from the primary set because the frozen no-leak rule forbids test-fold row counts. The design+counts arm shows what they would add.",
+    "The design+outcome arm uses the test paper's own y mean and deciles. It is a leaky upper bound and is labelled as such; it is not a result.",
+    "LOPO ridge R2 is computed on the first outer fold only, to keep the runtime bounded; it describes the offset model, not the final prediction.",
+    "Offsets are shrunk by n/(n+10); a two-row paper cannot move its own prediction by a log unit, which also caps how much a small test paper can be corrected."
+  ]
+}

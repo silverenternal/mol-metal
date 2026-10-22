@@ -1,0 +1,1604 @@
+{
+  "artifact": "msrs_cqr",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L1 interval calibration (UP-20)",
+  "generated_utc": "2026-10-22T07:00:47+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "metal_descriptors": "molmetal/data/metal_chemistry_5.csv",
+    "script": "molmetal/scripts/msrs_cqr.py",
+    "git_commit": "540cb8cd16d52341f8732ce0a250f2d33163c363",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "n_rows": 21404,
+    "scheme": "doi (GroupKFold, 5 folds)",
+    "arm": "ligand+both (Morgan + oxidation state + coordination)",
+    "alpha": 0.1,
+    "nominal_coverage": 0.9,
+    "quantile_levels": [
+      0.05,
+      0.95
+    ],
+    "seeds": [
+      20261022,
+      20261023,
+      20261024,
+      20261025,
+      20261026
+    ],
+    "learner": "LightGBM; objective=quantile for q_lo/q_hi, objective=regression for the point",
+    "calibration": "cross-conformal: outer fold k is calibrated on the OOF scores of every other fold",
+    "mondrian": "metal groups with >= 30 calibration rows",
+    "gate_frozen_at": "2026-10-22T12:42+08:00"
+  },
+  "per_seed": {
+    "20261022": {
+      "point_r2": 0.3402,
+      "arms": {
+        "cqr": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.0106,
+          "median_width": 1.9902,
+          "width_p10": 1.5987,
+          "width_p90": 2.4424,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9165,
+              "mean_width": 1.9527
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8578,
+              "mean_width": 2.1301
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9317,
+              "mean_width": 1.9889
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8997,
+              "mean_width": 2.0775
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8972,
+              "mean_width": 2.0146
+            }
+          },
+          "winkler": 2.6295,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8578,
+            "mean_width": 2.1301
+          },
+          "worst_group_coverage": 0.8578
+        },
+        "cqr_metal_mondrian": {
+          "n": 21404,
+          "coverage": 0.8997,
+          "mean_width": 2.0073,
+          "median_width": 1.9786,
+          "width_p10": 1.5738,
+          "width_p90": 2.4766,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8985,
+              "mean_width": 1.8436
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8967,
+              "mean_width": 2.3788
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.7721
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9059,
+              "mean_width": 2.0977
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8997,
+              "mean_width": 2.0317
+            }
+          },
+          "winkler": 2.6333,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8967,
+            "mean_width": 2.3788
+          },
+          "worst_group_coverage": 0.8967
+        },
+        "global": {
+          "n": 21404,
+          "coverage": 0.9007,
+          "mean_width": 2.0155,
+          "median_width": 2.0061,
+          "width_p10": 2.0014,
+          "width_p90": 2.0395,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9195,
+              "mean_width": 2.0168
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.86,
+              "mean_width": 2.0189
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9448,
+              "mean_width": 2.0176
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.879,
+              "mean_width": 2.013
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8976,
+              "mean_width": 2.015
+            }
+          },
+          "winkler": 2.7309,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1,
+              0.0993,
+              0.1006,
+              0.1,
+              0.0999,
+              0.1004,
+              0.0995,
+              0.0996,
+              0.1011,
+              0.0996
+            ],
+            "max_abs_deviation_from_uniform": 0.0011,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0011
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9054,
+              "mean_width": 2.0156
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8061,
+              "mean_width": 2.014
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9008,
+          "mean_width": 2.017,
+          "median_width": 2.039,
+          "width_p10": 1.8524,
+          "width_p90": 2.0654,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9015,
+              "mean_width": 1.8757
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9078,
+              "mean_width": 2.2759
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.908,
+              "mean_width": 1.7316
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9028,
+              "mean_width": 2.2027
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8997,
+              "mean_width": 2.039
+            }
+          },
+          "winkler": 2.7289,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1006,
+              0.0995,
+              0.0999,
+              0.1008,
+              0.1,
+              0.1001,
+              0.0995,
+              0.0984,
+              0.1009,
+              0.1004
+            ],
+            "max_abs_deviation_from_uniform": 0.0016,
+            "mean_pit": 0.4999,
+            "ks_stat": 0.0022
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9045,
+              "mean_width": 2.0133
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8273,
+              "mean_width": 2.104
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8768,
+          "mean_width": 1.9735,
+          "median_width": 1.8932,
+          "width_p10": 1.4367,
+          "width_p90": 2.5794,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8851,
+              "mean_width": 1.9087
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8756,
+              "mean_width": 2.1916
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8725,
+              "mean_width": 1.7345
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8594,
+              "mean_width": 1.9448
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8762,
+              "mean_width": 1.9905
+            }
+          },
+          "winkler": 2.8424,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1182,
+              0.1143,
+              0.1101,
+              0.1001,
+              0.0911,
+              0.0961,
+              0.0833,
+              0.0811,
+              0.0828,
+              0.123
+            ],
+            "max_abs_deviation_from_uniform": 0.023,
+            "mean_pit": 0.4823,
+            "ks_stat": 0.0441
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8803,
+              "mean_width": 1.9674
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.7979,
+              "mean_width": 2.0887
+            }
+          }
+        }
+      },
+      "q_median_by_fold": {
+        "0": 0.2818,
+        "1": 0.2891,
+        "2": 0.2943,
+        "3": 0.2936,
+        "4": 0.2891
+      },
+      "elapsed_seconds": 132.2
+    },
+    "20261023": {
+      "point_r2": 0.3357,
+      "arms": {
+        "cqr": {
+          "n": 21404,
+          "coverage": 0.8995,
+          "mean_width": 2.0052,
+          "median_width": 1.9895,
+          "width_p10": 1.5719,
+          "width_p90": 2.4383,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9128,
+              "mean_width": 1.9331
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8678,
+              "mean_width": 2.1437
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9369,
+              "mean_width": 2.0067
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9038,
+              "mean_width": 2.0928
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8959,
+              "mean_width": 2.0091
+            }
+          },
+          "winkler": 2.6296,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8678,
+            "mean_width": 2.1437
+          },
+          "worst_group_coverage": 0.8678
+        },
+        "cqr_metal_mondrian": {
+          "n": 21404,
+          "coverage": 0.8992,
+          "mean_width": 2.0072,
+          "median_width": 1.9814,
+          "width_p10": 1.5715,
+          "width_p90": 2.4723,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8988,
+              "mean_width": 1.8455
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8922,
+              "mean_width": 2.3723
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.7348
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8976,
+              "mean_width": 2.066
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8997,
+              "mean_width": 2.0354
+            }
+          },
+          "winkler": 2.6339,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8922,
+            "mean_width": 2.3723
+          },
+          "worst_group_coverage": 0.8922
+        },
+        "global": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.01,
+          "median_width": 2.0067,
+          "width_p10": 1.9929,
+          "width_p90": 2.0347,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9184,
+              "mean_width": 2.0117
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8544,
+              "mean_width": 2.0138
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9435,
+              "mean_width": 2.0119
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8749,
+              "mean_width": 2.0079
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8979,
+              "mean_width": 2.0094
+            }
+          },
+          "winkler": 2.7371,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1001,
+              0.0999,
+              0.1001,
+              0.1003,
+              0.1011,
+              0.0987,
+              0.0998,
+              0.0997,
+              0.1004,
+              0.0999
+            ],
+            "max_abs_deviation_from_uniform": 0.0013,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0015
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9052,
+              "mean_width": 2.01
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8073,
+              "mean_width": 2.0086
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9001,
+          "mean_width": 2.0047,
+          "median_width": 2.0158,
+          "width_p10": 1.8578,
+          "width_p90": 2.0552,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8996,
+              "mean_width": 1.8653
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9033,
+              "mean_width": 2.3224
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.6312
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.2558
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8998,
+              "mean_width": 2.0229
+            }
+          },
+          "winkler": 2.7337,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1005,
+              0.1001,
+              0.0997,
+              0.1009,
+              0.1011,
+              0.0981,
+              0.1,
+              0.0998,
+              0.0993,
+              0.1005
+            ],
+            "max_abs_deviation_from_uniform": 0.0019,
+            "mean_pit": 0.4998,
+            "ks_stat": 0.0024
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9041,
+              "mean_width": 1.9998
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8296,
+              "mean_width": 2.1187
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8748,
+          "mean_width": 1.9702,
+          "median_width": 1.8799,
+          "width_p10": 1.3962,
+          "width_p90": 2.6134,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8838,
+              "mean_width": 1.9037
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8811,
+              "mean_width": 2.1999
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8949,
+              "mean_width": 1.6758
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8645,
+              "mean_width": 2.0281
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8719,
+              "mean_width": 1.9841
+            }
+          },
+          "winkler": 2.8591,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1173,
+              0.1155,
+              0.107,
+              0.0976,
+              0.0939,
+              0.0931,
+              0.0837,
+              0.0818,
+              0.0843,
+              0.1259
+            ],
+            "max_abs_deviation_from_uniform": 0.0259,
+            "mean_pit": 0.4855,
+            "ks_stat": 0.0405
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8777,
+              "mean_width": 1.9627
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8108,
+              "mean_width": 2.0983
+            }
+          }
+        }
+      },
+      "q_median_by_fold": {
+        "0": 0.2783,
+        "1": 0.2876,
+        "2": 0.2895,
+        "3": 0.2929,
+        "4": 0.2803
+      },
+      "elapsed_seconds": 72.3
+    },
+    "20261024": {
+      "point_r2": 0.3376,
+      "arms": {
+        "cqr": {
+          "n": 21404,
+          "coverage": 0.9002,
+          "mean_width": 2.0134,
+          "median_width": 1.996,
+          "width_p10": 1.5945,
+          "width_p90": 2.444,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9149,
+              "mean_width": 1.9424
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8756,
+              "mean_width": 2.1739
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9422,
+              "mean_width": 2.0189
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.0806
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8958,
+              "mean_width": 2.0168
+            }
+          },
+          "winkler": 2.6401,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8756,
+            "mean_width": 2.1739
+          },
+          "worst_group_coverage": 0.8756
+        },
+        "cqr_metal_mondrian": {
+          "n": 21404,
+          "coverage": 0.8995,
+          "mean_width": 2.0135,
+          "median_width": 1.9865,
+          "width_p10": 1.5745,
+          "width_p90": 2.4809,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8996,
+              "mean_width": 1.8458
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8922,
+              "mean_width": 2.368
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8988,
+              "mean_width": 1.7023
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9007,
+              "mean_width": 2.0669
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8998,
+              "mean_width": 2.0462
+            }
+          },
+          "winkler": 2.6441,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8922,
+            "mean_width": 2.368
+          },
+          "worst_group_coverage": 0.8922
+        },
+        "global": {
+          "n": 21404,
+          "coverage": 0.8998,
+          "mean_width": 2.0125,
+          "median_width": 2.0111,
+          "width_p10": 1.9925,
+          "width_p90": 2.0334,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9165,
+              "mean_width": 2.0143
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8644,
+              "mean_width": 2.016
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9356,
+              "mean_width": 2.0146
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8811,
+              "mean_width": 2.0105
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8972,
+              "mean_width": 2.0119
+            }
+          },
+          "winkler": 2.7324,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.0998,
+              0.1005,
+              0.1,
+              0.0999,
+              0.0995,
+              0.1005,
+              0.0995,
+              0.1003,
+              0.0997,
+              0.1003
+            ],
+            "max_abs_deviation_from_uniform": 0.0005,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0016
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9044,
+              "mean_width": 2.0126
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8085,
+              "mean_width": 2.0116
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.8994,
+          "mean_width": 2.0113,
+          "median_width": 2.0303,
+          "width_p10": 1.8555,
+          "width_p90": 2.067,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8996,
+              "mean_width": 1.8742
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8944,
+              "mean_width": 2.2894
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9001,
+              "mean_width": 1.745
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8997,
+              "mean_width": 2.1837
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8996,
+              "mean_width": 2.031
+            }
+          },
+          "winkler": 2.7359,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1002,
+              0.1002,
+              0.1,
+              0.1003,
+              0.0995,
+              0.0999,
+              0.1004,
+              0.0995,
+              0.0991,
+              0.101
+            ],
+            "max_abs_deviation_from_uniform": 0.001,
+            "mean_pit": 0.4999,
+            "ks_stat": 0.0022
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9034,
+              "mean_width": 2.0077
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8214,
+              "mean_width": 2.0949
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8788,
+          "mean_width": 1.9767,
+          "median_width": 1.922,
+          "width_p10": 1.4574,
+          "width_p90": 2.5499,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8886,
+              "mean_width": 1.9102
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8744,
+              "mean_width": 2.2506
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8804,
+              "mean_width": 1.7845
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8635,
+              "mean_width": 1.9533
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8775,
+              "mean_width": 1.9879
+            }
+          },
+          "winkler": 2.8469,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.116,
+              0.1158,
+              0.1079,
+              0.0998,
+              0.0959,
+              0.0929,
+              0.0829,
+              0.0809,
+              0.0858,
+              0.1219
+            ],
+            "max_abs_deviation_from_uniform": 0.0219,
+            "mean_pit": 0.4836,
+            "ks_stat": 0.0409
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8816,
+              "mean_width": 1.9701
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8108,
+              "mean_width": 2.0963
+            }
+          }
+        }
+      },
+      "q_median_by_fold": {
+        "0": 0.2807,
+        "1": 0.2942,
+        "2": 0.2963,
+        "3": 0.295,
+        "4": 0.2855
+      },
+      "elapsed_seconds": 91.1
+    },
+    "20261025": {
+      "point_r2": 0.3385,
+      "arms": {
+        "cqr": {
+          "n": 21404,
+          "coverage": 0.9001,
+          "mean_width": 1.9932,
+          "median_width": 1.9695,
+          "width_p10": 1.576,
+          "width_p90": 2.4347,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9144,
+              "mean_width": 1.9315
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8822,
+              "mean_width": 2.1376
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9382,
+              "mean_width": 1.9644
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.045
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8956,
+              "mean_width": 1.998
+            }
+          },
+          "winkler": 2.6309,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8822,
+            "mean_width": 2.1376
+          },
+          "worst_group_coverage": 0.8822
+        },
+        "cqr_metal_mondrian": {
+          "n": 21404,
+          "coverage": 0.9008,
+          "mean_width": 1.9964,
+          "median_width": 1.9678,
+          "width_p10": 1.559,
+          "width_p90": 2.4648,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.902,
+              "mean_width": 1.8367
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9011,
+              "mean_width": 2.334
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9067,
+              "mean_width": 1.74
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.0365
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.9001,
+              "mean_width": 2.0261
+            }
+          },
+          "winkler": 2.6369,
+          "worst_group": {
+            "group": "Ru",
+            "n": 15051,
+            "coverage": 0.9001,
+            "mean_width": 2.0261
+          },
+          "worst_group_coverage": 0.9001
+        },
+        "global": {
+          "n": 21404,
+          "coverage": 0.9005,
+          "mean_width": 2.0164,
+          "median_width": 2.005,
+          "width_p10": 2.0036,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9189,
+              "mean_width": 2.0177
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8656,
+              "mean_width": 2.02
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9422,
+              "mean_width": 2.0189
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8759,
+              "mean_width": 2.0134
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8975,
+              "mean_width": 2.0159
+            }
+          },
+          "winkler": 2.7322,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1001,
+              0.0999,
+              0.0999,
+              0.1,
+              0.1003,
+              0.0994,
+              0.1008,
+              0.0996,
+              0.1004,
+              0.0995
+            ],
+            "max_abs_deviation_from_uniform": 0.0008,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0012
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9049,
+              "mean_width": 2.0165
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8155,
+              "mean_width": 2.0151
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9001,
+          "mean_width": 2.0088,
+          "median_width": 2.0413,
+          "width_p10": 1.8309,
+          "width_p90": 2.072,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9001,
+              "mean_width": 1.8471
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8956,
+              "mean_width": 2.2449
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.6509
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.2057
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.9002,
+              "mean_width": 2.0402
+            }
+          },
+          "winkler": 2.7301,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1003,
+              0.0997,
+              0.1008,
+              0.0997,
+              0.1002,
+              0.0994,
+              0.1,
+              0.0999,
+              0.0993,
+              0.1005
+            ],
+            "max_abs_deviation_from_uniform": 0.0008,
+            "mean_pit": 0.4998,
+            "ks_stat": 0.0017
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.904,
+              "mean_width": 2.0054
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8261,
+              "mean_width": 2.0866
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8771,
+          "mean_width": 1.9813,
+          "median_width": 1.8904,
+          "width_p10": 1.4288,
+          "width_p90": 2.5922,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8854,
+              "mean_width": 1.9144
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8778,
+              "mean_width": 2.192
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8949,
+              "mean_width": 1.7631
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8707,
+              "mean_width": 2.0661
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8746,
+              "mean_width": 1.9908
+            }
+          },
+          "winkler": 2.8592,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1211,
+              0.1129,
+              0.1047,
+              0.1017,
+              0.0948,
+              0.0905,
+              0.0865,
+              0.0794,
+              0.0851,
+              0.1232
+            ],
+            "max_abs_deviation_from_uniform": 0.0232,
+            "mean_pit": 0.4835,
+            "ks_stat": 0.0423
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.88,
+              "mean_width": 1.9741
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8108,
+              "mean_width": 2.1162
+            }
+          }
+        }
+      },
+      "q_median_by_fold": {
+        "0": 0.2695,
+        "1": 0.2784,
+        "2": 0.2873,
+        "3": 0.2846,
+        "4": 0.275
+      },
+      "elapsed_seconds": 72.3
+    },
+    "20261026": {
+      "point_r2": 0.3366,
+      "arms": {
+        "cqr": {
+          "n": 21404,
+          "coverage": 0.8998,
+          "mean_width": 2.0067,
+          "median_width": 1.9903,
+          "width_p10": 1.5914,
+          "width_p90": 2.4407,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9128,
+              "mean_width": 1.9395
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8744,
+              "mean_width": 2.1613
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9396,
+              "mean_width": 2.0116
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9069,
+              "mean_width": 2.0748
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8956,
+              "mean_width": 2.0094
+            }
+          },
+          "winkler": 2.6275,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8744,
+            "mean_width": 2.1613
+          },
+          "worst_group_coverage": 0.8744
+        },
+        "cqr_metal_mondrian": {
+          "n": 21404,
+          "coverage": 0.9001,
+          "mean_width": 2.0077,
+          "median_width": 1.9865,
+          "width_p10": 1.5747,
+          "width_p90": 2.4703,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9007,
+              "mean_width": 1.8584
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9044,
+              "mean_width": 2.3566
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9054,
+              "mean_width": 1.7311
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8997,
+              "mean_width": 2.0582
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8994,
+              "mean_width": 2.0345
+            }
+          },
+          "winkler": 2.6303,
+          "worst_group": {
+            "group": "Ru",
+            "n": 15051,
+            "coverage": 0.8994,
+            "mean_width": 2.0345
+          },
+          "worst_group_coverage": 0.8994
+        },
+        "global": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.0172,
+          "median_width": 2.0075,
+          "width_p10": 2.0045,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9203,
+              "mean_width": 2.0185
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8556,
+              "mean_width": 2.0204
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9396,
+              "mean_width": 2.0195
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8759,
+              "mean_width": 2.0147
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8977,
+              "mean_width": 2.0167
+            }
+          },
+          "winkler": 2.7406,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1,
+              0.1001,
+              0.1004,
+              0.0997,
+              0.1,
+              0.0998,
+              0.1003,
+              0.0997,
+              0.1001,
+              0.0998
+            ],
+            "max_abs_deviation_from_uniform": 0.0004,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0011
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9052,
+              "mean_width": 2.0173
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8038,
+              "mean_width": 2.0159
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9002,
+          "mean_width": 2.0181,
+          "median_width": 2.0382,
+          "width_p10": 1.8536,
+          "width_p90": 2.0688,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8999,
+              "mean_width": 1.8679
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8956,
+              "mean_width": 2.3276
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.7336
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9007,
+              "mean_width": 2.2215
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.9004,
+              "mean_width": 2.0381
+            }
+          },
+          "winkler": 2.7386,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1002,
+              0.1005,
+              0.0997,
+              0.0995,
+              0.1007,
+              0.1004,
+              0.0986,
+              0.0998,
+              0.1003,
+              0.1002
+            ],
+            "max_abs_deviation_from_uniform": 0.0014,
+            "mean_pit": 0.4998,
+            "ks_stat": 0.0017
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9042,
+              "mean_width": 2.0137
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8237,
+              "mean_width": 2.1205
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.876,
+          "mean_width": 1.965,
+          "median_width": 1.9052,
+          "width_p10": 1.4312,
+          "width_p90": 2.5089,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8848,
+              "mean_width": 1.9014
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.86,
+              "mean_width": 2.0802
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.887,
+              "mean_width": 1.7625
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8532,
+              "mean_width": 1.975
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8757,
+              "mean_width": 1.9835
+            }
+          },
+          "winkler": 2.8506,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1174,
+              0.1119,
+              0.1094,
+              0.0978,
+              0.0982,
+              0.0881,
+              0.0877,
+              0.0797,
+              0.0855,
+              0.1245
+            ],
+            "max_abs_deviation_from_uniform": 0.0245,
+            "mean_pit": 0.4851,
+            "ks_stat": 0.0407
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8795,
+              "mean_width": 1.9594
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.7979,
+              "mean_width": 2.0622
+            }
+          }
+        }
+      },
+      "q_median_by_fold": {
+        "0": 0.2762,
+        "1": 0.2898,
+        "2": 0.2985,
+        "3": 0.2946,
+        "4": 0.2842
+      },
+      "elapsed_seconds": 100.0
+    }
+  },
+  "aggregate": {
+    "cqr": {
+      "coverage_mean": 0.9,
+      "coverage_min": 0.8995,
+      "median_width_mean": 1.9871,
+      "worst_group_coverage_mean": 0.8716,
+      "winkler_mean": 2.6315
+    },
+    "cqr_metal_mondrian": {
+      "coverage_mean": 0.8999,
+      "coverage_min": 0.8992,
+      "median_width_mean": 1.9802,
+      "worst_group_coverage_mean": 0.8961,
+      "winkler_mean": 2.6357
+    },
+    "global": {
+      "coverage_mean": 0.9003,
+      "coverage_min": 0.8998,
+      "median_width_mean": 2.0073,
+      "worst_group_coverage_mean": 0.86,
+      "winkler_mean": 2.7346
+    },
+    "metal": {
+      "coverage_mean": 0.9001,
+      "coverage_min": 0.8994,
+      "median_width_mean": 2.0329,
+      "worst_group_coverage_mean": 0.897,
+      "winkler_mean": 2.7334
+    },
+    "difficulty": {
+      "coverage_mean": 0.8767,
+      "coverage_min": 0.8748,
+      "median_width_mean": 1.8981,
+      "worst_group_coverage_mean": 0.8623,
+      "winkler_mean": 2.8516
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T12:42+08:00",
+    "checks": {
+      "median_width": {
+        "value": 1.9871,
+        "threshold": 1.8,
+        "pass": false
+      },
+      "marginal_coverage": {
+        "value": 0.9,
+        "threshold": 0.9,
+        "pass": true
+      },
+      "worst_metal_group_coverage": {
+        "value": 0.8716,
+        "threshold": 0.87,
+        "pass": true
+      },
+      "beats_difficulty_at_coverage": {
+        "cqr_width": 1.9871,
+        "cqr_coverage": 0.9,
+        "difficulty_width": 1.8981,
+        "difficulty_coverage": 0.8767,
+        "coverage_gap": 0.0233,
+        "pass": false,
+        "note": "Compared at each arm's own coverage; the gap is reported because a narrower interval at lower coverage is not a win."
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "width > 1.82 or worst group coverage < 0.85",
+      "triggered": true
+    }
+  },
+  "caveats": [
+    "Point predictions are refitted per seed, so the comparison arms and CQR see the same residuals; only the interval construction differs.",
+    "Cross-conformal coverage is a lower bound: for outer fold k the calibration rows come from models that saw fold k, so their scores are mildly optimistic.",
+    "The quantile models use the same 500-tree budget as the point model. A quantile objective needs more capacity than a mean objective on the same features; the budget was not tuned, so this is a floor on CQR's width.",
+    "Coverage is marginal over all rows; the per-metal table is the honest one, and metal-Mondrian is the variant that targets it."
+  ]
+}

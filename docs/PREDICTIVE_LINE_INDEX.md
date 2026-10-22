@@ -27,6 +27,9 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **金属图是一棵树，而且「有效边」与「精确边」不是同一个集合**（UP-18）：观测子图 4 节点 3 边、无环，Re 是孤立点；树上 node-splitting 无定义、残差自由度 0。按效应 {Ru–Os +0.134 (t=3.36), Ru–Rh +1.077 (t=2.58)}，按精度 {Ru–Os 0.59, Ir–Rh 0.40} —— 只在 Ru–Os 上重合。UP-10 判 OK 的 Ir–Rh 均值与 0 不可区分（t=0.96）。
 - **metal_out 的负 R² 是行构成，不是模型缺陷**（UP-19）：**94.5% 的测试行没有任何 (配体, 细胞系) 伙伴在训练金属下**，这部分 R² = **−0.0913**；有伙伴的 **5.47%（1,151 行）上 R² = 0.3299**、去中心化 0.3806，高于同模型 within_metal 的 0.2128。headline −0.0734 是这两块按 SSE/SST 加权的结果。
 - **shape 里结构与论文批次各自都超过 50%**（UP-17）：配体×金属 0.8015 [0.7884, 0.8151]、论文×金属 0.5484 [0.5801, 0.6297]，**两块在自己的优先顺序下都过 0.5、在对方的顺序下都归 0**；细胞×金属两种顺序都是 0.0。冻结的 kill 规则触发，但它的推论（"建模即拟合噪声"）**不成立**。
+- **CQR 修好了覆盖、没修好宽度**（UP-20）：覆盖 **0.9000**、最差金属组 **0.8716** 双达标，但中位宽度 **1.9871** 只比 global（2.0073）窄 **1.0%**，离 1.80 差 10.4%。difficulty 的 1.8981 是拿 **0.8767** 覆盖换的。kill 触发 ⇒ DP-7 放弃宽度目标。
+- **论文偏移真实但不可从论文描述预测**（UP-21）：留出论文偏移 sd **0.2400**、平均 |偏移| **0.2255**，但 LOPO ridge **R² = −0.0259**，校正后 DOI R² 从 0.3670 掉到 **0.3557**、偏移 MAE 反而涨 4.55%。允许用测试论文自己的 y 统计量则跳到 **0.5405**——**信息在标签里，不在描述里**。kill 触发 ⇒ DOI 线关闭。
+- **UP-8 的 1/5 是采样粒度，不是缺配对点**（UP-22）：换成行级采样后 n_paired=3 有 **3/5** 金属 R² > 0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 从 0 增到 3 的平均 R² 是 **0.0407 → 0.0306**，不单调。**Re 有 0 个配对行却拿到 +0.1734**，增益在定义上不来自配对。gate FAIL（secondary），kill 未触发。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -61,6 +64,9 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 |---|---|---|---|
 | UP-18 | 金属图是什么形状，哪条边携带水平信息 | **FAIL**（2/4 断言） | 观测子图是树；t（簇）Ru–Os 3.36 / Ru–Rh 2.58 / Ir–Rh 0.96；kill 未触发 |
 | UP-19 | metal_out 的负 R² 是模型还是估计目标 | **PASS** | 可识别行仅 **5.47%**，其上 R² = **0.3299**（去中心化 0.3806）；其余 94.5% 上 −0.0913 |
+| UP-20 | CQR 能不能同时拿宽度和覆盖 | **FAIL**（kill 触发） | 覆盖 **0.9000** ✓、最差组 0.8716 ✓，宽度 **1.9871** > 1.80（只比 global 窄 1.0%） |
+| UP-21 | 论文元特征能不能预测论文偏移 | **FAIL**（kill 触发） | DOI R² **0.3557** < 0.40；偏移 LOPO R² **−0.0259**；泄漏臂 +0.1735 |
+| UP-22 | UP-8 的 1/5 是不是因为缺配对点 | **FAIL**（secondary） | n_paired=3 时 3/5 金属 >0 ✓，但 0→3 平均 R² **0.0407 → 0.0306** 不单调；Re 有 0 个配对行却 +0.1734 |
 
 ---
 
@@ -316,7 +322,28 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP19.pooled_identifiable_r2_centred", "value": 0.3806, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.pooled.descriptors.identifiable_unit_rows.r2_centred"},
   {"id": "UP19.ru_centred_identifiable", "value": 0.4078, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.per_metal.Ru.representations.descriptors.identifiable_unit_rows.r2_centred"},
   {"id": "UP19.re_identifiable_rows", "value": 0, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.per_metal.Re.n_identifiable_unit_rows"},
-  {"id": "UP19.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "gate.gate_pass"}
+  {"id": "UP19.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "gate.gate_pass"},
+  {"id": "UP20.cqr_coverage", "value": 0.9, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.cqr.coverage_mean"},
+  {"id": "UP20.cqr_width", "value": 1.9871, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.cqr.median_width_mean"},
+  {"id": "UP20.cqr_worst_group", "value": 0.8716, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.cqr.worst_group_coverage_mean"},
+  {"id": "UP20.mondrian_worst_group", "value": 0.8961, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.cqr_metal_mondrian.worst_group_coverage_mean"},
+  {"id": "UP20.difficulty_width", "value": 1.8981, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.difficulty.median_width_mean"},
+  {"id": "UP20.global_width", "value": 2.0073, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "aggregate.global.median_width_mean"},
+  {"id": "UP20.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "gate.gate_pass"},
+  {"id": "UP20.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_cqr.json", "path": "gate.kill.triggered"},
+  {"id": "UP21.base_r2", "value": 0.367, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "aggregate.base.r2_mean"},
+  {"id": "UP21.ridge_design_r2", "value": 0.3557, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "aggregate.ridge_design.r2_mean"},
+  {"id": "UP21.leak_arm_r2", "value": 0.5405, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "aggregate.ridge_design+outcome.r2_mean"},
+  {"id": "UP21.lopo_ridge_r2", "value": -0.0259, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "per_seed.20261022.offset_diagnostics_fold0.lopo_ridge_r2"},
+  {"id": "UP21.test_offset_sd", "value": 0.24, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "per_seed.20261022.offset_diagnostics_fold0.test_offset_sd"},
+  {"id": "UP21.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_paper_meta_offset.json", "path": "gate.kill.triggered"},
+  {"id": "UP22.re_n_paired_rows", "value": 0, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "aggregate.Re.n_paired_rows"},
+  {"id": "UP22.rh_np0_r2", "value": 0.0709, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "aggregate.Rh.ridge|0.mean_r2"},
+  {"id": "UP22.re_np3_r2", "value": 0.1745, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "aggregate.Re.ridge|3.mean_r2"},
+  {"id": "UP22.primary_metals_above_zero", "value": 3, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.primary.value"},
+  {"id": "UP22.mean_r2_np0", "value": 0.0407, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.secondary.values.0"},
+  {"id": "UP22.mean_r2_np3", "value": 0.0306, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.secondary.values.3"},
+  {"id": "UP22.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.kill.triggered"}
 ]
 ```
 
@@ -678,6 +705,72 @@ R²_centred = R²_abs + bias²/Var(y)
 - **去中心化用了留出标签**，所以 0.3806 是 oracle-offset 上界，不是可部署分数。它能支撑的结论是"金属内排序可迁移"，不是"新金属的绝对活性可预测"。
 - **可识别子集是选出来的**：能进这个子集的配体，都是被至少两个金属测过的配体（多为研究充分的化合物）。0.33 不是对任意新配体的能力。
 - **Re 完全没有可识别行**：Re 的 756 行里没有任何 (配体, 细胞系) 在别的金属下出现过，所以 Re 一行都没有迁移，只能靠加性模型。
+
+### 2.19 UP-20 CQR 条件覆盖：覆盖拿到了，宽度没降下来（2026-10-22）
+
+`msrs_cqr.json`（CPU，5 seed；LightGBM `objective=quantile`，alpha ∈ {0.05, 0.95}；cross-conformal——外层折 k 用**其它折**的 OOF 分数校准，所以校准集与评分集不相交）。
+
+| 臂 | 边际覆盖 | 中位宽度 | 最差金属组覆盖 | Winkler |
+|---|---:|---:|---:|---:|
+| **cqr** | **0.9000** | **1.9871** | **0.8716** | 2.6315 |
+| cqr_metal_mondrian | 0.8999 | 1.9802 | **0.8961** | 2.6357 |
+| global（现状基线） | 0.9003 | 2.0073 | 0.8600 | 2.7346 |
+| metal | 0.9001 | 2.0329 | 0.8970 | 2.7334 |
+| difficulty-normalized | 0.8767 | **1.8981** | 0.8623 | 2.8516 |
+
+**结论：CQR 修好了覆盖，没修好宽度。**
+
+1. **覆盖与最差组都达标**：0.9000（名义 0.90，差 0.0000）、最差组 0.8716（门槛 0.87）。这两项是 UP-6 之后第一次同时成立。
+2. **宽度只比 global 窄 1.0%**（2.0073 → 1.9871），离门槛 1.80 差 **10.4%**。计划里写的"当前最好 1.9195"在本次同表复算是 difficulty 的 **1.8981**——CQR 比它**宽** 4.7%。
+3. **difficulty 的窄宽度是买来的**：它用 **0.8767** 的覆盖换 1.8981 的宽度，与 CQR 差 **0.0233** 覆盖。gate 里 `beats_difficulty_at_coverage` 明确要求"在各自覆盖下比较"，所以这条判 FAIL 而不是 PASS。**一个更窄但覆盖更低的区间不是胜利。**
+4. **metal-Mondrian 抬最差组几乎不要钱**：最差组 0.8716 → **0.8961**（+0.0245），宽度只涨 −0.0035（1.9802 vs 1.9871）。这与 UP-6 的 cohort-Mondrian 结论一致：**分层能修最差层，修不了宽度**。
+
+**Gate：FAIL（4 条过 2 条）。** `median_width` ✗（1.9871 > 1.80）、`beats_difficulty_at_coverage` ✗；`marginal_coverage` ✓、`worst_metal_group_coverage` ✓。**kill 触发**（宽度 1.9871 > 1.82）⇒ **DP-7 走「放弃宽度目标」分支**：区间宽度不再是本轮的成功判据，论文只报"覆盖 0.90 可达、宽度由数据分辨率决定（中位 1.99 log10，约两个数量级）"。
+
+### 2.20 UP-21 论文元特征偏移：偏移是真的，但不是论文描述的函数（2026-10-22）
+
+`msrs_paper_meta_offset.json`（CPU，5 seed；23 维论文级元特征 = 年份 + 5 金属比例 + 细胞系分布熵 + 16 个 `crc32` scaffold 桶；**不含行数、不含任何 y 统计量**；DOI GroupKFold(5)，与 0.3767 同一划分）。
+
+| 臂 | DOI R²（5 seed 均值） | 相对 base | 说明 |
+|---|---:|---:|---|
+| base（无偏移校正） | **0.3670** | — | 复现 0.3767 的 5 seed 区间 |
+| ridge_design | 0.3557 | **−0.0113** | 主臂：23 维元特征 |
+| lgbm_design | 0.3522 | −0.0148 | 换非线性，更差 |
+| ridge_design+counts | 0.3538 | −0.0132 | 加行数/配体数（no-leak 禁止，仅参考） |
+| ridge_design+outcome | **0.5405** | **+0.1735** | 泄漏上界：用测试论文自己的 y 均值/分位 |
+| ridge_no_year | 0.3561 | −0.0109 | 去年份 |
+| ridge_no_metal | 0.3572 | −0.0098 | 去金属组成 |
+| ridge_no_scaffold | 0.3643 | −0.0027 | 去 scaffold 桶（损失最小） |
+
+**论文偏移的规模**（fold 0 诊断）：训练论文偏移 sd **0.2281**、测试论文偏移 sd **0.2400**、平均绝对值 **0.2255**。偏移是真实存在且量级不小的——这正是 UP-17 里"论文×金属 0.5484"的同一个东西。
+
+**但它不是元特征的函数**：留一论文（LOPO）重拟合的 ridge **R² = −0.0259**，即对留出论文的偏移**比恒预测 0 还差**。校正后偏移 MAE 从 0.1622 涨到 **0.1695**（相对变差 **4.55%**）。
+
+**泄漏臂是这条结论的证明而不是反例**：一旦允许用测试论文自己的 y 均值与分位数，R² 从 0.3670 跳到 **0.5405**（+0.1735）。**信息在论文的标签里，不在论文的描述里。** 缺的不是"论文身份"（DOI one-hot 本来就没有），是"论文的结果"——而后者在留出时按定义不存在。
+
+**Gate：FAIL（3 条过 1 条）。** `doi_r2` ✗（0.3557 < 0.42）、`offset_mae_drop` ✗（−0.0451 < 0.10）、`no_leak` ✓。**kill 触发**（0.3557 < 0.40）⇒ **DOI 线关闭**，不再尝试其它偏移模型。论文写"整篇留出 R² ≈ 0.37，剩余损失的主要成分是不可迁移的论文级偏移"，不再写"可用元特征校正"。
+
+### 2.21 UP-22 配对 k-shot：UP-8 的 1/5 来自**采样方式**，不来自"没有配对点"（2026-10-22）
+
+`msrs_paired_kshot.json`（CPU，5 seed × 7 个 n_paired × 3 臂 × 5 金属 × 20 次重复；k=50；对偶 ridge 与 `msrs_meta_kshot.adapt_ridge` 的 primal 形式等价）。
+
+| 留出金属 | 零样本 R² | n_paired=0（行级采样） | n_paired=3 | 配对行总数 | UP-8 的整 DOI 组采样（n=0） |
+|---|---:|---:|---:|---:|---:|
+| Ru | −0.0777 | −0.1809 | −0.2040 | 406 | **−0.3161** |
+| Ir | −0.1283 | −0.1404 | −0.1635 | 177 | **−0.2669** |
+| Rh | −0.1589 | **+0.0709** | **+0.0631** | 192 | −0.0840 |
+| Os | +0.3479 | +0.2805 | +0.2830 | 376 | +0.2816 |
+| Re | −0.1034 | **+0.1734** | **+0.1745** | **0** | −0.0716 |
+
+**两个结论同时成立，而且互相矛盾——这正是这一项的价值。**
+
+1. **primary PASS（3/5）**：n_paired=3 时 Rh +0.0631、Os +0.2830、Re +0.1745 均 > 0，UP-8 的 1/5 变成 3/5。
+2. **secondary FAIL（不单调）**：跨金属平均 R² 在 n_paired = 0/1/2/3 上是 **0.0407 / 0.0313 / 0.0432 / 0.0306**，既不单调也不上升。
+3. **增益全部发生在 n_paired=0**：Rh 从 −0.1589 到 **+0.0709**、Re 从 −0.1034 到 **+0.1734**，都是在**一个配对点都没加**的情况下发生的。**Re 的配对行总数是 0**，所以 Re 的增益在定义上不可能来自配对。
+4. **成因是采样粒度**：UP-8 按**整篇 DOI** 抽 k 个点（右列 −0.3161 / −0.2669 / −0.0840 / +0.2816 / −0.0716），本项按**行**抽。同样的 k=50、同样的臂，只换采样单位就把 1/5 变成 3/5。**UP-8 测到的是"整篇留出时少样本适配难"，不是"语料里缺配对点"。**
+5. **但"配对是机制"没有被证实**：0→3 的增量在 Rh 上是 **−0.0078**，Os +0.0025、Re +0.0011，平均从 0.0407 掉到 0.0306。给模型配对点没有换来可测量的交互项。
+
+**Gate：FAIL。** primary ✓（3 ≥ 3）、secondary ✗（非单调）。**kill 未触发**（3 ≥ 2），所以 k-shot 线**不关闭**；但论文只能写"新金属少样本适配在行级采样下 3/5 金属可用"，**不能**写"配对校准点有用"。
 
 ---
 
