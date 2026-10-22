@@ -435,7 +435,11 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP28.fp_mean", "value": 0.3697, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.fp_tree.r2_mean_over_seeds"},
   {"id": "UP28.delta", "value": -0.0485, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.checks.delta_vs_tree.value"},
   {"id": "UP28.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.gate_pass"},
-  {"id": "UP28.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.kill.triggered"}
+  {"id": "UP28.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.kill.triggered"},
+  {"id": "UP28.budget10_r2", "value": 0.2415, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget10.json", "path": "results.dmpnn.r2_per_seed.0"},
+  {"id": "UP28.budget10_mse", "value": 0.5578, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget10.json", "path": "results.dmpnn.fold_diagnostics.0.train_loss_last"},
+  {"id": "UP28.budget120_r2", "value": 0.2554, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget120.json", "path": "results.dmpnn.r2_per_seed.0"},
+  {"id": "UP28.budget120_mse", "value": 0.1637, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget120.json", "path": "results.dmpnn.fold_diagnostics.0.train_loss_last"}
 ]
 ```
 
@@ -1068,7 +1072,7 @@ loss_pairwise = −log σ((f(x+) − f(x−) − margin) / T),  f = 活性类 lo
 
 ### 2.30 UP-28 把主干换成 in-house D-MPNN：0.3282，比指纹树低 0.0485（2026-10-22）
 
-`msrs_dmpnn_doi.json`（GPU0，50 次训练 = 5 seed × 5 fold × 40 epoch，3,058 s）。
+`msrs_dmpnn_doi.json`（GPU0，25 次训练 = 5 seed × 5 fold × 40 epoch，3,058 s）。
 
 DOI 线从第一轮起就用指纹树（MACCS+RDKit），0.3767 是这个**次优表示**下的数。UP-28 是唯一一个"换表示"而不是"换目标"的杠杆：把主干换成 in-house D-MPNN（`molmetal/baselines/dmpnn.py`），图替代指纹，金属态 4 维 + 配位 22 维 + 金属 one-hot 5 维 + 细胞系 one-hot 40 维作为 72 维侧块拼进 readout。
 
@@ -1083,6 +1087,16 @@ DOI 线从第一轮起就用指纹树（MACCS+RDKit），0.3767 是这个**次�
 **两种聚合口径都不过 0.40**，所以 kill 不依赖口径选择：todo 原文的门槛写"5 seed 均值"，artifact 的 gate 读 seed-averaged，0.2760 与 0.3282 都远低于门槛。这也是为什么 gate 同时报 `primary`、`baseline`、`per_seed` 三项，而不是只报一个数。
 
 **失败机制是过拟合，不是欠训练。** 标准化后的 y 方差为 1，五个折的训练 MSE 收敛到 0.2677–0.2813（即约 72% 的方差被拟合），而测试 R² 0.33 对应测试 MSE 约 0.67 —— 训练与测试差 2.4 倍。同时五个 seed 的测试 R² 只在 0.2622–0.2949 之间摆动（sd 0.0148），说明这是一个稳定的"记住了训练 DOI"的状态，而不是没收敛。
+
+**预算控制：40 epoch 不是欠训练。** 同一脚本、同一折、seed 0 上跑三个预算：
+
+| epoch | 测试 R²（seed 0） | 训练 MSE（折 0） |
+|---:|---:|---:|
+| 10 | 0.2415 | 0.5578 |
+| 40 | **0.2686** | 0.2762 |
+| 120 | 0.2554 | 0.1637 |
+
+从 10 到 40 测试 R² 涨 0.027，从 40 到 120 训练 MSE 再降 0.11 而测试 R² 反而掉 0.013。**测到的三个点里 40 最好，继续训练只增加记忆。** 所以"再多训一会儿就能追平指纹树"这个解释被测量排除：三个预算里的最大值 0.2686 比指纹树 seed 0 的 0.3706 低 0.10。两个对照各自落盘为 `msrs_dmpnn_doi_budget10.json` / `msrs_dmpnn_doi_budget120.json`，单 seed，只用于这条曲线，不参与 gate。
 
 **seed 集成对 D-MPNN 值 +0.0522，对树只值 +0.0070。** 这个差本身就是过拟合的第三个读数：单个 D-MPNN 的方差大到五个 checkpoint 平均能把 R² 抬 0.05，而树的五个 seed 几乎等价。所以 0.3282 已经是"5 个模型集成交付"的数，不是一次训练的数。
 

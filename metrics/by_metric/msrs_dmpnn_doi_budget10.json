@@ -1,0 +1,110 @@
+{
+  "artifact": "msrs_dmpnn_doi",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L1 representation (UP-28)",
+  "generated_utc": "2026-10-22T11:00:32+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_dmpnn_doi.py",
+    "config": "configs/msrs_dmpnn_doi_budget10.yaml",
+    "git_commit": "8d515919c28cffb6e9d60e51e132ca1af8d3db2b",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python",
+      "--config",
+      "configs/msrs_dmpnn_doi_budget10.yaml"
+    ]
+  },
+  "design": {
+    "cohort": "msrs_feature_expansion.select_cohort (21,404 rows)",
+    "split": "scheme_folds('doi'), 5 GroupKFold folds on DOI",
+    "device": "cuda:0",
+    "deterministic": true,
+    "seeds": [
+      0
+    ],
+    "hyperparameters": {
+      "hidden": 300,
+      "depth": 3,
+      "dropout": 0.1,
+      "atom_version": "v2",
+      "lr": 0.001,
+      "epochs": 10,
+      "batch_size": 64,
+      "weight_decay": 0.0
+    },
+    "side_block": "metal state (4) + coordination (22) + metal one-hot (5) + cell one-hot (top-40); numeric part standardised on the whole cohort, one-hots untouched",
+    "evaluation": "msrs_surface_model.score on fold_id >= 0 rows, same as every other DOI artifact",
+    "gate_frozen_at": "2026-10-22T15:45+08:00"
+  },
+  "results": {
+    "dmpnn": {
+      "r2_per_seed": [
+        0.2415
+      ],
+      "r2_mean_over_seeds": 0.2415,
+      "r2_sd_over_seeds": 0.0,
+      "r2_seed_averaged": 0.2415,
+      "n_unparsable": 0,
+      "side_dim": 72,
+      "fold_diagnostics": [
+        {
+          "fold": 0,
+          "train_loss_first": 1.125264,
+          "train_loss_last": 0.557841
+        },
+        {
+          "fold": 1,
+          "train_loss_first": 1.190397,
+          "train_loss_last": 0.568707
+        },
+        {
+          "fold": 2,
+          "train_loss_first": 1.1505,
+          "train_loss_last": 0.565524
+        },
+        {
+          "fold": 3,
+          "train_loss_first": 1.188146,
+          "train_loss_last": 0.573973
+        },
+        {
+          "fold": 4,
+          "train_loss_first": 1.162166,
+          "train_loss_last": 0.568173
+        }
+      ]
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T15:45+08:00",
+    "checks": {
+      "primary": {
+        "value": 0.2415,
+        "threshold": 0.4,
+        "pass": false
+      },
+      "per_seed": {
+        "r2_per_seed": [
+          0.2415
+        ],
+        "sd": 0.0,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "D-MPNN mean R^2 < 0.3767 closes the representation line",
+      "value": 0.2415,
+      "triggered": true
+    }
+  },
+  "elapsed_seconds": 219.4,
+  "caveats": [
+    "The D-MPNN sees strictly more information than the fingerprint arm: the graph replaces ECFP4/MACCS/RDKit and the side block adds metal and cell identity that the tree also has. A win is a representation win, not a controlled ablation of graph-vs-fingerprint alone.",
+    "Epochs are fixed at 40 with no early stopping. An early-stopping split inside the training folds would either leak a DOI or need a nested split, and a fixed budget keeps the seeds comparable.",
+    "The numeric side block is standardised on the whole cohort rather than per fold. It is label-free, so this is transductive preprocessing, not leakage, but it does mean the fold is not fully self-contained.",
+    "The seed-averaged R^2 is the number 0.3767 is quoted against; the per-seed mean is what one training run delivers. They differ by about 0.01 on the tree and the gate reads the seed-averaged one."
+  ]
+}

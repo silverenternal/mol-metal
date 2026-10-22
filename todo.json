@@ -582,17 +582,27 @@
           "n_rows": 21404,
           "elapsed_seconds": 3057.9,
           "dmpnn_train_mse_last_mean": 0.2753,
-          "seed_avg_gain_over_mean": 0.0522
+          "seed_avg_gain_over_mean": 0.0522,
+          "budget10_seed0_r2": 0.2415,
+          "budget40_seed0_r2": 0.2686,
+          "budget120_seed0_r2": 0.2554,
+          "budget10_seed0_train_mse": 0.5578,
+          "budget120_seed0_train_mse": 0.1637
         },
         "reading": "两种聚合口径都不过 0.40，所以 kill 不依赖口径选择。失败机制是过拟合而非欠训练：标准化 y 上方差为 1，训练 MSE 收敛到 0.276（约 72% 方差被拟合），而测试 R² 0.33 对应测试 MSE 约 0.67，两者差 2.4 倍。五个 seed 的测试 R² 只在 0.2622-0.2949 之间摆动（sd 0.0148），说明这是一个稳定的「记住了训练 DOI」的状态，不是没收敛。在 DOI 留出协议下，2,261 维指纹树反而比 1.4M 参数的图模型更抗偏移。",
         "caveats": [
           "D-MPNN 看到的信息严格多于树（图替代指纹，72 维侧块含金属与细胞系标识），所以这是表示比较，不是 graph-vs-fingerprint 的受控消融。",
-          "固定 40 epoch、无早停。训练折内做早停要么泄漏 DOI、要么需要嵌套切分，所以预算写死；但也意味着「更短或更长预算会不会不同」没有被本包测量。",
+          "固定 40 epoch、无早停是冻结协议。预算轴已单独测量（seed 0：10 epoch 0.2415 / 40 epoch 0.2686 / 120 epoch 0.2554），拐点在 40 附近，继续训练只增加记忆；两个对照单 seed，不参与 gate。",
           "侧块数值部分在全体队列上标准化（无标签，属 transductive 预处理，不是泄漏），折不是完全自包含。",
           "todo 原文的门槛写「5 seed 均值」，artifact 的 gate 读 seed-averaged。两者都报：0.2760 与 0.3282，都远低于 0.40。",
           "0.3767 的复现是逐位精确的（fp_tree seed_avg 0.3767），所以这次比较是可归因的。"
         ],
-        "artifact": "metrics/by_metric/msrs_dmpnn_doi.json"
+        "artifact": "metrics/by_metric/msrs_dmpnn_doi.json",
+        "artifacts": [
+          "metrics/by_metric/msrs_dmpnn_doi.json",
+          "metrics/by_metric/msrs_dmpnn_doi_budget10.json",
+          "metrics/by_metric/msrs_dmpnn_doi_budget120.json"
+        ]
       }
     },
     {

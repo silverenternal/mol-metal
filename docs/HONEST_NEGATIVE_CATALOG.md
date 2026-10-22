@@ -11745,16 +11745,29 @@ The fingerprint arm runs inside the same process on the same rows and folds and
 lands on 0.3767 seed-averaged — bit-identical to the quoted headline. A different
 result there would have invalidated the comparison before it started.
 
+**The budget is a control, and it was measured.** Fixed 40 epochs with no early
+stopping is the frozen protocol; an early-stopping split inside the training folds
+would either leak a DOI or need a nested split. To check that the kill is not
+merely an under-trained model, the same script ran seed 0 at three budgets:
+
+| epoch | test R2 (seed 0) | train MSE (fold 0) |
+|---:|---:|---:|
+| 10 | 0.2415 | 0.5578 |
+| 40 | **0.2686** | 0.2762 |
+| 120 | 0.2554 | 0.1637 |
+
+Test R2 rises 0.027 from 10 to 40 epochs and then *falls* 0.013 by 120 while
+training MSE drops another 0.11. The best of the three budgets is 40, so more training buys
+memory, not generalisation. The best of the three budgets (0.2686) is still 0.10
+below the tree's seed-0 0.3706. The two controls are single-seed and exist only to
+locate this curve; they do not enter the gate.
+
 **Honest boundaries (ACTIVE).**
   * **This is a representation comparison, not a graph-vs-fingerprint ablation.**
     The D-MPNN sees strictly more than the tree: the graph replaces the
     fingerprints and the 72-dimensional side block adds metal state, coordination
     and cell-line identity. A loss here does not license "GNNs lose to
     fingerprints" in general.
-  * **Fixed 40 epochs, no early stopping.** An early-stopping split inside the
-    training folds would either leak a DOI or need a nested split, so the budget
-    is fixed and the seeds stay comparable. The consequence is that the budget
-    axis is a control, not a tuned quantity.
   * **The numeric side block is standardised on the whole cohort.** It is
     label-free, so this is transductive preprocessing rather than leakage, but the
     folds are not fully self-contained.
@@ -11763,13 +11776,16 @@ result there would have invalidated the comparison before it started.
     why.
 
 **Artifacts.** `molmetal/scripts/msrs_dmpnn_doi.py`,
-`configs/msrs_dmpnn_doi.yaml`, `molmetal/baselines/dmpnn.py::pool_batch`,
-`metrics/by_metric/msrs_dmpnn_doi.json`, `metrics/by_metric/msrs_dmpnn_doi_oof.npz`.
+`configs/msrs_dmpnn_doi.yaml`, `configs/msrs_dmpnn_doi_budget10.yaml`,
+`configs/msrs_dmpnn_doi_budget120.yaml`, `molmetal/baselines/dmpnn.py::pool_batch`,
+`metrics/by_metric/msrs_dmpnn_doi.json`, `metrics/by_metric/msrs_dmpnn_doi_oof.npz`,
+`metrics/by_metric/msrs_dmpnn_doi_budget10.json`,
+`metrics/by_metric/msrs_dmpnn_doi_budget120.json`.
 
 **§6.185 catalog-count math.** Net **+1**. Cumulative **239 → 240**. ACTIVE
 **195 → 196**.
 
-**Workflow** | UP-28 (2026-10-22; GPU0 ~51 min for 50 fits; §5.2 every number is
+**Workflow** | UP-28 (2026-10-22; GPU0 ~51 min for 25 fits; §5.2 every number is
 an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---

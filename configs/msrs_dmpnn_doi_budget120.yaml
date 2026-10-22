@@ -1,0 +1,27 @@
+entry:
+  script: molmetal/scripts/msrs_dmpnn_doi.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/msrs_dmpnn_doi.py
+    --config {yaml_path}
+data:
+  long: data/msrs/measurements.parquet
+  metal_desc: molmetal/data/metal_chemistry_5.csv
+  limit: 0
+model:
+  hidden: 300
+  depth: 3
+  dropout: 0.1
+  atom_version: v2
+train:
+  lr: 0.001
+  epochs: 120
+  batch_size: 64
+  weight_decay: 0.0
+  seeds:
+  - 0
+compute:
+  device: cuda:0
+  deterministic: true
+arms:
+- dmpnn
+output:
+  out: metrics/by_metric/msrs_dmpnn_doi_budget120.json
