@@ -286,6 +286,12 @@ _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 #: callers unpack the 5-tuple from `train_one_epoch`).
 _LAST_EPOCH_TERM_MEANS: Dict[str, float] = {}
 
+#: One-shot result of :func:`fm_prior_scale_check` on the FIRST FM batch of the
+#: run (Wf-A107g, 2026-10-22).  Written by :func:`train_one_epoch`, read when
+#: the run artifact is assembled.  Empty means the FM objective never ran, so
+#: the artifact can distinguish "no FM" from "FM with a matched prior".
+_FM_PRIOR_SCALE: Dict[str, float] = {}
+
 #: FIX-C12 (2026-10-21) — opt-in CUDA allocator trace, off by default.
 #:
 #: Set ``MOLMETAL_MEM_TRACE=1`` to print ``memory_allocated`` /
@@ -3675,6 +3681,48 @@ def get_step_timing() -> Dict[str, float]:
     return dict(_STEP_TIMING)
 
 
+def fm_prior_scale_check(
+    x1: torch.Tensor,
+    noise_sigma: float,
+    *,
+    tol_low: float = 0.8,
+    tol_high: float = 1.25,
+) -> Dict[str, float]:
+    """Compare the FM prior's scale to the data it is asked to transport.
+
+    Wf-A107g (2026-10-22).  ``x0 ~ N(0, noise_sigma**2 I)`` and ``x1`` are the
+    RAW cloud coordinates — the tmQM loader does not scale them — so the two
+    ends of the interpolant only share a scale if ``noise_sigma`` matches the
+    data's per-coordinate std.  When it does not, the learned velocity is
+    dominated by a constant-magnitude radial term instead of structure, and a
+    short run looks exactly like "the sampler never moves" (Wf-R28 measured the
+    same defect at 1.0 vs 2.485 Å on the c7 cohort).
+
+    The trap this exists for is silent: ``--fm-noise-sigma`` defaults to 1.0,
+    so a config that turns the FM objective on and forgets the key trains a
+    mis-scaled flow with no warning.  MEASURED 2026-10-22: 11 of the 48 configs
+    with ``use_fm_objective: true`` do not set the key — including the two
+    Wf-A107e arms whose "the sampler does not transport the cloud" reading is
+    therefore confounded.
+
+    Returns ``{"data_std", "noise_sigma", "ratio", "ok"}``.  ``ok`` is 1.0 when
+    ``ratio`` is inside ``[tol_low, tol_high]``.  Pure measurement: no tensor
+    is modified, no RNG is consumed.
+    """
+    _data_std = float(x1.detach().std())
+    _sigma = float(noise_sigma)
+    _ratio = _data_std / _sigma if _sigma > 0.0 else float("inf")
+    _ok = 1.0 if (tol_low <= _ratio <= tol_high) else 0.0
+    return {
+        "data_std": _data_std,
+        "noise_sigma": _sigma,
+        "ratio": _ratio,
+        "ok": _ok,
+        "tol_low": float(tol_low),
+        "tol_high": float(tol_high),
+    }
+
+
 def apply_fm_distortion(
     x_t: torch.Tensor,
     t: torch.Tensor,
@@ -4929,6 +4977,30 @@ def train_one_epoch(
             # message-passing neighbourhood therefore stops reshuffling
             # itself as the sample moves along the path.
             x0 = torch.randn_like(x1) * float(fm_noise_sigma)
+            # Wf-A107g (2026-10-22) — measure the prior/data scale match ONCE,
+            # on the first FM batch, and shout if the config forgot the key.
+            # The check reads `x1` only (no RNG, no tensor written), so every
+            # run that already sets a matched sigma stays bit-exact.
+            if not _FM_PRIOR_SCALE:
+                _FM_PRIOR_SCALE.update(
+                    fm_prior_scale_check(x1, float(fm_noise_sigma))
+                )
+                if not _FM_PRIOR_SCALE.get("ok"):
+                    warnings.warn(
+                        "[cfm-fm] FM prior/data scale mismatch: "
+                        f"fm_noise_sigma={_FM_PRIOR_SCALE['noise_sigma']:.3f} "
+                        f"but the batch's coordinate std is "
+                        f"{_FM_PRIOR_SCALE['data_std']:.3f} "
+                        f"(ratio {_FM_PRIOR_SCALE['ratio']:.2f}, want "
+                        f"[{_FM_PRIOR_SCALE['tol_low']:.2f}, "
+                        f"{_FM_PRIOR_SCALE['tol_high']:.2f}]). x0 and x1 do not "
+                        "share a scale, so the learned velocity is dominated "
+                        "by a constant radial term instead of structure and a "
+                        "short run looks like 'the sampler never moves'. Set "
+                        "`fm_noise_sigma` in the YAML to the measured value.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
             # 2026-10-04 — frontier-math OT coupling (Bass martingale /
             # SE(3) Schrodinger bridge), the point where the repo's R18 math
             # finally has something to act on.
@@ -16330,6 +16402,13 @@ def main() -> int:
                 getattr(args, "bond_pair_chemistry", False)
             ),
             "n_rbf": int(getattr(args, "n_rbf", 8)),
+            # Wf-A107g — the measured prior/data scale match on the first FM
+            # batch.  None = the FM objective never ran (so `fm_noise_sigma`
+            # was inert); `ok: false` = the run trained a mis-scaled flow.
+            "fm_prior_scale": (
+                dict(_FM_PRIOR_SCALE) if _FM_PRIOR_SCALE else None
+            ),
+            "fm_noise_sigma": float(getattr(args, "fm_noise_sigma", 1.0)),
         },
         # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #

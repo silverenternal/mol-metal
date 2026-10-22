@@ -1,0 +1,440 @@
+{
+ "metric": "wfa107e_ring_prior_with_trained_sampler",
+ "tag": "MEASURED",
+ "date": "2026-10-21",
+ "what": "One-factor A/B (ring_template_weight 0 vs 1.0, formulation edge_ring) with a TRAINED velocity field (use_fm_objective true, fm_t_per_cloud 1, tmqm init, wasserstein 0.1) and per-module gradient clipping.  Same protocol otherwise as Wf-A107: 200 train clouds, 64 val, 5 epochs, seed 0.",
+ "arms": [
+  "control",
+  "edge_ring_w1"
+ ],
+ "config": {
+  "control": {
+   "grad_clip_scope": "per_module",
+   "max_norm": 5.0,
+   "ring_template_weight": 0.0,
+   "ring_template_formulation": "count",
+   "use_fm_objective": true,
+   "wasserstein_weight": 0.1
+  },
+  "treatment": {
+   "grad_clip_scope": "per_module",
+   "max_norm": 5.0,
+   "ring_template_weight": 1.0,
+   "ring_template_formulation": "edge_ring",
+   "use_fm_objective": true,
+   "wasserstein_weight": 0.1
+  }
+ },
+ "series": {
+  "control": {
+   "gen_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.8181818181818182,
+    0.8773584905660378
+   ],
+   "gen_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.09090909090909091,
+    0.018867924528301886
+   ],
+   "gen_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    0.11458333333333333,
+    1.1041666666666667
+   ],
+   "bond_pr_auc": [
+    0.04063980661293032,
+    0.050536579127073405,
+    0.19513742197323206,
+    0.4600826509321435,
+    0.5627878510698849
+   ],
+   "bond_class_1_pr_auc": [
+    0.021715644867718358,
+    0.04267595613883881,
+    0.23056600996888807,
+    0.3165399070730855,
+    0.3480321471959051
+   ],
+   "bond_f1": [
+    0.0,
+    0.0,
+    0.0,
+    0.16945271353331806,
+    0.4901382202205311
+   ],
+   "bond_best_f1_at_threshold": [
+    0.11938739993038636,
+    0.12078969957081545,
+    0.3700014230823964,
+    0.6441388953623863,
+    0.7176527176527175
+   ],
+   "bond_precision": [
+    0.0,
+    0.0,
+    0.0,
+    0.46894803548795944,
+    0.5515554002097168
+   ],
+   "bond_recall": [
+    0.0,
+    0.0,
+    0.0,
+    0.1034097261039687,
+    0.44102850754611517
+   ],
+   "gen_validity": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gen_single_fragment_ratio": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "grad_norm": [
+    3.8979340568163883,
+    4.062833895708622,
+    3.5620826898066644,
+    3.196244035177136,
+    4.114992204132517
+   ],
+   "train_loss": [
+    13.326965141296387,
+    13.343739051818847,
+    13.605734062194824,
+    13.37700553894043,
+    13.226041297912598
+   ],
+   "bond_ce_loss": [
+    1.027773561477661,
+    1.0047542691230773,
+    0.9511664938926697,
+    0.8873009705543518,
+    0.7989863324165344
+   ],
+   "ring_prior_term": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "wasserstein_loss": [
+    0.7921653580665589,
+    0.7906000328063965,
+    0.7875577735900879,
+    0.7845760416984559,
+    0.7802169632911682
+   ],
+   "fm_term": [
+    12.114503173828124,
+    12.135626411437988,
+    12.439168434143067,
+    12.265347671508788,
+    12.247822608947754
+   ],
+   "gen_raw_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.8181818181818182,
+    0.8773584905660378
+   ],
+   "gen_raw_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.09090909090909091,
+    0.018867924528301886
+   ],
+   "gen_raw_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    0.11458333333333333,
+    1.1041666666666667
+   ]
+  },
+  "edge_ring_w1": {
+   "gen_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.8153846153846154,
+    0.9058823529411765
+   ],
+   "gen_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.015384615384615385,
+    0.029411764705882353
+   ],
+   "gen_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    0.6770833333333334,
+    1.7708333333333333
+   ],
+   "bond_pr_auc": [
+    0.04083147231399401,
+    0.053777312909831405,
+    0.2445987089841062,
+    0.5294337760619536,
+    0.5808773927762164
+   ],
+   "bond_class_1_pr_auc": [
+    0.021760620803637505,
+    0.0383318702789512,
+    0.14773012019464463,
+    0.13489327946592827,
+    0.17818523230631855
+   ],
+   "bond_f1": [
+    0.0,
+    0.0,
+    0.0,
+    0.42857142857142855,
+    0.4816253361219002
+   ],
+   "bond_best_f1_at_threshold": [
+    0.12022237665045168,
+    0.12268045214305003,
+    0.40932944606413996,
+    0.6361434108527132,
+    0.6825396825396826
+   ],
+   "bond_precision": [
+    0.0,
+    0.0,
+    0.0,
+    0.5735707591377694,
+    0.5173299101412067
+   ],
+   "bond_recall": [
+    0.0,
+    0.0,
+    0.0,
+    0.3420905533817775,
+    0.4505310229178312
+   ],
+   "gen_validity": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gen_single_fragment_ratio": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "grad_norm": [
+    8.673195319690116,
+    8.399569232184245,
+    7.289612190893407,
+    5.664403930354337,
+    5.432039872821869
+   ],
+   "train_loss": [
+    14.602808456420899,
+    14.56511028289795,
+    14.701699333190918,
+    14.281232566833497,
+    13.93961025238037
+   ],
+   "bond_ce_loss": [
+    1.0278833389282227,
+    1.00517596244812,
+    0.9502622580528259,
+    0.878142352104187,
+    0.7776293683052063
+   ],
+   "ring_prior_term": [
+    1.4121390581130981,
+    0.8422109484672546,
+    1.1324467658996582,
+    0.7565861344337463,
+    0.7141382098197937
+   ],
+   "wasserstein_loss": [
+    0.7921653580665589,
+    0.7906000304222107,
+    0.7875577688217164,
+    0.78457603931427,
+    0.7802169632911682
+   ],
+   "fm_term": [
+    12.114503211975098,
+    12.135626411437988,
+    12.439168395996093,
+    12.265347671508788,
+    12.247822570800782
+   ],
+   "gen_raw_ring_3_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.8153846153846154,
+    0.9058823529411765
+   ],
+   "gen_raw_ring_5_6_share": [
+    0.0,
+    0.0,
+    0.0,
+    0.015384615384615385,
+    0.029411764705882353
+   ],
+   "gen_raw_rings_per_mol": [
+    0.0,
+    0.0,
+    0.0,
+    0.6770833333333334,
+    1.7708333333333333
+   ]
+  }
+ },
+ "metric_labels": {
+  "bond_pr_auc": "bond existence AP (bond_pr_auc_definition field says which)",
+  "bond_class_1_pr_auc": "SINGLE bond class PR-AUC (positive rate ~2.4%)",
+  "bond_f1": "bond existence F1 at the recorded decision threshold",
+  "bond_best_f1_at_threshold": "bond existence F1 at the best swept threshold",
+  "gen_raw_ring_3_share": "3-ring share on the head's accepted graph, BEFORE RDKit",
+  "gen_raw_ring_5_6_share": "5/6-ring share on the head's accepted graph, BEFORE RDKit",
+  "gen_raw_rings_per_mol": "rings per molecule on the head's accepted graph, BEFORE RDKit",
+  "fm_term": "epoch mean of the flow-matching term; 0.0 means the flag did not reach the objective"
+ },
+ "bond_pr_auc_definition": "existence_ap_v2",
+ "last_epoch_deltas": {
+  "gen_ring_3_share": {
+   "control": 0.8773584905660378,
+   "treatment": 0.9058823529411765,
+   "delta": 0.02852386237513871
+  },
+  "gen_ring_5_6_share": {
+   "control": 0.018867924528301886,
+   "treatment": 0.029411764705882353,
+   "delta": 0.010543840177580466
+  },
+  "gen_rings_per_mol": {
+   "control": 1.1041666666666667,
+   "treatment": 1.7708333333333333,
+   "delta": 0.6666666666666665
+  },
+  "bond_pr_auc": {
+   "control": 0.5627878510698849,
+   "treatment": 0.5808773927762164,
+   "delta": 0.01808954170633148
+  },
+  "bond_class_1_pr_auc": {
+   "control": 0.3480321471959051,
+   "treatment": 0.17818523230631855,
+   "delta": -0.16984691488958653
+  },
+  "bond_f1": {
+   "control": 0.4901382202205311,
+   "treatment": 0.4816253361219002,
+   "delta": -0.00851288409863088
+  },
+  "bond_best_f1_at_threshold": {
+   "control": 0.7176527176527175,
+   "treatment": 0.6825396825396826,
+   "delta": -0.035113035113034985
+  },
+  "bond_precision": {
+   "control": 0.5515554002097168,
+   "treatment": 0.5173299101412067,
+   "delta": -0.03422549006851017
+  },
+  "bond_recall": {
+   "control": 0.44102850754611517,
+   "treatment": 0.4505310229178312,
+   "delta": 0.009502515371716036
+  },
+  "gen_validity": {
+   "control": 1.0,
+   "treatment": 1.0,
+   "delta": 0.0
+  },
+  "gen_single_fragment_ratio": {
+   "control": 0.0,
+   "treatment": 0.0,
+   "delta": 0.0
+  },
+  "grad_norm": {
+   "control": 4.114992204132517,
+   "treatment": 5.432039872821869,
+   "delta": 1.3170476686893515
+  },
+  "train_loss": {
+   "control": 13.226041297912598,
+   "treatment": 13.93961025238037,
+   "delta": 0.7135689544677728
+  },
+  "bond_ce_loss": {
+   "control": 0.7989863324165344,
+   "treatment": 0.7776293683052063,
+   "delta": -0.021356964111328036
+  },
+  "ring_prior_term": {
+   "control": 0.0,
+   "treatment": 0.7141382098197937,
+   "delta": 0.7141382098197937
+  },
+  "wasserstein_loss": {
+   "control": 0.7802169632911682,
+   "treatment": 0.7802169632911682,
+   "delta": 0.0
+  },
+  "fm_term": {
+   "control": 12.247822608947754,
+   "treatment": 12.247822570800782,
+   "delta": -3.814697180359872e-08
+  },
+  "gen_raw_ring_3_share": {
+   "control": 0.8773584905660378,
+   "treatment": 0.9058823529411765,
+   "delta": 0.02852386237513871
+  },
+  "gen_raw_ring_5_6_share": {
+   "control": 0.018867924528301886,
+   "treatment": 0.029411764705882353,
+   "delta": 0.010543840177580466
+  },
+  "gen_raw_rings_per_mol": {
+   "control": 1.1041666666666667,
+   "treatment": 1.7708333333333333,
+   "delta": 0.6666666666666665
+  }
+ },
+ "weights": {
+  "checked": true,
+  "vel_field_max_abs_delta": 1.4901161193847656e-08,
+  "head_max_abs_delta": 0.0029410645365715027,
+  "n_vel_tensors": 51,
+  "n_head_tensors": 30,
+  "reading": "vel_field must be 0.0: the ring term touches only the head and per-module clipping keeps its clip factor independent.  A non-zero value means the A/B is confounded again."
+ },
+ "honest_limits": [
+  "1 seed, 5 epochs, 200 training clouds: a direction test, not an effect size.  Wf-A107b measured the run-to-run spread of this protocol to be as large as the single-seed effect.",
+  "5 epochs of FM training on 200 clouds is a weak sampler.  The claim this artifact can support is 'the metric is now measured on trained-sampler geometry', not 'the prior improves generation'.",
+  "No held-out generation set: the val clouds are the ones the trainer scores every epoch."
+ ]
+}

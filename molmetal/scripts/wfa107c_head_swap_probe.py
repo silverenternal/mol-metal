@@ -104,7 +104,12 @@ def _truth_edges(cloud) -> List[Tuple[int, int]]:
 
 def _cutoff_stats(cloud, cutoff: float) -> Dict[str, float]:
     """Fraction of atom pairs inside the head's cutoff, and mean distance."""
-    pos = cloud.positions.float()
+    return _cutoff_stats_from_pos(cloud.positions.float(), cutoff)
+
+
+def _cutoff_stats_from_pos(pos: torch.Tensor, cutoff: float) -> Dict[str, float]:
+    """Same statistic on a bare ``(N, 3)`` tensor (Wf-A107g: the x0 cloud)."""
+    pos = pos.float()
     n = int(pos.shape[0])
     if n < 2:
         return {"frac_pairs_in_cutoff": 0.0, "mean_pair_distance": 0.0}
@@ -378,6 +383,39 @@ def main() -> int:
     def _cell(geom, head, key, sub):
         return table[geom][head][key][sub]
 
+    # Wf-A107g (2026-10-22) — the sampler's STARTING cloud, so the geometry
+    # numbers above can be read as a signed transport instead of an absolute
+    # distance.  `mean_pair_distance` of a converged sampler should sit near
+    # `truth_geometry`; a value near this block means the ODE barely moved the
+    # cloud, which is what a prior/data scale mismatch produces.
+    #
+    # Distributional, not the exact draw `_generate_cached` used: x0 is iid
+    # N(0, sigma^2 I) per atom, so the pair-distance statistic depends only on
+    # the atom counts and sigma.  The label says so.
+    _x0_sigma = float(getattr(A["args"], "fm_noise_sigma", 1.0))
+    _g0 = torch.Generator().manual_seed(int(args.gen_seed))
+    _x0_rows = []
+    for c in templates:
+        n = int(c.atomic_numbers.shape[0])
+        _p = torch.randn(n, 3, generator=_g0) * _x0_sigma
+        _x0_rows.append(_cutoff_stats_from_pos(_p, args.cutoff))
+    x0_reference = {
+        "noise_sigma": _x0_sigma,
+        "frac_pairs_in_cutoff": (
+            sum(r["frac_pairs_in_cutoff"] for r in _x0_rows) / (len(_x0_rows) or 1)
+        ),
+        "mean_pair_distance": (
+            sum(r["mean_pair_distance"] for r in _x0_rows) / (len(_x0_rows) or 1)
+        ),
+        "basis": "iid N(0, sigma^2 I) at the run's fm_noise_sigma; "
+                 "distributional, not the exact draw the sampler used",
+    }
+    print(
+        f"[wfa107c] x0_geometry        sigma={_x0_sigma:.3f} "
+        f"pairs-in-cutoff={x0_reference['frac_pairs_in_cutoff']:.3f} "
+        f"mean_d={x0_reference['mean_pair_distance']:.2f}"
+    )
+
     effects = {}
     for metric, sub in (
         ("ring_3_share", "ring_profile"),
@@ -422,6 +460,10 @@ def main() -> int:
         "sampler_max_abs_deviation": max_dev,
         "table": table,
         "effects": effects,
+        # Wf-A107g — the starting cloud, so `generated_geometry` can be read as
+        # a signed transport (near x0 = the ODE did not move; near truth = it
+        # did) rather than an absolute distance.
+        "x0_reference": x0_reference,
         "honest_limits": [
             "Single checkpoint per arm (last epoch); this is a mechanism probe, "
             "not a 3-seed test.",

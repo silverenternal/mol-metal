@@ -10479,3 +10479,278 @@ one-parameter model:
 **Workflow** | UP-11 (2026-10-21; GPU0, 2 ridge fits x 8 alphas x 5 inner folds in float64,
 plus 1000 ligand-clustered resamples per arm; §5.2 every number is an artifact field;
 §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.167 — UP-12: the two-stage interaction is identically zero on the held-out metal, and negative where it can act (2026-10-22)
+
+**The plan.** The first round's interaction A/B was all-or-nothing: the model either may
+cross the ligand x metal feature boundary or may not, and both extremes lost on metal_out
+(free −0.097, pair −0.113, product −0.164 R²). UP-12 was the middle: stage 1 additive on
+everything, stage 2 a rank-1 interaction fitted only on **paired residuals**, with a metal
+coefficient `v_m = 0` for any metal that appears in no supported pair. Frozen gate:
+metal_out weighted R² ≥ −0.04 (≥ +0.03 over −0.0734) with no metal dropping more than 0.02.
+
+**Measured** (`metrics/by_metric/msrs_two_stage.json`, potency, 21,045 rows / 2,846
+ligands, CPU).
+
+On metal_out the gate is **degenerate, not failed**. The held-out metal is in no training
+pair, so `v_held = 0` and the stage-2 term is exactly zero on every test row:
+
+| | Ru | Ir | Rh | Os | Re | weighted |
+|---|---:|---:|---:|---:|---:|---:|
+| stage1 | −0.0777 | −0.1283 | −0.1589 | +0.3479 | −0.1034 | −0.0734 |
+| stage1 + stage2 | −0.0777 | −0.1283 | −0.1589 | +0.3479 | −0.1034 | −0.0734 |
+
+`max |pred_two_stage − pred_stage1| = 0` across all 21,045 rows, and the five per-metal R²
+reproduce `msrs_lomo_surface` to four decimals. `improvement = 0.0000` against a required
++0.03, `gate_failure_mode = DEGENERATE_IDENTICAL_PREDICTIONS`.
+
+**Where the lever can act, it loses.** Under ligand-grouped 5-fold CV the metal is in
+training, so `v` is non-zero for Ru/Os/Ir/Rh:
+
+| arm | weighted R² | weighted MAE |
+|---|---:|---:|
+| additive | 0.2128 | 0.5093 |
+| additive + rank-1 | 0.1954 | 0.5168 |
+| **free interaction (UP-1 arm)** | **0.2519** | 0.4933 |
+
+The support-restricted rank-1 term costs **−0.0174**, driven by Ir (−0.0501). The
+*unrestricted* interaction gains **+0.0391** in the same folds. Both facts are needed:
+the interaction is real and learnable when the metal is observed, and the restriction
+does not buy extrapolation — the same free model is −0.097 on metal_out.
+
+**Honest boundaries (ACTIVE).**
+  * **A zero delta on metal_out is a property of the protocol.** Any interaction
+    parameterised by metal has no coefficient for a metal absent from training. The
+    frozen gate could not have passed, and reporting it as "the two-stage model failed"
+    would be wrong in the other direction.
+  * **The stage-2 projection barely predicts anything.** `stage2_r2_inner` is −0.0138 to
+    +0.0650 across the five folds, i.e. the ridge projection on ECFP4 does not predict
+    held-out-ligand pair differences. `lambda_raw` is 1.77–4.68, meaning the closed-form
+    shrink wanted to amplify the projection 2–5x — scaling a direction that does not
+    align with the target only amplifies noise.
+  * **`v_m` is not fitted.** It is the unit vector implied by the supported pairs
+    (±0.5 with one pair). The only fitted object is the 2048-dimensional projection, so
+    "rank-1" here means one shared ligand direction, not a learned low-rank matrix.
+  * **Stage-2 residuals are out-of-fold**, which removes in-sample overfit but also
+    shrinks a real interaction. The −0.0174 is not an upper bound on what a better
+    stage 2 could do; it is what this one did.
+  * **The kill rule was applied to within_metal**, because the frozen metal_out gate is
+    degenerate. That is a substitution of protocol, and it is stated rather than implied.
+
+**Artifacts.** `molmetal/scripts/msrs_two_stage.py`,
+`metrics/by_metric/msrs_two_stage.json`.
+
+**§6.167 catalog-count math.** Net **+1**. Cumulative **221 → 222**. ACTIVE **177 → 178**.
+
+**Workflow** | UP-12 (2026-10-22; CPU, 6 min 47 s for 65 LightGBM fits; §5.2 every number
+is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.168 — UP-14: pair evidence is a within-paper phenomenon, so DOI hold-out removes it (2026-10-22)
+
+**The claim that needed checking.** Every first-round metric is pooled. If the rows that
+carry metal-pair evidence are a small and unrepresentative slice, the pooled number
+describes the corpus rather than a capability.
+
+**Measured** (`metrics/by_metric/msrs_support_stratified.json`, potency, 21,045 rows,
+additive descriptors arm).
+
+Corpus level: 5.47% of rows belong to a `(ligand, cell)` group carrying ≥ 2 metals
+(1,151 rows); 96.41% of rows have a metal that appears in some supported pair. The second
+number is nearly the whole table and is **not** evidence — it only says the metal is in
+*some* pair somewhere.
+
+The fold-aware definition is the one that matters, and it collapses:
+
+| protocol | pooled R² | rows with their pair in the training folds | R² | share of SSE |
+|---|---:|---|---:|---:|
+| DOI (`GroupKFold` on doi) | 0.1629 | **0.57% (120 rows)** | 0.3414 | **0.49%** |
+| within_metal (ligand-grouped) | 0.2530 | **0 rows** | — | — |
+| metal_out | −0.0228 (weighted −0.0734) | **0 rows** | — | — |
+
+**Why 0.57%.** A matched pair is two rows of the same ligand and cell line under two
+metals, and those are almost always measured in the same paper. Under a whole-paper
+hold-out both rows land in the same fold, so the test row's partner is never in training.
+Pairing is a within-paper phenomenon; DOI hold-out removes it by construction.
+
+**The kill rule fires.** The frozen rule was "supported-row share < 5% ⇒ the metric is a
+case study, not a capability". 0.57% < 5% on the DOI protocol.
+
+**Honest boundaries (ACTIVE).**
+  * **This does not say the pooled DOI R² is wrong.** It says 99.51% of the squared error
+    comes from rows that have no pair evidence in training, so the number cannot be read
+    as a metal-substitution capability.
+  * **The metal axis is uninformative and is reported anyway.** 96.41% of rows sit under
+    a metal that belongs to a supported pair, because Ru/Os/Ir/Rh all do. That stratum
+    split is real but nearly vacuous; Re is the only unpaired metal (3.59% of rows).
+  * **`metal_out.overall.r2 = −0.0228` and `weighted_r2_per_metal = −0.0734` are different
+    estimators.** The first is pooled (1 − SSE/SST over all rows), the second is the
+    n-weighted mean of per-metal R² and is the one `msrs_lomo_surface` reports. Do not
+    mix them.
+  * **within_metal's unit stratum is empty by construction**, because ligand-grouped CV
+    holds the whole ligand out, partner metal included. The gate exempts it explicitly
+    rather than treating the emptiness as a failure.
+  * **The corpus flags are not fold-safe.** A test row's corpus-level partner may sit in
+    the same fold, which is exactly why the fold-aware table is the primary one.
+
+**Artifacts.** `molmetal/scripts/msrs_support_stratified.py`,
+`metrics/by_metric/msrs_support_stratified.json`.
+
+**§6.168 catalog-count math.** Net **+1**. Cumulative **222 → 223**. ACTIVE **178 → 179**.
+
+**Workflow** | UP-14 (2026-10-22; CPU, 1 min 46 s for 15 LightGBM fits; §5.2 every number
+is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.169 — UP-16: the ranking number is a within-pair number by construction, and no single metal pair clears 0.5 (2026-10-22)
+
+**The headline under audit.** `balanced_accuracy = 0.5985` on 360 ligand_cell pairs, the
+only first-round number whose confidence interval excluded 0.5.
+
+**100% support is a tautology.** A ranking pair is two rows of one
+`(ligand_canonical, cell_line_key)` group under two metals. Every such pair therefore
+sits inside a group with ≥ 2 metals — the UP-10 definition of a supported unit. There is
+no unsupported stratum and none can be constructed without new data. The "share of pairs
+in supported groups = 1.0" is a property of the protocol, not a measurement.
+
+**Measured** (`metrics/by_metric/msrs_ranking_support.json`, pure re-slice of the stored
+per-pair aggregates; no refit).
+
+| metal pair | n | TPR | TNR | balanced | Wilson 95% | n for half-width < 0.05 |
+|---|---:|---:|---:|---:|---|---:|
+| Ir–Rh | 86 | 0.120 | 1.000 | 0.5600 | [0.4799, 0.6190] | 130 |
+| Os–Ru | 258 | 0.384 | 0.778 | 0.5807 | [0.4990, 0.6548] | 642 |
+| Rh–Ru | 16 | 1.000 | 0.000 | 0.5000 | [0.3981, 0.8967] | 226 |
+
+The pooled 0.5985 carries a ligand-clustered bootstrap interval [0.5262, 0.6663] that
+excludes 0.5, but **no individual pair's interval excludes 0.5**. The significance is a
+pooling effect, not a per-pair effect.
+
+Leave-one-pair-out (exact recomputation from recovered counts, not a weighted average of
+R²): drop Ir–Rh → 0.6034 (n=274); drop Os–Ru → **0.6480** (n=102); drop Rh–Ru → 0.5788
+(n=344). Dropping Os–Ru *raises* the number, so the frozen kill rule ("if Os–Ru alone
+explains the whole signal") does **not** fire.
+
+**Honest boundaries (ACTIVE).**
+  * **The 0.6480 is not a stronger result.** It rests on Ir–Rh's 36 negatives with a TPR
+    of 0.323; the TNR of 0.973 is estimated from 37 negatives. It is a small-sample
+    artefact of dropping the largest pair, not evidence that Ir–Rh is better.
+  * **The intervals are Wilson, not clustered.** The stored artifacts keep only per-pair
+    aggregates, so the resampling unit (the ligand) is unavailable without refitting.
+    Wilson intervals will be narrower than a ligand-clustered bootstrap because ligands
+    repeat across pairs.
+  * **Rh–Ru contributes nothing.** 16 pairs, 1 negative; its TNR is 0 or 1 and its
+    balanced accuracy of 0.5 carries no information. It is reported, not used.
+  * **The sample-size curve assumes the observed rates hold at larger n.** It is a design
+    calculation: Os–Ru needs 642 pairs against 258 available, Ir–Rh 130 against 86,
+    Rh–Ru 226 against 16. The corpus can supply at most about 40% of what Os–Ru needs.
+  * **The kill rule's premise was wrong.** It assumed a per-pair signal could be isolated;
+    in fact every pair is under-powered on its own, which is a different failure.
+
+**Artifacts.** `molmetal/scripts/msrs_ranking_support.py`,
+`metrics/by_metric/msrs_ranking_support.json`.
+
+**§6.169 catalog-count math.** Net **+1**. Cumulative **223 → 224**. ACTIVE **179 → 180**.
+
+**Workflow** | UP-16 (2026-10-22; CPU, 40 s, no refit; §5.2 every number is an artifact
+field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.170 — Wf-A107g/h: the sampler returns the prior, because the velocity field cannot fit its own target (2026-10-22)
+
+**What this wave was for.** §6.166 left one reading on the table: with `use_fm_objective: true`,
+five epochs of FM on 200 clouds "moved the cloud by 0.08 A", so the prior stayed opt-in. The
+implied next step was more budget (the c7 protocol). Before spending that budget, this wave
+asked whether the field can transport a cloud AT ALL.
+
+**Finding 1 — Wf-A107e trained a mis-scaled flow, and nothing said so.**
+`x0 ~ N(0, fm_noise_sigma**2 I)` and `x1` are the RAW cloud coordinates (the tmQM loader does
+not scale them). `--fm-noise-sigma` defaults to 1.0, so a config that turns the FM objective on
+and forgets the key trains a flow whose two ends sit at different scales — the 2.5x mismatch
+Wf-R28 fixed on 2026-10-07. MEASURED on this cohort: the val clouds' per-coordinate std is
+**1.875 A** (median 2.020) and the full c7 cohort's is 2.485. **11 of the 48 configs with
+`use_fm_objective: true` do not set the key**, including both Wf-A107e arms. Their
+`mean pair distance` reading (2.18 A) is therefore not "the sampler collapsed"; it is the prior
+(2.29 A at sigma 1.0) with the field's contribution unresolved. Trainer fix: a one-shot
+`fm_prior_scale_check` on the first FM batch, a `RuntimeWarning` outside [0.8, 1.25], and
+`fm_prior_scale` + `fm_noise_sigma` in the run artifact. Pure measurement — no tensor is
+written, no RNG is consumed.
+
+**Finding 2 — with the prior matched, the metric moves with the prior, not with the prior term.**
+Two arms re-run with `fm_noise_sigma: 2.485` (both record `fm_prior_scale.ok = true`, ratio
+0.893). Same one-factor A/B as Wf-A107e (ring weight 0 vs 1.0, `edge_ring`), same protocol.
+
+| metric (last epoch, seed 0, 5 ep) | sigma 1.0 control / w1 | sigma 2.485 control / w1 |
+|---|---|---|
+| `gen_ring_3_share` | 0.5016 / 0.3648 | **0.8774 / 0.9059** |
+| `gen_ring_5_6_share` | 0.1688 / 0.2121 | **0.0189 / 0.0294** |
+| `gen_rings_per_mol` | 6.48 / 9.82 | **1.10 / 1.77** |
+| `fm_term` (epoch mean) | not recorded | **12.2478 / 12.2478** |
+| bond existence AP | 0.5626 / 0.5807 | 0.5628 / 0.5809 |
+
+The ring profile flips from "too many small rings" to "too few rings of any size" when the prior
+is rescaled, while the ring prior's own effect stays ~+0.03. The velocity field is bit-identical
+between the two arms (`vel_field` max |delta| 1.5e-8, head 2.9e-3), so the A/B is clean — and
+therefore uninformative about chemistry. **`gen_ring_*` is a readout of `fm_noise_sigma`.**
+
+**Finding 3 — the velocity field cannot fit even ONE batch.**
+`wfa107h_velocity_capacity.py` runs an overfit test: 200 AdamW steps at **lr 1e-3** (10x the
+training lr) on a single 8-cloud val batch, fixed t=0.5, same interpolant as the trainer.
+
+| quantity | value |
+|---|---:|
+| `v = 0` baseline MSE | 10.652 |
+| best RADIAL-only field (the form `EGNNVelocityField` composes) | 5.783 |
+| reached after 200 steps | **10.529** |
+| mean \|v_pred\| vs mean \|target\| | **0.298 vs 5.159** |
+| cosine(v_pred, target) | **0.128** |
+
+The field closes 1.2% of the baseline gap and 0% of the radial ceiling's. `vel_scale`, the free
+parameter that carries the magnitude, starts at 0.032 and **decays to -0.005** over the 200
+steps: the optimiser switches the radial term off (cosine 0.13 says it points the wrong way) and
+the residual `last_v` edge term cannot carry the target on its own. This is not an
+under-training artefact — it is the same result at 10x the lr on one batch, which is the most
+favourable setting the field will ever see.
+
+**Consequence.** `generate_clouds_from_noise` returns `x0`. MEASURED on the matched-sigma pair:
+generated `mean_pair_distance` **5.67 A** and `pairs-in-cutoff` **0.197** against the prior's
+**5.59 A / 0.203** and the truth's **5.00 A / 0.412**. Every generation number the CFM line has
+reported — `gen_validity`, `gen_ring_*`, the C7 pool's SA<=4.5 = 0.28% — is a decode of the prior
+with a bond head on top. That is the mechanism behind §6.163's "the metric is insensitive to
+whether the velocity field trains": the field contributes ~1% of the transport either way.
+
+**Corrects §6.162's 27x.** The raw-vs-assembled gap is not a fixed assembler property. In
+Wf-A107g's own decode path `gen_raw_*` equals `gen_ring_*` to 4 decimals at every epoch
+(1.10 rings/mol raw and assembled): the assembler is a pass-through on a sparse graph. The 27x
+was measured on a graph with 156 rings/mol, where valence selection and bridging restructure the
+graph — i.e. the amplification grows with density, and density is exactly what the prior scale
+sets. The honest reading is "assembly amplifies a dense graph", not "assembly amplifies by 27x".
+
+**Honest boundaries (ACTIVE).**
+  * **One batch, one t (0.5), one checkpoint.** A field that fits t=0.5 need not fit the path; a
+    field that cannot fit t=0.5 cannot fit the path. The radial ceiling is a bound on the radial
+    term only — `last_v` could in principle beat it, and does not.
+  * **The matched-sigma value is a compromise.** 2.485 is the c7 cohort's std; this 200-cloud
+    subset's is 1.875, so the ratio is 0.893 — inside the warning band, but the prior is still
+    33% larger than this cohort. A cohort-exact sigma (1.875) would start the cloud closer.
+  * **Still 1 seed, 5 epochs.** The A/B deltas are direction only, as in §6.166.
+  * **The fix is not shipped.** A velocity head that can express a non-radial per-atom vector is
+    an architecture change with its own gate; this wave only establishes that the current one
+    cannot.
+
+**Artifacts.** `configs/wfa107g_fm_sigma_{control,edge_ring_w1}.yaml`,
+`molmetal/scripts/wfa107h_velocity_capacity.py`,
+`molmetal/scripts/wfa107c_head_swap_probe.py` (now reports `x0_reference`),
+`metrics/by_metric/wfa107g_ab.json`, `metrics/by_metric/wfa107g_head_swap_probe_gen0.json`,
+`metrics/by_metric/wfa107h_velocity_capacity.json`, `molmetal/tests/test_wfa107g_fm_prior_scale.py`,
+`molmetal/tests/test_wfa107h_velocity_capacity.py`.
+
+**§6.170 catalog-count math.** Net **+1**. Cumulative **224 → 225**. ACTIVE **180 → 181**.
+
+**Workflow** | Wf-A107g/h (2026-10-22; GPU0: 2 arms x 5 epochs = 796 s total, 2 probes;
+§5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

@@ -1,0 +1,67 @@
+{
+ "metric": "wfa107h_velocity_capacity",
+ "tag": "MEASURED",
+ "date": "2026-10-22",
+ "what": "Overfit test of the FM velocity field on ONE 8-cloud batch: 200 AdamW steps at lr 1e-3, fixed t.  Compares the reachable loss with the v=0 baseline and with the best radial-only field, which is the form EGNNVelocityField's dominant term can express.",
+ "checkpoint": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+ "ckpt_epoch": 4,
+ "noise_sigma": 2.485,
+ "t": 0.5,
+ "n_clouds": 8,
+ "n_atoms": 405,
+ "steps": 200,
+ "lr": 0.001,
+ "device": "cuda:0",
+ "zero_baseline_mse": 10.65226936340332,
+ "radial_ceiling_mse": 5.782576560974121,
+ "trajectory": [
+  {
+   "step": 0,
+   "mse": 10.626917839050293,
+   "mean_v_norm": 0.036128200590610504,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.1616898477077484
+  },
+  {
+   "step": 40,
+   "mse": 10.538891792297363,
+   "mean_v_norm": 0.4374629557132721,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.10580649971961975
+  },
+  {
+   "step": 80,
+   "mse": 10.533161163330078,
+   "mean_v_norm": 0.3854443430900574,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.1129152774810791
+  },
+  {
+   "step": 120,
+   "mse": 10.53011703491211,
+   "mean_v_norm": 0.34054678678512573,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.12001727521419525
+  },
+  {
+   "step": 160,
+   "mse": 10.529111862182617,
+   "mean_v_norm": 0.3125859200954437,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.12491640448570251
+  },
+  {
+   "step": 200,
+   "mse": 10.5288667678833,
+   "mean_v_norm": 0.29811108112335205,
+   "mean_target_norm": 5.159078598022461,
+   "cosine": 0.12764418125152588
+  }
+ ],
+ "verdict": "CANNOT_FIT",
+ "honest_limits": [
+  "One batch, one t (0.5).  A field that fits t=0.5 need not fit the whole path; a field that cannot fit t=0.5 cannot fit the path.",
+  "The radial ceiling is computed on the SAME batch, so it is an upper bound on the radial term only — `last_v` (the edge-mean term) can in principle beat it.  A measured MSE at the radial ceiling means the model is using the radial term alone.",
+  "lr 1e-3 is 10x the training lr (1e-4); this is deliberately generous to the field, so a failure is not a learning-rate artefact."
+ ]
+}
