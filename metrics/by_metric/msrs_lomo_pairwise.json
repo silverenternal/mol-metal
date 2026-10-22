@@ -1,0 +1,605 @@
+{
+  "artifact": "msrs_lomo_pairwise",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L1 LOMO classification / UP-24",
+  "generated_utc": "2026-10-22T07:18:38+00:00",
+  "provenance": {
+    "script": "molmetal/scripts/msrs_lomo_pairwise.py",
+    "git_commit": "175c21eec8fa6ac76c741425421b44bff74ead5b",
+    "cohort": "/home/hugo/codes/mol-metal/molmetal/data/metal_lomo.csv",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "device": "cpu",
+    "cohort": "metal_lomo.csv after collapse_ligand_duplicates",
+    "collapse_info": {
+      "n_rows_before": 5460,
+      "n_rows_after": 2010,
+      "duplication_rate": 0.6318681318681318,
+      "pos_rate_before": 0.3241758241758242,
+      "pos_rate_after": 0.32935323383084575,
+      "per_metal_before": {
+        "Ru": 3849,
+        "Ir": 1250,
+        "Re": 166,
+        "Rh": 108,
+        "Os": 87
+      },
+      "per_metal_after": {
+        "Ru": 1311,
+        "Ir": 538,
+        "Re": 74,
+        "Rh": 51,
+        "Os": 36
+      },
+      "rule": "one row per unique ligand within a metal; label = majority; ties -> ACTIVE (sum*2>=n, anti-conservative; see metal_activity_transfer_tie_sensitivity.json)"
+    },
+    "n_rows": 2010,
+    "n_features": 2052,
+    "features": "Morgan r=2 / 2048 bits on the largest fragment + IE1/IE2/Pauling EN + oxidation state",
+    "folds": "leave-one-metal-out",
+    "resolvable_min": 200,
+    "resolvable_metals": [
+      "Ru",
+      "Ir"
+    ],
+    "fold_sizes": {
+      "Ru": 1311,
+      "Ir": 538,
+      "Os": 36,
+      "Rh": 51,
+      "Re": 74
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "alpha": 1.0,
+    "learner": "L2 logistic regression (liblinear); pointwise for bce, on the feature difference for the pairwise arms",
+    "edge_aware": "negative prefers the positive's ligand (different metal), then the positive's cell line, then uniform",
+    "reference_not_comparable": "0.5974 is a D-MPNN + Wasserstein number on the same cohort; this script's comparator is its own bce arm"
+  },
+  "per_seed": {
+    "bce": [
+      {
+        "seed": 0,
+        "folds": {
+          "Ru": {
+            "auc": 0.548,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5418,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7889,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.8512,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3627,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 1,
+        "folds": {
+          "Ru": {
+            "auc": 0.548,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5418,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7889,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.8512,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3627,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 2,
+        "folds": {
+          "Ru": {
+            "auc": 0.548,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5418,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7889,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.8512,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3627,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 3,
+        "folds": {
+          "Ru": {
+            "auc": 0.548,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5418,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7889,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.8512,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3627,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 4,
+        "folds": {
+          "Ru": {
+            "auc": 0.548,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5418,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7889,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.8512,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3627,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      }
+    ],
+    "pairwise": [
+      {
+        "seed": 0,
+        "folds": {
+          "Ru": {
+            "auc": 0.5497,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5282,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7063,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7284,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3774,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 1,
+        "folds": {
+          "Ru": {
+            "auc": 0.5552,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5218,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7698,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7509,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.209,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 2,
+        "folds": {
+          "Ru": {
+            "auc": 0.5207,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5529,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.6937,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7941,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3198,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 3,
+        "folds": {
+          "Ru": {
+            "auc": 0.5486,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5542,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7349,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7111,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3367,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 4,
+        "folds": {
+          "Ru": {
+            "auc": 0.5427,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5761,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.7381,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7664,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.4079,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      }
+    ],
+    "pairwise_edge": [
+      {
+        "seed": 0,
+        "folds": {
+          "Ru": {
+            "auc": 0.5856,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5214,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.6143,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7457,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.1876,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 1,
+        "folds": {
+          "Ru": {
+            "auc": 0.5804,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5682,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.5984,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7284,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.2847,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 2,
+        "folds": {
+          "Ru": {
+            "auc": 0.5707,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5466,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.6016,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.6782,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3605,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 3,
+        "folds": {
+          "Ru": {
+            "auc": 0.5748,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5142,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.554,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.7837,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.1955,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      },
+      {
+        "seed": 4,
+        "folds": {
+          "Ru": {
+            "auc": 0.5641,
+            "n": 1311,
+            "resolvable": true
+          },
+          "Ir": {
+            "auc": 0.5028,
+            "n": 538,
+            "resolvable": true
+          },
+          "Os": {
+            "auc": 0.5413,
+            "n": 36,
+            "resolvable": false
+          },
+          "Rh": {
+            "auc": 0.6713,
+            "n": 51,
+            "resolvable": false
+          },
+          "Re": {
+            "auc": 0.3051,
+            "n": 74,
+            "resolvable": false
+          }
+        }
+      }
+    ]
+  },
+  "aggregate": {
+    "bce": {
+      "auc_overall_resolvable": 0.5449,
+      "auc_all_metals": 0.6185,
+      "per_metal": {
+        "Ru": 0.548,
+        "Ir": 0.5418,
+        "Os": 0.7889,
+        "Rh": 0.8512,
+        "Re": 0.3627
+      },
+      "n_seeds": 5
+    },
+    "pairwise": {
+      "auc_overall_resolvable": 0.545,
+      "auc_all_metals": 0.5798,
+      "per_metal": {
+        "Ru": 0.5434,
+        "Ir": 0.5466,
+        "Os": 0.7286,
+        "Rh": 0.7502,
+        "Re": 0.3302
+      },
+      "n_seeds": 5
+    },
+    "pairwise_edge": {
+      "auc_overall_resolvable": 0.5529,
+      "auc_all_metals": 0.5352,
+      "per_metal": {
+        "Ru": 0.5751,
+        "Ir": 0.5306,
+        "Os": 0.5819,
+        "Rh": 0.7215,
+        "Re": 0.2667
+      },
+      "n_seeds": 5
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T12:42+08:00",
+    "checks": {
+      "auc_overall_ge_0.63": {
+        "arm": "pairwise_edge",
+        "value": 0.5529,
+        "threshold": 0.63,
+        "reference_dmpnn": 0.5974,
+        "pass": false
+      },
+      "auc_per_metal_ru_ir_ge_0.60": {
+        "arm": "pairwise_edge",
+        "ru": 0.5751,
+        "ir": 0.5306,
+        "pass": false
+      },
+      "must_report_bce_baseline": {
+        "arm": "bce",
+        "auc_overall_resolvable": 0.5449,
+        "same_folds": true,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "AUC < 0.61 -> close the LOMO line and report 0.5974 with a note",
+      "value": 0.5529,
+      "triggered_by_rule_text": true,
+      "applied": false,
+      "reason_not_applied": "learner-mismatched threshold: the 0.61 line was frozen against a D-MPNN (0.5974); this script's learner is linear on ECFP4 and its own BCE baseline is far below that. Closing the line here would measure the learner, not the loss.",
+      "matched_learner_delta_vs_bce": 0.008
+    }
+  },
+  "verdict": "FAIL",
+  "caveats": [
+    "The 0.5974 reference is a D-MPNN; a linear model on ECFP4 will not match it in level. The comparison that carries information is bce vs pairwise on the same folds, which is reported in the same table.",
+    "Pairwise logistic uses one negative per positive, so it sees |pos| gradient terms per epoch against |train| for the pointwise arm. The arms are not budget-matched; a budget-matched control would resample negatives to |train| pairs.",
+    "The edge-aware fallback order (ligand -> cell -> uniform) is a design choice, not a measured optimum; the fraction of pairs that reached each fallback is not recorded.",
+    "Collapsing to one row per (metal, ligand) discards the cell line of the other rows, so the cell-aware fallback is weaker than it would be on the raw cohort."
+  ],
+  "elapsed_seconds": 5.0
+}

@@ -65,7 +65,9 @@
       "metal_out 的真实构成（UP-19）：可识别行（同 (配体, 细胞系) 在训练金属下有测量）只占 5.47%（1,151/21,045），其上 R²_abs=0.3299、去中心化 0.3806；其余 94.5% 上 R²=−0.0913。headline −0.0734 是这两块的加权，不是模型全面失效（msrs_identifiability.json）。去中心化用留出标签，是 oracle-offset 上界。",
       "校准（UP-20，5 seed）：CQR 覆盖 0.9000 / 中位宽 1.9871 / 最差金属组 0.8716；metal-Mondrian 0.8999 / 1.9802 / 0.8961；global 0.9003 / 2.0073；difficulty 0.8767 / 1.8981。⇒ 覆盖可修、宽度不可修（msrs_cqr.json）。",
       "论文偏移（UP-21，5 seed）：base DOI R² 0.3670 → ridge_design 0.3557；测试论文偏移 sd 0.2400、平均 |偏移| 0.2255；LOPO ridge R² −0.0259；泄漏臂 0.5405（msrs_paper_meta_offset.json）。",
-      "配对 k-shot（UP-22，5 seed，k=50）：n_paired=3 时 Rh +0.0631 / Os +0.2830 / Re +0.1745（3/5 > 0）；n_paired=0 时 Rh +0.0709 / Re +0.1734；Re 配对行 0；跨金属平均 R² 0.0407→0.0306 不单调（msrs_paired_kshot.json）。"
+      "配对 k-shot（UP-22，5 seed，k=50）：n_paired=3 时 Rh +0.0631 / Os +0.2830 / Re +0.1745（3/5 > 0）；n_paired=0 时 Rh +0.0709 / Re +0.1734；Re 配对行 0；跨金属平均 R² 0.0407→0.0306 不单调（msrs_paired_kshot.json）。",
+      "deadzone（UP-23，5 seed）：τ = Ru–Os 0.2264 / Ir–Rh 0.4017 / Ru–Rh 0.4369；651 对保留 315、评分集 360 保留 315。lambdarank 0.5985 → 0.5612（保留子集 0.6050 → 0.5615）；279/1,586 组整组同 label。BT 臂 0.4631–0.5411（msrs_ranking_hierarchical.json）。",
+      "LOMO pairwise（UP-24，5 seed，2,010 行，折 Ru 1,311 / Ir 538）：BCE 0.5449、pairwise 0.5450、pairwise_edge 0.5529（Ru/Ir 均值）；五金属均值 BCE 0.6185 / edge 0.5352（msrs_lomo_pairwise.json）。"
     ]
   },
   "metric_gap_analysis": {
@@ -323,7 +325,8 @@
       "depends_on": [
         "wave_1_identifiability"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "result": "两项都 FAIL。UP-23：deadzone 保留 315/651，但把噪声对并成同 label 让 lambdarank 从 0.5985 掉到 0.5612；kill 触发 ⇒ DP-8 = yes，排序线关闭。UP-24：同学习器下 pairwise_edge 只比 BCE 高 0.0080，五金属均值反而 −0.0833；绝对门槛按 D-MPNN 冻结而学习器是特征模型，kill 不适用。"
     },
     "wave_4_report": {
       "items": [
@@ -487,7 +490,7 @@
       "id": "UP-23",
       "priority": "P2",
       "wave": 3,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "deadzone 标签 + 层级 Bradley-Terry",
       "question": "360 对里有多少是噪声标签？把 |Δ| 小于噪声 SD 的对当硬标签，是不是 balanced 0.5985 上不去的主因？",
       "why_now": "UP-16 测到 Ir–Rh 的 separability 只有 0.115，意味着这一对里绝大多数 |Δ| 落在噪声内。把它们当 50/50 的硬标签会系统性压低所有模型。",
@@ -507,13 +510,15 @@
       },
       "kill": "若 balanced < 0.62，排序线关闭（DP-8 走 yes 分支）。",
       "cost": "GPU0 ~2 hr（LightGBM 在 GPU 上收益有限，主要耗时在 5 seed × 2 臂 × 3 deadzone 值）",
-      "device": "cuda:0"
+      "device": "cuda:0",
+      "completed": "2026-10-22",
+      "result": "gate FAIL（3 条过 1 条）；kill 触发（保留子集 0.6050 < 0.62）⇒ DP-8 = yes，排序线关闭。deadzone 在 651 对里保留 315（评分集 360 里保留 315）；把噪声对并成同 label 后 lambdarank 0.5985 → 0.5612（保留子集 0.6050 → 0.5615），因为 279/1,586 个组（17.6%）整组并成一个 label、梯度归零。BT 臂 0.4631–0.5411，每折仅 ~520 对（lambdarank 21k 行），是样本量限制不是架构限制。唯一 Wilson 下界 >0.5 的 Rh–Ru（15/16）多数类率也是 0.9375，balanced = 0.5 —— 该判据在极不平衡对上测的是「猜多数」。"
     },
     {
       "id": "UP-24",
       "priority": "P2",
       "wave": 3,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "LOMO 的 pairwise logistic 损失与边感知负采样",
       "question": "LOMO AUC 0.5974 上不去，是因为 BCE 不优化 AUC，还是因为正负样本的构造浪费了配对结构？",
       "why_now": "AUC 是排序指标。现有训练用 BCE，梯度关注绝对概率；pairwise logistic 直接优化正负对的相对顺序，且可以只在「同配体+同细胞系」内构对，消掉配体主效应。",
@@ -533,7 +538,9 @@
       },
       "kill": "若 AUC < 0.61，LOMO 线关闭，论文只报 0.5974 并注明「分类端点的配对结构与 potency 不同」。",
       "cost": "GPU0 ~2 hr（5 折 × 5 seed × 2 损失）",
-      "device": "cuda:0"
+      "device": "cuda:0",
+      "completed": "2026-10-22",
+      "result": "gate FAIL（3 条过 1 条）；kill 文本触发（0.5529 < 0.61）但 applied=false。同学习器同划分：BCE 0.5449 → pairwise 0.5450 → pairwise_edge 0.5529（+0.0080；Ru +0.0271 / Ir −0.0112）。五金属均值反而 0.6185 → 0.5352（Os/Rh/Re 小折全跌）。队列 2,010 行、折大小与 0.5974 审计逐折相同。门槛 0.63/0.61 按 D-MPNN 冻结、代码点却指定特征模型 ⇒ 口径错误，artifact 同时记 triggered_by_rule_text=true 与 applied=false。"
     },
     {
       "id": "UP-25",

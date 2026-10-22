@@ -11205,3 +11205,138 @@ calibration points help.
 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+
+## §6.177 — UP-23: the ranking labels are not the bottleneck; removing the noisy ones costs 0.04 balanced accuracy (2026-10-22)
+
+**The hypothesis.** Ir–Rh's separability is 0.115 (UP-10), so most of its observed |Δ|
+sits inside the assay noise. A pair whose true Δ is zero but whose observed Δ is not is a
+coin flip presented to the model as a hard label — it should cost accuracy twice, once in
+training and once in scoring. The plan therefore defined a deadzone: `|Δ| < τ`, with τ the
+metal pair's `noise_sd_delta` (Ru–Os 0.2264, Ir–Rh 0.4017, Ru–Rh 0.4369), and asked
+whether excluding (arm A) or down-weighting (arm B) those pairs lifts balanced accuracy
+from 0.5985 to 0.65.
+
+**Measured** (`metrics/by_metric/msrs_ranking_hierarchical.json`, CPU, 5 seeds, the same
+DOI GroupKFold(5) and the same `score_pairs` scorer as UP-2b):
+
+| arm | all 360 pairs | deadzone-retained 315 | note |
+|---|---:|---:|---|
+| **lambdarank_none** | **0.5985** | **0.6050** | reproduces UP-2b bit-for-bit |
+| lambdarank_deadzone | 0.5612 | 0.5615 | noise pairs merged into one relevance level |
+| bt_none | 0.5369 | 0.5297 | pairwise logistic, 651 pairs |
+| bt_exclude | 0.5411 | 0.5317 | arm A: drop deadzone pairs |
+| bt_weight | 0.5056 | 0.4974 | arm B: w = min(1, \|Δ\|/τ) |
+| bt_hier | 0.4631 | 0.4685 | plus per-metal indicators |
+
+**The deadzone costs accuracy, it does not recover it.** Merging noise pairs into one
+relevance level drops the ranker 0.5985 → **0.5612**. The mechanism is visible in the label
+structure: **279 of 1,586 multi-metal groups (17.6 %) collapse to a single label** and
+contribute no lambdarank gradient at all. Translating "unresolvable by the assay" into
+"indistinguishable to the learner" throws away one group in six.
+
+**The retained subset is easier, not harder.** The unchanged model scores 0.6050 there
+against 0.5985 on all 360, so comparing a deadzone number to 0.5985 without also reporting
+the baseline on the same subset would flatter the treatment. Both columns are reported.
+
+**The BT arms are sample-limited, not architecture-limited.** Each training fold has ~520
+pairs against 21k rows for lambdarank, so the 0.47–0.54 column says nothing about whether a
+pairwise loss works. `bt_hier` is the worst of them, and its additive term is *saturated*:
+on a 4-node, 3-edge tree `u_Ru − u_Rh` reproduces the Ru–Rh mean Δ exactly (UP-18), so
+there is no residual degree of freedom for "borrowing strength" to act on.
+
+**The per-pair Wilson check has a trap.** The only pair whose Wilson lower bound clears 0.5
+on the retained subset is Rh–Ru (15/16 = 0.9375, lower bound 0.7167) — and 15 of those 16
+pairs share the same sign, so Rh–Ru's balanced accuracy is exactly 0.5. On a 94 %-majority
+pair the Wilson bound measures "does it guess the majority", not resolution. That is the
+same defect UP-16 found in the pooled number, now visible per pair.
+
+**Gate: FAIL, 1 of 3.** `balanced_ge_0.65` fails (0.6050), `per_pair_wilson_lo_gt_0.5` fails
+(1 pair, 2 required), `n_pairs_retained_ge_240` passes (315). **Kill triggered** (0.6050 <
+0.62) ⇒ **DP-8 = yes, the ranking line is closed.** Reading the kill on the all-360 scale
+gives 0.5985 < 0.62, so both readings agree; there is no definitional ambiguity to argue about.
+
+**Honest boundaries (ACTIVE).**
+  * **τ is a per-metal-pair scalar**, not per-pair; a ligand with unusually clean replicates
+    gets the same deadzone as a noisy one.
+  * **The deadzone is applied to labels, not to the loss.** lambdarank has integer
+    relevance, so "down-weight by |Δ|/τ" is not expressible in that arm; it is only
+    expressible in the pairwise arm, which is sample-limited.
+  * **The 0.65 gate was set against a 0.5985 baseline that this run reproduces exactly**, so
+    the failure is not a drift artefact.
+  * **Closing the ranking line removes a paper section, not a result.** The 0.5985 number
+    stands; what dies is the plan to push it to 0.65.
+
+**Artifacts.** `molmetal/scripts/msrs_ranking_hierarchical.py`,
+`molmetal/scripts/msrs_listwise_ranker.py::deadzone_labels`,
+`metrics/by_metric/msrs_ranking_hierarchical.json`.
+
+**§6.177 catalog-count math.** Net **+1**. Cumulative **231 → 232**. ACTIVE **187 → 188**.
+
+**Workflow** | UP-23 (2026-10-22; CPU, 2 lambdarank arms x 5 seeds x 5 folds + 4 BT arms x
+5 seeds; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.178 — UP-24: swapping BCE for a pairwise loss and edge-aware negatives buys +0.008 AUC, and the gate it was judged against was mis-calibrated (2026-10-22)
+
+**The question.** LOMO AUC is 0.5974 (D-MPNN, Ru 1,311 / Ir 538). AUC is a ranking
+statistic; the trainer optimises a pointwise BCE. A pairwise logistic loss optimises the
+ordering directly, and it also lets the *negative* be chosen: uniform negatives are usually
+a different ligand, so a model can separate them on ligand identity and never learn to use
+the metal. The edge-aware arm prefers a negative that shares the positive's ligand and
+differs in metal.
+
+**Measured** (`metrics/by_metric/msrs_lomo_pairwise.json`, CPU, 5 seeds, cohort
+`metal_lomo.csv` after `collapse_ligand_duplicates` = 2,010 rows; fold sizes Ru 1,311 /
+Ir 538 / Os 36 / Rh 51 / Re 74, identical to the 0.5974 audit):
+
+| arm | Ru/Ir mean | Ru | Ir | five-metal mean |
+|---|---:|---:|---:|---:|
+| **bce** | **0.5449** | 0.5480 | 0.5418 | **0.6185** |
+| pairwise | 0.5450 | 0.5434 | 0.5466 | 0.5798 |
+| pairwise_edge | **0.5529** | **0.5751** | 0.5306 | 0.5352 |
+
+**Neither the loss nor the negative construction explains the gap.** At matched learner,
+folds and seeds, pairwise_edge is **+0.0080** over BCE on the resolvable subset. Ru gains
++0.0271 and Ir loses −0.0112: one trades against the other, not a consistent improvement.
+On the five-metal mean the edge-aware arm is **0.0833 worse** (0.6185 → 0.5352), because it
+costs every small fold (Os 0.789 → 0.582, Rh 0.851 → 0.722, Re 0.363 → 0.267). Forcing the
+model to resolve metals removes the ligand shortcut, and the small folds have too few
+within-metal rows to relearn it.
+
+**The gate was mis-calibrated, and that is the finding to record.** The 0.63 target and the
+0.61 kill line were frozen against a D-MPNN number (0.5974), while the plan's own code
+points specify a feature-based script. That script's BCE baseline is **0.5449**, 0.0525
+below the D-MPNN. Applying the kill rule literally would close the LOMO line because a
+linear ECFP4 model is weak — a conclusion about the learner dressed up as a conclusion
+about the loss. The artifact therefore records **both** readings:
+`triggered_by_rule_text = true`, `applied = false`, with the reason and the
+matched-learner delta stored next to them.
+
+**Gate: FAIL, 1 of 3.** `auc_overall_ge_0.63` fails (0.5529), `auc_per_metal_ru_ir_ge_0.60`
+fails (Ru 0.5751 / Ir 0.5306), `must_report_bce_baseline` passes. Kill text triggers but is
+not applied; **the LOMO line's fate is not decided by this item** and remains tied to the
+D-MPNN 0.5974.
+
+**Honest boundaries (ACTIVE).**
+  * **Not budget-matched.** Pairwise logistic uses one negative per positive, so it sees
+    |pos| gradient terms where the pointwise arm sees |train| rows. The arms are not
+    equal-budget, and a budget-matched control (resample negatives to |train| pairs) was not
+    run.
+  * **The edge-aware fallback order** (ligand → cell → uniform) is a design choice, not a
+    measured optimum, and the fraction of pairs that reached each fallback is not recorded.
+  * **Collapsing to one row per (metal, ligand) discards the other rows' cell lines**, which
+    weakens the cell-aware fallback.
+  * **A linear model on 2,048 ECFP4 bits is not a D-MPNN.** What transfers from this
+    experiment is the *comparison*, not the level. Any future attempt to close the LOMO
+    line must use a learner that first reproduces 0.5974.
+
+**Artifacts.** `molmetal/scripts/msrs_lomo_pairwise.py`,
+`metrics/by_metric/msrs_lomo_pairwise.json`.
+
+**§6.178 catalog-count math.** Net **+1**. Cumulative **232 → 233**. ACTIVE **188 → 189**.
+
+**Workflow** | UP-24 (2026-10-22; CPU, 3 arms x 5 seeds x 5 folds; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

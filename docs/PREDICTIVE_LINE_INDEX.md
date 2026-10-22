@@ -30,6 +30,8 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **CQR 修好了覆盖、没修好宽度**（UP-20）：覆盖 **0.9000**、最差金属组 **0.8716** 双达标，但中位宽度 **1.9871** 只比 global（2.0073）窄 **1.0%**，离 1.80 差 10.4%。difficulty 的 1.8981 是拿 **0.8767** 覆盖换的。kill 触发 ⇒ DP-7 放弃宽度目标。
 - **论文偏移真实但不可从论文描述预测**（UP-21）：留出论文偏移 sd **0.2400**、平均 |偏移| **0.2255**，但 LOPO ridge **R² = −0.0259**，校正后 DOI R² 从 0.3670 掉到 **0.3557**、偏移 MAE 反而涨 4.55%。允许用测试论文自己的 y 统计量则跳到 **0.5405**——**信息在标签里，不在描述里**。kill 触发 ⇒ DOI 线关闭。
 - **UP-8 的 1/5 是采样粒度，不是缺配对点**（UP-22）：换成行级采样后 n_paired=3 有 **3/5** 金属 R² > 0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 从 0 增到 3 的平均 R² 是 **0.0407 → 0.0306**，不单调。**Re 有 0 个配对行却拿到 +0.1734**，增益在定义上不来自配对。gate FAIL（secondary），kill 未触发。
+- **噪声标签不是排序的瓶颈**（UP-23）：deadzone（|Δ| < 该对 noise SD）在 651 对里保留 **315** 对；把噪声对并成同 label 后 lambdarank **0.5985 → 0.5612**（保留子集上 0.6050 → 0.5615），因为 **279/1,586 个组（17.6%）被整组并成一个 label**、梯度归零。kill 触发（0.6050 < 0.62）⇒ **DP-8 = yes，排序线关闭**。
+- **换 pairwise 损失与边感知负采样只值 +0.008 AUC**（UP-24）：同学习器同划分，BCE **0.5449** → pairwise_edge **0.5529**（Ru +0.0271 / Ir −0.0112）；五金属均值反而从 0.6185 掉到 0.5352。**0.5974 与 0.63 的差距不是损失或负采样造成的**；该项的绝对门槛按 D-MPNN 冻结、学习器却是特征模型，属计划口径错误，kill 文本触发但未适用。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -67,6 +69,8 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-20 | CQR 能不能同时拿宽度和覆盖 | **FAIL**（kill 触发） | 覆盖 **0.9000** ✓、最差组 0.8716 ✓，宽度 **1.9871** > 1.80（只比 global 窄 1.0%） |
 | UP-21 | 论文元特征能不能预测论文偏移 | **FAIL**（kill 触发） | DOI R² **0.3557** < 0.40；偏移 LOPO R² **−0.0259**；泄漏臂 +0.1735 |
 | UP-22 | UP-8 的 1/5 是不是因为缺配对点 | **FAIL**（secondary） | n_paired=3 时 3/5 金属 >0 ✓，但 0→3 平均 R² **0.0407 → 0.0306** 不单调；Re 有 0 个配对行却 +0.1734 |
+| UP-23 | 噪声标签是不是排序上不去的主因 | **FAIL**（kill 触发） | deadzone 保留 315/651；lambdarank **0.5985 → 0.5612**（变差）；BT 臂全部 ≤0.5411 |
+| UP-24 | 换 pairwise logistic + 边感知负采样能不能救 LOMO | **FAIL**（kill 文本触发但未适用） | 同学习器 BCE 0.5449 vs pairwise_edge 0.5529（**+0.0080**）；绝对门槛 0.63 不可达 |
 
 ---
 
@@ -343,7 +347,22 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP22.primary_metals_above_zero", "value": 3, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.primary.value"},
   {"id": "UP22.mean_r2_np0", "value": 0.0407, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.secondary.values.0"},
   {"id": "UP22.mean_r2_np3", "value": 0.0306, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.checks.secondary.values.3"},
-  {"id": "UP22.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.kill.triggered"}
+  {"id": "UP22.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_paired_kshot.json", "path": "gate.kill.triggered"},
+  {"id": "UP23.n_pairs", "value": 651, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "design.n_pairs"},
+  {"id": "UP23.n_pairs_kept", "value": 315, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "design.n_pairs_kept"},
+  {"id": "UP23.n_pairs_scored_kept", "value": 315, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "design.n_pairs_scored_kept"},
+  {"id": "UP23.n_groups_all_tied", "value": 279, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "design.label_info.lambdarank_deadzone.n_groups_all_tied"},
+  {"id": "UP23.lambdarank_none_balanced", "value": 0.5985, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "arms.lambdarank_none.all_pairs.overall.balanced_accuracy"},
+  {"id": "UP23.lambdarank_deadzone_balanced", "value": 0.5612, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "arms.lambdarank_deadzone.all_pairs.overall.balanced_accuracy"},
+  {"id": "UP23.bt_hier_balanced", "value": 0.4685, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "arms.bt_hier.retained.overall.balanced_accuracy"},
+  {"id": "UP23.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json", "path": "gate.kill.triggered"},
+  {"id": "UP24.bce_auc", "value": 0.5449, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.auc_overall_resolvable"},
+  {"id": "UP24.pairwise_edge_auc", "value": 0.5529, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.pairwise_edge.auc_overall_resolvable"},
+  {"id": "UP24.bce_auc_all_metals", "value": 0.6185, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.auc_all_metals"},
+  {"id": "UP24.pairwise_edge_auc_all_metals", "value": 0.5352, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.pairwise_edge.auc_all_metals"},
+  {"id": "UP24.bce_ru_auc", "value": 0.548, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.per_metal.Ru"},
+  {"id": "UP24.kill_applied", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.applied"},
+  {"id": "UP24.kill_triggered_by_rule_text", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.triggered_by_rule_text"}
 ]
 ```
 
@@ -771,6 +790,56 @@ R²_centred = R²_abs + bias²/Var(y)
 5. **但"配对是机制"没有被证实**：0→3 的增量在 Rh 上是 **−0.0078**，Os +0.0025、Re +0.0011，平均从 0.0407 掉到 0.0306。给模型配对点没有换来可测量的交互项。
 
 **Gate：FAIL。** primary ✓（3 ≥ 3）、secondary ✗（非单调）。**kill 未触发**（3 ≥ 2），所以 k-shot 线**不关闭**；但论文只能写"新金属少样本适配在行级采样下 3/5 金属可用"，**不能**写"配对校准点有用"。
+
+### 2.22 UP-23 deadzone 标签 + 层级 Bradley-Terry：噪声标签不是 0.5985 上不去的原因，去掉它们反而更差（2026-10-22）
+
+`msrs_ranking_hierarchical.json`（CPU，5 seed；GroupKFold(5) on DOI，与 UP-2b 同一划分；评分器 `msrs_ranking_expanded.score_pairs` 逐字复用）。
+
+**deadzone 的定义**：金属对 $(a,b)$ 的 `noise_sd_delta` 记为 τ，`|Δ| < τ` 的对**测量上不可分辨**。τ 取自 `msrs_metal_graph.json`：Ru–Os **0.2264**、Ir–Rh **0.4017**、Ru–Rh **0.4369**。
+
+| 对表 | 总数 | deadzone 保留 | 保留率 |
+|---|---:|---:|---:|
+| 全部（训练用） | 651 | **315** | 48.4% |
+| 过 |Δ|≥0.2091 的评分集 | 360 | **315** | 87.5% |
+
+| 臂 | 全部 360 对 balanced | deadzone 保留 315 对 balanced | 说明 |
+|---|---:|---:|---|
+| **lambdarank_none** | **0.5985** | **0.6050** | 逐位复现 UP-2b 的 0.5985 ✓ |
+| lambdarank_deadzone | 0.5612 | 0.5615 | 同样本、同目标，只把噪声对并成同 label |
+| bt_none | 0.5369 | 0.5297 | 成对 logistic，651 对 |
+| bt_exclude | 0.5411 | 0.5317 | 臂 A：丢弃 deadzone 对（315 对） |
+| bt_weight | 0.5056 | 0.4974 | 臂 B：w = min(1, |Δ|/τ) |
+| bt_hier | 0.4631 | 0.4685 | 加金属指示（加性项）后**最差** |
+
+**结论：噪声标签不是瓶颈，把它们从训练里拿掉会让模型变差 0.0435。**
+
+1. **复现是干净的**：`lambdarank_none` 在全部 360 对上给出 **0.5985**，与 UP-2b 逐位相同，说明本脚本的折、特征、评分没有漂移。它在保留子集上是 **0.6050** —— 保留子集**更容易**，不是更难。
+2. **deadzone 标签直接伤到模型**：0.5985 → **0.5612**（−0.0373；在保留子集上 0.6050 → 0.5615，−0.0435）。原因在 label 结构：**1,586 个多金属组里有 279 个（17.6%）被整组并成一个 label**，这些组对 lambdarank 的梯度贡献为 0。把"测量上不可分辨"翻译成"训练时不可分辨"，等于主动丢掉 17.6% 的排序信息。
+3. **成对 logistic 全部 ≤0.5411**，而且样本量解释得通：BT 臂每个训练折只有 ~520 对，lambdarank 有 21k 行。这一列不是"架构输了"，是"样本输了"，所以它不能用来支持任何关于 loss 的结论。
+4. **`bt_hier` 最差（0.4631）**，且它的加性项在树上**饱和**：4 节点 3 边的图上 `u_Ru − u_Rh` 恰好复现 Ru–Rh 的均值 Δ，没有残差自由度可供"借强度"。UP-18 已经证明这一点，这里只是再次实测到它不带来增益。
+
+**per-pair Wilson 有一个陷阱**：保留子集上唯一 Wilson 下界 > 0.5 的是 **Rh–Ru（15/16 = 0.9375，下界 0.7167）**，但这一对的多数类率**也是 0.9375**（16 对里 15 对同号），所以它的 balanced accuracy 恰好是 **0.5**。**Wilson 下界在极不平衡的对上测的是"会不会猜多数"，不是"有没有分辨力"。**
+
+**Gate：FAIL（3 条过 1 条）。** `balanced_ge_0.65` ✗（0.6050）、`per_pair_wilson_lo_gt_0.5` ✗（1 对，需 2 对）、`n_pairs_retained_ge_240` ✓（315）。**kill 触发**（0.6050 < 0.62）⇒ **DP-8 走 yes 分支：排序线关闭**。用全部 360 对的口径读也是 0.5985 < 0.62，两种读法都触发，不存在口径争议。
+
+### 2.23 UP-24 LOMO 的 pairwise logistic：换损失与换负采样都只值 +0.008 AUC（2026-10-22）
+
+`msrs_lomo_pairwise.json`（CPU，5 seed；队列 = `metal_lomo.csv` 经 `collapse_ligand_duplicates`，**2,010 行**，折大小 Ru 1,311 / Ir 538 / Os 36 / Rh 51 / Re 74 —— 与 0.5974 那次审计**逐折相同**）。
+
+| 臂 | Ru/Ir 均值（可解析） | Ru | Ir | 五金属均值 | 说明 |
+|---|---:|---:|---:|---:|---|
+| **bce** | **0.5449** | 0.5480 | 0.5418 | **0.6185** | 点式 logistic（同划分基线） |
+| pairwise | 0.5450 | 0.5434 | 0.5466 | 0.5798 | 负样本均匀抽 |
+| pairwise_edge | **0.5529** | **0.5751** | 0.5306 | 0.5352 | 负样本优先同配体/异金属 |
+
+**答案是"两者都不是"，而且这一项有一个必须先说清的方法学缺陷。**
+
+1. **同学习器下 pairwise 只值 +0.0080**：0.5449 → 0.5529。Ru 涨 +0.0271，Ir 跌 −0.0112 —— 一个换另一个，不是一致增益。
+2. **边感知负采样把五金属均值拉低 0.0833**（0.6185 → 0.5352）。它把小折（Os 0.789 → 0.582、Rh 0.851 → 0.722、Re 0.363 → 0.267）全部变差，只换来 Ru 的提升。**"让模型必须分辨金属"的代价是它不再能靠配体走捷径，而小折没有足够的金属内样本重新学会。**
+3. **绝对门槛 0.63 不可达，原因在学习器不在损失**：本脚本是 ECFP4 上的线性模型，它自己的 BCE 基线是 **0.5449**，比 D-MPNN 的 0.5974 低 0.0525。**用这条 0.61 的 kill 线去关闭 LOMO，测到的是"线性模型弱"，不是"pairwise 损失无效"。** 所以 artifact 里两个读数都记：`triggered_by_rule_text = true`、`applied = false`，并写明理由。这是一处**计划自身的口径错误**（门槛按 D-MPNN 冻结，代码点却指定特征模型），不是事后调整。
+4. **能支撑的结论只有一条**：在**同一学习器、同一划分、同一 seed** 下，把 BCE 换成 pairwise logistic、并把负样本换成同配体异金属，Ru/Ir 均值从 0.5449 到 0.5529。**0.5974 与 0.63 之间的差距不是损失函数或负采样造成的。**
+
+**Gate：FAIL（3 条过 1 条）。** `auc_overall_ge_0.63` ✗（0.5529）、`auc_per_metal_ru_ir_ge_0.60` ✗（Ru 0.5751 / Ir 0.5306）、`must_report_bce_baseline` ✓。**kill 文本触发（0.5529 < 0.61）但不适用**，理由见第 3 条；**LOMO 线的去留不由这一项裁定**，仍按 0.5974 的 D-MPNN 结果记。
 
 ---
 

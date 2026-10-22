@@ -1,0 +1,1064 @@
+{
+  "artifact": "msrs_ranking_hierarchical",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L3 ranking / UP-23",
+  "generated_utc": "2026-10-22T07:10:11+00:00",
+  "provenance": {
+    "script": "molmetal/scripts/msrs_ranking_hierarchical.py",
+    "git_commit": "dc9ba599f46f0a8c3e45c7c3d3526392c3b19ff5",
+    "long": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "metal_graph": "/home/hugo/codes/mol-metal/metrics/by_metric/msrs_metal_graph.json",
+    "seeds": [
+      20261018,
+      42,
+      43,
+      44,
+      49
+    ],
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "device": "cpu",
+    "device_note": "LightGBM on 21k rows is faster on CPU than on GPU at this size; no CUDA context is created.",
+    "group": [
+      "ligand_canonical",
+      "cell_line_key"
+    ],
+    "cv": "GroupKFold(5) on DOI, same partition as UP-2b",
+    "gate_threshold": 0.2091,
+    "alpha": 1.0,
+    "deadzone_tau_source": "msrs_metal_graph.json:/edges_by_pair/*/noise_sd_delta",
+    "deadzone_tau": {
+      "Ru-Rh": 0.4369,
+      "Ru-Os": 0.2264,
+      "Ir-Rh": 0.4017
+    },
+    "n_pairs": 651,
+    "n_pairs_kept": 315,
+    "n_pairs_scored": 360,
+    "n_pairs_scored_kept": 315,
+    "retained_by_metal_pair": {
+      "Ir-Rh": {
+        "n": 180,
+        "kept": 48,
+        "tau": 0.4017
+      },
+      "Os-Ru": {
+        "n": 451,
+        "kept": 251,
+        "tau": 0.2264
+      },
+      "Rh-Ru": {
+        "n": 20,
+        "kept": 16,
+        "tau": 0.4369
+      }
+    },
+    "label_info": {
+      "lambdarank_none": {
+        "n_label_levels": 6,
+        "n_groups_all_tied": 0,
+        "n_groups_multi_metal": 1586
+      },
+      "lambdarank_deadzone": {
+        "n_label_levels": 6,
+        "n_groups_all_tied": 279,
+        "n_groups_multi_metal": 1586
+      }
+    },
+    "bt_meta": {
+      "bt_none": {
+        "n_train_pairs_full": 651
+      },
+      "bt_exclude": {
+        "n_train_pairs_full": 315
+      },
+      "bt_weight": {
+        "n_train_pairs_full": 651
+      },
+      "bt_hier": {
+        "n_train_pairs_full": 651,
+        "metal_effects": {
+          "Ir": 0.8953,
+          "Os": -0.6001,
+          "Re": 0.0,
+          "Rh": 0.4984,
+          "Ru": -0.7936
+        }
+      }
+    }
+  },
+  "arms": {
+    "lambdarank_none": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.5417,
+          "balanced_accuracy": 0.5985,
+          "tpr": 0.3661,
+          "tnr": 0.8309
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.4884,
+            "balanced_accuracy": 0.56,
+            "tpr": 0.12,
+            "tnr": 1.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.5349,
+            "balanced_accuracy": 0.5807,
+            "tpr": 0.3836,
+            "tnr": 0.7778,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.456,
+            0.6277
+          ],
+          "balanced_ci95": [
+            0.5262,
+            0.6663
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.5492,
+          "balanced_accuracy": 0.605,
+          "tpr": 0.403,
+          "tnr": 0.807
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.5,
+            "balanced_accuracy": 0.5862,
+            "tpr": 0.1724,
+            "tnr": 1.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.5339,
+            "balanced_accuracy": 0.5826,
+            "tpr": 0.3885,
+            "tnr": 0.7766,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.4593,
+            0.641
+          ],
+          "balanced_ci95": [
+            0.53,
+            0.6848
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 24,
+          "raw_accuracy": 0.5,
+          "wilson_lo": 0.3639,
+          "wilson_hi": 0.6361
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 134,
+          "raw_accuracy": 0.5339,
+          "wilson_lo": 0.4721,
+          "wilson_hi": 0.5946
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    },
+    "lambdarank_deadzone": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.4917,
+          "balanced_accuracy": 0.5612,
+          "tpr": 0.2768,
+          "tnr": 0.8456
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.5233,
+            "balanced_accuracy": 0.59,
+            "tpr": 0.18,
+            "tnr": 1.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.4535,
+            "balanced_accuracy": 0.5185,
+            "tpr": 0.239,
+            "tnr": 0.798,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.4031,
+            0.578
+          ],
+          "balanced_ci95": [
+            0.4911,
+            0.6282
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.4889,
+          "balanced_accuracy": 0.5615,
+          "tpr": 0.2985,
+          "tnr": 0.8246
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.5417,
+            "balanced_accuracy": 0.6207,
+            "tpr": 0.2414,
+            "tnr": 1.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.4502,
+            "balanced_accuracy": 0.52,
+            "tpr": 0.242,
+            "tnr": 0.7979,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.3897,
+            0.584
+          ],
+          "balanced_ci95": [
+            0.4855,
+            0.6365
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 26,
+          "raw_accuracy": 0.5417,
+          "wilson_lo": 0.4029,
+          "wilson_hi": 0.6742
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 113,
+          "raw_accuracy": 0.4502,
+          "wilson_lo": 0.3899,
+          "wilson_hi": 0.512
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    },
+    "bt_none": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.5028,
+          "balanced_accuracy": 0.5369,
+          "tpr": 0.3973,
+          "tnr": 0.6765
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.4767,
+            "balanced_accuracy": 0.5189,
+            "tpr": 0.26,
+            "tnr": 0.7778,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.4845,
+            "balanced_accuracy": 0.5151,
+            "tpr": 0.3836,
+            "tnr": 0.6465,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.4154,
+            0.5923
+          ],
+          "balanced_ci95": [
+            0.4492,
+            0.6204
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.5016,
+          "balanced_accuracy": 0.5297,
+          "tpr": 0.4279,
+          "tnr": 0.6316
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.4583,
+            "balanced_accuracy": 0.4882,
+            "tpr": 0.3448,
+            "tnr": 0.6316,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.4821,
+            "balanced_accuracy": 0.5134,
+            "tpr": 0.3885,
+            "tnr": 0.6383,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.4094,
+            0.5975
+          ],
+          "balanced_ci95": [
+            0.4377,
+            0.6223
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 22,
+          "raw_accuracy": 0.4583,
+          "wilson_lo": 0.3258,
+          "wilson_hi": 0.5971
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 121,
+          "raw_accuracy": 0.4821,
+          "wilson_lo": 0.421,
+          "wilson_hi": 0.5437
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    },
+    "bt_exclude": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.4972,
+          "balanced_accuracy": 0.5411,
+          "tpr": 0.3616,
+          "tnr": 0.7206
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.4884,
+            "balanced_accuracy": 0.5406,
+            "tpr": 0.22,
+            "tnr": 0.8611,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.4729,
+            "balanced_accuracy": 0.5113,
+            "tpr": 0.3459,
+            "tnr": 0.6768,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.4116,
+            0.5788
+          ],
+          "balanced_ci95": [
+            0.4631,
+            0.6185
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.4921,
+          "balanced_accuracy": 0.5317,
+          "tpr": 0.3881,
+          "tnr": 0.6754
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.4583,
+            "balanced_accuracy": 0.5064,
+            "tpr": 0.2759,
+            "tnr": 0.7368,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.4701,
+            "balanced_accuracy": 0.5103,
+            "tpr": 0.3503,
+            "tnr": 0.6702,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.4036,
+            0.5873
+          ],
+          "balanced_ci95": [
+            0.4451,
+            0.6193
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 22,
+          "raw_accuracy": 0.4583,
+          "wilson_lo": 0.3258,
+          "wilson_hi": 0.5971
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 118,
+          "raw_accuracy": 0.4701,
+          "wilson_lo": 0.4093,
+          "wilson_hi": 0.5318
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    },
+    "bt_weight": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.4639,
+          "balanced_accuracy": 0.5056,
+          "tpr": 0.3348,
+          "tnr": 0.6765
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.3837,
+            "balanced_accuracy": 0.4389,
+            "tpr": 0.1,
+            "tnr": 0.7778,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.4612,
+            "balanced_accuracy": 0.4962,
+            "tpr": 0.3459,
+            "tnr": 0.6465,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.3801,
+            0.551
+          ],
+          "balanced_ci95": [
+            0.4243,
+            0.5877
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.4603,
+          "balanced_accuracy": 0.4974,
+          "tpr": 0.3632,
+          "tnr": 0.6316
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.3125,
+            "balanced_accuracy": 0.3675,
+            "tpr": 0.1034,
+            "tnr": 0.6316,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.4582,
+            "balanced_accuracy": 0.4943,
+            "tpr": 0.3503,
+            "tnr": 0.6383,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.3702,
+            0.5549
+          ],
+          "balanced_ci95": [
+            0.4034,
+            0.5886
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 15,
+          "raw_accuracy": 0.3125,
+          "wilson_lo": 0.1995,
+          "wilson_hi": 0.4533
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 115,
+          "raw_accuracy": 0.4582,
+          "wilson_lo": 0.3976,
+          "wilson_hi": 0.52
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    },
+    "bt_hier": {
+      "all_pairs": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 360,
+          "positive_rate": 0.6222,
+          "majority_rate": 0.6222,
+          "raw_sign_accuracy": 0.5583,
+          "balanced_accuracy": 0.4631,
+          "tpr": 0.8527,
+          "tnr": 0.0735
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 86,
+            "positive_rate": 0.5814,
+            "majority_rate": 0.5814,
+            "raw_sign_accuracy": 0.407,
+            "balanced_accuracy": 0.3656,
+            "tpr": 0.62,
+            "tnr": 0.1111,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.5814
+          },
+          "Os-Ru": {
+            "n_pairs": 258,
+            "positive_rate": 0.6163,
+            "majority_rate": 0.6163,
+            "raw_sign_accuracy": 0.5853,
+            "balanced_accuracy": 0.4863,
+            "tpr": 0.9119,
+            "tnr": 0.0606,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6163
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6222,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 148,
+          "raw_ci95": [
+            0.4718,
+            0.639
+          ],
+          "balanced_ci95": [
+            0.4222,
+            0.5091
+          ]
+        }
+      },
+      "retained": {
+        "status": "OK",
+        "gate": 0.2091,
+        "overall": {
+          "n_pairs": 315,
+          "positive_rate": 0.6381,
+          "majority_rate": 0.6381,
+          "raw_sign_accuracy": 0.581,
+          "balanced_accuracy": 0.4685,
+          "tpr": 0.8756,
+          "tnr": 0.0614
+        },
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 48,
+            "positive_rate": 0.6042,
+            "majority_rate": 0.6042,
+            "raw_sign_accuracy": 0.3958,
+            "balanced_accuracy": 0.3367,
+            "tpr": 0.6207,
+            "tnr": 0.0526,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6042
+          },
+          "Os-Ru": {
+            "n_pairs": 251,
+            "positive_rate": 0.6255,
+            "majority_rate": 0.6255,
+            "raw_sign_accuracy": 0.5936,
+            "balanced_accuracy": 0.4873,
+            "tpr": 0.9108,
+            "tnr": 0.0638,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.6255
+          },
+          "Rh-Ru": {
+            "n_pairs": 16,
+            "positive_rate": 0.9375,
+            "majority_rate": 0.9375,
+            "raw_sign_accuracy": 0.9375,
+            "balanced_accuracy": 0.5,
+            "tpr": 1.0,
+            "tnr": 0.0,
+            "additive_ceiling_balanced": 0.5,
+            "additive_ceiling_raw": 0.9375
+          }
+        },
+        "additive_ceiling": {
+          "raw_sign_accuracy": 0.6381,
+          "balanced_accuracy": 0.5,
+          "note": "oracle: per-metal-pair majority sign, the best an additive surface can do"
+        },
+        "bootstrap": {
+          "n_boot": 2000,
+          "n_clusters": 128,
+          "raw_ci95": [
+            0.4906,
+            0.6712
+          ],
+          "balanced_ci95": [
+            0.4232,
+            0.5165
+          ]
+        }
+      },
+      "wilson_retained": {
+        "Ir-Rh": {
+          "n": 48,
+          "correct": 19,
+          "raw_accuracy": 0.3958,
+          "wilson_lo": 0.2702,
+          "wilson_hi": 0.5369
+        },
+        "Os-Ru": {
+          "n": 251,
+          "correct": 149,
+          "raw_accuracy": 0.5936,
+          "wilson_lo": 0.5319,
+          "wilson_hi": 0.6525
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "correct": 15,
+          "raw_accuracy": 0.9375,
+          "wilson_lo": 0.7167,
+          "wilson_hi": 0.9889
+        }
+      }
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T12:42+08:00",
+    "checks": {
+      "balanced_ge_0.65": {
+        "arm": "lambdarank_none",
+        "value": 0.605,
+        "threshold": 0.65,
+        "baseline_up2b": 0.5985,
+        "pass": false
+      },
+      "per_pair_wilson_lo_gt_0.5": {
+        "arm": "lambdarank_none",
+        "n_pairs_below_or_equal": 1,
+        "required": 2,
+        "pass": false
+      },
+      "n_pairs_retained_ge_240": {
+        "value": 315,
+        "value_full_pair_table": 315,
+        "threshold": 240,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "balanced < 0.62 on the retained subset -> ranking line closed (DP-8 yes)",
+      "value": 0.605,
+      "triggered": true
+    }
+  },
+  "verdict": "FAIL",
+  "caveats": [
+    "A pair whose |delta| is below the noise SD is not known to be a tie — it is known to be unresolvable. Dropping it from training is the right move; dropping it from *evaluation* would be measuring on the easy subset, which is why both the full 360 and the retained subset are reported for every arm.",
+    "The BT arms see only 651 pairs (520 per training fold), against 21k rows for lambdarank. A weaker BT number is a sample-size statement, not an architecture one.",
+    "Cross-paper pairs (the ligand_cell key) compare out-of-fold scores from two different models with arbitrary relative scale; UP-2b already flags this. It applies to every arm here equally.",
+    "The metal graph is a tree on 4 observed nodes, so the additive (hier) model is saturated: u_Ru - u_Rh reproduces the Ru-Rh mean delta exactly. 'Borrowing strength' has no residual degrees of freedom to work with; see UP-18."
+  ],
+  "elapsed_seconds": 269.0
+}

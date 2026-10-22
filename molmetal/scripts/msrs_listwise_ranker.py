@@ -139,6 +139,34 @@ def rank_labels(frame: pd.DataFrame, y: np.ndarray) -> tuple[np.ndarray, np.ndar
     return order, labels, np.array(sizes, dtype=int)
 
 
+def deadzone_labels(
+    delta: np.ndarray, tau: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """UP-23 — which observed pair deltas are larger than the assay noise?
+
+    ``tau`` is the metal pair's ``noise_sd_delta`` from ``msrs_metal_graph``.
+    A pair with ``|delta| < tau`` cannot be told apart from a tie by the
+    measurement, so treating it as a hard label teaches the ranker noise.
+
+    Returns ``(keep, weight)``:
+
+    * ``keep``   — arm A: drop the pair entirely.
+    * ``weight`` — arm B: keep it but scale the gradient by ``min(1, |d|/tau)``,
+      so a pair barely above the noise floor counts for very little.
+
+    ``tau <= 0`` means the metal pair has no estimated noise scale; such pairs
+    are kept at full weight rather than silently dropped.
+    """
+    delta = np.asarray(delta, dtype=float)
+    tau = np.asarray(tau, dtype=float)
+    absd = np.abs(delta)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(tau > 0, absd / np.where(tau > 0, tau, 1.0), 1.0)
+    weight = np.clip(ratio, 0.0, 1.0)
+    keep = (tau <= 0) | (absd >= tau)
+    return keep, weight
+
+
 def fit_fold(
     X: sparse.csr_matrix,
     labels: np.ndarray,
