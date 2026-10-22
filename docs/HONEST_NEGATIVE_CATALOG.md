@@ -10319,7 +10319,7 @@ resamples in each of two orders; §5.2 every number is an artifact field; §5.3 
 
 ---
 
-## §6.163 — Wf-A107e: turning the sampler on did not make the metric mean generation (2026-10-21)
+## §6.166 — Wf-A107e: turning the sampler on did not make the metric mean generation (2026-10-21)
 
 **What this wave was for.** §6.162 found that Wf-A107's `gen_ring_*` numbers were decodes
 of collapsed noise because `use_fm_objective` was absent and `wasserstein_weight` was 0.0.
@@ -10337,8 +10337,10 @@ the ring term cannot rescale the flow field:
 | `gen_ring_3_share` | 0.5016 | 0.3648 | **−0.1368** |
 | `gen_ring_5_6_share` | 0.1688 | 0.2121 | +0.0433 |
 | `gen_rings_per_mol` | 6.48 | 9.82 | +3.34 |
-| bond existence AP | 0.3465 | 0.1768 | **−0.1697** |
-| bond F1 | 0.4896 | 0.4824 | −0.0072 |
+| bond existence AP (`bond_pr_auc`, `existence_ap_v2`) | 0.5626 | 0.5807 | **+0.0181** |
+| single-bond class-1 PR-AUC (`bond_class_1_pr_auc`, 2.36% positive) | 0.3465 | 0.1768 | **−0.1697** |
+| bond existence F1 @ decision 0.5 | 0.4896 | 0.4824 | −0.0072 |
+| bond existence F1 @ best swept threshold | 0.7168 | 0.6812 | −0.0356 |
 | `ring_prior_term` | 0.0000 | 0.7190 | +0.719 |
 
 **Three readings, in order of how much they matter.**
@@ -10353,13 +10355,23 @@ the ring term cannot rescale the flow field:
 2. **The decoded A/B is unchanged, which is the point.** 3-share −0.1368 here vs −0.1357
    in Wf-A107 (§6.153). Whatever the metric is measuring, it is not sensitive to whether
    the velocity field trains — consistent with (1).
-3. **The prior now costs bond accuracy.** AP 0.3465 → 0.1768. In Wf-A107 (untrained
-   sampler) the same prior was AP-neutral (−0.0013 over 3 seeds). The difference is not
-   the data: `bond_ce` is slightly LOWER in the treatment (0.7779 vs 0.7995) while
-   precision falls 0.551 → 0.520 and recall rises 0.441 → 0.450 — the ring term pushes
-   edges toward "bonded" and destroys the ranking. **Caveat: n = 1 seed, and Wf-A107b
-   measured the 3-seed run-to-run spread of this protocol at 0.133 AP, so a −0.170 delta
-   is at the edge of that spread, not established as an effect size.**
+3. **The prior buys ring composition at the cost of the single-bond ranking — and the
+   existence AP does not fall.** `bond_pr_auc` (existence AP, `existence_ap_v2`) **rises**
+   0.5626 → 0.5807 (+0.0181) while `bond_class_1_pr_auc` — the one-vs-rest AP for the
+   SINGLE bond class on a 2.36% positive rate — falls 0.3465 → 0.1768. Best swept F1 falls
+   0.7168 → 0.6812 (−0.0356). The ring term pushes edges toward "bonded" (precision
+   0.551 → 0.520, recall 0.441 → 0.450 at a fixed 0.5 threshold) and redistributes them
+   toward single bonds; whether a pair is bonded at all gets slightly *easier* to rank.
+   **Caveat: n = 1 seed, and Wf-A107b measured the 3-seed run-to-run spread of this
+   protocol at 0.133 AP, so a −0.170 class-level delta is at the edge of that spread, not
+   established as an effect size.**
+4. **The first version of this entry mislabelled the metric.** It reported
+   `bond_class_1_pr_auc` under the name "bond existence AP" and read the −0.170 as the
+   prior costing bond accuracy outright. Wf-A107f found it by adding both fields to
+   `wfa107e_ab_analysis.py` under their own names plus a `bond_pr_auc_definition` stamp;
+   the corrected artifact is `metrics/by_metric/wfa107e_ab.json` (keys `bond_pr_auc` and
+   `bond_class_1_pr_auc`). The error was a reader defect, not a training defect: the
+   per-epoch JSON always carried both.
 
 **The clip fix works and is now measurable.** With `grad_clip_scope: per_module` the
 treatment's `grad_norm` (pre-clip, global) rises 7.52 → 8.47 and yet the flow field barely
@@ -10389,10 +10401,11 @@ old global clip the same pair differed by an unknown amount through the shared c
 `molmetal/scripts/wfa107c_head_swap_probe.py` (now takes `--device`; a trained field makes
 the CPU sampler >20 min for 2x32 clouds vs ~1 min on GPU0).
 
-**§6.163 catalog-count math.** Net **+1**. Cumulative **217 → 218**. ACTIVE **173 → 174**.
+**§6.166 catalog-count math.** Net **+1**. Cumulative **220 → 221**. ACTIVE **176 → 177**.
 
 **Workflow** | Wf-A107e (2026-10-21; GPU0: 2 arms x 5 epochs with FM on, 2 probes; §5.2
-every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab). Metric-name
+correction + raw-graph instrumentation: Wf-A107f (2026-10-21, CPU).
 
 ---
 

@@ -32,6 +32,38 @@ def ring_sizes_from_mol(mol) -> List[int]:
     return sorted(int(len(r)) for r in mol.GetRingInfo().AtomRings())
 
 
+def ring_sizes_from_edges(n_atoms: int, edges: Iterable[Iterable[int]]) -> List[int]:
+    """SSSR ring sizes of a graph given as an EDGE LIST, ascending.
+
+    The counterpart of :func:`ring_sizes_from_mol` for a graph that has not
+    been assembled into an RDKit molecule yet — the bond head's accepted pairs
+    before ``_assemble_mol``.  Wf-A107c/d MEASURED that the assembled metric
+    and the raw graph can differ by 27x on the same decode, so a run that only
+    reports the assembled profile cannot tell a chemistry change from an
+    assembly change.
+
+    Connectivity only: every edge is added as a SINGLE bond and the molecule is
+    never sanitised, so a valence-impossible graph still yields its rings
+    rather than raising.  Duplicate edges and self-loops are dropped.
+    """
+    from rdkit import Chem
+
+    rw = Chem.RWMol()
+    for _ in range(int(n_atoms)):
+        rw.AddAtom(Chem.Atom(6))
+    for edge in edges:
+        i, j = int(edge[0]), int(edge[1])
+        if i == j:
+            continue
+        if not (0 <= i < int(n_atoms) and 0 <= j < int(n_atoms)):
+            continue
+        if rw.GetBondBetweenAtoms(i, j) is not None:
+            continue
+        rw.AddBond(i, j, Chem.BondType.SINGLE)
+    mol = rw.GetMol()
+    return sorted(int(len(r)) for r in Chem.GetSymmSSSR(mol))
+
+
 def summarise_ring_sizes(per_mol_sizes: Iterable[Iterable[int]]) -> Dict[str, Any]:
     """Aggregate per-molecule ring-size lists into the OPT-2-comparable block."""
     hist: Dict[int, int] = {}

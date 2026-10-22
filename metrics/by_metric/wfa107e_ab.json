@@ -48,6 +48,13 @@
     3.3020833333333335,
     6.479166666666667
    ],
+   "bond_pr_auc": [
+    0.04063980661293032,
+    0.050536579127073405,
+    0.19562196669601933,
+    0.4614357805948466,
+    0.5626257554890481
+   ],
    "bond_class_1_pr_auc": [
     0.021715644867718358,
     0.04267595613883881,
@@ -61,6 +68,13 @@
     0.0,
     0.17317797578249947,
     0.4895995032598572
+   ],
+   "bond_best_f1_at_threshold": [
+    0.11938739993038636,
+    0.12078969957081545,
+    0.3695189442315879,
+    0.6436728035422979,
+    0.7167992287298144
    ],
    "bond_precision": [
     0.0,
@@ -124,6 +138,34 @@
     0.7883499526977539,
     0.7854864048957825,
     0.7818226790428162
+   ],
+   "fm_term": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_ring_3_share": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_ring_5_6_share": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_rings_per_mol": [
+    null,
+    null,
+    null,
+    null,
+    null
    ]
   },
   "edge_ring_w1": {
@@ -148,6 +190,13 @@
     4.96875,
     9.822916666666666
    ],
+   "bond_pr_auc": [
+    0.04083147231399401,
+    0.053777312909831405,
+    0.24503653359401956,
+    0.5293396950364032,
+    0.5807011798021633
+   ],
    "bond_class_1_pr_auc": [
     0.021760620803637505,
     0.0383318702789512,
@@ -161,6 +210,13 @@
     0.0,
     0.42969432314410483,
     0.4824075460398263
+   ],
+   "bond_best_f1_at_threshold": [
+    0.12022237665045168,
+    0.12268045214305003,
+    0.409051094890511,
+    0.6346525096525097,
+    0.6812227074235809
    ],
    "bond_precision": [
     0.0,
@@ -224,9 +280,48 @@
     0.7883499550819397,
     0.7854863953590393,
     0.7818226671218872
+   ],
+   "fm_term": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_ring_3_share": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_ring_5_6_share": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "gen_raw_rings_per_mol": [
+    null,
+    null,
+    null,
+    null,
+    null
    ]
   }
  },
+ "metric_labels": {
+  "bond_pr_auc": "bond existence AP (bond_pr_auc_definition field says which)",
+  "bond_class_1_pr_auc": "SINGLE bond class PR-AUC (positive rate ~2.4%)",
+  "bond_f1": "bond existence F1 at the recorded decision threshold",
+  "bond_best_f1_at_threshold": "bond existence F1 at the best swept threshold",
+  "gen_raw_ring_3_share": "3-ring share on the head's accepted graph, BEFORE RDKit",
+  "gen_raw_ring_5_6_share": "5/6-ring share on the head's accepted graph, BEFORE RDKit",
+  "gen_raw_rings_per_mol": "rings per molecule on the head's accepted graph, BEFORE RDKit",
+  "fm_term": "epoch mean of the flow-matching term; 0.0 means the flag did not reach the objective"
+ },
+ "bond_pr_auc_definition": "existence_ap_v2",
  "last_epoch_deltas": {
   "gen_ring_3_share": {
    "control": 0.5016077170418006,
@@ -243,6 +338,11 @@
    "treatment": 9.822916666666666,
    "delta": 3.343749999999999
   },
+  "bond_pr_auc": {
+   "control": 0.5626257554890481,
+   "treatment": 0.5807011798021633,
+   "delta": 0.01807542431311515
+  },
   "bond_class_1_pr_auc": {
    "control": 0.34651623130149767,
    "treatment": 0.17678361369428092,
@@ -252,6 +352,11 @@
    "control": 0.4895995032598572,
    "treatment": 0.4824075460398263,
    "delta": -0.007191957220030909
+  },
+  "bond_best_f1_at_threshold": {
+   "control": 0.7167992287298144,
+   "treatment": 0.6812227074235809,
+   "delta": -0.035576521306233455
   },
   "bond_precision": {
    "control": 0.5506284916201117,

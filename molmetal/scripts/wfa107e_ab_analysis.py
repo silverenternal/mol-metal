@@ -39,8 +39,16 @@ _METRICS = (
     "gen_ring_3_share",
     "gen_ring_5_6_share",
     "gen_rings_per_mol",
+    # Wf-A107f — `bond_pr_auc` is bond EXISTENCE AP (definition
+    # `existence_ap_v2`), the field the bond gate is written against.
+    # `bond_class_1_pr_auc` is the SINGLE-bond CLASS PR-AUC on a ~2.4% base
+    # rate.  Wf-A107e reported the second under the first's name and concluded
+    # the ring prior "costs bond AP -0.170" when the existence AP had in fact
+    # RISEN by +0.018.  Both are kept, under their own names.
+    "bond_pr_auc",
     "bond_class_1_pr_auc",
     "bond_f1",
+    "bond_best_f1_at_threshold",
     "bond_precision",
     "bond_recall",
     "gen_validity",
@@ -50,7 +58,29 @@ _METRICS = (
     "bond_ce_loss",
     "ring_prior_term",
     "wasserstein_loss",
+    "fm_term",
+    # Wf-A107f — same ring profile on the head's accepted graph, before RDKit.
+    # A run launched before the instrumentation has these absent, so they
+    # simply do not enter `last_epoch_deltas`; they are listed so the next A/B
+    # picks them up without an edit.
+    "gen_raw_ring_3_share",
+    "gen_raw_ring_5_6_share",
+    "gen_raw_rings_per_mol",
 )
+
+#: What each ambiguous metric actually measures.  Emitted into the artifact so
+#: the label travels with the number instead of living in a catalog entry.
+_METRIC_LABELS = {
+    "bond_pr_auc": "bond existence AP (bond_pr_auc_definition field says which)",
+    "bond_class_1_pr_auc": "SINGLE bond class PR-AUC (positive rate ~2.4%)",
+    "bond_f1": "bond existence F1 at the recorded decision threshold",
+    "bond_best_f1_at_threshold": "bond existence F1 at the best swept threshold",
+    "gen_raw_ring_3_share": "3-ring share on the head's accepted graph, BEFORE RDKit",
+    "gen_raw_ring_5_6_share": "5/6-ring share on the head's accepted graph, BEFORE RDKit",
+    "gen_raw_rings_per_mol": "rings per molecule on the head's accepted graph, BEFORE RDKit",
+    "fm_term": "epoch mean of the flow-matching term; 0.0 means the flag did "
+               "not reach the objective",
+}
 
 
 def _load_arm(run_dir: str) -> Dict[str, Any]:
@@ -171,6 +201,8 @@ def main() -> int:
             name: {k: _series(arm["epochs"], k) for k in _METRICS}
             for name, arm in ((name_a, A), (name_b, B))
         },
+        "metric_labels": dict(_METRIC_LABELS),
+        "bond_pr_auc_definition": A["last"].get("bond_pr_auc_definition"),
         "last_epoch_deltas": deltas,
         "weights": weights,
         "honest_limits": [
@@ -195,8 +227,15 @@ def main() -> int:
           f"5/6={B['last'].get('gen_ring_5_6_share')} "
           f"rpm={B['last'].get('gen_rings_per_mol')}")
     for k, v in deltas.items():
+        label = _METRIC_LABELS.get(k, "")
         print(f"[wfa107e] delta {k:24s} {v['delta']:+.4f}  "
-              f"({v['control']:.4f} -> {v['treatment']:.4f})")
+              f"({v['control']:.4f} -> {v['treatment']:.4f})"
+              + (f"  [{label}]" if label else ""))
+    _ap_def = A["last"].get("bond_pr_auc_definition")
+    if _ap_def and _ap_def != "existence_ap_v2":
+        print(f"[wfa107e] WARNING: bond_pr_auc_definition={_ap_def!r}; "
+              "this artifact's AP is NOT bond existence and must not be "
+              "compared with an existence_ap_v2 run.")
     if weights.get("checked"):
         print(f"[wfa107e] vel max|delta|={weights['vel_field_max_abs_delta']:.3e} "
               f"head max|delta|={weights['head_max_abs_delta']:.3e}")

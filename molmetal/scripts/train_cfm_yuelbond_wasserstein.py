@@ -270,6 +270,22 @@ _EVENT_LOG_PATH: Optional[Path] = None
 #: it during training, so it costs one dict store per batch.
 _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 
+#: Epoch-MEAN of every term in :data:`_LAST_LOSS_TERMS`, written by
+#: :func:`train_one_epoch` and read when the epoch record is built.
+#:
+#: WHY THIS EXISTS (Wf-A107f, 2026-10-21).  `_LAST_LOSS_TERMS` holds the LAST
+#: step of the epoch, which is enough for a gradient-liveness guard but not
+#: enough to answer "did the flag I turned on contribute anything?".  Wf-A107e
+#: ran with ``use_fm_objective: true`` and its ``per_epoch_metrics.json``
+#: recorded no FM number at all, so the artifact could not distinguish a live
+#: flow-matching term from an inert one — the same blind spot that let
+#: `fm_term` be an exact zero in five of seven CFM configs while the EGNN
+#: velocity field was built and trained anyway (AGENTS.md §5.11).  An epoch
+#: mean over the terms that ACTUALLY entered the sum makes that visible
+#: without changing the objective or the return signature (three external
+#: callers unpack the 5-tuple from `train_one_epoch`).
+_LAST_EPOCH_TERM_MEANS: Dict[str, float] = {}
+
 #: FIX-C12 (2026-10-21) — opt-in CUDA allocator trace, off by default.
 #:
 #: Set ``MOLMETAL_MEM_TRACE=1`` to print ``memory_allocated`` /
@@ -1408,6 +1424,26 @@ class EpochMetrics:
     # JSON dict {"3": n, ...} as a str: EpochMetrics serialises str as a JSON
     # string, and a dict field would not survive the CSV writer.
     gen_ring_size_distribution: str = ""
+    # Wf-A107f (2026-10-21) — the SAME ring profile computed on the graph the
+    # decoder actually assembled from, i.e. the bond head's accepted pairs
+    # (``decoded.bond_orders``) BEFORE RDKit sees them.
+    #
+    # WHY.  Wf-A107c/d MEASURED that a 0.45 pp difference in the head's raw
+    # 3-ring share (0.070 -> 0.065) becomes a 12.1 pp difference in the
+    # assembled metric (0.526 -> 0.405): the assembler amplifies a head effect
+    # 27x on a point cloud that is not a molecule (HONEST_NEGATIVE §6.162).
+    # Only the post-assembly number was recorded, so two waves of A/B read the
+    # amplification as chemistry.  With `raw_*` beside `gen_ring_*` the ratio
+    # between them is visible every epoch, and a ring claim that lives only in
+    # the assembled number can be recognised as such without a head-swap probe.
+    gen_raw_rings_per_mol: float = 0.0
+    gen_raw_ring_5_6_share: float = 0.0
+    gen_raw_ring_3_share: float = 0.0
+    # Wf-A107f — epoch-MEAN of the flow-matching term (see
+    # `_LAST_EPOCH_TERM_MEANS`).  0.0 with `use_fm_objective: true` means the
+    # flag did not reach the objective; that is now readable from the artifact
+    # instead of requiring a checkpoint diff.
+    fm_term: float = 0.0
     # Wf-R43 m4 — the REAL Ertl-2009 SA observation on GENERATED molecules.
     # `gen_sa_observed` is the field to branch on: False means this run asked
     # for no SA or sascorer was unavailable, and `gen_sa_mean` is then a
@@ -4087,6 +4123,11 @@ def train_one_epoch(
     """
     model.train()
     bond_losses, w2_losses, total_losses, grad_norms = [], [], [], []
+    # Wf-A107f — per-term accumulation for `_LAST_EPOCH_TERM_MEANS`.  Filled
+    # from the SAME tensors that go into `_LAST_LOSS_TERMS`, one dict store per
+    # term per batch, so the number reported is the term's epoch mean and not
+    # whichever batch happened to land last.
+    _term_acc: Dict[str, List[float]] = {}
     n_catherine_pass = 0
     n_batches = 0
     # Round-3 D1 — assemble-aware term.  `_use_assemble` gates the whole
@@ -5895,6 +5936,13 @@ def train_one_epoch(
                 "clash_penalty_term": clash_penalty_term,
             }
         )
+        # Wf-A107f — epoch-mean side-channel.  Same tensors, same key names as
+        # `_LAST_LOSS_TERMS`; the dict above is rebound-then-cleared every
+        # batch, so the accumulation has to happen here, after the update.
+        for _term_name, _term_val in _LAST_LOSS_TERMS.items():
+            _term_acc.setdefault(_term_name, []).append(
+                float(_term_val.detach())
+            )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
         # (re-wire of Wf-329-W6 + Wf-394-A1; CPU-safe scaffolding;
         # GPU retrain remains BLOCKED on upstream decode_ratio > 0
@@ -6160,6 +6208,10 @@ def train_one_epoch(
             "--assemble-hinge-tau-mode corpus (Wf-A98) or lower the tau.",
             flush=True,
         )
+    _LAST_EPOCH_TERM_MEANS.clear()
+    _LAST_EPOCH_TERM_MEANS.update(
+        {k: float(np.mean(v)) for k, v in _term_acc.items() if v}
+    )
     return (
         float(np.mean(total_losses) if total_losses else 0.0),
         float(np.mean(bond_losses) if bond_losses else 0.0),
@@ -6809,6 +6861,12 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
             "rings_per_mol_mean": 0.0,
             "ring_5_6_share": 0.0,
             "ring_3_share": 0.0,
+            # Wf-A107f — same keys as the populated branch, zeroed.
+            "raw_ring_size_distribution": {},
+            "raw_rings_per_mol_mean": 0.0,
+            "raw_ring_5_6_share": 0.0,
+            "raw_ring_3_share": 0.0,
+            "raw_ring_n_molecules": 0,
         }
     # Only rows that were actually SEEDED with a metal can be judged on
     # seed-metal presence.  A composition with no metal in it (a ligand-only
@@ -6847,9 +6905,23 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
     _ring_block = summarise_ring_sizes(
         r.get("ring_sizes", []) or [] for r in valid
     )
+    # Wf-A107f — the SAME molecules' profile on the pre-assembly graph.  Only
+    # rows that carry `ring_sizes_raw` are counted, so this denominator is the
+    # decoded subset, i.e. exactly the molecules `_ring_block` was computed on.
+    # `n_molecules` travels with it because a caller that divides one block by
+    # the other must not assume they share a count.
+    _raw_rows = [r for r in valid if r.get("ring_sizes_raw") is not None]
+    _ring_block_raw = summarise_ring_sizes(
+        r["ring_sizes_raw"] for r in _raw_rows
+    )
     return {
         "n_chemistry_scored": n,
         **_ring_block,
+        "raw_ring_size_distribution": _ring_block_raw["ring_size_distribution"],
+        "raw_rings_per_mol_mean": _ring_block_raw["rings_per_mol_mean"],
+        "raw_ring_5_6_share": _ring_block_raw["ring_5_6_share"],
+        "raw_ring_3_share": _ring_block_raw["ring_3_share"],
+        "raw_ring_n_molecules": len(_raw_rows),
         "largest_fragment_frac_mean": float(
             sum(r["largest_fragment_frac"] for r in valid) / n
         ),
@@ -7121,11 +7193,28 @@ def decode_clouds_and_classify(
             # D4: judge metal presence against THIS sample's seed, not the
             # corpus-wide target set.  Passing the seed in is what turns the
             # saturated 1.000 `metal_ratio` into a metric that can fail.
-            chem_rows.append(
+            _chem_row = (
                 decode_chemistry(smi, seed_metal_z(cloud), sa_target)
                 if smi
                 else None
             )
+            if _chem_row is not None:
+                # Wf-A107f — the SAME molecule's ring sizes on the head's
+                # accepted graph, before assembly.  Computed on exactly the
+                # rows that also have a decoded profile, so the two numbers
+                # are paired and their ratio is the assembler's amplification
+                # (HONEST_NEGATIVE §6.162 measured 27x).  Failures stay out of
+                # both denominators and are counted in `reason_counts`.
+                from molmetal.eval.ring_profile import ring_sizes_from_edges
+
+                _bond_orders = list(
+                    getattr(decoded, "bond_orders", []) or []
+                )
+                _chem_row["ring_sizes_raw"] = ring_sizes_from_edges(
+                    int(getattr(decoded, "n_atoms", 0) or len(cloud.atomic_numbers)),
+                    [(b[0], b[1]) for b in _bond_orders],
+                )
+            chem_rows.append(_chem_row)
             # 2026-10-09 — classify from the SAME decode instead of
             # re-decoding.  `decoded.error` carries the empty-candidate and
             # assembly-failure cases, which arrive as `smi == ""` and would
@@ -15627,6 +15716,22 @@ def main() -> int:
             gen_ring_size_distribution=json.dumps(
                 _gen_chem.get("ring_size_distribution", {}) or {}
             ),
+            # Wf-A107f — the same profile on the pre-assembly graph.  Reading
+            # `gen_raw_*` beside `gen_ring_*` is what separates a chemistry
+            # change from an assembly change (§6.162 measured a 27x gap).
+            gen_raw_rings_per_mol=float(
+                _gen_chem.get("raw_rings_per_mol_mean", 0.0) or 0.0
+            ),
+            gen_raw_ring_5_6_share=float(
+                _gen_chem.get("raw_ring_5_6_share", 0.0) or 0.0
+            ),
+            gen_raw_ring_3_share=float(
+                _gen_chem.get("raw_ring_3_share", 0.0) or 0.0
+            ),
+            # Wf-A107f — epoch mean of the FM term.  Non-zero is the only
+            # artifact-level evidence that `use_fm_objective: true` reached
+            # the objective.
+            fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
             # Wf-R43 m4 — real SA on generated molecules.
             gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
             gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
@@ -15758,6 +15863,17 @@ def main() -> int:
                 gen_ring_size_distribution=json.dumps(
                     _gen_chem.get("ring_size_distribution", {}) or {}
                 ),
+                # Wf-A107f — pre-assembly counterpart (see the primary site).
+                gen_raw_rings_per_mol=float(
+                    _gen_chem.get("raw_rings_per_mol_mean", 0.0) or 0.0
+                ),
+                gen_raw_ring_5_6_share=float(
+                    _gen_chem.get("raw_ring_5_6_share", 0.0) or 0.0
+                ),
+                gen_raw_ring_3_share=float(
+                    _gen_chem.get("raw_ring_3_share", 0.0) or 0.0
+                ),
+                fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
                 # Wf-R43 m4 — real SA on generated molecules (see the
                 # EpochMetrics field docs for why `gen_sa_observed` is the
                 # field to branch on).
@@ -16457,6 +16573,18 @@ def main() -> int:
                 "gen_single_fragment_ratio",
                 "gen_metal_ratio",
                 "gen_mean_heavy_atoms",
+                # Wf-A107f — the ring axis OPT-2 says decides the generation
+                # question was absent from the grep surface entirely: the CSV
+                # carried no ring column, so a `grep` over a run could not see
+                # the number the run was judged on.  Raw = pre-assembly graph.
+                "gen_rings_per_mol",
+                "gen_ring_5_6_share",
+                "gen_ring_3_share",
+                "gen_raw_rings_per_mol",
+                "gen_raw_ring_5_6_share",
+                "gen_raw_ring_3_share",
+                # Wf-A107f — did the flow-matching term contribute at all?
+                "fm_term",
                 # Wf-R43 m4 — the real SA observation columns.
                 "gen_sa_observed",
                 "gen_sa_mean",
@@ -16509,6 +16637,13 @@ def main() -> int:
                     f"{m.gen_single_fragment_ratio:.4f}",
                     f"{m.gen_metal_ratio:.4f}",
                     f"{m.gen_mean_heavy_atoms:.2f}",
+                    f"{m.gen_rings_per_mol:.4f}",
+                    f"{m.gen_ring_5_6_share:.4f}",
+                    f"{m.gen_ring_3_share:.4f}",
+                    f"{m.gen_raw_rings_per_mol:.4f}",
+                    f"{m.gen_raw_ring_5_6_share:.4f}",
+                    f"{m.gen_raw_ring_3_share:.4f}",
+                    f"{m.fm_term:.6f}",
                     int(m.gen_sa_observed),
                     f"{m.gen_sa_mean:.4f}",
                     f"{m.gen_sa_target:.2f}",
