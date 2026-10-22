@@ -545,7 +545,7 @@
       "id": "UP-28",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "D-MPNN 作为 DOI 线的主干",
       "question": "DOI 线一直用指纹树（MACCS+RDKit 0.3767 / +GNN 融合 0.3811）。把主干换成 in-house D-MPNN，能不能过 0.40？",
       "why_now": "主模型从未在这条线上跑过，所有 DOI 数字都来自次优表示。这是唯一一个「换表示」而不是「换目标」的杠杆，也是审稿人会第一个问的问题。",
@@ -567,7 +567,33 @@
       },
       "kill": "若 D-MPNN 的 5 seed 均值 <0.3767（不优于指纹树），表示路线关闭，DOI 线维持指纹树并注明。",
       "cost": "GPU0 ~3 hr（5 fold × 5 seed）",
-      "device": "cuda:0"
+      "device": "cuda:0",
+      "result": {
+        "verdict": "FAIL",
+        "headline": "DOI 留出上 D-MPNN 0.3282（seed-averaged）/ 0.2760（seed 均值），低于指纹树 0.3767；kill 触发，表示路线关闭",
+        "numbers": {
+          "dmpnn_r2_seed_averaged": 0.3282,
+          "dmpnn_r2_mean_over_seeds": 0.276,
+          "dmpnn_r2_sd_over_seeds": 0.0148,
+          "fp_tree_r2_seed_averaged": 0.3767,
+          "fp_tree_r2_mean_over_seeds": 0.3697,
+          "fp_tree_r2_sd_over_seeds": 0.0022,
+          "delta_vs_tree": -0.0485,
+          "n_rows": 21404,
+          "elapsed_seconds": 3057.9,
+          "dmpnn_train_mse_last_mean": 0.2753,
+          "seed_avg_gain_over_mean": 0.0522
+        },
+        "reading": "两种聚合口径都不过 0.40，所以 kill 不依赖口径选择。失败机制是过拟合而非欠训练：标准化 y 上方差为 1，训练 MSE 收敛到 0.276（约 72% 方差被拟合），而测试 R² 0.33 对应测试 MSE 约 0.67，两者差 2.4 倍。五个 seed 的测试 R² 只在 0.2622-0.2949 之间摆动（sd 0.0148），说明这是一个稳定的「记住了训练 DOI」的状态，不是没收敛。在 DOI 留出协议下，2,261 维指纹树反而比 1.4M 参数的图模型更抗偏移。",
+        "caveats": [
+          "D-MPNN 看到的信息严格多于树（图替代指纹，72 维侧块含金属与细胞系标识），所以这是表示比较，不是 graph-vs-fingerprint 的受控消融。",
+          "固定 40 epoch、无早停。训练折内做早停要么泄漏 DOI、要么需要嵌套切分，所以预算写死；但也意味着「更短或更长预算会不会不同」没有被本包测量。",
+          "侧块数值部分在全体队列上标准化（无标签，属 transductive 预处理，不是泄漏），折不是完全自包含。",
+          "todo 原文的门槛写「5 seed 均值」，artifact 的 gate 读 seed-averaged。两者都报：0.2760 与 0.3282，都远低于 0.40。",
+          "0.3767 的复现是逐位精确的（fp_tree seed_avg 0.3767），所以这次比较是可归因的。"
+        ],
+        "artifact": "metrics/by_metric/msrs_dmpnn_doi.json"
+      }
     },
     {
       "id": "UP-29",
@@ -783,14 +809,14 @@
     "done": [
       "UP-26",
       "UP-27",
+      "UP-28",
       "UP-29",
       "UP-30",
       "UP-31"
     ],
     "open": [
-      "UP-28",
       "UP-32"
     ],
-    "note": "UP-31 完成；仅剩 UP-28（GPU 运行中）与 UP-32（汇总，等 UP-28）。"
+    "note": "UP-28 完成（kill 触发）；仅剩 UP-32 汇总。"
   }
 }

@@ -10,7 +10,7 @@
 
 ## §1 一句话结论
 
-- **跨论文绝对强度预测过关**：整篇 DOI 留出 R² **0.3767**（5 seed，MACCS+RDKit 树）/ **0.3811**（+GNN 融合），门槛 0.36。
+- **跨论文绝对强度预测过关**：整篇 DOI 留出 R² **0.3767**（5 seed，MACCS+RDKit 树）/ **0.3811**（+GNN 融合），门槛 0.36。**但换成 in-house D-MPNN 主干只有 0.3282**（UP-28，同批行同折同 seed，指纹树臂在同次运行里逐位复现 0.3767）—— 这条线上 0.3767 是次优表示的成绩，也是目前最好的表示。
 - **"换哪个金属更好"点估计不可学、balanced 口径可学**：门内 218 对的多数类率 **0.6009**，三条点估计路线（相减 0.5826 / 融合 0.5505 / 直接回归 0.5183）**全部低于恒定预测**；但同一批折改 listwise 目标后 balanced **0.5985 [0.5262, 0.6663]**，首次显著优于 0.5（raw 仍只有 0.5417）。**这是"方向学到了、精度没到"，不是"可用了"。** 详见 §2.7。
 - **跨金属迁移不到可用水平**：可入闸的 Ru/Ir LOMO **0.5974** < 0.6；within-metal 稳定超过 Krasnov（Ru 0.8271 vs 0.81，Ir 0.8430 vs 0.73）。
 - **加性约束不是 metal_out 的瓶颈**（UP-1，2026-10-21）：放开 ligand×metal 交互三个臂全部**更差**（free −0.097 / pair −0.113 / product −0.164 R²），最好的 free_onehot 只 +0.0204 且 CI 含 0。**方差分解里 0.712 的交互份额，在留出金属上不可外推。**
@@ -32,10 +32,12 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **UP-8 的 1/5 是采样粒度，不是缺配对点**（UP-22）：换成行级采样后 n_paired=3 有 **3/5** 金属 R² > 0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 从 0 增到 3 的平均 R² 是 **0.0407 → 0.0306**，不单调。**Re 有 0 个配对行却拿到 +0.1734**，增益在定义上不来自配对。gate FAIL（secondary），kill 未触发。
 - **噪声标签不是排序的瓶颈**（UP-23）：deadzone（|Δ| < 该对 noise SD）在 651 对里保留 **315** 对；把噪声对并成同 label 后 lambdarank **0.5985 → 0.5612**（保留子集上 0.6050 → 0.5615），因为 **279/1,586 个组（17.6%）被整组并成一个 label**、梯度归零。kill 触发（0.6050 < 0.62）⇒ **DP-8 = yes，排序线关闭**。
 - **换 pairwise 损失与边感知负采样只值 +0.008 AUC**（UP-24）：同学习器同划分，BCE **0.5449** → pairwise_edge **0.5529**（Ru +0.0271 / Ir −0.0112）；五金属均值反而从 0.6185 掉到 0.5352。**0.5974 与 0.63 的差距不是损失或负采样造成的**；该项的绝对门槛按 D-MPNN 冻结、学习器却是特征模型，属计划口径错误，kill 文本触发但未适用。
-- **43 个 headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。
+- **headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。UP-32 之后主表扩到 **55 行**（pooled 27 / per_pair 9 / conditional 9 / edge_level 7 / centered 3；yes 28 / partial 21 / no 6），55/55 交叉核对一致。
 - **论文偏移不需要预测，只需要测**（UP-26）：给新论文 **1 行**已测值，DOI R² 从 **0.3674 → 0.5559**；给 **10 行**到 **0.6839**（同批行不校正为 0.4005，校正贡献 **+0.2834**）；给 50 行到 0.7243。完美去除论文偏移的上界是 0.7337（独立算术核对），所以 10 行已经拿到这个上界的 89%。**前三轮全部在"零校准行"下评估，等于自愿放弃了部署时真实存在的信息。**
 - **破坏可交换性的是论文随机效应，不是协变量漂移**（UP-27）：用 23 维论文元特征训练"测试论文 vs 校准论文"分类器，**AUC 只有 0.5678**、加权后有效样本量仍是校准集的 **94.5%** —— 两个总体在 x 上几乎不可分。于是加权 conformal 只把宽度从 1.9871 挪到 **1.9849**（−0.1%），按年覆盖漂移曲线每年变动 ≤0.003。ACI 能买到覆盖（**0.9106**），代价是宽度 **2.0572**。**能被 reweight 的偏移才叫协变量漂移；这个偏移不在 x 里。**
 - **平局作为第三类结果也救不了排序**（UP-29）：Davidson 模型（δ 由数据估到 **2.28**，五个折 1.86–2.75）在保留子集上 balanced **0.5312**，与 Bradley-Terry 的 **0.5317** 无差别，低于 lambdarank 的 0.5985，kill 触发。模型自己给出的诊断是：δ 拟合到边际平局率后，**98.7% 的配对被判为平局** —— 分数分辨率低于噪声下限，平局类吸收了全部概率。**UP-23 的"噪声标签不是瓶颈"换一个机制重做，结论不变。**
+
+- **换主干救不了 DOI 线，图表示反而更差**（UP-28）：同一批 21,404 行、同一 DOI GroupKFold(5)、同一评估器，in-house D-MPNN 拿到 **0.3282**（seed-averaged）/ **0.2760**（seed 均值），指纹树臂在同一次运行里逐位复现 **0.3767**。差 **−0.0485**，kill 触发。失败机制是过拟合不是欠训练：训练 MSE 收敛到 **0.2677–0.2813**（五个折，标准化 y 的方差为 1），测试 R² 0.33 对应测试 MSE 约 0.67，两者差 2.4 倍，而五个 seed 的测试 R² 只在 0.2622–0.2949 摆动。**在 DOI 留出下，2,261 维指纹树比 1.4M 参数的图模型更抗偏移。**
 
 **UP 第四轮记分牌（部署阶段，门槛在 2026-10-22T15:45+08:00 写死）**
 
@@ -43,6 +45,7 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 |---|---|---|---|
 | UP-26 | 新论文的偏移能不能用少量已测行估出来 | **PASS**（4/4） | n_cal=10 R² **0.6839** ≥0.45；n_cal=0 复现 **0.3674**（目标 0.3670±0.005）；7 点全单调 |
 | UP-27 | 加权 conformal + ACI 能不能同时拿覆盖与宽度 | **FAIL**（宽度、最差组） | 加权只把宽度挪 −0.0022；ACI 覆盖 0.9106 但宽度 2.0572；密度比 AUC 0.5678 |
+| UP-28 | 把 DOI 线的主干从指纹树换成 in-house D-MPNN，能不能过 0.40 | **FAIL**（主指标、kill 触发） | D-MPNN **0.3282** / 0.2760 vs 指纹树 **0.3767**（同次运行逐位复现）；Δ −0.0485；训练 MSE 0.2677–0.2813 vs 测试约 0.67 |
 | UP-29 | 把平局当第三类结果能不能救排序 | **FAIL**（kill 触发） | Davidson **0.5312** vs BT 0.5317 vs lambdarank 0.5985；δ=2.28；98.7% 判平局 |
 | UP-30 | 把可识别集从「同一配体」放宽到「同一 core」能不能救 Δ | **FAIL**（质量、kill 触发） | 对数 651→**61,539**（94.5×，size PASS）；但留出金属 Δ R² 最好 **−0.1457**，常数基线 −0.0163 |
 | UP-31 | 在同一个 D-MPNN 上只换损失，pairwise 能不能到 0.63 | **FAIL**（主指标、per_metal、kill） | pairwise **0.5928** vs BCE **0.5924**（Δ+0.0003）；Ru 0.6191↑ / Ir 0.5665↓；BCE 复现 0.5924（目标 0.5974±0.01） |
@@ -378,10 +381,10 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP24.bce_ru_auc", "value": 0.548, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.per_metal.Ru"},
   {"id": "UP24.kill_applied", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.applied"},
   {"id": "UP24.kill_triggered_by_rule_text", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.triggered_by_rule_text"},
-  {"id": "UP25.n_rows", "value": 43, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.n_rows"},
-  {"id": "UP25.n_not_identifiable", "value": 5, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
-  {"id": "UP25.n_partial", "value": 17, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.partial"},
-  {"id": "UP25.n_cross_checked", "value": 43, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
+  {"id": "UP25.n_rows", "value": 55, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.n_rows"},
+  {"id": "UP25.n_not_identifiable", "value": 6, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
+  {"id": "UP25.n_partial", "value": 21, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.partial"},
+  {"id": "UP25.n_cross_checked", "value": 55, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
   {"id": "UP25.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "gate.gate_pass"},
   {"id": "UP26.r2_n0", "value": 0.3674, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.0.eb_random.r2_mean"},
   {"id": "UP26.r2_n1", "value": 0.5559, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.1.eb_random.r2_mean"},
@@ -424,7 +427,15 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP31.ru_auc", "value": 0.6191, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.per_metal.pairwise.Ru"},
   {"id": "UP31.ir_auc", "value": 0.5665, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.per_metal.pairwise.Ir"},
   {"id": "UP31.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.gate_pass"},
-  {"id": "UP31.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.kill.triggered"}
+  {"id": "UP31.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.kill.triggered"},
+  {"id": "UP28.dmpnn_seed_avg", "value": 0.3282, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.dmpnn.r2_seed_averaged"},
+  {"id": "UP28.dmpnn_mean", "value": 0.276, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.dmpnn.r2_mean_over_seeds"},
+  {"id": "UP28.dmpnn_sd", "value": 0.0148, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.dmpnn.r2_sd_over_seeds"},
+  {"id": "UP28.fp_reproduce", "value": 0.3767, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.fp_tree.r2_seed_averaged"},
+  {"id": "UP28.fp_mean", "value": 0.3697, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "results.fp_tree.r2_mean_over_seeds"},
+  {"id": "UP28.delta", "value": -0.0485, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.checks.delta_vs_tree.value"},
+  {"id": "UP28.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.gate_pass"},
+  {"id": "UP28.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_dmpnn_doi.json", "path": "gate.kill.triggered"}
 ]
 ```
 
@@ -1055,6 +1066,30 @@ loss_pairwise = −log σ((f(x+) − f(x−) − margin) / T),  f = 活性类 lo
 
 ---
 
+### 2.30 UP-28 把主干换成 in-house D-MPNN：0.3282，比指纹树低 0.0485（2026-10-22）
+
+`msrs_dmpnn_doi.json`（GPU0，50 次训练 = 5 seed × 5 fold × 40 epoch，3,058 s）。
+
+DOI 线从第一轮起就用指纹树（MACCS+RDKit），0.3767 是这个**次优表示**下的数。UP-28 是唯一一个"换表示"而不是"换目标"的杠杆：把主干换成 in-house D-MPNN（`molmetal/baselines/dmpnn.py`），图替代指纹，金属态 4 维 + 配位 22 维 + 金属 one-hot 5 维 + 细胞系 one-hot 40 维作为 72 维侧块拼进 readout。
+
+协议与 0.3767 完全一致：同一 21,404 行、同一 `scheme_folds(frame, "doi")` 的 5 折、同一 `msrs_surface_model.score`、同一 seed 列表 0–4。**指纹树臂在同一次运行里跑，seed-averaged 拿到 0.3767 —— 与历史数逐位相同**，所以这次比较是可归因的。
+
+| 臂 | 每 seed R² | seed 均值 | seed sd | seed-averaged |
+|---|---|---:|---:|---:|
+| 指纹树（协议检查） | 0.3706 / 0.3723 / 0.3662 / 0.3696 / 0.3700 | 0.3697 | 0.0022 | **0.3767** |
+| D-MPNN | 0.2686 / 0.2622 / 0.2949 / 0.2886 / 0.2655 | 0.2760 | 0.0148 | **0.3282** |
+| 差 | — | −0.0937 | — | **−0.0485** |
+
+**两种聚合口径都不过 0.40**，所以 kill 不依赖口径选择：todo 原文的门槛写"5 seed 均值"，artifact 的 gate 读 seed-averaged，0.2760 与 0.3282 都远低于门槛。这也是为什么 gate 同时报 `primary`、`baseline`、`per_seed` 三项，而不是只报一个数。
+
+**失败机制是过拟合，不是欠训练。** 标准化后的 y 方差为 1，五个折的训练 MSE 收敛到 0.2677–0.2813（即约 72% 的方差被拟合），而测试 R² 0.33 对应测试 MSE 约 0.67 —— 训练与测试差 2.4 倍。同时五个 seed 的测试 R² 只在 0.2622–0.2949 之间摆动（sd 0.0148），说明这是一个稳定的"记住了训练 DOI"的状态，而不是没收敛。
+
+**seed 集成对 D-MPNN 值 +0.0522，对树只值 +0.0070。** 这个差本身就是过拟合的第三个读数：单个 D-MPNN 的方差大到五个 checkpoint 平均能把 R² 抬 0.05，而树的五个 seed 几乎等价。所以 0.3282 已经是"5 个模型集成交付"的数，不是一次训练的数。
+
+**kill 触发（0.3282 < 0.3767）⇒ 表示路线关闭，DOI 线维持指纹树并注明。** 结论要写清楚边界：这**不是**"图神经网络不如指纹"的一般性结论，而是"在这个 21,404 行、DOI 留出、40 epoch 无早停的协议下，1.4M 参数的图模型比 2,261 维指纹树更差"。D-MPNN 看到的信息严格多于树（图替代指纹，侧块还多给金属与细胞系标识），所以它是表示比较，不是 graph-vs-fingerprint 的受控消融。
+
+---
+
 ## §3 撤回日志（引用前必看）
 
 | 日期 | 撤回的数 | 换成 | 为什么 |
@@ -1084,6 +1119,7 @@ loss_pairwise = −log σ((f(x+) − f(x−) − margin) / T),  f = 活性类 lo
 | `train_dmpnn_multitask.py` | 多任务 D-MPNN 基础 CLI（回归头 + 分类头） | 483 |
 | `train_dmpnn_pic50_real.py` | 每金属 pIC50 回归基线（alpha=1.0） | 12 |
 | `pre_featurize_dmpnn.py` | 特征预计算缓存 | 37 |
+| `msrs_dmpnn_doi.py` | 主模型在 DOI 留出上的表示检验（UP-28，含指纹树对照臂） | 1 |
 
 ### 4.2 LOMO 家族（**5 个训练器，容易混淆**）
 

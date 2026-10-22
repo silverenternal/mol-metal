@@ -3,25 +3,25 @@
   "version": "1.0",
   "framework": "MSRS — Metal Substitution Response Surface",
   "level": "L0 summary / UP-25",
-  "generated_utc": "2026-10-22T07:22:19+00:00",
+  "generated_utc": "2026-10-22T10:45:35+00:00",
   "provenance": {
     "script": "molmetal/scripts/msrs_main_table.py",
     "index": "docs/PREDICTIVE_LINE_INDEX.md",
     "markdown": "docs/PREDICTIVE_LINE_MAIN_TABLE.md"
   },
   "design": {
-    "n_rows": 43,
+    "n_rows": 55,
     "by_estimand": {
-      "pooled": 18,
+      "pooled": 27,
       "centered": 3,
-      "per_pair": 8,
-      "conditional": 7,
+      "per_pair": 9,
+      "conditional": 9,
       "edge_level": 7
     },
     "by_identifiable": {
-      "yes": 21,
-      "no": 5,
-      "partial": 17
+      "yes": 28,
+      "no": 6,
+      "partial": 21
     },
     "estimand_vocabulary": [
       "pooled",
@@ -467,6 +467,126 @@
       "estimand": "pooled",
       "identifiable": "partial",
       "reason": "+0.0080 over the matched BCE arm: the loss is not the binding constraint"
+    },
+    {
+      "id": "UP26.r2_n10",
+      "artifact": "metrics/by_metric/msrs_paper_calibration.json",
+      "artifact_name": "msrs_paper_calibration",
+      "path": "aggregate.10.eb_random.r2_mean",
+      "value": 0.6839,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "10 measured rows from each test paper; the deployable number, not the zero-calibration one"
+    },
+    {
+      "id": "UP26.r2_n0",
+      "artifact": "metrics/by_metric/msrs_paper_calibration.json",
+      "artifact_name": "msrs_paper_calibration",
+      "path": "aggregate.0.eb_random.r2_mean",
+      "value": 0.3674,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "zero calibration rows: reproduces 0.3674, the number every earlier round reported"
+    },
+    {
+      "id": "UP27.weighted_cqr_width",
+      "artifact": "metrics/by_metric/msrs_conformal_shift.json",
+      "artifact_name": "msrs_conformal_shift",
+      "path": "aggregate.weighted_cqr.median_width_mean",
+      "value": 1.9849,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "weighted conformal width at 0.90 coverage: 1.9849 vs 1.9871 unweighted, so the density ratio buys 0.0022"
+    },
+    {
+      "id": "UP27.aci_cqr_coverage",
+      "artifact": "metrics/by_metric/msrs_conformal_shift.json",
+      "artifact_name": "msrs_conformal_shift",
+      "path": "aggregate.aci_cqr_g0p01.coverage_mean",
+      "value": 0.9106,
+      "estimand": "conditional",
+      "identifiable": "partial",
+      "reason": "ACI recovers coverage online (0.9106) but pays width (2.0572); a rolling protocol, not a static interval"
+    },
+    {
+      "id": "UP29.davidson_balanced",
+      "artifact": "metrics/by_metric/msrs_davidson_ties.json",
+      "artifact_name": "msrs_davidson_ties",
+      "path": "results.davidson_none.balanced_accuracy",
+      "value": 0.5312,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "315 retained pairs only; ties as a third outcome reproduce Bradley-Terry to -0.0005"
+    },
+    {
+      "id": "UP30.size_multiple",
+      "artifact": "metrics/by_metric/msrs_mmp_delta.json",
+      "artifact_name": "msrs_mmp_delta",
+      "path": "gate.checks.size.multiple",
+      "value": 94.53,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "61,539 clean pairs vs 651 exact-ligand pairs: the pairing definition was not the constraint"
+    },
+    {
+      "id": "UP30.r2_ligand_only",
+      "artifact": "metrics/by_metric/msrs_mmp_delta.json",
+      "artifact_name": "msrs_mmp_delta",
+      "path": "gate.checks.quality.pooled_r2_ligand_only",
+      "value": -0.1457,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "held-out-metal MMP delta -0.1457, below the -0.0163 constant baseline; the widened set carries no signal"
+    },
+    {
+      "id": "UP31.pairwise_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json",
+      "artifact_name": "msrs_lomo_pairwise_dmpnn",
+      "path": "gate.checks.primary.value",
+      "value": 0.5928,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "Ru+Ir only; pairwise 0.5928 vs BCE 0.5924, a redistribution across folds rather than a gain"
+    },
+    {
+      "id": "UP31.bce_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json",
+      "artifact_name": "msrs_lomo_pairwise_dmpnn",
+      "path": "gate.checks.reproduce.value",
+      "value": 0.5924,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "the control arm; reproduces 0.5974 within +/-0.01, which is what makes the comparison admissible"
+    },
+    {
+      "id": "UP28.dmpnn_seed_avg",
+      "artifact": "metrics/by_metric/msrs_dmpnn_doi.json",
+      "artifact_name": "msrs_dmpnn_doi",
+      "path": "results.dmpnn.r2_seed_averaged",
+      "value": 0.3282,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "DOI hold-out on 21,404 rows: 0.3282 vs the 0.3767 tree, so the graph representation loses 0.0485"
+    },
+    {
+      "id": "UP28.dmpnn_mean",
+      "artifact": "metrics/by_metric/msrs_dmpnn_doi.json",
+      "artifact_name": "msrs_dmpnn_doi",
+      "path": "results.dmpnn.r2_mean_over_seeds",
+      "value": 0.276,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "what a single training run delivers; seed ensembling is worth +0.0522 on the graph, +0.0070 on the tree"
+    },
+    {
+      "id": "UP28.fp_reproduce",
+      "artifact": "metrics/by_metric/msrs_dmpnn_doi.json",
+      "artifact_name": "msrs_dmpnn_doi",
+      "path": "results.fp_tree.r2_seed_averaged",
+      "value": 0.3767,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the protocol check inside the same run: 0.3767, bit-identical to the quoted headline"
     }
   ],
   "checks": {
@@ -474,7 +594,7 @@
     "no_orphan": true,
     "orphans": [],
     "index_consistent": true,
-    "n_cross_checked": 43,
+    "n_cross_checked": 55,
     "mismatches": [],
     "gate_pass": true
   },

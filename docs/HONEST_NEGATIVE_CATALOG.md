@@ -11705,3 +11705,72 @@ is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
 
+## §6.185 — UP-28: on a DOI hold-out the in-house D-MPNN is 0.0485 worse than the
+fingerprint tree, and the failure is overfitting
+
+**Claim tested.** Every DOI number in the predictive line comes from a fingerprint
+tree (MACCS + RDKit, 2,261 columns). UP-28 asks whether the main model — the
+in-house D-MPNN in `molmetal/baselines/dmpnn.py` — clears 0.40 on the same
+hold-out. It is the one lever in round 4 that changes the *representation* rather
+than the target.
+
+**What was measured** (`msrs_dmpnn_doi.json`; 21,404 rows, `scheme_folds(frame,
+"doi")` 5 GroupKFold folds on DOI, 5 seeds x 5 folds x 40 epochs, GPU0, 3,058 s):
+
+| arm | per-seed R2 | seed mean | seed sd | seed-averaged |
+|---|---|---:|---:|---:|
+| fingerprint tree (protocol check) | 0.3706 / 0.3723 / 0.3662 / 0.3696 / 0.3700 | 0.3697 | 0.0022 | **0.3767** |
+| D-MPNN | 0.2686 / 0.2622 / 0.2949 / 0.2886 / 0.2655 | 0.2760 | 0.0148 | **0.3282** |
+| difference | — | -0.0937 | — | **-0.0485** |
+
+**Both aggregations miss 0.40, so the kill does not depend on which one is read.**
+The todo wrote the threshold as "5 seed mean" and the artifact gate reads the
+seed-averaged value; 0.2760 and 0.3282 are both far below 0.40. Reporting only one
+of them would have made the verdict look like an aggregation choice.
+
+**The mechanism is overfitting, not under-training.** Standardised y has variance
+1. Training MSE converges to 0.2677-0.2813 across the five folds — roughly 72% of
+the variance is fitted — while test R2 0.33 corresponds to a test MSE near 0.67.
+That is a 2.4x gap, and it is not noise: the five seeds land in 0.2622-0.2949 with
+sd 0.0148, a stable "memorised the training DOIs" regime.
+
+**Seed ensembling is worth +0.0522 on the graph and +0.0070 on the tree.** This is
+the third reading of the same fact. Five checkpoints averaged lift the D-MPNN by
+0.05 because single runs are high-variance; the tree's five seeds are nearly
+interchangeable. So 0.3282 is already a five-model ensemble, not one training run,
+and the gap to the tree is not a checkpoint lottery.
+
+**The protocol check is exact, which is what makes the comparison admissible.**
+The fingerprint arm runs inside the same process on the same rows and folds and
+lands on 0.3767 seed-averaged — bit-identical to the quoted headline. A different
+result there would have invalidated the comparison before it started.
+
+**Honest boundaries (ACTIVE).**
+  * **This is a representation comparison, not a graph-vs-fingerprint ablation.**
+    The D-MPNN sees strictly more than the tree: the graph replaces the
+    fingerprints and the 72-dimensional side block adds metal state, coordination
+    and cell-line identity. A loss here does not license "GNNs lose to
+    fingerprints" in general.
+  * **Fixed 40 epochs, no early stopping.** An early-stopping split inside the
+    training folds would either leak a DOI or need a nested split, so the budget
+    is fixed and the seeds stay comparable. The consequence is that the budget
+    axis is a control, not a tuned quantity.
+  * **The numeric side block is standardised on the whole cohort.** It is
+    label-free, so this is transductive preprocessing rather than leakage, but the
+    folds are not fully self-contained.
+  * **Kill is triggered** (0.3282 < 0.3767). The representation line is closed and
+    the DOI line keeps the fingerprint tree, with this entry as the citation for
+    why.
+
+**Artifacts.** `molmetal/scripts/msrs_dmpnn_doi.py`,
+`configs/msrs_dmpnn_doi.yaml`, `molmetal/baselines/dmpnn.py::pool_batch`,
+`metrics/by_metric/msrs_dmpnn_doi.json`, `metrics/by_metric/msrs_dmpnn_doi_oof.npz`.
+
+**§6.185 catalog-count math.** Net **+1**. Cumulative **239 → 240**. ACTIVE
+**195 → 196**.
+
+**Workflow** | UP-28 (2026-10-22; GPU0 ~51 min for 50 fits; §5.2 every number is
+an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+

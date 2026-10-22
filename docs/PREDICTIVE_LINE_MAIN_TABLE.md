@@ -1,6 +1,6 @@
 # PREDICTIVE_LINE_MAIN_TABLE — 按估计目标分层的数字主表
 
-由 `molmetal/scripts/msrs_main_table.py` 生成（2026-10-22T07:22:19+00:00）。
+由 `molmetal/scripts/msrs_main_table.py` 生成（2026-10-22T10:45:35+00:00）。
 **每个数字都从 artifact 读出，不手抄**；与 `docs/PREDICTIVE_LINE_INDEX.md` 的机器校验块交叉核对。
 
 ## §1 怎么读
@@ -28,6 +28,12 @@
 | `UP19.pooled_identifiable_r2_abs` | 0.3299 | `pooled` | `msrs_identifiability.json:metal_out.pooled.descriptors.identifiable_unit_rows.r2_abs` | same model restricted to rows that carry paired evidence: 0.3299 |
 | `UP21.base_r2` | 0.3670 | `pooled` | `msrs_paper_meta_offset.json:aggregate.base.r2_mean` | DOI hold-out with no offset correction |
 | `UP21.ridge_design_r2` | 0.3557 | `pooled` | `msrs_paper_meta_offset.json:aggregate.ridge_design.r2_mean` | metadata-only offset model: 0.3557, worse than doing nothing |
+| `UP26.r2_n0` | 0.3674 | `pooled` | `msrs_paper_calibration.json:aggregate.0.eb_random.r2_mean` | zero calibration rows: reproduces 0.3674, the number every earlier round reported |
+| `UP26.r2_n10` | 0.6839 | `pooled` | `msrs_paper_calibration.json:aggregate.10.eb_random.r2_mean` | 10 measured rows from each test paper; the deployable number, not the zero-calibration one |
+| `UP28.dmpnn_mean` | 0.2760 | `pooled` | `msrs_dmpnn_doi.json:results.dmpnn.r2_mean_over_seeds` | what a single training run delivers; seed ensembling is worth +0.0522 on the graph, +0.0070 on the tree |
+| `UP28.dmpnn_seed_avg` | 0.3282 | `pooled` | `msrs_dmpnn_doi.json:results.dmpnn.r2_seed_averaged` | DOI hold-out on 21,404 rows: 0.3282 vs the 0.3767 tree, so the graph representation loses 0.0485 |
+| `UP28.fp_reproduce` | 0.3767 | `pooled` | `msrs_dmpnn_doi.json:results.fp_tree.r2_seed_averaged` | the protocol check inside the same run: 0.3767, bit-identical to the quoted headline |
+| `UP30.size_multiple` | 94.5300 | `pooled` | `msrs_mmp_delta.json:gate.checks.size.multiple` | 61,539 clean pairs vs 651 exact-ligand pairs: the pairing definition was not the constraint |
 | `UP12.additive_within` | 0.2128 | `centered` | `msrs_two_stage.json:within_metal.aggregate.additive.weighted_r2` | ligand-grouped within-metal; the reference the interaction arms are measured against |
 | `UP12.free_within` | 0.2519 | `centered` | `msrs_two_stage.json:within_metal.aggregate.free.weighted_r2` | free interaction, same protocol: +0.0391 over additive |
 | `UP19.pooled_identifiable_r2_centred` | 0.3806 | `centered` | `msrs_identifiability.json:metal_out.pooled.descriptors.identifiable_unit_rows.r2_centred` | oracle-offset upper bound 0.3806; not a deployable score |
@@ -38,6 +44,7 @@
 | `UP19.identifiable_share` | 0.0547 | `conditional` | `msrs_identifiability.json:decomposition_summary.identifiable_row_share` | 5.47% of metal-out test rows have a paired partner in training |
 | `UP20.cqr_coverage` | 0.9000 | `conditional` | `msrs_cqr.json:aggregate.cqr.coverage_mean` | marginal coverage at the nominal 0.90 |
 | `UP20.cqr_width` | 1.9871 | `conditional` | `msrs_cqr.json:aggregate.cqr.median_width_mean` | width at that coverage; 1.9871, i.e. the width target is not met |
+| `UP27.weighted_cqr_width` | 1.9849 | `conditional` | `msrs_conformal_shift.json:aggregate.weighted_cqr.median_width_mean` | weighted conformal width at 0.90 coverage: 1.9849 vs 1.9871 unweighted, so the density ratio buys 0.0022 |
 | `UP6.cohort_metal_worst_stratum` | 0.8956 | `conditional` | `msrs_calibration_shift.json:variants.cohort_metal.worst_stratum.coverage` | worst stratum after Mondrian; a repair of the tail, not of the width |
 | `UP10.potency.irrh_separability` | 0.1150 | `edge_level` | `msrs_support_audit.json:endpoints.potency.pairs.4.separability` | Ir-Rh: a precise zero, i.e. it constrains u_Ir ~ u_Rh rather than reporting an effect |
 | `UP10.potency.ruos_separability` | 0.5920 | `edge_level` | `msrs_support_audit.json:endpoints.potency.pairs.2.separability` | Ru-Os: the only edge whose effect exceeds its own assay noise |
@@ -57,6 +64,8 @@
 | `UP22.rh_np0_r2` | 0.0709 | `pooled` | `msrs_paired_kshot.json:aggregate.Rh.ridge|0.mean_r2` | row-level sampling with zero paired points: the gain is not a pairing effect |
 | `UP24.bce_auc` | 0.5449 | `pooled` | `msrs_lomo_pairwise.json:aggregate.bce.auc_overall_resolvable` | linear ECFP4 baseline on Ru+Ir; not the D-MPNN 0.5974 |
 | `UP24.pairwise_edge_auc` | 0.5529 | `pooled` | `msrs_lomo_pairwise.json:aggregate.pairwise_edge.auc_overall_resolvable` | +0.0080 over the matched BCE arm: the loss is not the binding constraint |
+| `UP31.bce_auc` | 0.5924 | `pooled` | `msrs_lomo_pairwise_dmpnn.json:gate.checks.reproduce.value` | the control arm; reproduces 0.5974 within +/-0.01, which is what makes the comparison admissible |
+| `UP31.pairwise_auc` | 0.5928 | `pooled` | `msrs_lomo_pairwise_dmpnn.json:gate.checks.primary.value` | Ru+Ir only; pairwise 0.5928 vs BCE 0.5924, a redistribution across folds rather than a gain |
 | `UP8.zero_shot_os` | 0.3479 | `pooled` | `msrs_meta_kshot.json:results.potency.splits.metal_out.per_metal.Os.zero_shot_r2` | Os is the one metal whose level transfers; not a general statement |
 | `C3.diff_raw` | 0.5826 | `per_pair` | `msrs_delta_metric_audit.json:routes.level_differencing.raw_sign` | same strict pairs; raw sign accuracy, not balanced |
 | `C3.majority_class` | 0.6009 | `per_pair` | `msrs_delta_metric_audit.json:baselines.majority_class_rate` | strict 218-pair set only; a 0.58 raw score is below this |
@@ -64,7 +73,9 @@
 | `UP16.osru_balanced` | 0.5807 | `per_pair` | `msrs_ranking_support.json:strata.listwise_ligand_cell.by_metal_pair.Os-Ru.balanced_accuracy` | Wilson CI [0.4990, 0.6548] includes 0.5 |
 | `UP23.lambdarank_deadzone_balanced` | 0.5612 | `per_pair` | `msrs_ranking_hierarchical.json:arms.lambdarank_deadzone.all_pairs.overall.balanced_accuracy` | tie-aware labels: 0.5612, worse than leaving the noisy pairs alone |
 | `UP23.lambdarank_none_balanced` | 0.5985 | `per_pair` | `msrs_ranking_hierarchical.json:arms.lambdarank_none.all_pairs.overall.balanced_accuracy` | reproduces UP-2b's 0.5985 on all 360 pairs |
+| `UP29.davidson_balanced` | 0.5312 | `per_pair` | `msrs_davidson_ties.json:results.davidson_none.balanced_accuracy` | 315 retained pairs only; ties as a third outcome reproduce Bradley-Terry to -0.0005 |
 | `UP2b.ligand_cell_balanced` | 0.5985 | `per_pair` | `msrs_listwise_ranker.json:pairs.ligand_cell.overall.balanced_accuracy` | 360 cross-paper pairs; no single metal pair clears 0.5 on its own (UP-16) |
+| `UP27.aci_cqr_coverage` | 0.9106 | `conditional` | `msrs_conformal_shift.json:aggregate.aci_cqr_g0p01.coverage_mean` | ACI recovers coverage online (0.9106) but pays width (2.0572); a rolling protocol, not a static interval |
 | `UP18.ruroh_t_cluster` | 2.5770 | `edge_level` | `msrs_metal_graph.json:edges_by_pair.Ru-Rh.t_cluster` | 15 units, sd 1.4003; t=2.577 survives but the interval spans a factor of five |
 
 ## §4 不可识别（不得作为能力陈述引用）
@@ -75,6 +86,7 @@
 | `UP14.metal_out_weighted_r2` | -0.0734 | `pooled` | `msrs_support_stratified.json:protocols.metal_out.weighted_r2_per_metal` | the held-out metal's level is unidentifiable; 94.5% of these rows have no paired partner |
 | `UP19.pooled_all_r2_abs` | -0.0640 | `pooled` | `msrs_identifiability.json:metal_out.pooled.descriptors.all_rows.r2_abs` | dominated by the 94.5% of rows whose metal level cannot be recovered |
 | `UP21.lopo_ridge_r2` | -0.0259 | `pooled` | `msrs_paper_meta_offset.json:per_seed.20261022.offset_diagnostics_fold0.lopo_ridge_r2` | leave-one-paper-out R2 of the offset model: -0.0259, i.e. worse than the mean |
+| `UP30.r2_ligand_only` | -0.1457 | `pooled` | `msrs_mmp_delta.json:gate.checks.quality.pooled_r2_ligand_only` | held-out-metal MMP delta -0.1457, below the -0.0163 constant baseline; the widened set carries no signal |
 | `UP11.complete_case_ligands` | 0 | `edge_level` | `msrs_pair_delta.json:rank_structure.complete_case_ligands` | zero ligands span 3 metals, so the rank-1 interaction model has no identifiable row |
 
 ## §5 一致性检查
@@ -83,5 +95,5 @@
 |---|---|
 | 每行都有 ESTIMAND + IDENTIFIABLE + artifact 路径 | PASS |
 | 主表里每个 artifact 都在 registry 中 | PASS |
-| 与 PREDICTIVE_LINE_INDEX 机器校验块一致（43 个 id 交叉核对） | PASS |
+| 与 PREDICTIVE_LINE_INDEX 机器校验块一致（55 个 id 交叉核对） | PASS |
 
