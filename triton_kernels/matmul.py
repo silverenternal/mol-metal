@@ -1,4 +1,4 @@
-"""Reference Triton matmul kernel, adapted for ``gfx1101`` (RDNA3).
+"""Reference Triton matmul kernel, tuned per backend.
 
 This module is a port of the canonical Triton tutorial:
 
@@ -7,17 +7,19 @@ This module is a port of the canonical Triton tutorial:
 adapted for the MolFlow-Triton project constraints:
 
 - **No ``waves_per_eu``.** It is a CDNA-only knob and is ignored on
-  gfx1101 (RDNA3).  We tune over ``num_warps`` and ``num_stages``
-  only, plus the per-tile ``BLOCK_*`` sizes.
-- **Small, deterministic config grid.** gfx1101 has a single wave64
-  per CU, so ``num_warps`` above 8 wastes a wave on every program
-  instance; ``BLOCK_*`` sizes are restricted to ``{16, 32, 64, 128}``
-  to keep shared-memory pressure bounded.
+  gfx1101 (RDNA3) and on CUDA.  We tune over ``num_warps`` and
+  ``num_stages`` only, plus the per-tile ``BLOCK_*`` sizes.
+- **Backend-selected config grid.** The original grid was sized for
+  gfx1101's single wave64 per CU, so it capped ``num_warps`` at 8 and
+  never used a 128-wide tile.  Blackwell (``sm_120``) has 4 warp slots
+  per SM and ~228 KB of shared memory, so the wide tiles and the deeper
+  K pipeline are usable; :func:`_matmul_configs` now branches on
+  :func:`triton_kernels.backend.active_backend`.
 - **FP32 throughout.** The MolFlow-Triton autograd shims operate on
   FP32 hidden states, so we avoid the FP16 cast that the upstream
   tutorial applies at the end of the accumulator.
 - **Grouped L2-friendly launch order.** ``GROUP_SIZE_M = 8`` matches
-  the upstream default and is well-suited to gfx1101's L2 footprint.
+  the upstream default and is well-suited to both targets' L2.
 - **Stride-aware ``matmul`` wrapper.** Accepts non-contiguous inputs
   by forwarding per-dimension strides, so callers can avoid an extra
   ``.contiguous()`` copy when downstream layout is already what we
@@ -37,6 +39,7 @@ import triton
 import triton.language as tl
 
 from .autotune import AUTOTUNE_CONFIGS
+from .backend import active_backend, dot_precision
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +62,7 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Autotune grid for matmul on gfx1101
+# Autotune grid for matmul, per backend
 # ---------------------------------------------------------------------------
 # Cartesian product (modulo the GROUP_SIZE_M=8 constraint) of:
 #   BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K in {16, 32, 64, 128}
@@ -76,25 +79,56 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 # Each entry also fixes ``GROUP_SIZE_M = 8`` (upstream default; the
 # L2 super-grouping that promotes A/B reuse across program instances).
 def _matmul_configs() -> Sequence[triton.Config]:
+    """Autotune grid for :func:`_matmul_kernel`, split by backend.
+
+    ``rocm`` / gfx1101: the 12 tiles below x 3 warps x 3 stages = 108
+    configs.  That is already more than the header comment used to claim
+    ("the 12 configs that have proven robust on gfx1101"); the grid was
+    never trimmed.  It is left alone rather than silently narrowed,
+    because narrowing it would change which config an existing gfx1101
+    run picks.
+
+    ``cuda`` / Blackwell: 8 tiles x 2 warps x 2 stages = 32 configs.
+    Blackwell reaches the 128-wide tiles and the deeper K pipeline that
+    RDNA3's LDS budget ruled out, so the grid keeps those and drops the
+    16-wide corners that only ever win on a 64-lane wavefront.  Cutting
+    108 -> 32 also cuts first-launch autotune latency by ~3x, which
+    matters because this kernel is used per-ODE-step in sampling.
+    """
     cfgs: list[triton.Config] = []
-    # (M, N, K) tile sizes -> (warps, stages)
-    tiles = [
-        (32, 32, 32),
-        (32, 64, 32),
-        (64, 32, 32),
-        (64, 64, 32),
-        (32, 32, 64),
-        (32, 64, 64),
-        (64, 32, 64),
-        (64, 64, 64),
-        (32, 32, 128),
-        (64, 32, 128),
-        (32, 64, 128),
-        (64, 64, 128),
-    ]
+    if active_backend() == "cuda":
+        tiles = [
+            (64, 64, 32),
+            (64, 128, 32),
+            (128, 64, 32),
+            (128, 128, 32),
+            (64, 64, 64),
+            (128, 128, 64),
+            (64, 128, 128),
+            (128, 128, 128),
+        ]
+        warps = (4, 8)
+        stages = (3, 4)
+    else:
+        tiles = [
+            (32, 32, 32),
+            (32, 64, 32),
+            (64, 32, 32),
+            (64, 64, 32),
+            (32, 32, 64),
+            (32, 64, 64),
+            (64, 32, 64),
+            (64, 64, 64),
+            (32, 32, 128),
+            (64, 32, 128),
+            (32, 64, 128),
+            (64, 64, 128),
+        ]
+        warps = (2, 4, 8)
+        stages = (2, 3, 4)
     for bm, bn, bk in tiles:
-        for num_warps in (2, 4, 8):
-            for num_stages in (2, 3, 4):
+        for num_warps in warps:
+            for num_stages in stages:
                 cfgs.append(
                     triton.Config(
                         {
@@ -139,12 +173,16 @@ def _matmul_kernel(
     BLOCK_SIZE_N: tl.constexpr,
     BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
+    PRECISION: tl.constexpr,
 ):
     """Compute ``C = A @ B`` where ``A`` is ``(M, K)`` and ``B`` is ``(K, N)``.
 
     Block layout is the canonical L2-friendly grouped order from the
     upstream tutorial — see the L2 Cache Optimizations section there.
-    FP32 inputs and FP32 accumulator throughout.
+    The accumulator is FP32; ``PRECISION`` selects how the multiply
+    feeds it (``tf32`` on CUDA by default, ``ieee`` elsewhere).  Leaving
+    this to Triton's implicit default silently gave tf32 even when
+    ``TRITON_DOT_PRECISION=ieee`` was set, so it is now explicit.
     """
     # ---------------------------------------------------------------
     # Map program ids to the (M, N) block of C this instance owns.
@@ -186,7 +224,7 @@ def _matmul_kernel(
         k_remaining = K - k * BLOCK_SIZE_K
         a = tl.load(a_ptrs, mask=offs_k[None, :] < k_remaining, other=0.0)
         b = tl.load(b_ptrs, mask=offs_k[:, None] < k_remaining, other=0.0)
-        accumulator = tl.dot(a, b, accumulator)
+        accumulator = tl.dot(a, b, accumulator, input_precision=PRECISION)
         a_ptrs += BLOCK_SIZE_K * stride_ak
         b_ptrs += BLOCK_SIZE_K * stride_bk
 
@@ -293,6 +331,7 @@ def matmul(
         b2.stride(1),
         out.stride(0),
         out.stride(1),
+        PRECISION=dot_precision(),
     )
     return out
 

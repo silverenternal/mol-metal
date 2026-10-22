@@ -1525,6 +1525,20 @@ def _to_device_cloud(cloud: AtomCloud, device: torch.device) -> AtomCloud:
     return AtomCloud(**kwargs)
 
 
+def _triton_dispatch_describe() -> Dict[str, object]:
+    """Snapshot the Triton dispatch state for the run artifact.
+
+    Returns an empty dict when ``triton_kernels`` is not importable (a
+    CPU-only install), so the artifact keeps its previous shape there
+    instead of gaining a key with a lie in it.
+    """
+    try:
+        from triton_kernels.config import triton_config
+    except Exception:  # noqa: BLE001 - optional dependency
+        return {}
+    return triton_config.describe()
+
+
 def _block_diag_radius_edges(
     coords_pad: torch.Tensor,
     node_mask: torch.Tensor,
@@ -1876,6 +1890,25 @@ class CFMJointModel(nn.Module):
         # Wf-A108 — mask padded atoms out of the RADIAL head's centroid.
         # Default False keeps the pre-Wf-A108 forward bit-exact.
         radial_centroid_masked: bool = False,
+        # Wf-A108e — "velocity" (default, bit-exact) or "x1".  In x1 mode the
+        # head's output is read as a displacement from x_t and the loss is on
+        # ``x1_hat``; the sampler still consumes ``vel = u / max(1-t, floor)``.
+        prediction_target: str = "velocity",
+        x1_denominator_floor: float = 0.02,
+        # Wf-A108g (2026-10-23) — per-batch DATA volume, not model size.
+        #
+        # A batch pads every cloud to the largest member.  MEASURED on 64
+        # real MetalCytoToxDB clouds: 16 / 38 / 225 atoms (min / median /
+        # max), mean 46.2, so 79.5% of atom slots and 83.6% of edge slots
+        # are zeros.  ``fm_batch_chunk_ratio`` splits the batch into
+        # size-homogeneous groups whose pad width is the group max instead
+        # of the batch max.  The split is exact (the radius graph is
+        # block-diagonal and clouds never interact) and is refused
+        # automatically when the field is not padding-invariant — see
+        # :meth:`_fm_padding_invariant`.  0.0 disables it and restores the
+        # single padded forward bit-for-bit.
+        fm_batch_chunk_ratio: float = 0.0,
+        fm_batch_chunk_max_clouds: int = 64,
         # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
         # head now has two interchangeable implementations: 'yuelbond'
         # (default, atom-centered message passing — the historical head every
@@ -2276,6 +2309,8 @@ class CFMJointModel(nn.Module):
                 vector_channels=int(vector_channels),
                 metal_frame_channels=bool(metal_frame_channels),
                 radial_centroid_masked=bool(radial_centroid_masked),
+                prediction_target=str(prediction_target),
+                x1_denominator_floor=float(x1_denominator_floor),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -2293,6 +2328,10 @@ class CFMJointModel(nn.Module):
         # scalar-t behaviour bit-for-bit.
         self.t_embedding_dim: int = int(t_embedding_dim)
         self.pocket_per_layer: bool = bool(pocket_per_layer)
+        # Wf-A108g — per-batch pad grouping.  Read by
+        # ``_fm_field_forward``; 0.0 means one padded forward.
+        self.fm_batch_chunk_ratio: float = float(fm_batch_chunk_ratio)
+        self.fm_batch_chunk_max_clouds: int = int(fm_batch_chunk_max_clouds)
         if self.use_pocket_encoder:
             from molmetal.adapters.flow_matching_lipman import PocketEncoder
             self.pocket_encoder = PocketEncoder(
@@ -2371,45 +2410,8 @@ class CFMJointModel(nn.Module):
                 "--use-fm-objective (or fm_objective=True) to build it."
             )
         if self.use_egnn_velocity:
-            n_total = int(x_t.shape[0])
-            sizes = (
-                [n_total]
-                if cloud_sizes is None
-                else [int(s) for s in cloud_sizes]
-            )
-            if sum(sizes) != n_total:
-                raise ValueError(
-                    f"cloud_sizes sum to {sum(sizes)} but x_t has {n_total} "
-                    "rows — the cloud boundaries would be wrong, and a wrong "
-                    "boundary silently creates cross-molecule edges."
-                )
-            b = len(sizes)
-            n_max = max(sizes)
-            dev = x_t.device
-            x_pad = x_t.new_zeros(b, n_max, 3)
-            z_pad = atomic_numbers.new_zeros(b, n_max)
-            node_mask = torch.zeros(b, n_max, dtype=torch.bool, device=dev)
-            start = 0
-            for i, s in enumerate(sizes):
-                x_pad[i, :s] = x_t[start : start + s].float()
-                z_pad[i, :s] = atomic_numbers[start : start + s].long()
-                node_mask[i, :s] = True
-                start += s
-            edge_index, edge_mask = _block_diag_radius_edges(
-                x_pad, node_mask, self.cutoff
-            )
-            if t.dim() == 0:
-                t_b = t.reshape(1).expand(b)
-            else:
-                # Per-atom t -> per-cloud t (atoms of one cloud share t in
-                # every caller; taking the first of each block is exact).
-                t_b = t.reshape(-1)[torch.tensor(
-                    [sum(sizes[:i]) for i in range(b)], device=dev
-                )]
-            out = self.vel_field(
-                x_pad, z_pad, edge_index, t_b,
-                edge_mask=edge_mask,
-                pocket_embed=pocket_embed,
+            out, node_mask = self._fm_field_forward(
+                x_t, t, atomic_numbers, cloud_sizes, pocket_embed
             )
             vel = out["vel"]  # (B, n_max, 3)
             return vel[node_mask]  # (N, 3) flat, cloud-major
@@ -2436,6 +2438,231 @@ class CFMJointModel(nn.Module):
             t_col = t.reshape(-1, 1).to(dtype=x_t.dtype, device=x_t.device)
         feats = torch.cat([z_oh, x_t.float(), t_col], dim=-1)
         return self.fm_vel_head(feats)
+
+    def _fm_padding_invariant(self) -> bool:
+        """True iff the field's output does not depend on the pad width.
+
+        Every quantity the field computes is per-atom or per-cloud EXCEPT
+        the legacy radial head's centroid, which is ``x_t.mean(dim=1)``
+        over the padded width.  ``velocity_head="vector_channels"`` takes
+        its centroid from ``initial_vector_channels``, which divides by
+        the REAL atom count, and ``radial_centroid_masked=True`` does the
+        same for the radial head.  In those two cases splitting a batch
+        into smaller padded groups is exactly equivalent; in the third
+        case it is not, and chunking must stay off.
+        """
+        vf = getattr(self, "vel_field", None)
+        if vf is None:
+            return False
+        if str(getattr(vf, "velocity_head", "radial")) == "vector_channels":
+            return True
+        return bool(getattr(vf, "radial_centroid_masked", False))
+
+    @staticmethod
+    def _fm_chunk_plan(
+        sizes: Sequence[int],
+        ratio: float,
+        max_clouds: int,
+    ) -> List[List[int]]:
+        """Group cloud indices so each group's pad width stays near its own sizes.
+
+        Padding cost is ``len(group) * max(group) - sum(group)``: a single
+        225-atom complex in a 64-cloud batch pads all 63 other clouds to
+        225.  Sorting by size and cutting whenever the next cloud exceeds
+        ``ratio * min(group)`` bounds each group's internal spread to
+        ``ratio`` while keeping the groups contiguous in size — which is
+        what makes the pad width track the group's own molecules instead
+        of the batch outlier.
+
+        Deterministic: the plan depends only on ``sizes``, ``ratio`` and
+        ``max_clouds``, so a rerun of the same batch makes the same cuts.
+        """
+        order = sorted(range(len(sizes)), key=lambda i: (int(sizes[i]), i))
+        groups: List[List[int]] = []
+        cur: List[int] = []
+        for i in order:
+            if not cur:
+                cur = [i]
+                continue
+            lo = int(sizes[cur[0]])
+            if len(cur) < max_clouds and int(sizes[i]) <= lo * float(ratio):
+                cur.append(i)
+            else:
+                groups.append(cur)
+                cur = [i]
+        if cur:
+            groups.append(cur)
+        return groups
+
+    def _fm_field_forward(
+        self,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+        cloud_sizes: Optional[Sequence[int]] = None,
+        pocket_embed: Optional[torch.Tensor] = None,
+    ):
+        """Run ``vel_field`` over a flat cloud batch, in size-homogeneous groups.
+
+        Returns ``(out, node_mask)`` where every tensor in ``out`` is FLAT
+        ``(sum(cloud_sizes), ...)`` and ``node_mask`` is all-True.  Callers
+        keep writing ``out[key][node_mask]``; the mask is kept only so that
+        expression stays valid.
+
+        Why groups
+        ----------
+        MEASURED (Wf-A108g, 2026-10-23) on 64 real MetalCytoToxDB clouds:
+        atom counts run 16 / 38 / 225 (min / median / max) with mean 46.2.
+        Padding every cloud to the batch max puts 2 957 real atoms into
+        14 400 slots — **79.5% of the padded batch is zero padding** — and
+        the same skew makes 83.6% of the ``(B, 2, E)`` edge slots padding.
+        A ``(B, N, 128)`` hidden state is 7.03 MB of which 5.6 MB is holes,
+        and every EGNN layer, the atom head ``(B, N, 100)`` and the radius
+        graph pay that ratio again.
+
+        Grouping by size cuts the pad width per group.  It does NOT change
+        what is computed: the radius graph is block-diagonal and
+        ``node_mask`` drops every padded endpoint, so clouds never interact
+        inside one forward.  That independence is what makes the split
+        exact rather than an approximation — with one caveat, the legacy
+        radial centroid, which is why :meth:`_fm_padding_invariant` gates
+        it.
+
+        When ``fm_batch_chunk_ratio <= 0`` or the field is not
+        padding-invariant, this is the single padded forward it always was,
+        and the result is bit-identical to the pre-Wf-A108g code.
+        """
+        n_total = int(x_t.shape[0])
+        sizes = (
+            [n_total]
+            if cloud_sizes is None
+            else [int(s) for s in cloud_sizes]
+        )
+        if sum(sizes) != n_total:
+            raise ValueError(
+                f"cloud_sizes sum to {sum(sizes)} but x_t has {n_total} "
+                "rows — the cloud boundaries would be wrong, and a wrong "
+                "boundary silently creates cross-molecule edges."
+            )
+        b = len(sizes)
+        dev = x_t.device
+        offsets = [0]
+        for s in sizes:
+            offsets.append(offsets[-1] + s)
+
+        if t.dim() == 0:
+            t_b = t.reshape(1).expand(b)
+        else:
+            # Per-atom t -> per-cloud t (atoms of one cloud share t in
+            # every caller; taking the first of each block is exact).
+            t_b = t.reshape(-1)[torch.tensor(offsets[:-1], device=dev)]
+
+        ratio = float(getattr(self, "fm_batch_chunk_ratio", 0.0) or 0.0)
+        if ratio > 0.0 and b > 1 and self._fm_padding_invariant():
+            groups = self._fm_chunk_plan(
+                sizes, ratio, int(getattr(self, "fm_batch_chunk_max_clouds", 64))
+            )
+        else:
+            groups = [list(range(b))]
+
+        if len(groups) == 1:
+            out, node_mask = self._fm_field_forward_padded(
+                x_t, atomic_numbers, sizes, offsets, t_b, groups[0], pocket_embed
+            )
+            # Keep the historical (B, N, ...) contract for the single-group
+            # path so nothing downstream of the default configuration moves.
+            return out, node_mask
+
+        per_cloud: Dict[int, Dict[str, torch.Tensor]] = {}
+        for g in groups:
+            chunk, _chunk_mask = self._fm_field_forward_padded(
+                x_t, atomic_numbers, sizes, offsets, t_b, g, pocket_embed
+            )
+            # chunk[k] is (len(g), n_max, ...); cloud j owns its first
+            # sizes[ci] rows, the rest is the group's pad.
+            for j, ci in enumerate(g):
+                s = sizes[ci]
+                per_cloud[ci] = {k: v[j, :s] for k, v in chunk.items()}
+        merged = {
+            k: torch.cat([per_cloud[ci][k] for ci in range(b)], dim=0)
+            for k in per_cloud[0]
+        }
+        return merged, torch.ones(n_total, dtype=torch.bool, device=dev)
+
+    def _fm_field_forward_padded(
+        self,
+        x_t: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+        sizes: Sequence[int],
+        offsets: Sequence[int],
+        t_b: torch.Tensor,
+        group: Sequence[int],
+        pocket_embed: Optional[torch.Tensor],
+    ):
+        """One padded ``vel_field`` call over the clouds listed in ``group``.
+
+        ``x_pad`` is ``(len(group), max(sizes[group]), 3)`` — the pad width
+        is the GROUP max, which is the whole point of the split.  Returns
+        the raw padded ``(len(group), n_max, ...)`` dict plus its node mask;
+        the caller decides whether to flatten.
+        """
+        dev = x_t.device
+        g_sizes = [int(sizes[i]) for i in group]
+        n_max = max(g_sizes)
+        g = len(group)
+        x_pad = x_t.new_zeros(g, n_max, 3)
+        z_pad = atomic_numbers.new_zeros(g, n_max)
+        node_mask = torch.zeros(g, n_max, dtype=torch.bool, device=dev)
+        for j, ci in enumerate(group):
+            s = g_sizes[j]
+            start = int(offsets[ci])
+            x_pad[j, :s] = x_t[start : start + s].float()
+            z_pad[j, :s] = atomic_numbers[start : start + s].long()
+            node_mask[j, :s] = True
+        edge_index, edge_mask = _block_diag_radius_edges(
+            x_pad, node_mask, self.cutoff
+        )
+        _idx = torch.as_tensor(list(group), device=dev)
+        out = self.vel_field(
+            x_pad, z_pad, edge_index, t_b[_idx],
+            edge_mask=edge_mask,
+            pocket_embed=None if pocket_embed is None else pocket_embed[_idx],
+        )
+        return out, node_mask
+
+    def fm_x1(
+        self,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+        cloud_sizes: Optional[Sequence[int]] = None,
+        pocket_embed: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Absolute-position prediction ``x1_hat`` (Wf-A108e).
+
+        Only valid when the field was built with ``prediction_target="x1"``;
+        the alternative would be silently returning ``x_t + velocity`` and
+        training a quantity nobody asked for.
+        """
+        if not self.fm_objective:
+            raise RuntimeError(
+                "fm_x1() called on a model built without fm_objective=True."
+            )
+        if not self.use_egnn_velocity:
+            raise RuntimeError(
+                "fm_x1() requires the EGNN velocity field; the legacy "
+                "fm_vel_head probe has no x1 output."
+            )
+        if getattr(self.vel_field, "prediction_target", "velocity") != "x1":
+            raise RuntimeError(
+                "fm_x1() called but vel_field.prediction_target is "
+                f"{getattr(self.vel_field, 'prediction_target', 'velocity')!r}"
+                " — build with --prediction-target x1."
+            )
+        out, node_mask = self._fm_field_forward(
+            x_t, t, atomic_numbers, cloud_sizes, pocket_embed
+        )
+        return out["x1_hat"][node_mask]
 
     def _compute_pocket_embed_from_batch(
         self,
@@ -4039,6 +4266,11 @@ def train_one_epoch(
     # velocity field, which is the shared root cause of 5 of the 11 dead terms).
     fm_objective: bool = False,  # False = no FM objective (legacy signal only)
     fm_weight: float = 1.0,  # multiplier on the FM MSE
+    # Wf-A108e — "velocity" (default, bit-exact) or "x1".  The loss operand
+    # has to match what the head was built to emit; reading it off the model
+    # would work, but threading it explicitly keeps the two call sites from
+    # drifting (the same class of bug as a config key with no dest).
+    prediction_target: str = "velocity",
     fm_t_dist: str = "uniform",  # {"uniform", "log_normal"}
     # 2026-10-06 (F6) — draw the FM flow time ONCE PER CLOUD instead of once
     # per atom.  Default True = the fix; `0` restores the pre-F6 per-atom draw
@@ -5196,41 +5428,66 @@ def train_one_epoch(
                 sigma_distort=float(fm_sigma_distort),
             )
             target_dx = x1 - x0
-            fm_term = float(fm_weight) * F.mse_loss(
-                model.fm_velocity(
+            # Wf-A108f (2026-10-22) — ONE field forward per step, and the x1
+            # branch no longer falls through to the velocity residual.
+            #
+            # Two defects lived here:
+            #   (1) `fm_velocity` was called twice — once for `fm_term`, once
+            #       for `_vel_pred` — and the second result overwrote the
+            #       first.  The first pass produced nothing but a second copy
+            #       of every activation in the field, which at batch 64 is the
+            #       largest single block of memory in the step.
+            #   (2) the Wf-A108e x1 branch wrote `fm_term` and was then
+            #       unconditionally overwritten by the velocity residual
+            #       below, so `--prediction-target x1` trained the velocity
+            #       objective while reporting an x1 number.
+            # `stable_vm` is a velocity-space loss, so combining it with x1 is
+            # refused rather than silently ignored.
+            if str(prediction_target) == "x1":
+                if stable_vm:
+                    raise SystemExit(
+                        "--stable-vm scores a velocity residual and cannot be "
+                        "combined with --prediction-target x1.  Drop one of "
+                        "the two; silently ignoring stable_vm is exactly the "
+                        "FLAG_ONLY class AGENTS.md §5.7 exists to catch."
+                    )
+                fm_term = float(fm_weight) * F.mse_loss(
+                    model.fm_x1(
+                        x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                        pocket_embed=_pocket_embed,
+                    ),
+                    x1,
+                )
+            else:
+                # Wf-R38 — `--stable-vm` attaches HERE, to the velocity loss.
+                # `stable_vm_loss` is a multi-scale mixture of squared
+                # velocity residuals, so both operands are (predicted
+                # velocity, target velocity).  Before that change the flag
+                # overwrote the 5-class bond cross-entropy with
+                # `stable_vm_loss(logits, zeros)` — a velocity-probe loss is
+                # not a drop-in for a classifier, and the run reported a
+                # falling `bond_ce` while learning no chemistry.
+                _vel_pred = model.fm_velocity(
                     x_t, t, z_all, cloud_sizes=_cloud_sizes,
                     pocket_embed=_pocket_embed,
-                ), target_dx
-            )
-            # Wf-R38 — `--stable-vm` now attaches HERE, to the velocity loss.
-            # This is the site the flag was always meant for: `stable_vm_loss`
-            # is a multi-scale mixture of squared velocity residuals, so both
-            # of its operands are (predicted velocity, target velocity).
-            # Before this change the flag overwrote the 5-class bond
-            # cross-entropy with `stable_vm_loss(logits, zeros)` - a
-            # velocity-probe loss is not a drop-in for a classifier, and the
-            # run reported a falling bond_ce while learning no chemistry.
-            _vel_pred = model.fm_velocity(
-                x_t, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
-            )
-            if stable_vm:
-                try:
-                    from molmetal.adapters.flow_matching_lipman import (
-                        stable_vm as _svm,
-                    )
+                )
+                if stable_vm:
+                    try:
+                        from molmetal.adapters.flow_matching_lipman import (
+                            stable_vm as _svm,
+                        )
 
-                    _vel_resid = _svm.stable_vm_loss(_vel_pred, target_dx)
-                except Exception as _svm_exc:  # noqa: BLE001 - warned, not hidden
-                    warnings.warn(
-                        f"[cfm-fm] stable_vm fell back to plain MSE: {_svm_exc!r}",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
+                        _vel_resid = _svm.stable_vm_loss(_vel_pred, target_dx)
+                    except Exception as _svm_exc:  # noqa: BLE001 - warned, not hidden
+                        warnings.warn(
+                            f"[cfm-fm] stable_vm fell back to plain MSE: {_svm_exc!r}",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                        _vel_resid = F.mse_loss(_vel_pred, target_dx)
+                else:
                     _vel_resid = F.mse_loss(_vel_pred, target_dx)
-            else:
-                _vel_resid = F.mse_loss(_vel_pred, target_dx)
-            fm_term = float(fm_weight) * _vel_resid
+                fm_term = float(fm_weight) * _vel_resid
         # (a) shortcut_distill — Frans 2024 teacher-student distillation.
         #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
         #     is available, the term collapses to zero (preserves Wf-380
@@ -11541,6 +11798,59 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--prediction-target",
+        dest="prediction_target",
+        choices=("velocity", "x1"),
+        default="velocity",
+        help=(
+            "Wf-A108e: what the coordinate head is trained to emit. "
+            "'velocity' (default, bit-exact) regresses x1 - x0 directly. "
+            "'x1' reads the same head output as a displacement from x_t and "
+            "trains it against x1_hat = x_t + u, i.e. the loss becomes "
+            "||u - (1-t)(x1-x0)||^2 — full weight at low t, downweighted at "
+            "high t.  That is deliberate: Wf-A108d measured the velocity "
+            "field to be 64% worse than predicting zero at t=0.05.  The "
+            "sampler still consumes vel = u / max(1-t, x1_denominator_floor)."
+        ),
+    )
+    p.add_argument(
+        "--x1-denominator-floor",
+        dest="x1_denominator_floor",
+        type=float,
+        default=0.02,
+        help=(
+            "Wf-A108e: floor on (1 - t) when converting the x1 head's output "
+            "into a sampler velocity.  Only read when --prediction-target x1."
+        ),
+    )
+    p.add_argument(
+        "--fm-batch-chunk-ratio",
+        dest="fm_batch_chunk_ratio",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-A108g: split an FM batch into size-homogeneous groups whose "
+            "pad width is the GROUP max instead of the BATCH max.  0.0 "
+            "(default) = one padded forward, bit-identical to pre-Wf-A108g.  "
+            "A value of 1.5 keeps each group's largest/smallest atom count "
+            "within 1.5x.  MEASURED on 64 real clouds: 79.5%% of atom slots "
+            "and 83.6%% of edge slots are padding at ratio 0.  The split is "
+            "exact (block-diagonal graph, clouds never interact) but is "
+            "refused automatically when the field is not padding-invariant "
+            "(radial head without --radial-centroid-masked)."
+        ),
+    )
+    p.add_argument(
+        "--fm-batch-chunk-max-clouds",
+        dest="fm_batch_chunk_max_clouds",
+        type=int,
+        default=64,
+        help=(
+            "Wf-A108g: hard cap on how many clouds one size group may hold.  "
+            "Only read when --fm-batch-chunk-ratio > 0."
+        ),
+    )
+    p.add_argument(
         "--natural-charge-mse-weight",
         dest="natural_charge_mse_weight",
         type=float,
@@ -12535,6 +12845,19 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         metal_frame_channels=bool(getattr(args, "metal_frame_channels", False)),
         radial_centroid_masked=bool(
             getattr(args, "radial_centroid_masked", False)
+        ),
+        prediction_target=str(getattr(args, "prediction_target", "velocity")),
+        x1_denominator_floor=float(
+            getattr(args, "x1_denominator_floor", 0.02)
+        ),
+        # Wf-A108g — per-batch pad grouping.  Default 0.0 (one padded
+        # forward) so every pre-Wf-A108g checkpoint rebuilds and runs
+        # exactly as it did; opt in via ``flow.fm_batch_chunk_ratio``.
+        fm_batch_chunk_ratio=float(
+            getattr(args, "fm_batch_chunk_ratio", 0.0)
+        ),
+        fm_batch_chunk_max_clouds=int(
+            getattr(args, "fm_batch_chunk_max_clouds", 64)
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
@@ -14634,6 +14957,9 @@ def main() -> int:
             ),
             use_ema=bool(getattr(args, "use_ema", False)),
             ema_decay=float(getattr(args, "ema_decay", 0.999)),
+            prediction_target=str(
+                getattr(args, "prediction_target", "velocity")
+            ),
             use_pcgrad=bool(getattr(args, "pcgrad_multi_task", False)),
             pcgrad_tasks=tuple(
                 getattr(args, "pcgrad_tasks", ())
@@ -16495,6 +16821,17 @@ def main() -> int:
             "radial_centroid_masked": bool(
                 getattr(args, "radial_centroid_masked", False)
             ),
+            "prediction_target": str(
+                getattr(args, "prediction_target", "velocity")
+            ),
+            "x1_denominator_floor": float(
+                getattr(args, "x1_denominator_floor", 0.02)
+            ),
+            # Wf-A108g — whether the Triton fused kernels were live for this
+            # run.  Without it a timing difference between two runs is
+            # unattributable: the gate is backend-dependent and per-op, so
+            # "TRITON_USE_FUSED was on" is not enough to know what ran.
+            "triton_dispatch": _triton_dispatch_describe(),
         },
         # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #

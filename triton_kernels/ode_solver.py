@@ -2,8 +2,8 @@
 
 These kernels advance a batched state vector of shape ``(B, D)`` under
 a (possibly time-dependent) velocity field.  The kernels are written
-with :func:`triton.jit` and target AMD ROCm GPUs (``gfx1101``) via
-``triton-rocm==3.8.0``.
+with :func:`triton.jit` and run on CUDA Blackwell (``sm_120``) and on
+AMD ROCm (``gfx1101``) via ``triton-rocm==3.8.0``.
 
 Public API
 ----------

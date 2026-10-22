@@ -141,7 +141,6 @@ SLOW_MODULE_STEMS = frozenset({
     "test_reproduce_R17",
     "test_rh_active_label_generation",
     "test_rocm_egnn",
-    "test_rocm_throughput",
     "test_round11_engine_parity",
     "test_run_pb_production",
     "test_score_any_fallback",

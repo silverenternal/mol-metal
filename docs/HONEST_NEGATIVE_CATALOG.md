@@ -11982,3 +11982,187 @@ artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
 
+## §6.188 — Wf-A108g: the padded batch was 79.5% zeros, and the forward is dispatch-bound, not VRAM-bound (2026-10-23)
+
+**What this wave was for.** The CFM arm trains at `batch_size: 8` and the FM forward's
+memory was being attributed to model capacity. It is not capacity. On the 64-cloud
+MetalCytoToxDB cohort the atom counts run 16 / 38 / 225 (min / median / max) with mean
+46.2, so padding every cloud to the batch maximum puts 2,957 real atoms into 14,400
+slots: 79.5% of the padded atom batch is zeros, and 83.6% of the `(B, 2, E)` edge slots
+too. A `(B, N, 128)` hidden state is 7.03 MB of which 5.6 MB is holes, and every EGNN
+layer, the atom head `(B, N, 100)` and the radius graph pay that ratio again.
+
+**Method.** `CFMJointModel._fm_chunk_plan` sorts clouds by atom count and cuts the batch
+whenever the next cloud exceeds `ratio * min(group)`, so each group's pad width tracks
+its own molecules instead of the batch outlier. `_fm_field_forward` runs one padded
+forward per group and merges on the real rows. The split is exact rather than an
+approximation because the radius graph is block-diagonal and `node_mask` drops every
+padded endpoint, so clouds never see each other inside one forward. The one quantity
+that is not padding-invariant is the legacy radial head's centroid
+(`x_t.mean(dim=1)` over the padded width); `_fm_padding_invariant` gates on it and
+leaves chunking off for that head. `wfa108g_batch_chunk_memory.py` measures peak
+allocated VRAM and median wall time for each (batch, ratio) cell, with the ratios
+interleaved inside one loop.
+
+**Finding 1 — grouping is numerically exact.** Across all 24 (batch, ratio) cells the
+largest deviation from the unchunked forward is 8.0e-7 on activations of order 40. The
+sweep also uncovered a real defect on the way: `initial_vector_channels` built its
+`donor` mask without `node_mask`, and padded atoms sit at the origin inside the 2.8 A
+metal shell, so the donor centroid — and through it the metal-frame channels — moved by
+7.1e-1 (5% of a 1.47e1 scale) when `n_max` went from 40 to 50. That is a batch-composition
+dependence in a feature that is supposed to be per-molecule. Fixed; the drift is now
+0.000e+00.
+
+**Finding 2 — below B = 64 the forward is CPU-dispatch-bound.** `torch.profiler` on a
+2-cloud forward: 4.29 ms of self CPU against 0.64 ms of self CUDA, 23 `aten::linear` and
+9 `_ScatterSum` launches per call. Each extra group therefore costs about 3 ms
+regardless of how few atoms it holds, which is why grouping at the arm's own batch size
+is a loss.
+
+| batch | atoms | ratio | peak MB | ms | memory | time |
+|---:|---:|---:|---:|---:|---:|---:|
+| 8 | 405 | 0.00 | 41.18 | 3.30 | 1.00x | 1.00x |
+| 8 | 405 | 1.25 | 19.63 | 11.57 | 2.10x | 3.51x |
+| 8 | 405 | 2.00 | 25.00 | 6.34 | 1.65x | 1.92x |
+| 32 | 1,289 | 0.00 | 283.81 | 4.22 | 1.00x | 1.00x |
+| 32 | 1,289 | 1.25 | 27.48 | 19.53 | 10.33x | 4.63x |
+| 32 | 1,289 | 2.00 | 58.32 | 10.15 | 4.87x | 2.41x |
+| 64 | 2,957 | 0.00 | 1,254.07 | 13.20 | 1.00x | 1.00x |
+| 64 | 2,957 | 1.25 | 73.00 | 29.84 | 17.18x | 2.26x |
+| 64 | 2,957 | 2.00 | 157.05 | 13.90 | 7.99x | 1.05x |
+| 127 | 6,216 | 1.25 | 200.34 | 35.85 | 15.00x | 1.18x |
+| 127 | 6,216 | 2.00 | 356.36 | 16.29 | 8.43x | 0.54x |
+| 255 | 11,906 | 1.25 | 240.57 | 40.15 | 25.09x | 0.65x |
+| 255 | 11,906 | 2.00 | 673.56 | 29.76 | 8.96x | 0.48x |
+
+Unchunked B = 127 is 3,005.34 MB / 30.27 ms and B = 255 is 6,036.70 MB / 61.50 ms.
+
+**Finding 3 — the same mechanism reverses above B = 64.** Once the padded GPU work
+exceeds the dispatch floor, dropping the pad costs less than it saves. At B = 255 with
+`ratio 1.25` the forward is 25.1x smaller and 1.5x faster; with `ratio 2.0` it is 9.0x
+smaller and 2.1x faster. Throughput per atom at B = 255 / ratio 2.0 is 2.5 us against
+4.5 us at the unchunked B = 64, so the wider grouped batch is better on both axes at
+once.
+
+**Finding 4 — batch 8 sits far below the throughput knee.** Unchunked B = 8 and
+unchunked B = 32 cost 3.30 ms and 4.22 ms for 405 and 1,289 atoms: 3.2x the data for
+1.28x the time. The arm's batch size is set by convention, not by any measured
+constraint on this card (97,887 MiB total, 41 MB in use at B = 8).
+
+**Consequence.** `fm_batch_chunk_ratio` stays at its 0.0 default, because at
+`batch_size: 8` it buys 1.65-2.10x memory for 1.92-3.51x time on a footprint that is
+not binding. It is worth turning on at `ratio 2.0` once the batch is widened to 64 or
+more, where it is free at 64 and a strict win above that. Widening the batch is a
+change to the training protocol and is not made by this wave.
+
+**Honest boundaries (ACTIVE).**
+  * Timing spread across processes reaches 1.8x. Two sequential runs of the same script
+    measured the identical unchunked B = 8 forward at 4.14 ms and 7.48 ms, so only rows
+    from the same `n_clouds` in the same process are comparable. The per-row standard
+    deviation is recorded in the artifact.
+  * Only the FM forward is measured. The full training step also runs the bond head and
+    the decoder, which are outside this wave, so the step-level memory saving is smaller
+    than the table suggests and is not quantified here.
+  * One cohort, one seed. The 64-cloud sample is a prefix of the train split rather than
+    a random draw, and the sizes are that prefix's sizes.
+  * Peak is `max_memory_allocated`, not `max_memory_reserved`. The allocator's reserved
+    pool is larger and the gap is not measured.
+  * The ratio sweep has four points (0, 1.25, 1.5, 2.0). The optimum between 1.5 and 2.0
+    is not located.
+  * B = 127 and B = 255 exceed any batch this arm has trained with; they are synthetic
+    wide batches built to find the crossover, not measurements of a shipped run.
+
+**Artifacts.** `metrics/by_metric/wfa108g_batch_chunk_memory.json`,
+`molmetal/scripts/wfa108g_batch_chunk_memory.py`,
+`molmetal/tests/test_wfa108g_batch_chunking.py`,
+`molmetal/adapters/flow_matching_lipman/vector_channels.py` (donor mask),
+`docs/WF_A108_VELOCITY_HEAD_SURVEY.md` §7.
+
+**§6.188 catalog-count math.** Net **+1**. Cumulative **242 → 243**. ACTIVE
+**198 → 199**.
+
+**Workflow** | Wf-A108g (2026-10-23; GPU0: 24 cells x 30 timed calls, ~3 min total; §5.2
+every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.189 — Wf-A108g: the Triton library was tuned for gfx1101, and four of its seven ops lose on Blackwell (2026-10-23)
+
+**What this wave was for.** `triton_kernels/` was written against an AMD RX 7800 XT
+(`gfx1101`, RDNA3) under `triton-rocm`. Its autotune grid was gfx1101's, its gate
+defaulted off, and one kernel, `_fused_mlp_act_proj_kernel`, was disabled repo-wide after
+it produced corrupted tiles there. None of that is a statement about the CUDA box the CFM
+line now trains on. This wave re-measured every op on the live device and routed each one
+on evidence.
+
+**Environment.** `torch.version.hip is None`, so there is no ROCm host left to test
+against. `torch 2.14.1+cu130`, `triton 3.8.0`, RTX PRO 6000 Blackwell Workstation
+Edition, capability (12, 0). Six ROCm-only test files were deleted rather than kept as
+skips, and the `molmetal` import bootstrap no longer probes for a gfx1101 device.
+
+**Method.** `wfa108g_triton_blackwell_bench.py` times each op against its PyTorch
+equivalent at five batch widths (M = 405, 736, 2048, 8192, 32768; 405 is the 8-cloud CFM
+batch), and the script's own rule decides: enable iff the result is numerically correct on
+every shape AND the worst speedup is above 1.0. A single losing shape vetoes the op.
+
+| op | speedup range | max rel err | disposition |
+|---|---|---:|---|
+| `act_proj` (SiLU + projection) | 1.51-2.36x | 8.5e-4 | enable, CUDA only |
+| `fused_silu_mlp` | 1.05-1.14x | 9.3e-4 | enable |
+| `fused_layer_norm` | 1.03-1.35x | 1.9e-7 | enable |
+| `fused_residual_add` | 1.01-1.30x | 0 | enable |
+| `softmax_last_dim` | 0.99-1.33x | 1.3e-7 | refuse |
+| `aggregate_vectors` | 0.20-1.19x | 1.8e-7 | refuse |
+| `fused_cross_entropy` | 0.20-0.26x | 6.0e-8 | refuse |
+
+**Finding 1 — the gfx1101 defect does not reproduce on sm_120.** The activation-plus-
+projection kernel is correct on Blackwell to 8.5e-4 relative, which is tf32's own
+rounding, and it is the single largest win in the table at 1.5-2.4x. It is now routed on
+`active_backend() == "cuda"` and stays off on ROCm. The route is an evidence boundary, not
+a preference: the defect was real where it was reported and is absent where it is not.
+
+**Finding 2 — three ops are refused despite winning somewhere.** `softmax_last_dim`
+reaches 1.33x at D = 128 and loses at D = 256, so the per-shape rule refuses it outright.
+`aggregate_vectors` wins below 1.2k edges and loses above. `fused_cross_entropy` loses by
+4-5x at both widths measured. Refusing an op that wins at one shape costs a few percent
+there; enabling one that loses at another costs the whole call.
+
+**Finding 3 — the gate default is now per backend.** `TRITON_USE_FUSED` resolves to "1" on
+CUDA and "0" on ROCm, keeping the 2026-09-27 ROCm decision intact while making the CUDA
+box use what was measured there. The autotune grid is likewise per backend: 32 configs on
+CUDA against 108 on ROCm for matmul, and 32 against 16 for the projection kernel, which
+cuts first-launch autotune latency on the path the sampler exercises per ODE step.
+
+**Consequence.** Four ops are on, three are off, and the off three are named in the config
+report rather than silently skipped. The `act_proj` kernel that was previously unreachable
+is now the largest per-op win in the library.
+
+**Honest boundaries (ACTIVE).**
+  * The min-speedup rule is deliberately conservative and leaves value on the table:
+    `softmax_last_dim` at 1.33x is refused because of one losing shape.
+  * The tf32 ops change numerics by 8e-4 to 9e-4 relative. A run that turns the gate on
+    cannot be compared bit-exactly against a pre-Wf-A108g run; `TRITON_DOT_PRECISION=ieee`
+    restores bit-exactness (measured 0.000e+00 on the matmul parity test) at the cost of
+    the speed-up.
+  * These are op-level timings. The FM forward is CPU-dispatch-bound at the arm's batch
+    size (§6.188), so a 1.05-1.35x op win does not become a 1.05-1.35x step win, and the
+    step-level effect is not measured here.
+  * One device, one Triton version. `sm_120` is Blackwell workstation; `sm_100` datacentre
+    parts share the family but were not measured.
+  * The gfx1101 tile corruption is taken from the earlier defect report. There is no ROCm
+    host here, so it is not re-measured, and the CUDA-only route is what keeps that claim
+    from mattering.
+
+**Artifacts.** `metrics/by_metric/triton_blackwell_bench.json`,
+`molmetal/scripts/wfa108g_triton_blackwell_bench.py`, `triton_kernels/backend.py`,
+`triton_kernels/autotune.py`, `triton_kernels/config.py`,
+`triton_kernels/tests/test_kernel_suite.py`.
+
+**§6.189 catalog-count math.** Net **+1**. Cumulative **243 → 244**. ACTIVE
+**199 → 200**.
+
+**Workflow** | Wf-A108g (2026-10-23; GPU0: 7 ops x 5 shapes, ~2 min; §5.2 every number is
+an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+

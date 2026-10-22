@@ -1566,6 +1566,9 @@ class EGNNVelocityField(nn.Module):
         # Off by default: the legacy centroid includes the trainer's zero
         # padding, and changing that changes every existing run's forward.
         radial_centroid_masked: bool = False,
+        # Wf-A108e (2026-10-22) — "velocity" (default, bit-exact) or "x1".
+        prediction_target: str = "velocity",
+        x1_denominator_floor: float = 0.02,
     ) -> None:
         """Construct the velocity field.
 
@@ -1666,6 +1669,42 @@ class EGNNVelocityField(nn.Module):
         self.vector_channels = int(vector_channels)
         self.metal_frame_channels = bool(metal_frame_channels)
         self.radial_centroid_masked = bool(radial_centroid_masked)
+        # Wf-A108e (2026-10-22) — what the coordinate stack is trained to emit.
+        #
+        # ``"velocity"`` (default) is the pre-Wf-A108e contract: ``vel`` is the
+        # regression target's own space, ``x1 - x0``.  ``"x1"`` treats the same
+        # head output as a DISPLACEMENT from ``x_t`` and publishes both
+        # ``x1_hat = x_t + u`` (the loss operand) and
+        # ``vel = u / max(1 - t, floor)`` (the sampler operand).
+        #
+        # Why: Wf-A108d MEASURED that at ``t = 0.05`` the velocity-trained field
+        # is 64% worse than predicting zero (14.781 vs 9.008) while a
+        # one-parameter Gaussian posterior mean reaches 3.605, because the
+        # conditional mean must go from ``-x_t`` at ``t -> 0`` to ``+x_t`` at
+        # ``t -> 1`` and the field never reverses (endpoint cosine +0.736).
+        # In x1 space the low-t target is ``x1`` itself, so the required output
+        # is the data mean rather than a reversal.
+        #
+        # The loss weight is the caller's business and is NOT hidden here:
+        # with ``x1_hat = x_t + (1-t)u`` a plain MSE on ``x1_hat`` is
+        # ``||u - (1-t)v||^2``, i.e. it DOWNWEIGHTS high ``t`` and leaves low
+        # ``t`` at full weight.  That is the opposite of FlowMol3's
+        # ``w(t) = min(max(0.005, t/(1-t)), 1.5)``, whose effective velocity
+        # weight is ``t(1-t)`` and which therefore suppresses the exact region
+        # Wf-A108d found broken.  See docs/WF_A108_VELOCITY_HEAD_SURVEY.md §6.
+        _target = str(prediction_target).lower()
+        if _target not in {"velocity", "x1"}:
+            raise ValueError(
+                "prediction_target must be 'velocity' or 'x1', "
+                f"got {prediction_target!r}"
+            )
+        if float(x1_denominator_floor) <= 0.0 or float(x1_denominator_floor) >= 1.0:
+            raise ValueError(
+                "x1_denominator_floor must be in (0, 1), got "
+                f"{x1_denominator_floor!r}"
+            )
+        self.prediction_target = _target
+        self.x1_denominator_floor = float(x1_denominator_floor)
         if self.velocity_head == "vector_channels":
             from molmetal.adapters.flow_matching_lipman.vector_channels import (
                 VectorChannelHead,
@@ -2299,6 +2338,20 @@ class EGNNVelocityField(nn.Module):
                 torch.tanh(self.vel_head(h)) * self.vel_scale * relative_to_centroid
                 + last_v
             )
+        # Wf-A108e — publish the absolute-position operand when the field is
+        # trained in x1 space.  ``vel`` above is the head's raw output, i.e. a
+        # displacement; in x1 mode that same tensor is ``u`` and
+        # ``x1_hat = x_t + u``.  The sampler keeps reading ``out["vel"]``, so
+        # the division by ``1 - t`` happens here and nowhere else; the floor
+        # stops ``t -> 1`` from turning a small residual into an infinite step.
+        # Both keys are absent when ``prediction_target == "velocity"``, which
+        # is what keeps the default state dict and forward bit-exact.
+        if self.prediction_target == "x1":
+            x1_hat = x_t + vel
+            _den = (1.0 - t).clamp_min(self.x1_denominator_floor)
+            vel = vel / _den.unsqueeze(-1)
+        else:
+            x1_hat = None
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
         # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard.  R17 BF16
         # regression: untrained Blackwell kernels overflowed
@@ -2324,6 +2377,8 @@ class EGNNVelocityField(nn.Module):
             "atom_logits": atom_logits,
             "h": h,
         }
+        if x1_hat is not None:
+            out["x1_hat"] = x1_hat
         if self.q_head is not None:
             out["q_pred"] = self.q_head(h).squeeze(-1)  # (B, N)
         return out

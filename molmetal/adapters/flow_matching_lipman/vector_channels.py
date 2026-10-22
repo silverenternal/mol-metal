@@ -380,10 +380,23 @@ def initial_vector_channels(
     # with several the shell is the union, which is still a useful basis.
     d_metal = (positions - metal_centroid).norm(dim=-1)  # (B, N)
     # The metal itself is at distance 0 from the centroid; it is not a donor.
+    #
+    # ``node_mask`` is load-bearing here and was missing until Wf-A108g.
+    # Padded atoms sit at the origin, so their distance to the metal centroid
+    # is |metal_centroid| — which is inside the 2.8 A shell whenever the metal
+    # is near the origin.  They then entered ``donor_f`` and dragged
+    # ``donor_centroid`` toward zero by a factor ``n_valid / n_max``.
+    # MEASURED: on a 4-cloud synthetic batch the channel stack moved by
+    # 7.1e-1 (5% of its 1.47e1 scale) when the pad width grew from 40 to 50,
+    # i.e. the "metal frame" channel was a function of the BATCH's largest
+    # molecule rather than of the molecule.  Excluding padded atoms makes the
+    # channel padding-invariant, which is what lets the trainer split a batch
+    # into size-homogeneous groups without changing what is computed.
     donor = (
         (d_metal < 2.8)
         & ~metal_mask
         & metal_mask.any(dim=1, keepdim=True)
+        & node_mask
     )
     donor_f = donor.to(dtype).unsqueeze(-1)
     donor_pos = positions * donor_f

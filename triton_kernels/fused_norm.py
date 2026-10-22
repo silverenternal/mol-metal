@@ -6,8 +6,14 @@ launch.  They are intended for molecular feature tensors of shape
 ``(B, N_atoms, hidden_dim)`` but the implementation is generic and
 works for any 3-D tensor whose last axis is the feature axis.
 
-Both kernels target AMD ROCm GPUs (``gfx1101``) via
-``triton-rocm==3.8.0`` and avoid features that 3.8 does not support.
+Both kernels run on CUDA Blackwell (``sm_120``) and on AMD ROCm
+(``gfx1101``) via ``triton-rocm==3.8.0``, and avoid features the ROCm
+backend does not support.
+
+MEASURED on ``sm_120`` (2026-10-23, ``metrics/by_metric/triton_blackwell_bench.json``):
+:func:`fused_layer_norm` is 1.00-1.38x faster than ``nn.LayerNorm`` at
+``(M, D)`` in ``{(405,128), (2048,128), (8192,256)}`` with relative
+error ~2e-7, so it stays enabled on CUDA.
 """
 
 from __future__ import annotations

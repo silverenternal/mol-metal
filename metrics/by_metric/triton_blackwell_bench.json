@@ -1,0 +1,241 @@
+{
+  "device": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "capability": [
+    12,
+    0
+  ],
+  "triton": "3.8.0",
+  "torch": "2.14.1+cu130",
+  "measured_on": "2026-10-23",
+  "quick": false,
+  "rule": "enable iff numerically_ok on every shape AND min speedup > 1.0",
+  "rows": [
+    {
+      "op": "fused_silu_mlp",
+      "shape": "M=405,H=128",
+      "torch_us": 16.42,
+      "triton_us": 14.34,
+      "speedup": 1.145,
+      "rel_err": 0.0009273,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_silu_mlp",
+      "shape": "M=736,H=128",
+      "torch_us": 18.27,
+      "triton_us": 16.38,
+      "speedup": 1.115,
+      "rel_err": 0.0007109,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_silu_mlp",
+      "shape": "M=2048,H=128",
+      "torch_us": 18.43,
+      "triton_us": 16.38,
+      "speedup": 1.125,
+      "rel_err": 0.000886,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_silu_mlp",
+      "shape": "M=8192,H=128",
+      "torch_us": 28.26,
+      "triton_us": 26.5,
+      "speedup": 1.066,
+      "rel_err": 0.0006962,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_silu_mlp",
+      "shape": "M=32768,H=128",
+      "torch_us": 57.95,
+      "triton_us": 55.3,
+      "speedup": 1.048,
+      "rel_err": 0.0008064,
+      "numerically_ok": true
+    },
+    {
+      "op": "act_proj",
+      "shape": "M=405,H=128",
+      "torch_us": 12.38,
+      "triton_us": 8.19,
+      "speedup": 1.512,
+      "rel_err": 0.0008056,
+      "numerically_ok": true
+    },
+    {
+      "op": "act_proj",
+      "shape": "M=736,H=128",
+      "torch_us": 14.3,
+      "triton_us": 8.19,
+      "speedup": 1.746,
+      "rel_err": 0.0008389,
+      "numerically_ok": true
+    },
+    {
+      "op": "act_proj",
+      "shape": "M=2048,H=128",
+      "torch_us": 14.37,
+      "triton_us": 8.19,
+      "speedup": 1.754,
+      "rel_err": 0.0008463,
+      "numerically_ok": true
+    },
+    {
+      "op": "act_proj",
+      "shape": "M=8192,H=128",
+      "torch_us": 20.51,
+      "triton_us": 12.29,
+      "speedup": 1.669,
+      "rel_err": 0.0007914,
+      "numerically_ok": true
+    },
+    {
+      "op": "act_proj",
+      "shape": "M=32768,H=128",
+      "torch_us": 53.57,
+      "triton_us": 22.66,
+      "speedup": 2.364,
+      "rel_err": 0.0007668,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_layer_norm",
+      "shape": "M=405,D=128",
+      "torch_us": 6.27,
+      "triton_us": 6.11,
+      "speedup": 1.026,
+      "rel_err": 1.538e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_layer_norm",
+      "shape": "M=2048,D=128",
+      "torch_us": 8.19,
+      "triton_us": 6.14,
+      "speedup": 1.333,
+      "rel_err": 1.528e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_layer_norm",
+      "shape": "M=8192,D=256",
+      "torch_us": 14.62,
+      "triton_us": 12.29,
+      "speedup": 1.19,
+      "rel_err": 1.927e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "softmax_last_dim",
+      "shape": "M=405,D=128",
+      "torch_us": 6.18,
+      "triton_us": 4.54,
+      "speedup": 1.359,
+      "rel_err": 1.114e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "softmax_last_dim",
+      "shape": "M=2048,D=128",
+      "torch_us": 6.24,
+      "triton_us": 6.11,
+      "speedup": 1.021,
+      "rel_err": 1.242e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "softmax_last_dim",
+      "shape": "M=8192,D=256",
+      "torch_us": 12.26,
+      "triton_us": 12.38,
+      "speedup": 0.99,
+      "rel_err": 9.784e-08,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_residual_add",
+      "shape": "N=405x128",
+      "torch_us": 6.29,
+      "triton_us": 6.24,
+      "speedup": 1.008,
+      "rel_err": 0.0,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_residual_add",
+      "shape": "N=8192x128",
+      "torch_us": 12.32,
+      "triton_us": 10.24,
+      "speedup": 1.203,
+      "rel_err": 0.0,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_residual_add",
+      "shape": "N=32768x128",
+      "torch_us": 48.99,
+      "triton_us": 38.78,
+      "speedup": 1.263,
+      "rel_err": 0.0,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_cross_entropy",
+      "shape": "M=405,C=5",
+      "torch_us": 12.29,
+      "triton_us": 60.03,
+      "speedup": 0.205,
+      "rel_err": 0.0,
+      "numerically_ok": true
+    },
+    {
+      "op": "fused_cross_entropy",
+      "shape": "M=8192,C=5",
+      "torch_us": 16.38,
+      "triton_us": 61.66,
+      "speedup": 0.266,
+      "rel_err": 6.04e-08,
+      "numerically_ok": true
+    },
+    {
+      "op": "aggregate_vectors",
+      "shape": "N=736,E=1200",
+      "torch_us": 12.29,
+      "triton_us": 11.26,
+      "speedup": 1.091,
+      "rel_err": 8.818e-08,
+      "numerically_ok": true
+    },
+    {
+      "op": "aggregate_vectors",
+      "shape": "N=2048,E=16384",
+      "torch_us": 12.42,
+      "triton_us": 17.41,
+      "speedup": 0.713,
+      "rel_err": 1.158e-07,
+      "numerically_ok": true
+    },
+    {
+      "op": "aggregate_vectors",
+      "shape": "N=16384,E=131072",
+      "torch_us": 14.34,
+      "triton_us": 70.66,
+      "speedup": 0.203,
+      "rel_err": 1.824e-07,
+      "numerically_ok": true
+    }
+  ],
+  "enabled_ops": [
+    "act_proj",
+    "fused_layer_norm",
+    "fused_residual_add",
+    "fused_silu_mlp"
+  ],
+  "disabled_ops": [
+    "aggregate_vectors",
+    "fused_cross_entropy",
+    "softmax_last_dim"
+  ]
+}

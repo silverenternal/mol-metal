@@ -13,6 +13,22 @@ and ``.../mlp.py``) and adapts it to the MolFlow-Triton constraints:
 - **FP32 throughout.** MolFlow-Triton autograd shims operate on FP32 hidden
   states, so the kernels keep ``tl.float32`` accumulators.
 
+Backend split (2026-10-23)
+--------------------------
+The module was written for gfx1101 and the second-projection kernel
+(:func:`_fused_mlp_act_proj_kernel`) was **disabled repo-wide** because it
+corrupted every N-tile past the first one under ``triton-rocm==3.8.0``.
+The public functions therefore ran a pure-PyTorch chain and delivered no
+speed-up at all.
+
+That defect does not reproduce on CUDA Blackwell.  MEASURED on RTX PRO
+6000 (``sm_120``), triton 3.8.0: max relative error 1.5e-3 (``tl.dot``
+tf32, matching PyTorch's own tf32 GEMM path) and 1.7-2.3x faster than
+the ``act(pre) @ w2 + b2`` chain across ``M`` in 512..32768.  The kernel
+is now wired on ``cuda`` and stays disabled on ``rocm``; see
+:data:`_ACT_PROJ_BACKENDS`.  ``TRITON_DOT_PRECISION=ieee`` restores FP32
+``tl.dot`` for bit-exactness comparisons.
+
 Public API
 ----------
 
@@ -47,7 +63,19 @@ import torch
 import triton
 import triton.language as tl
 
-from .autotune import AUTOTUNE_CONFIGS
+from .autotune import AUTOTUNE_CONFIGS, AUTOTUNE_CONFIGS_CUDA, AUTOTUNE_CONFIGS_ROCM
+from .backend import active_backend, dot_precision
+
+
+#: Backends on which :func:`_fused_mlp_act_proj_kernel` is known correct.
+#:
+#: ``rocm`` is excluded on evidence, not superstition: under
+#: ``triton-rocm==3.8.0`` on gfx1101 the kernel writes the first N-tile
+#: correctly and every tile after it with O(1) FP32 noise amplified to
+#: O(N) corruption (``TODO/fused_mlp_task.md``).  ``cuda`` was verified
+#: tile-by-tile on ``sm_120`` on 2026-10-23 across square and non-square
+#: ``(H1, H2)``.
+_ACT_PROJ_BACKENDS = ("cuda",)
 
 
 # ---------------------------------------------------------------------------
@@ -142,21 +170,48 @@ def _gelu_tanh_grad_fp32(x):
 # post-activation never leaves registers.
 # ---------------------------------------------------------------------------
 def _mlp_act_proj_configs() -> list[triton.Config]:
-    # Trimmed grid: 4 tiles x 2 warps x 2 stages = 16 configs.  gfx1101's
-    # small per-program LDS budget means the bigger BLOCK_N=128 tiles are
-    # rarely chosen at the EGNN shapes we care about (H1 <= 256); the
-    # 64-wide tiles hit the sweet spot.  First-call autotune latency is
-    # ~20 s instead of minutes with this grid.
+    """Autotune grid for :func:`_fused_mlp_act_proj_kernel`.
+
+    ``rocm`` / gfx1101: 4 tiles x 2 warps x 2 stages = 16 configs.  The
+    small per-program LDS budget means the bigger BLOCK_N=128 tiles are
+    rarely chosen at the EGNN shapes we care about (H1 <= 256); the
+    64-wide tiles hit the sweet spot, and a 16-config grid keeps first-call
+    autotune latency at ~20 s instead of minutes.
+
+    ``cuda`` / Blackwell: 8 tiles x 2 warps x 2 stages = 32 configs.  A
+    Blackwell SM holds 128 KB of registers and ~228 KB of shared memory,
+    so the 128-wide N tiles and the 128-deep K tile are all reachable —
+    the EGNN's H1=128 is one K-tile at BLOCK_K=128, which is where the
+    measured 1.7-2.3x comes from.  ``num_warps=8`` is included because
+    Blackwell schedules 4 warp slots per SM and a (128, 128) tile needs
+    more than 4 warps to keep the tensor cores fed.
+    """
+    if active_backend() == "cuda":
+        tiles = [
+            (32, 64, 32),
+            (64, 64, 32),
+            (64, 128, 32),
+            (128, 64, 32),
+            (32, 64, 64),
+            (64, 64, 64),
+            (64, 128, 64),
+            (64, 64, 128),
+        ]
+        warps = (4, 8)
+        stages = (2, 3)
+    else:
+        tiles = [
+            (32, 64, 32),
+            (64, 64, 32),
+            (32, 64, 64),
+            (64, 64, 64),
+        ]
+        warps = (2, 4)
+        stages = (2, 3)
     cfgs: list[triton.Config] = []
-    tiles = [
-        (32, 64, 32),
-        (64, 64, 32),
-        (32, 64, 64),
-        (64, 64, 64),
-    ]
     for bm, bn, bk in tiles:
-        for num_warps in (2, 4):
-            for num_stages in (2, 3):
+        for num_warps in warps:
+            for num_stages in stages:
                 cfgs.append(
                     triton.Config(
                         {
@@ -200,6 +255,9 @@ def _fused_mlp_act_proj_kernel(
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    # ``tl.dot`` input precision.  "tf32" is the Blackwell default and what
+    # the measured speed-ups were taken at; "ieee" is the FP32 path.
+    PRECISION: tl.constexpr,
 ):
     """Fused activation + down projection: ``y = act(pre) @ W2 + b2``.
 
@@ -248,7 +306,7 @@ def _fused_mlp_act_proj_kernel(
             mask=(k_abs[:, None] < H1) & mask_n[None, :],
             other=0.0,
         )
-        acc = tl.dot(post_blk, w2_blk, acc=acc)
+        acc = tl.dot(post_blk, w2_blk, acc=acc, input_precision=PRECISION)
         pre_ptrs += BLOCK_K * stride_pren
         w2_ptrs += BLOCK_K * stride_w2n
 
@@ -613,6 +671,62 @@ def _flatten_last(x: torch.Tensor) -> torch.Tensor:
     return x.reshape(-1, x.shape[-1])
 
 
+def _act_proj(
+    pre: torch.Tensor,
+    w2: torch.Tensor,
+    b2: Optional[torch.Tensor],
+    act: int,
+) -> torch.Tensor:
+    """``y = act(pre) @ w2 + b2`` with ``pre`` (M, H1) and ``w2`` (H1, H2).
+
+    ``act`` is an INT constexpr: ``0`` is SiLU, any other value is GELU
+    (``approximate="tanh"``).  It reaches the kernel as ``ACT``, where the
+    test is ``ACT == 0``, so passing the string ``"silu"`` selects GELU and
+    returns a wrong result rather than raising.
+
+    Triton on CUDA, PyTorch elsewhere.  The activation never leaves
+    registers on the Triton path, which is where the speed-up comes from;
+    on the PyTorch path it is materialised as a (M, H1) HBM tensor that
+    autograd also has to save.
+    """
+    if active_backend() not in _ACT_PROJ_BACKENDS or not pre.is_cuda:
+        post = (
+            torch.nn.functional.silu(pre)
+            if act == 0
+            else torch.nn.functional.gelu(pre, approximate="tanh")
+        )
+        out = post @ w2
+        return out if b2 is None else out + b2
+
+    _check_cuda_pointers({"pre": pre, "w2": w2, "b2": b2})
+    m, h1 = int(pre.shape[0]), int(pre.shape[1])
+    h2 = int(w2.shape[1])
+    out = torch.empty((m, h2), dtype=pre.dtype, device=pre.device)
+    grid = lambda meta: (  # noqa: E731 - triton's grid-callable form
+        triton.cdiv(m, meta["BLOCK_M"]),
+        triton.cdiv(h2, meta["BLOCK_N"]),
+    )
+    _fused_mlp_act_proj_kernel[grid](
+        pre,
+        w2,
+        b2 if b2 is not None else pre,  # unused pointer when HAS_B2=False
+        out,
+        m,
+        h1,
+        h2,
+        pre.stride(0),
+        pre.stride(1),
+        w2.stride(0),
+        w2.stride(1),
+        out.stride(0),
+        out.stride(1),
+        ACT=act,
+        HAS_B2=b2 is not None,
+        PRECISION=dot_precision(),
+    )
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -671,30 +785,16 @@ def _fused_mlp_forward(
         if b2.shape != (H2,):
             raise ValueError(f"b2.shape={tuple(b2.shape)} != ({H2},)")
 
-    out2 = torch.empty((M, H2), dtype=x2.dtype, device=x2.device)
-
-    # Step 1: pre = x @ w1 + b1  (torch.matmul; this is well-tuned on gfx1101).
+    # Step 1: pre = x @ w1 + b1  (torch.matmul; cuBLAS owns this GEMM).
     pre = x2 @ w1c
     if b1 is not None:
         pre = pre + b1
 
-    # Step 2: out = act(pre) @ w2 + b2.  We use a pure-PyTorch path here
-    # because the Triton :func:`_fused_mlp_act_proj_kernel` exposed in
-    # this module has a multi-tile correctness bug on gfx1101 (per-tile
-    # outputs past the first N-tile diverge by O(1) FP32 noise turned
-    # O(N) corruption) and is unsafe to call in production.  The kernel
-    # remains available for inspection / future debugging — see
-    # ``TODO/fused_mlp_task.md`` for the analysis — but is not wired
-    # into the public API path.
-    if act == 0:
-        post = torch.nn.functional.silu(pre)
-    else:
-        post = torch.nn.functional.gelu(pre, approximate="tanh")
-    out2 = post @ w2c
-    if b2 is not None:
-        out2 = out2 + b2
-
-    return out2.view(*x.shape[:-1], H2)
+    # Step 2: out = act(pre) @ w2 + b2, fused on CUDA (see _act_proj).
+    # The multi-tile corruption that used to make this a pure-PyTorch call
+    # is gfx1101-specific; on Blackwell the kernel is correct and 1.7-2.3x
+    # faster, so the dispatch is per-backend rather than globally off.
+    return _act_proj(pre, w2c, b2, act).view(*x.shape[:-1], H2)
 
 
 # ---------------------------------------------------------------------------
@@ -733,14 +833,12 @@ class _FusedMLPFunction(torch.autograd.Function):
         pre = x2 @ w1  # (M, H1)
         if b1 is not None:
             pre = pre + b1
-        # Apply activation.
-        if act == 0:
-            post = torch.nn.functional.silu(pre)
-        else:
-            post = torch.nn.functional.gelu(pre, approximate="tanh")
-        out = post @ w2  # (M, H2)
-        if b2 is not None:
-            out = out + b2
+        # Step 2 is fused on CUDA: the activation is consumed inside the
+        # down-projection kernel and never reaches HBM, so the (M, H1)
+        # post-activation is not an autograd-saved tensor.  Backward
+        # recomputes it from `pre` (see below), which is the same
+        # recompute-instead-of-store trade Liger makes.
+        out = _act_proj(pre, w2, b2, act)
 
         ctx.save_for_backward(x, pre, w1, w2)
         ctx.b1_provided = b1 is not None
@@ -833,7 +931,24 @@ def fused_silu_mlp(
     Returns
     -------
     ``(..., H2)`` tensor with the same dtype/device as ``x``.
+
+    Notes
+    -----
+    CPU inputs fall back to the plain PyTorch chain.  That matters now
+    that the dispatch gate defaults ON for CUDA: the callers gate on
+    ``TritonConfig.use_fused_mlp``, which only sees the feature widths,
+    so a CPU forward in a CUDA-capable process would otherwise reach
+    the Triton launcher and raise.  Same contract as
+    :func:`triton_kernels.fused_residual_add`.
     """
+    if not x.is_cuda:
+        # Same (in, out) weight convention as the CUDA path: w1 is (D, H1)
+        # and w2 is (H1, H2), so these are plain matmuls, not F.linear.
+        pre = x @ w1
+        if b1 is not None:
+            pre = pre + b1
+        out = torch.nn.functional.silu(pre) @ w2
+        return out if b2 is None else out + b2
     return _FusedMLPFunction.apply(x, w1, b1, w2, b2, 0)
 
 
@@ -844,7 +959,16 @@ def fused_gelu_mlp(
     w2: torch.Tensor,
     b2: Optional[torch.Tensor],
 ) -> torch.Tensor:
-    """Fused ``GELU(Linear(x, W1, b1)) @ W2.T + b2`` (tanh approximation)."""
+    """Fused ``GELU(Linear(x, W1, b1)) @ W2.T + b2`` (tanh approximation).
+
+    CPU inputs fall back to PyTorch, as in :func:`fused_silu_mlp`.
+    """
+    if not x.is_cuda:
+        pre = x @ w1
+        if b1 is not None:
+            pre = pre + b1
+        out = torch.nn.functional.gelu(pre, approximate="tanh") @ w2
+        return out if b2 is None else out + b2
     return _FusedMLPFunction.apply(x, w1, b1, w2, b2, 1)
 
 

@@ -346,7 +346,64 @@ Artifacts: `metrics/by_metric/wfa108d_regime_gate.json` (all arms),
 `metrics/by_metric/wfa108d_t_sensitivity*.json` (three fields),
 `results/wfa108d_fields/*.pt` (the trained fields the probes read).
 
-## 7. References
+## 7. Wf-A108g — the cost of the field, measured before adding to it
+
+The head survey above answers what the field should predict. Before spending another
+budget run on it, this wave asked what one forward of it actually costs, because two
+assumptions in the arm's configuration turned out to be wrong.
+
+**The memory is padding, not parameters.** On the 64-cloud MetalCytoToxDB cohort the atom
+counts run 16 / 38 / 225 (min / median / max) with mean 46.2. Padding every cloud to the
+batch maximum puts 2,957 real atoms into 14,400 slots, so 79.5% of the padded atom batch
+and 83.6% of the edge slots are zeros. `CFMJointModel._fm_chunk_plan` sorts clouds by size
+and cuts the batch when the next cloud exceeds `ratio * min(group)`, so each group's pad
+width follows its own molecules. The split is exact: the radius graph is block-diagonal and
+`node_mask` drops every padded endpoint, so clouds cannot interact inside one forward. The
+legacy radial head is the exception, because its centroid is a mean over the padded width;
+`_fm_padding_invariant` gates on that and leaves chunking off for it.
+
+**The forward is dispatch-bound below B = 64.** `torch.profiler` on a two-cloud forward
+reads 4.29 ms of self CPU against 0.64 ms of self CUDA, with 23 `aten::linear` and 9
+`_ScatterSum` launches per call. Each extra group therefore costs about 3 ms no matter how
+few atoms it holds, and grouping at the arm's own `batch_size: 8` is a loss: 1.9-3.5x the
+time for 1.65-2.10x the memory on a 41 MB footprint.
+
+| batch | ratio | peak MB | ms | memory | time |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 0.00 | 41.18 | 3.30 | 1.00x | 1.00x |
+| 8 | 2.00 | 25.00 | 6.34 | 1.65x | 1.92x |
+| 64 | 0.00 | 1,254.07 | 13.20 | 1.00x | 1.00x |
+| 64 | 2.00 | 157.05 | 13.90 | 7.99x | 1.05x |
+| 127 | 0.00 | 3,005.34 | 30.27 | 1.00x | 1.00x |
+| 127 | 2.00 | 356.36 | 16.29 | 8.43x | 0.54x |
+| 255 | 0.00 | 6,036.70 | 61.50 | 1.00x | 1.00x |
+| 255 | 1.25 | 240.57 | 40.15 | 25.09x | 0.65x |
+| 255 | 2.00 | 673.56 | 29.76 | 8.96x | 0.48x |
+
+Above B = 64 the same mechanism reverses: once the padded GPU work exceeds the dispatch
+floor, removing the pad saves more than the extra launches cost. At B = 255 with
+`ratio 2.0` the forward is 9.0x smaller and 2.1x faster than unchunked, and throughput per
+atom is 2.5 us against 4.5 us at the unchunked B = 64.
+
+**What this changes for the head programme.** Nothing about which head is right, and one
+thing about how the next arm is measured. Batch 8 is not a constraint this card imposes:
+unchunked B = 8 and B = 32 cost 3.30 ms and 4.22 ms for 405 and 1,289 atoms, which is 3.2x
+the data for 1.28x the time. Any future head comparison that runs at B = 8 is spending
+most of its wall clock on dispatch and none of it on the question. `fm_batch_chunk_ratio`
+stays at its 0.0 default; it becomes worth setting to 2.0 at the same time the batch is
+widened, and widening the batch is a change to the training protocol that this wave does
+not make.
+
+The Triton library under the field was re-measured in the same wave, since it had been
+tuned for gfx1101 and was partly disabled for a defect specific to that part. Four of its
+seven ops are now enabled on CUDA (the activation-plus-projection kernel at 1.5-2.4x is
+the largest) and three are refused because they lose on at least one shape. Details and
+the refusal rule are in `docs/HONEST_NEGATIVE_CATALOG.md` §6.189.
+
+Artifacts: `metrics/by_metric/wfa108g_batch_chunk_memory.json`,
+`metrics/by_metric/triton_blackwell_bench.json`.
+
+## 8. References
 
 * Satorras, Hoogeboom, Welling. *E(n) Equivariant Graph Neural Networks.* ICML 2021. arXiv:2102.09844.
 * Thomas et al. *Tensor Field Networks.* arXiv:1802.08219.

@@ -9,9 +9,21 @@ Two operations are exposed:
   axis-angle representation, used to apply or compose SE(3)
   transformations.
 
-Both kernels target AMD ROCm GPUs (``gfx1101``) via
-``triton-rocm==3.8.0`` and avoid features that 3.8 does not support
-(for example ``tl.dot`` with integer operands or FP8 dtypes).
+Both kernels run on CUDA Blackwell (``sm_120``) and on AMD ROCm
+(``gfx1101``) via ``triton-rocm==3.8.0``.  They avoid features the ROCm
+backend does not support (for example ``tl.dot`` with integer operands or
+FP8 dtypes) so the same source compiles on both.
+
+Dispatch note
+-------------
+:func:`aggregate_vectors` is a one-program-per-edge ``tl.atomic_add``
+scatter.  MEASURED on ``sm_120`` (2026-10-23,
+``metrics/by_metric/triton_blackwell_bench.json``) it beats
+``index_add_`` only below ~1.2 k edges and loses by up to 5x above
+128 k edges, so :data:`triton_kernels.config.MEASURED_OP_ALLOWLIST`
+refuses it on CUDA and callers fall back to ``Tensor.index_add_``.
+The kernel is kept because it is the correct primitive on ROCm and the
+reference for the scatter semantics.
 """
 
 from __future__ import annotations

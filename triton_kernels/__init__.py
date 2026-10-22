@@ -1,14 +1,21 @@
 """MolFlow-Triton low-level Triton kernel library.
 
-This package provides custom GPU kernels for the MolFlow-Triton project,
-targeting AMD ROCm GPUs (gfx1101) via ``triton-rocm==3.8.0``.
+This package provides custom GPU kernels for the MolFlow-Triton project.
+It targets two backends: CUDA Blackwell (``sm_100`` / ``sm_120``) and AMD
+ROCm (``gfx1101``, RDNA3) via ``triton-rocm``.  Which tuning grid and
+which kernels are enabled is decided at import time by
+:mod:`triton_kernels.backend` — the two targets do not share a grid, and
+one kernel that is correct on Blackwell corrupts tiles on gfx1101.
 
 Modules
 -------
+backend
+    Backend / SM-version detection plus the ``tl.dot`` precision policy.
+    Everything else branches on this.
 autotune
-    Shared :func:`triton.autotune` configuration restricted to
-    ``num_warps in {2, 4, 8}`` and ``num_stages in {2, 3, 4}`` — the
-    only knobs that matter on RDNA3 (``waves_per_eu`` is CDNA-only).
+    Shared :func:`triton.autotune` configuration.  Two grids —
+    ``AUTOTUNE_CONFIGS_CUDA`` (Blackwell) and ``AUTOTUNE_CONFIGS_ROCM``
+    (gfx1101) — with ``AUTOTUNE_CONFIGS`` aliasing the active one.
 ode_solver
     Custom ODE integrator step kernels (Euler and RK4) operating on
     batched state vectors of shape ``(batch_size, dim)``.
@@ -21,12 +28,12 @@ fused_norm
     normalization and the affine transform in a single launch.
 matmul
     Reference Triton matmul kernel (port of the canonical
-    ``03-matrix-multiplication.py`` tutorial), with the autotune grid
-    trimmed for gfx1101.
+    ``03-matrix-multiplication.py`` tutorial), with a per-backend
+    autotune grid.
 
 All kernels are written so that no hard-coded device string is
 required: callers pass a :class:`torch.device` (typically
-``torch.device('cuda')``, which on ROCm resolves to the HIP device)
+``torch.device('cuda')``, which resolves to the HIP device on ROCm)
 or rely on ``torch.zeros``/``torch.empty`` to pick the same device
 as the input tensor.
 
@@ -50,6 +57,7 @@ from __future__ import annotations
 # ...).  Do NOT use ``from .matmul import matmul`` here, because that
 # would overwrite the submodule attribute with the function.
 from . import autotune
+from . import backend
 from . import batched_mlp
 from . import config
 from . import equivariant_ops
@@ -67,6 +75,9 @@ from . import ode_solver
 
 # Convenience re-exports at the package root.
 AUTOTUNE_CONFIGS = autotune.AUTOTUNE_CONFIGS
+AUTOTUNE_CONFIGS_CUDA = autotune.AUTOTUNE_CONFIGS_CUDA
+AUTOTUNE_CONFIGS_ROCM = autotune.AUTOTUNE_CONFIGS_ROCM
+AUTOTUNE_CONFIGS_FAST = autotune.AUTOTUNE_CONFIGS_FAST
 autotune_fn = autotune.autotune  # avoid shadowing the submodule
 euler_step = ode_solver.euler_step
 rk4_step = ode_solver.rk4_step
@@ -98,7 +109,12 @@ triton_config = config.triton_config  # process-wide dispatch gate
 __all__ = [
     # Autotune
     "AUTOTUNE_CONFIGS",
+    "AUTOTUNE_CONFIGS_CUDA",
+    "AUTOTUNE_CONFIGS_FAST",
+    "AUTOTUNE_CONFIGS_ROCM",
     "autotune_fn",
+    # Backend detection
+    "backend",
     # ODE integrator
     "euler_step",
     "rk4_step",

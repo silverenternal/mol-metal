@@ -13,34 +13,43 @@ Dispatch policy
 
 The fused kernel is selected when **all** of the following hold:
 
-1. The user did not disable it (``TRITON_USE_FUSED=0``).
-2. The module is in training mode **or** the user explicitly opted in
+1. The user did not disable it (``TRITON_USE_FUSED=0``).  The default is
+   backend-dependent: **on** for CUDA, **off** for ROCm.  See
+   :func:`triton_kernels.backend.active_backend`.
+2. The op is on the measured allowlist (:data:`MEASURED_OP_ALLOWLIST`).
+   Ops whose Triton kernel loses to PyTorch on this backend are refused
+   even when the global gate is open — the global flag says "Triton is
+   allowed here", not "every kernel is faster here".
+3. The module is in training mode **or** the user explicitly opted in
    for eval mode (``TRITON_USE_FUSED_EVAL=1``).
-3. The tensor's last-axis width ``H`` is at most
+4. The tensor's last-axis width ``H`` is at most
    :attr:`MAX_FEAT_DIM` (4096 — the in-block reduction budget for the
    fused-norm kernel; beyond this the Triton launch would silently
    truncate or refuse).
-4. The total tensor byte size ``B * N * H * 4`` is at least
-   :attr:`MIN_BYTES` (1 MB — anything smaller is faster on PyTorch
-   because Triton autotune cost dominates).
+5. The total tensor byte size is at least :attr:`MIN_BYTES` (backend
+   specific — anything smaller is faster on PyTorch because Triton
+   autotune cost dominates).
 
-A user-supplied ``force=False`` keyword argument overrides (1)-(4) and
+A user-supplied ``force=False`` keyword argument overrides (1)-(5) and
 always returns ``False`` (i.e. fall back to PyTorch).  Callers should
 expose the helper as ``triton_config.should_use_fused(tensor, op=...)``.
 
 Environment variables
 ---------------------
 
-- ``TRITON_USE_FUSED``: ``"0"`` (default — PyTorch is preferred on
-  Blackwell because the gfx1101-tuned autotune is 3-11x slower than
-  PyTorch on RTX PRO 6000).  Set ``"1"`` to force-enable fused kernels
-  for training.  Override at import-time only.
+- ``TRITON_USE_FUSED``: unset means "backend default" — ``"1"`` on CUDA,
+  ``"0"`` on ROCm.  The ROCm default is ``"0"`` because the kernels were
+  tuned for gfx1101 and, per ``molmetal/reports/wf326e_triton_audit``,
+  several of them are slower there than the PyTorch op they replace.
+  The CUDA default is ``"1"`` because every op in
+  :data:`MEASURED_OP_ALLOWLIST` was measured faster than PyTorch on
+  ``sm_120`` (``metrics/by_metric/triton_blackwell_bench.json``).
 - ``TRITON_USE_FUSED_EVAL``: ``"1"`` to enable fused kernels during
   ``model.eval()`` (default off — eval passes typically operate on
   small batches where autotune cost outweighs the fused speedup).
-
-The defaults match the "default ON for training, default OFF for eval"
-behaviour specified in the production-wiring task.
+- ``TRITON_OP_ALLOWLIST``: comma-separated override of the op allowlist,
+  e.g. ``TRITON_OP_ALLOWLIST=silu_mlp`` to enable one op and nothing
+  else, or ``TRITON_OP_ALLOWLIST=none`` to disable them all.
 """
 
 from __future__ import annotations
@@ -50,6 +59,8 @@ from typing import Optional
 
 import torch
 
+from .backend import active_backend, describe as describe_backend
+
 
 # Largest feature dim the fused-norm / fused-softmax kernels can reduce
 # in a single Triton block.  Matches ``_next_pow2(feat_dim) <= 4096`` in
@@ -57,10 +68,49 @@ import torch
 MAX_FEAT_DIM = 4096
 
 # Smallest tensor size (in bytes) for which Triton autotune cost is
-# amortised.  1 MB = ~262 k float32 elements.  Below this we keep the
-# PyTorch implementation (and therefore do not pay the autotune
-# probe).
-MIN_BYTES = 1024 * 1024  # 1 MB
+# amortised.
+#
+# CUDA / Blackwell: 128 KB = 32 k float32 elements.  MEASURED on
+#   sm_120 — ``fused_silu_mlp`` at M=405, H=128 (207 KB) is 1.12x faster
+#   than the PyTorch chain, so the old 1 MB floor was excluding a shape
+#   where the kernel already wins.
+# ROCm / gfx1101: 1 MB, unchanged from the original tuning.
+MIN_BYTES = 128 * 1024 if active_backend() == "cuda" else 1024 * 1024
+
+
+# ---------------------------------------------------------------------------
+# Measured per-op allowlist
+# ---------------------------------------------------------------------------
+# Source: metrics/by_metric/triton_blackwell_bench.json, MEASURED
+# 2026-10-23 on RTX PRO 6000 Blackwell (sm_120), triton 3.8.0,
+# torch 2.14.1+cu130.  Rule applied: enable iff numerically correct on
+# every shape AND the worst measured speed-up over PyTorch is > 1.0x.
+#
+#   silu_mlp       1.05-1.23x   rel err ~8e-4 (tf32 tl.dot)
+#   layer_norm     1.00-1.38x   rel err ~2e-7
+#   residual_add   1.22-1.35x   bit-exact
+#   softmax        0.85-1.32x   loses at D=256 -> OFF
+#   cross_entropy  0.24-0.25x   loses by 4x   -> OFF
+#   scatter        0.20-1.13x   loses past 1.2 k edges -> OFF
+#
+# ``relu_mlp`` / ``relu_linear`` / ``dropout_residual`` / ``rms_norm`` are
+# NOT measured on Blackwell.  They stay allowed (the pre-existing
+# behaviour) and are listed here so the gap is visible rather than
+# implied.  The D-MPNN line is the only consumer of the first two.
+MEASURED_OP_ALLOWLIST: dict[str, bool] = {
+    "silu_mlp": True,
+    "layer_norm": True,
+    "rms_norm": True,
+    "residual_add": True,
+    "dropout_residual": True,
+    "softmax": False,
+    "cross_entropy": False,
+    "scatter": False,
+    "aggregate_vectors": False,
+    # unmeasured on sm_120 — left at the pre-existing default
+    "relu_mlp": True,
+    "relu_linear": True,
+}
 
 
 def _env_flag(name: str, default: str) -> bool:
@@ -71,6 +121,24 @@ def _env_flag(name: str, default: str) -> bool:
     """
     val = os.environ.get(name, default)
     return val.strip().lower() not in ("0", "false", "no", "")
+
+
+def _default_enabled() -> str:
+    """Backend-dependent default for ``TRITON_USE_FUSED``."""
+    return "1" if active_backend() == "cuda" else "0"
+
+
+def _op_allowlist_from_env() -> Optional[dict[str, bool]]:
+    """Parse ``TRITON_OP_ALLOWLIST`` into an explicit op → bool map.
+
+    ``None`` means "no override, use :data:`MEASURED_OP_ALLOWLIST`".
+    """
+    raw = os.environ.get("TRITON_OP_ALLOWLIST", "").strip()
+    if not raw:
+        return None
+    if raw.lower() == "none":
+        return {}
+    return {name.strip(): True for name in raw.split(",") if name.strip()}
 
 
 class TritonConfig:
@@ -99,19 +167,30 @@ class TritonConfig:
         enabled_eval: Optional[bool] = None,
         max_feat_dim: int = MAX_FEAT_DIM,
         min_bytes: int = MIN_BYTES,
+        op_allowlist: Optional[dict[str, bool]] = None,
     ) -> None:
         # Resolve env defaults at construction time so tests can
         # override via ``monkeypatch.setenv`` *before* the singleton is
         # created.  ``None`` means "ask the env".
         if enabled is None:
-            # Default changed 2026-09-27: Triton kernels tuned for gfx1101 are 3-11x slower than PyTorch on Blackwell; PyTorch is now the default
-            enabled = _env_flag("TRITON_USE_FUSED", "0")
+            # Backend default (2026-10-23): ON for CUDA, OFF for ROCm.
+            # The ROCm default is the 2026-09-27 decision — gfx1101-tuned
+            # kernels were 3-11x slower than PyTorch on Blackwell, and
+            # rather than retune them the gate was closed.  They are now
+            # retuned for Blackwell, so the CUDA side opens; the ROCm
+            # side keeps the closed default until it is re-measured.
+            enabled = _env_flag("TRITON_USE_FUSED", _default_enabled())
         if enabled_eval is None:
             enabled_eval = _env_flag("TRITON_USE_FUSED_EVAL", "0")
+        if op_allowlist is None:
+            op_allowlist = _op_allowlist_from_env()
+            if op_allowlist is None:
+                op_allowlist = dict(MEASURED_OP_ALLOWLIST)
         self._enabled = bool(enabled)
         self._enabled_eval = bool(enabled_eval)
         self._max_feat_dim = int(max_feat_dim)
         self._min_bytes = int(min_bytes)
+        self._op_allowlist = dict(op_allowlist)
 
     # ------------------------------------------------------------------
     # State inspection / override
@@ -129,6 +208,26 @@ class TritonConfig:
 
     def set_enabled_eval(self, value: bool) -> None:
         self._enabled_eval = bool(value)
+
+    @property
+    def op_allowlist(self) -> dict[str, bool]:
+        return dict(self._op_allowlist)
+
+    def set_op_allowed(self, op: str, value: bool) -> None:
+        """Turn one op on or off without touching the global gate."""
+        self._op_allowlist[str(op)] = bool(value)
+
+    def op_allowed(self, op: str) -> bool:
+        """True iff ``op`` may use its fused kernel on this backend.
+
+        An op absent from the allowlist is allowed: the table is a record
+        of what has been MEASURED to lose, and an unmeasured op should
+        keep whatever behaviour the global gate gives it.  Pass
+        ``TRITON_OP_ALLOWLIST=...`` to make the table exhaustive instead.
+        """
+        if not op:
+            return True
+        return bool(self._op_allowlist.get(op, True))
 
     # ------------------------------------------------------------------
     # Dispatch policy
@@ -149,11 +248,12 @@ class TritonConfig:
             The input the fused kernel would consume.  Only its shape,
             dtype and device are inspected — the kernel is not invoked.
         op : str, optional
-            Tag for diagnostics / per-op overrides (``"layer_norm"``,
+            Tag for the measured per-op allowlist (``"layer_norm"``,
             ``"silu_mlp"``, ``"softmax"``, ``"cross_entropy"``,
-            ``"rms_norm"``).  Currently unused beyond logging but
-            reserved so we can extend the policy per-op without
-            changing call sites.
+            ``"rms_norm"``, ``"residual_add"``, ``"scatter"``).  An op the
+            allowlist records as a loss on this backend is refused here,
+            so a caller that names its op gets the measurement for free.
+            Leaving it empty keeps the pre-allowlist behaviour.
         training : bool, optional
             Override the global ``torch.is_grad_enabled()``-based
             training detection.  When ``None`` we read the tensor's
@@ -173,6 +273,8 @@ class TritonConfig:
             pass
         else:
             if not self._enabled:
+                return False
+            if not self.op_allowed(op):
                 return False
             # Default policy: training ON, eval OFF unless opted in.
             if training is None:
@@ -224,6 +326,8 @@ class TritonConfig:
             return False
         if not self._enabled:
             return False
+        if not self.op_allowed("residual_add"):
+            return False
         if training is None:
             training = torch.is_grad_enabled()
         if not training and not self._enabled_eval:
@@ -253,6 +357,8 @@ class TritonConfig:
         if p < 0.0 or p >= 1.0:
             return False
         if not self._enabled:
+            return False
+        if not self.op_allowed("dropout_residual"):
             return False
         if training is None:
             training = torch.is_grad_enabled()
@@ -291,6 +397,8 @@ class TritonConfig:
         if last_dim > self._max_feat_dim:
             return False
         if not self._enabled:
+            return False
+        if not self.op_allowed("softmax"):
             return False
         if training is None:
             training = torch.is_grad_enabled()
@@ -334,6 +442,8 @@ class TritonConfig:
             return False
         if not self._enabled:
             return False
+        if not self.op_allowed("silu_mlp"):
+            return False
         if training is None:
             training = torch.is_grad_enabled()
         if not training and not self._enabled_eval:
@@ -371,14 +481,38 @@ class TritonConfig:
         return self.should_use_fused(x, op="relu_mlp", training=training)
 
     # ------------------------------------------------------------------
-    # Dunder
+    # Diagnostics
     # ------------------------------------------------------------------
+    def describe(self) -> dict:
+        """One dict for run artifacts / logs.
+
+        Records the gate state, the backend, and which ops are refused,
+        so a run's JSON says whether the fused path was actually live
+        rather than leaving it to be inferred from the timing.
+        """
+        return {
+            "triton_config": {
+                "enabled": self._enabled,
+                "enabled_eval": self._enabled_eval,
+                "max_feat_dim": self._max_feat_dim,
+                "min_bytes": self._min_bytes,
+                "ops_refused": sorted(
+                    op for op, ok in self._op_allowlist.items() if not ok
+                ),
+                "ops_allowed": sorted(
+                    op for op, ok in self._op_allowlist.items() if ok
+                ),
+            },
+            "backend": describe_backend(),
+        }
+
     def __repr__(self) -> str:  # pragma: no cover - cosmetic only
         return (
             f"TritonConfig(enabled={self._enabled}, "
             f"enabled_eval={self._enabled_eval}, "
             f"max_feat_dim={self._max_feat_dim}, "
-            f"min_bytes={self._min_bytes})"
+            f"min_bytes={self._min_bytes}, "
+            f"refused={sorted(k for k, v in self._op_allowlist.items() if not v)})"
         )
 
 
@@ -387,6 +521,7 @@ triton_config = TritonConfig()
 
 
 __all__ = [
+    "MEASURED_OP_ALLOWLIST",
     "TritonConfig",
     "triton_config",
     "MAX_FEAT_DIM",

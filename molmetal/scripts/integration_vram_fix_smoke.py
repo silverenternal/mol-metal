@@ -59,7 +59,6 @@ Exit codes
 
 from __future__ import annotations
 
-import os
 import sys
 import time
 import traceback
@@ -272,10 +271,6 @@ def main() -> int:
     n_steps = 3
     print(
         f"[smoke] device={device} torch.cuda.is_available()={_torch.cuda.is_available()}"
-    )
-    print(
-        f"[smoke] gfx1101 env vars: PYTORCH_HIP_ALLOC_CONF={os.environ.get('PYTORCH_HIP_ALLOC_CONF')!r}, "
-        f"TORCH_BLAS_PREFER_HIPBLASLT={os.environ.get('TORCH_BLAS_PREFER_HIPBLASLT')!r}"
     )
 
     h, x, edge_index = _make_inputs(device)

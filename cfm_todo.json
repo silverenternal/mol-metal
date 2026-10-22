@@ -144,7 +144,8 @@
       "20 GB 是 batch-32 的数字，不是 batch-64 的。batch 32 真实峰值 11.5-36.8 GB；batch 64 是 34.3-56.7 GB。要让 batch-64 的语义压进 20 GB 需要梯度累积（2 x 32），这个 trainer 没有；改 batch_size 会改变每 epoch 的 optimizer steps（418 -> 835），那是另一个 run，不是同一个 run 的更省显存版本。",
       "即使 allocated 平坦，peak_alloc 在一个 epoch 内仍会涨（batch 32 下 128 步内 11.5 -> 36.8 GB）。涨的是每步的瞬时量，由每个 batch 里最大的几朵云驱动（语料 median 34 原子、max 146），不是保留状态。要进一步压住需要给 pair 张量设上限，那是模型改动，不是分配器改动。",
       "本轮所有数字都是在同一张卡上另有一个外部 11.3 GB 进程（用户的 lineageflow）时取的；部分 arm 还和另一个 agent 的冷启动 C7 抢过卡（该 run 已按用户授权 kill）。",
-      "+51% 是 4096 云的数；在 26,715 云上这个比例不存在（对照 arm 放不下）。把它外推到全语料就是跨 6.5x 步数变化的外推，正是 §6.150b 栽过的坑。"
+      "+51% 是 4096 云的数；在 26,715 云上这个比例不存在（对照 arm 放不下）。把它外推到全语料就是跨 6.5x 步数变化的外推，正是 §6.150b 栽过的坑。",
+      "§8 的显存数字是本轮 Wf-A108g 在 GPU0 空闲时测的（0% util, 2 MiB used），与 §1-§7 那轮（同卡有外部 11.3 GB 进程）不是同一环境；两轮的峰值不可直接相减。"
     ],
     "artifacts": {
       "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.150c（含完整表格与更正）",
@@ -156,6 +157,119 @@
         "configs/c7_b32_4096_2026_10_20.yaml"
       ],
       "resume_config": "configs/c7_c7resume_b32_2026_10_21.yaml"
+    },
+    "8_wfa108g_padding_and_dispatch_2026_10_23": {
+      "trigger": "用户指令：『显存优化不是砍模型的参数量，关键在于每个batch上多少数据的优化』",
+      "headline": "不是参数量。64 朵真实云的原子数 16/38/225（min/median/max，mean 46.2），pad 到 batch 最大值后 2,957 个真原子占 14,400 个槽位 —— 79.5% 的原子槽和 83.6% 的边槽是 0。按尺寸分组前向后，B=255 的 ratio 2.0 是 9.0x 更省显存且 2.1x 更快；但在 arm 自己的 batch_size 8 上分组是净亏（1.65-2.10x 显存换 1.92-3.51x 时间），因为前向在该宽度是 CPU-dispatch-bound。",
+      "mechanism": "CFMJointModel._fm_chunk_plan 按原子数排序，下一个云超过 ratio*min(group) 就切组；_fm_field_forward 每组跑一次 padded 前向并在真实行上合并。精确而非近似：半径图是块对角的，node_mask 丢掉所有 pad 端点。legacy radial head 的 centroid 是对 padded 宽度求均值，_fm_padding_invariant 会把它挡掉。",
+      "bug_found": "initial_vector_channels 的 donor 掩码漏了 node_mask；pad 原子在原点、落在 2.8 Å 金属壳内，所以 n_max 从 40 变到 50 时 donor_centroid（以及 metal-frame 通道）漂移 7.1e-1（1.47e1 尺度的 5%）。已修，漂移 0.000e+00。",
+      "dispatch_bound": "torch.profiler 2 朵云：self CPU 4.29 ms vs self CUDA 0.64 ms，每次前向 23 个 aten::linear + 9 个 _ScatterSum。所以每多一组约 3 ms，与组内原子数无关。",
+      "table_batch_ratio_peak_ms": [
+        {
+          "batch": 8,
+          "ratio": 0.0,
+          "peak_mb": 41.18,
+          "ms": 3.3,
+          "memory_x": 1.0,
+          "time_x": 1.0
+        },
+        {
+          "batch": 8,
+          "ratio": 2.0,
+          "peak_mb": 25.0,
+          "ms": 6.34,
+          "memory_x": 1.65,
+          "time_x": 1.92
+        },
+        {
+          "batch": 32,
+          "ratio": 0.0,
+          "peak_mb": 283.81,
+          "ms": 4.22,
+          "memory_x": 1.0,
+          "time_x": 1.0
+        },
+        {
+          "batch": 32,
+          "ratio": 2.0,
+          "peak_mb": 58.32,
+          "ms": 10.15,
+          "memory_x": 4.87,
+          "time_x": 2.41
+        },
+        {
+          "batch": 64,
+          "ratio": 0.0,
+          "peak_mb": 1254.07,
+          "ms": 13.2,
+          "memory_x": 1.0,
+          "time_x": 1.0
+        },
+        {
+          "batch": 64,
+          "ratio": 2.0,
+          "peak_mb": 157.05,
+          "ms": 13.9,
+          "memory_x": 7.99,
+          "time_x": 1.05
+        },
+        {
+          "batch": 127,
+          "ratio": 0.0,
+          "peak_mb": 3005.34,
+          "ms": 30.27,
+          "memory_x": 1.0,
+          "time_x": 1.0
+        },
+        {
+          "batch": 127,
+          "ratio": 2.0,
+          "peak_mb": 356.36,
+          "ms": 16.29,
+          "memory_x": 8.43,
+          "time_x": 0.54
+        },
+        {
+          "batch": 255,
+          "ratio": 0.0,
+          "peak_mb": 6036.7,
+          "ms": 61.5,
+          "memory_x": 1.0,
+          "time_x": 1.0
+        },
+        {
+          "batch": 255,
+          "ratio": 1.25,
+          "peak_mb": 240.57,
+          "ms": 40.15,
+          "memory_x": 25.09,
+          "time_x": 0.65
+        },
+        {
+          "batch": 255,
+          "ratio": 2.0,
+          "peak_mb": 673.56,
+          "ms": 29.76,
+          "memory_x": 8.96,
+          "time_x": 0.48
+        }
+      ],
+      "default_and_recommendation": "fm_batch_chunk_ratio 默认 0.0（关闭），因为 batch_size 8 上不划算。batch 加宽到 64 以上时设 2.0：64 处持平，127/255 处更快。加宽 batch 属于训练协议改动，本波次没有做。",
+      "batch8_is_below_the_knee": "unchunked B=8 与 B=32 分别是 3.30 ms 与 4.22 ms（405 vs 1,289 原子）：3.2x 的数据只要 1.28x 的时间。batch 8 是惯例，不是这张卡的限制（97,887 MiB，B=8 时占用 41 MB）。",
+      "honest_boundaries": [
+        "跨进程的计时抖动可达 1.8x（同一未分组 B=8 前向两次测得 4.14 ms 与 7.48 ms），只有同一进程同一 n_clouds 的行可比；artifact 里每行带 stdev。",
+        "只测了 FM 前向，没测完整训练步（bond head 与 decoder 不在本波次），所以步级显存收益小于表中数字，且未量化。",
+        "一个 cohort、一个 seed；64 朵云是 train split 的前缀，不是随机抽样。",
+        "peak 是 max_memory_allocated 不是 max_memory_reserved；保留池更大，差值未测。",
+        "ratio 只扫了 0/1.25/1.5/2.0 四点，1.5-2.0 之间的最优未定位。",
+        "B=127/255 超过该 arm 训练过的任何 batch，是为找拐点构造的合成宽 batch。"
+      ],
+      "artifacts": {
+        "metric": "metrics/by_metric/wfa108g_batch_chunk_memory.json",
+        "script": "molmetal/scripts/wfa108g_batch_chunk_memory.py",
+        "tests": "molmetal/tests/test_wfa108g_batch_chunking.py（11 passed）",
+        "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.188"
+      }
     }
   },
   "results_generation_line": {
