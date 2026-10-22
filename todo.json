@@ -1,7 +1,7 @@
 {
   "schema": 6,
   "created": "2026-10-14",
-  "updated": "2026-10-21",
+  "updated": "2026-10-22",
   "rewritten": "2026-10-21 第二轮（支持度阶段）。删除 UP-1..UP-9 的完整条目（9 项全部有 artifact 与判决，历史在 git log、docs/PREDICTIVE_LINE_INDEX.md §2.7-§2.10、docs/HONEST_NEGATIVE_CATALOG.md §6.153-§6.160）。本文件只保留会改变下一步决策的测量事实与未执行计划。",
   "supersedes": "第一轮（UP-1..UP-9）的结论：4 条 north_star 判据仍 2/4；交互约束、3D 配位、eRAC、预训练、多任务、k-shot、集成七条路全部实测失败；唯一真增益是 listwise 排序 balanced 0.5985 与条件覆盖 0.8956。",
   "purpose": "第一轮证明了「换模型类没用」。第二轮换问题：不是 shape 学不学得会，而是**语料里有没有能学 shape 的配对**。本轮的每一项都先测支持度，再谈建模；目标是给出「哪些金属对可学、哪些不可学」的边界，而不是再赌一个模型。",
@@ -39,7 +39,10 @@
       "另外两个端点的配对：phototoxicity 0 组；cisplatin_ratio 169 组 / 353 行，金属对与 potency 完全相同（Os–Ru 128 / Ir–Rh 34 / Rh–Ru 7）。",
       "可分性（|Δ|/SD，UP-10）：Ru–Os 0.592（354 组、121 配体）、Ir–Rh **0.115**（170 组、73 配体）——两个「有支持」的金属对，其典型替换效应都不大于各自化验重复散布。Ru–Rh 可分性 2.464 但只有 15 组，按冻结规则 UNSUPPORTED（msrs_support_audit.json:/endpoints/potency/pairs）。",
       "shape 来源（UP-17）：加性残差上四路分解，配体×金属 0.8015 [0.7884,0.8151]（结构优先）、论文×金属 0.5484 [0.5801,0.6297]（批次优先）、细胞×金属 0.0（两种顺序）、配体×细胞 0.1269/0.4106。两块各自在自己优先的顺序下都 >0.5 ⇒ 不存在唯一主导分量；kill 触发但推论不成立（msrs_shape_decomposition.json:/gate, /verdict）。",
-      "配体跨金属数（UP-11）：201 个跨金属配体中**每一个都恰好跨 2 个金属，没有一个跨 ≥3**；三个双金属组的配体集合两两不相交（Ru–Os 118 / Ir–Rh 73 / Ru–Rh 10，交集全为 0）。⇒ Δ 矩阵完整行 = 0，共享配体剖面不存在（msrs_pair_delta.json:/rank_structure）。"
+      "配体跨金属数（UP-11）：201 个跨金属配体中**每一个都恰好跨 2 个金属，没有一个跨 ≥3**；三个双金属组的配体集合两两不相交（Ru–Os 118 / Ir–Rh 73 / Ru–Rh 10，交集全为 0）。⇒ Δ 矩阵完整行 = 0，共享配体剖面不存在（msrs_pair_delta.json:/rank_structure）。",
+      "配对是论文内现象（UP-14）：语料里 5.47% 的行属于跨金属单元，但 **DOI 留出下只有 0.57%（120/21,045）的测试行在训练折里有配对证据**，这 0.57% 只占 SSE 的 0.49%。冻结的 kill（<5%）在 DOI 协议上触发（msrs_support_stratified.json:/protocols/doi/unit_train_evidence）。",
+      "交互只在金属被观测到时是收益（UP-12）：配体分组下自由交互 0.2519 vs 加性 0.2128（+0.0391），同一自由模型在 metal_out 是 −0.097；秩-1 支持受限交互 0.1954（−0.0174）。metal_out 上两阶段预测与 stage1 逐位相同（max|Δ|=0）—— 该协议结构上看不见这个杠杆（msrs_two_stage.json）。",
+      "排序的支持度（UP-16）：360 对 100% 在支持组内是定义使然；逐金属对 Os–Ru 0.5807 [0.4990,0.6548] n=258、Ir–Rh 0.5600 [0.4799,0.6190] n=86、Rh–Ru 0.5000 n=16，**没有一对单独把 CI 抬离 0.5**；池化 0.5985 的显著性来自合并。达到半宽<0.05 需要 Os–Ru 642 对（现有 258）（msrs_ranking_support.json:/strata/listwise_ligand_cell）。"
     ],
     "measured_facts": [
       "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811（msrs_seed_ensemble.json, msrs_feature_expansion_5seed.json, msrs_feature_fusion.json）。scaffold 0.4733 / year 0.3946。ligand 0.5596 是内插，不可当泛化报。",
@@ -299,9 +302,11 @@
         "UP-16"
       ],
       "question": "排序结论是否只在支持组内成立？",
-      "status": "OPEN",
+      "status": "RESOLVED-YES",
       "if_yes": "排序数字必须写成「3 个已观测金属对内」，不得写成跨金属排序能力。",
-      "if_no": "排序信号另有来源，需要重新解释 0.5985。"
+      "if_no": "排序信号另有来源，需要重新解释 0.5985。",
+      "resolved": "2026-10-22",
+      "resolution": "排序对就是同组两金属两行 ⇒ 100% 支持是定义使然；逐金属对没有任何一对的 Wilson CI 排除 0.5（Os–Ru 下界 0.4990、Ir–Rh 0.4799、Rh–Ru 1 个负例）。按 if_yes：排序数字只能写成「3 个已观测金属对内」，不得写成跨金属排序能力。"
     }
   ],
   "closed_decisions": [
@@ -332,16 +337,20 @@
         "UP-13",
         "UP-15"
       ],
-      "note": "CPU，约 8 小时。只在 UP-11 判 yes 时全做；判 no 时只做 UP-12 作为反证。"
+      "note": "CPU，约 8 小时。只在 UP-11 判 yes 时全做；判 no 时只做 UP-12 作为反证。",
+      "status": "DONE",
+      "result": "UP-12 FAIL（gate 退化：metal_out 上交互恒为 0）。UP-13/UP-15 按 wave-3 条件跳过（UP-11 = no）。"
     },
     "wave_4_report": {
       "items": [
         "UP-14",
         "UP-16"
       ],
-      "note": "纯 CPU，约 2 小时。把已有 artifact 按支持度重切，不改模型。"
+      "note": "纯 CPU，约 2 小时。把已有 artifact 按支持度重切，不改模型。",
+      "status": "DONE",
+      "result": "UP-14 PASS（DOI 下 0.57% 测试行有配对证据）、UP-16 PASS（无单对过半，支持度是定义使然）。"
     },
-    "status": "PLANNED"
+    "status": "DONE"
   },
   "work_packages": [
     {
@@ -422,7 +431,12 @@
       ],
       "gate": "metal_out 加权 R² ≥ −0.04（比 −0.0734 提升 ≥0.03），且没有任何金属下降 >0.02。",
       "kill": "若提升 <0.01 或任一支持金属下降 >0.02 → 两阶段无价值，记录。",
-      "deliverable": "metrics/by_metric/msrs_two_stage.json"
+      "deliverable": "metrics/by_metric/msrs_two_stage.json",
+      "status": "DONE-FAIL",
+      "completed": "2026-10-22",
+      "device": "cpu",
+      "artifact": "metrics/by_metric/msrs_two_stage.json",
+      "result": "gate 退化：metal_out 上留出金属不在任何训练支持对里 ⇒ v_held=0 ⇒ 交互项逐行恒为 0，max|Δpred|=0（21,045 行），五个金属 R² 与 msrs_lomo_surface 逐位相同（加权 −0.0734），improvement=0.0000 vs 门槛 +0.03。gate_failure_mode=DEGENERATE_IDENTICAL_PREDICTIONS。在杠杆能生效的 within_metal：加性 0.2128、秩-1 0.1954（−0.0174，Ir −0.0501）、自由交互 0.2519（+0.0391）。verdict=METAL_OUT_CANNOT_TEST_THE_LEVER；kill 套用到 within_metal 触发。"
     },
     {
       "id": "UP-13",
@@ -445,7 +459,10 @@
       ],
       "gate": "放大 ≥1.5× 组数，且留出对 R²_Δ 比 UP-11 高 ≥0.05；泄漏断言必须通过。",
       "kill": "若增益来自 |ĉ|>2SD 的组，判定为细胞效应外推，不得使用。",
-      "deliverable": "metrics/by_metric/msrs_pair_amplify.json"
+      "deliverable": "metrics/by_metric/msrs_pair_amplify.json",
+      "status": "SKIPPED-PER-WAVE3-CONDITION",
+      "completed": "2026-10-22",
+      "result": "wave-3 条件：UP-11 判 NOT_IDENTIFIABLE ⇒ 只做 UP-12 作为反证，本项不做（可随时按用户指示恢复；两者都不依赖 UP-11 的结论成立）"
     },
     {
       "id": "UP-14",
@@ -468,7 +485,12 @@
       ],
       "gate": "每个 headline 指标都有 supported / unsupported 两行；无阈值。",
       "kill": "若支持组占比 <5%，则该指标退化为 case study，正文不得写成通用能力。",
-      "deliverable": "metrics/by_metric/msrs_support_stratified.json"
+      "deliverable": "metrics/by_metric/msrs_support_stratified.json",
+      "status": "DONE-PASS",
+      "completed": "2026-10-22",
+      "device": "cpu",
+      "artifact": "metrics/by_metric/msrs_support_stratified.json",
+      "result": "artifact 落盘，三协议 × 两轴 × 两定义全部有数（gate 无阈值，within_metal 的 unit-train-evidence 层构造上为空并已豁免）。核心数字：DOI 协议下只有 **0.57%（120/21,045）** 的测试行在训练折里有配对证据，这 0.57% 只占 SSE 的 0.49%；配对是论文内现象，整篇留出把它整体拿走。语料层面跨金属单元占 5.47% 的行；金属属于支持对的行占 96.41%（几乎全表，不是证据）。kill（<5%）在 DOI 协议上触发。"
     },
     {
       "id": "UP-15",
@@ -491,7 +513,10 @@
       ],
       "gate": "最优臂比 ridge 高 ≥0.03 R²_Δ。",
       "kill": "若 tabpfn 不可用且其余三臂差异 <0.01 → 记为「模型类不是瓶颈」。",
-      "deliverable": "metrics/by_metric/msrs_pair_smalllearner.json"
+      "deliverable": "metrics/by_metric/msrs_pair_smalllearner.json",
+      "status": "SKIPPED-PER-WAVE3-CONDITION",
+      "completed": "2026-10-22",
+      "result": "wave-3 条件：UP-11 判 NOT_IDENTIFIABLE ⇒ 只做 UP-12 作为反证，本项不做（可随时按用户指示恢复；两者都不依赖 UP-11 的结论成立）"
     },
     {
       "id": "UP-16",
@@ -514,7 +539,12 @@
       ],
       "gate": "每个金属对都有 n / balanced / CI；无阈值。",
       "kill": "若 Os–Ru 单独就解释了全部信号（去掉它后 balanced 回到 0.5），排序结论必须写成单对结论。",
-      "deliverable": "metrics/by_metric/msrs_ranking_support.json"
+      "deliverable": "metrics/by_metric/msrs_ranking_support.json",
+      "status": "DONE-PASS",
+      "completed": "2026-10-22",
+      "device": "cpu",
+      "artifact": "metrics/by_metric/msrs_ranking_support.json",
+      "result": "纯重切不重训。360 对 100% 落在支持组内是**定义使然**（排序对就是同组两金属两行），不是测量覆盖率。逐金属对：Os–Ru 0.5807 [0.4990,0.6548] n=258；Ir–Rh 0.5600 [0.4799,0.6190] n=86；Rh–Ru 0.5000 [0.3981,0.8967] n=16（1 个负例）。**没有一个金属对单独把自己的 CI 抬离 0.5**。池化 0.5985 的簇 bootstrap [0.5262,0.6663] 不含 0.5，显著性来自合并。留一：去 Os–Ru 反而升到 0.6480（n=102），kill 不触发。达到半宽<0.05 所需 n：Os–Ru 642、Ir–Rh 130、Rh–Ru 226。"
     },
     {
       "id": "UP-17",

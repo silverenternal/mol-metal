@@ -1,0 +1,341 @@
+{
+  "artifact": "msrs_ranking_support",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "UP-16 ranking support decomposition",
+  "generated_utc": "2026-10-22T02:44:29+00:00",
+  "provenance": {
+    "listwise_artifact": "metrics/by_metric/msrs_listwise_ranker.json",
+    "listwise_sha256": "824ec87031a1284538365f497a4c89355aeb45fe82e46b47b661f7d3c462d2ba",
+    "expanded_artifact": "metrics/by_metric/msrs_ranking_expanded.json",
+    "expanded_sha256": "a622383080f29141f888da3e2e81f7e7a6543e1edb9a81a1f143b4bd917d2d95",
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "script": "molmetal/scripts/msrs_ranking_support.py",
+    "git_commit": "52a81bda0cc912bd1231e557a14b52af9d0028d9",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "no_refit": true,
+    "source_of_numbers": "pairs.ligand_cell.by_metal_pair in the two stored artifacts",
+    "support_census": "dedup potency units, >= 2 metals per (ligand, cell) group",
+    "interval": "Wilson 95% per rate, propagated to balanced accuracy",
+    "sample_size_target": 0.05,
+    "min_groups": 20
+  },
+  "support_census": {
+    "n_ligands_total": 5965,
+    "n_ligands_cross_metal": 217,
+    "share_cross_metal": 0.0364,
+    "pairs": {
+      "Ru-Os": {
+        "n_groups": 354,
+        "n_ligands": 121,
+        "supported": true
+      },
+      "Ir-Rh": {
+        "n_groups": 170,
+        "n_ligands": 73,
+        "supported": true
+      },
+      "Ru-Rh": {
+        "n_groups": 15,
+        "n_ligands": 10,
+        "supported": false
+      }
+    }
+  },
+  "strata": {
+    "listwise_ligand_cell": {
+      "overall_stored": {
+        "n_pairs": 360,
+        "positive_rate": 0.6222,
+        "majority_rate": 0.6222,
+        "raw_sign_accuracy": 0.5417,
+        "balanced_accuracy": 0.5985,
+        "tpr": 0.3661,
+        "tnr": 0.8309
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n": 86,
+          "n_pos": 50,
+          "n_neg": 36,
+          "tp": 6,
+          "tn": 36,
+          "tpr": 0.12,
+          "tnr": 1.0,
+          "balanced_accuracy": 0.56,
+          "tpr_wilson95": [
+            0.0562,
+            0.238
+          ],
+          "tnr_wilson95": [
+            0.9036,
+            1.0
+          ],
+          "balanced_wilson95": [
+            0.4799,
+            0.619
+          ],
+          "balanced_half_width": 0.0696,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 86,
+          "raw_sign_accuracy_stored": 0.4884,
+          "majority_rate": 0.5814
+        },
+        "Os-Ru": {
+          "n": 258,
+          "n_pos": 159,
+          "n_neg": 99,
+          "tp": 61,
+          "tn": 77,
+          "tpr": 0.3836,
+          "tnr": 0.7778,
+          "balanced_accuracy": 0.5807,
+          "tpr_wilson95": [
+            0.3117,
+            0.4611
+          ],
+          "tnr_wilson95": [
+            0.6864,
+            0.8484
+          ],
+          "balanced_wilson95": [
+            0.499,
+            0.6548
+          ],
+          "balanced_half_width": 0.0779,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 258,
+          "raw_sign_accuracy_stored": 0.5349,
+          "majority_rate": 0.6163
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "n_pos": 15,
+          "n_neg": 1,
+          "tp": 15,
+          "tn": 0,
+          "tpr": 1.0,
+          "tnr": 0.0,
+          "balanced_accuracy": 0.5,
+          "tpr_wilson95": [
+            0.7961,
+            1.0
+          ],
+          "tnr_wilson95": [
+            0.0,
+            0.7935
+          ],
+          "balanced_wilson95": [
+            0.3981,
+            0.8967
+          ],
+          "balanced_half_width": 0.2493,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 16,
+          "raw_sign_accuracy_stored": 0.9375,
+          "majority_rate": 0.9375
+        }
+      },
+      "leave_one_pair_out": {
+        "Ir-Rh": {
+          "n": 274,
+          "balanced_accuracy": 0.6034,
+          "tpr": 0.4368,
+          "tnr": 0.77
+        },
+        "Os-Ru": {
+          "n": 102,
+          "balanced_accuracy": 0.648,
+          "tpr": 0.3231,
+          "tnr": 0.973
+        },
+        "Rh-Ru": {
+          "n": 344,
+          "balanced_accuracy": 0.5788,
+          "tpr": 0.3206,
+          "tnr": 0.837
+        }
+      },
+      "sample_size": {
+        "Ir-Rh": {
+          "n_now": 86,
+          "half_width_now": 0.0696,
+          "n_for_half_width_0p05": 130
+        },
+        "Os-Ru": {
+          "n_now": 258,
+          "half_width_now": 0.0779,
+          "n_for_half_width_0p05": 642
+        },
+        "Rh-Ru": {
+          "n_now": 16,
+          "half_width_now": 0.2493,
+          "n_for_half_width_0p05": 226
+        }
+      },
+      "n_pairs": 360,
+      "n_pairs_in_supported_groups": 360,
+      "share_in_supported_groups": 1.0
+    },
+    "surface_ligand_cell": {
+      "overall_stored": {
+        "n_pairs": 360,
+        "positive_rate": 0.6222,
+        "majority_rate": 0.6222,
+        "raw_sign_accuracy": 0.5333,
+        "balanced_accuracy": 0.4705,
+        "tpr": 0.7277,
+        "tnr": 0.2132
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n": 86,
+          "n_pos": 50,
+          "n_neg": 36,
+          "tp": 25,
+          "tn": 19,
+          "tpr": 0.5,
+          "tnr": 0.5278,
+          "balanced_accuracy": 0.5139,
+          "tpr_wilson95": [
+            0.3664,
+            0.6336
+          ],
+          "tnr_wilson95": [
+            0.3701,
+            0.6801
+          ],
+          "balanced_wilson95": [
+            0.3682,
+            0.6569
+          ],
+          "balanced_half_width": 0.1443,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 86,
+          "raw_sign_accuracy_stored": 0.5116,
+          "majority_rate": 0.5814
+        },
+        "Os-Ru": {
+          "n": 258,
+          "n_pos": 159,
+          "n_neg": 99,
+          "tp": 123,
+          "tn": 10,
+          "tpr": 0.7736,
+          "tnr": 0.101,
+          "balanced_accuracy": 0.4373,
+          "tpr_wilson95": [
+            0.7025,
+            0.8317
+          ],
+          "tnr_wilson95": [
+            0.0558,
+            0.176
+          ],
+          "balanced_wilson95": [
+            0.3791,
+            0.5039
+          ],
+          "balanced_half_width": 0.0624,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 258,
+          "raw_sign_accuracy_stored": 0.5155,
+          "majority_rate": 0.6163
+        },
+        "Rh-Ru": {
+          "n": 16,
+          "n_pos": 15,
+          "n_neg": 1,
+          "tp": 15,
+          "tn": 0,
+          "tpr": 1.0,
+          "tnr": 0.0,
+          "balanced_accuracy": 0.5,
+          "tpr_wilson95": [
+            0.7961,
+            1.0
+          ],
+          "tnr_wilson95": [
+            0.0,
+            0.7935
+          ],
+          "balanced_wilson95": [
+            0.3981,
+            0.8967
+          ],
+          "balanced_half_width": 0.2493,
+          "interval_kind": "Wilson on each rate, propagated to balanced accuracy (not a ligand-clustered bootstrap)",
+          "n_pairs_stored": 16,
+          "raw_sign_accuracy_stored": 0.9375,
+          "majority_rate": 0.9375
+        }
+      },
+      "leave_one_pair_out": {
+        "Ir-Rh": {
+          "n": 274,
+          "balanced_accuracy": 0.4466,
+          "tpr": 0.7931,
+          "tnr": 0.1
+        },
+        "Os-Ru": {
+          "n": 102,
+          "balanced_accuracy": 0.5644,
+          "tpr": 0.6154,
+          "tnr": 0.5135
+        },
+        "Rh-Ru": {
+          "n": 344,
+          "balanced_accuracy": 0.4615,
+          "tpr": 0.7081,
+          "tnr": 0.2148
+        }
+      },
+      "sample_size": {
+        "Ir-Rh": {
+          "n_now": 86,
+          "half_width_now": 0.1443,
+          "n_for_half_width_0p05": 783
+        },
+        "Os-Ru": {
+          "n_now": 258,
+          "half_width_now": 0.0624,
+          "n_for_half_width_0p05": 405
+        },
+        "Rh-Ru": {
+          "n_now": 16,
+          "half_width_now": 0.2493,
+          "n_for_half_width_0p05": 226
+        }
+      },
+      "n_pairs": 360,
+      "n_pairs_in_supported_groups": 360,
+      "share_in_supported_groups": 1.0
+    }
+  },
+  "kill": {
+    "rule": "if dropping Os-Ru returns balanced accuracy to 0.5, the ranking conclusion is a single-pair conclusion",
+    "without_Os_Ru": {
+      "n": 102,
+      "balanced_accuracy": 0.648,
+      "tpr": 0.3231,
+      "tnr": 0.973
+    },
+    "kill_triggered": false
+  },
+  "gate": {
+    "every_metal_pair_has_n_balanced_ci": true,
+    "no_threshold": true
+  },
+  "verdict": "RANKING_IS_SUPPORTED_BY_CONSTRUCTION",
+  "caveats": [
+    "Every ranking pair is two rows of one (ligand, cell) group under two metals, so 100% support is a property of the protocol, not a measurement. There is no unsupported stratum to report and none can be constructed without new data.",
+    "The intervals are Wilson intervals on TPR and TNR, propagated to balanced accuracy. They are not ligand-clustered: the stored artifacts keep only the per-pair aggregate, not the per-pair rows, so the resampling unit is unavailable without refitting. Wilson intervals will be narrower than a cluster bootstrap because ligands repeat across pairs.",
+    "Rh-Ru has 16 pairs with 1 negative, so its TNR is 0 or 1 and its balanced accuracy of 0.5 carries no information. It is reported, not used.",
+    "The sample-size curve assumes the observed TPR/TNR and positive rate hold at larger n. It is a design calculation, not a projection of achievable accuracy."
+  ]
+}

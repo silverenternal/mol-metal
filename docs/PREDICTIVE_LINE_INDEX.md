@@ -21,6 +21,9 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 
 - **"shape 学不会"的真实原因是支持度，不是模型**（UP-10，2026-10-21）：10 个金属对里 **7 个的配对组数是 0**，只有 Ru–Os（354 组）与 Ir–Rh（170 组）过 20 组门槛；跨 ≥2 金属的配体只占 **3.64%**。而且这两个"有支持"的对，典型替换效应**不大于自身化验重复散布**（可分性 0.592 / **0.115**）。
 - **交互无法外推到未观测金属对**（UP-11）：201 个跨金属配体**没有一个跨 ≥3 个金属**，三个金属对的配体集合**两两不相交**，所以 Δ 矩阵的完整行是 0 行 —— 秩-1 分解**不可识别**，不是份额小。退一步做配体不相交的跨对迁移，两个方向的 R²_Δ 全为负（−0.0952 / −0.2256），符号准确率 0.49 / 0.53，CI 全含 0.5。
+- **配对是论文内现象，整篇留出把它整体拿走**（UP-14）：语料里 5.47% 的行属于跨金属单元，但 **DOI 留出下只有 0.57%（120/21,045）的测试行在训练折里有配对证据**。配对的两行几乎总在同一篇论文里，于是同折。冻结的 kill 规则（<5%）在 DOI 协议上触发。
+- **交互在金属被观测到时是真实收益，在留出金属上不存在**（UP-12）：配体分组下自由交互比加性高 **+0.0391**（0.2519 vs 0.2128），同一模型在 metal_out 上是 −0.097；秩-1 支持受限的交互在配体分组下反而 **−0.0174**。metal_out 的两阶段预测与 stage1 **逐位相同**（`max|Δ| = 0`）—— 该协议结构上看不见这个杠杆。
+- **0.5985 只在合并后显著，没有任何一个金属对单独过半**（UP-16）：Os–Ru 0.5807 [0.4990, 0.6548]、Ir–Rh 0.5600 [0.4799, 0.6190]、Rh–Ru 0.5000（n=16、1 个负例）。且 360 对 100% 落在支持组内是**定义使然**（排序对本身就是同组两金属两行），不是测出来的覆盖率。
 - **shape 里结构与论文批次各自都超过 50%**（UP-17）：配体×金属 0.8015 [0.7884, 0.8151]、论文×金属 0.5484 [0.5801, 0.6297]，**两块在自己的优先顺序下都过 0.5、在对方的顺序下都归 0**；细胞×金属两种顺序都是 0.0。冻结的 kill 规则触发，但它的推论（"建模即拟合噪声"）**不成立**。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
@@ -46,6 +49,9 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-10 | 配对支持到底有多少 | **PASS**（审计无阈值） | 10 个金属对里 **7 个组数为 0**，只有 Ru–Os 354 / Ir–Rh 170 |
 | UP-17 | shape 是不是论文批次 | **FAIL**（gate 0.0716 > 0.05） | 配体×金属 0.8015 vs 论文×金属 0.5484，两块各自在自己顺序下都 >0.5 |
 | UP-11 | 交互能不能外推到未观测金属对 | **NOT_IDENTIFIABLE** | 201 个跨金属配体**全部只跨 2 个金属**；三对两两共享配体 = 0 |
+| UP-12 | 两阶段能不能只在配对数据上开交互 | **FAIL**（gate 退化） | metal_out 上交互**恒为 0**；within-metal 秩-1 −0.0174、自由交互 +0.0391 |
+| UP-14 | 支持度分层后 headline 还剩什么 | **PASS**（无阈值） | DOI 下只有 **0.57%** 的测试行在训练折里有配对证据 |
+| UP-16 | 0.5985 是不是只在支持组内 | **PASS**（无阈值） | 360 对 100% 支持（定义使然）；**没有一个金属对单独过半** |
 
 ---
 
@@ -265,7 +271,26 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP11.irrh_to_ruos_bridged_r2", "value": -0.0952, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.arms.bridged[ie1_kj].r2_delta"},
   {"id": "UP11.ruos_to_irrh_raw_sign", "value": 0.4658, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ir-Rh.arms.raw.sign_accuracy"},
   {"id": "UP11.ruos_to_irrh_bridged_r2", "value": -0.2256, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ir-Rh.arms.bridged[ie1_kj].r2_delta"},
-  {"id": "UP11.ie1_diff_ruos", "value": 129.8, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.bridges.ie1_kj.descriptor_diff_test"}
+  {"id": "UP11.ie1_diff_ruos", "value": 129.8, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.bridges.ie1_kj.descriptor_diff_test"},
+  {"id": "UP12.metal_out_max_delta", "value": 0, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "metal_out.max_abs_delta_over_metals"},
+  {"id": "UP12.metal_out_improvement", "value": 0.0, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "gate.improvement"},
+  {"id": "UP12.additive_within", "value": 0.2128, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "within_metal.aggregate.additive.weighted_r2"},
+  {"id": "UP12.two_stage_within", "value": 0.1954, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "within_metal.aggregate.two_stage.weighted_r2"},
+  {"id": "UP12.free_within", "value": 0.2519, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "within_metal.aggregate.free.weighted_r2"},
+  {"id": "UP12.ir_drop", "value": -0.0501, "artifact": "metrics/by_metric/msrs_two_stage.json", "path": "within_metal.per_metal.Ir.delta_two_stage_vs_additive"},
+  {"id": "UP14.doi_pair_in_train_share", "value": 0.0057, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "protocols.doi.unit_train_evidence.has_pair_in_train.share_of_rows"},
+  {"id": "UP14.doi_pair_in_train_rows", "value": 120, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "protocols.doi.unit_train_evidence.has_pair_in_train.n"},
+  {"id": "UP14.doi_pooled_r2", "value": 0.1629, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "protocols.doi.overall.r2"},
+  {"id": "UP14.doi_pair_in_train_sse_share", "value": 0.0049, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "protocols.doi.unit_train_evidence.has_pair_in_train.share_of_sse"},
+  {"id": "UP14.cross_metal_rows", "value": 1151, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "row_flags_corpus.n_cross_metal_unit"},
+  {"id": "UP14.metal_out_weighted_r2", "value": -0.0734, "artifact": "metrics/by_metric/msrs_support_stratified.json", "path": "protocols.metal_out.weighted_r2_per_metal"},
+  {"id": "UP16.n_pairs", "value": 360, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.n_pairs"},
+  {"id": "UP16.osru_balanced", "value": 0.5807, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Os-Ru.balanced_accuracy"},
+  {"id": "UP16.osru_ci_low", "value": 0.499, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Os-Ru.balanced_wilson95.0"},
+  {"id": "UP16.irrh_balanced", "value": 0.56, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Ir-Rh.balanced_accuracy"},
+  {"id": "UP16.irrh_ci_low", "value": 0.4799, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Ir-Rh.balanced_wilson95.0"},
+  {"id": "UP16.drop_osru_balanced", "value": 0.648, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.leave_one_pair_out.Os-Ru.balanced_accuracy"},
+  {"id": "UP16.osru_n_needed", "value": 642, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.sample_size.Os-Ru.n_for_half_width_0p05"}
 ]
 ```
 
@@ -492,6 +517,78 @@ phototoxicity 的 **479 个配体里没有一个在两种金属下被测过** �
 **结论**：交互既不能从语料里分解出共享剖面（不可识别），也不能在配体不相交的两个金属对之间迁移（R²_Δ 全负、符号在 0.5 附近）。**7/10 金属对没有任何可用的外推路径**，这与 UP-10 的支持度边界一致。
 
 
+
+### 2.14 UP-12 两阶段残差模型：metal_out 上交互项**恒等于 0**，在能生效的协议里也输给加性（2026-10-22）
+
+`msrs_two_stage.json`（CPU，21,045 行 / 2,846 配体）。
+
+Stage 1 就是 `msrs_lomo_surface` 的 descriptors 加性臂（`interaction_constraints [[ligand],[metal],[cell]]`）。Stage 2 是秩-1 交互 `λ·(w·ECFP4_l)·v_m`：`w` 只在**配对残差差** `d = resid(b) − resid(a)` 上拟合（残差取训练侧 OOF），`v` 由支持对固定（`v_b − v_a = 1`、`Σv = 0`），**无支持金属 `v = 0`**。
+
+**metal_out（冻结门槛）**：留出金属在训练侧不属于任何支持对 ⇒ `v_held = 0` ⇒ 交互项逐行恒为 0。实测 `max |pred_two_stage − pred_stage1| = 0`（全部 21,045 行），五个金属的 R² 与 `msrs_lomo_surface` **逐位相同**：
+
+| 留出金属 | Ru | Ir | Rh | Os | Re | 加权 |
+|---|---:|---:|---:|---:|---:|---:|
+| stage1 = stage1+stage2 | −0.0777 | −0.1283 | −0.1589 | +0.3479 | −0.1034 | −0.0734 |
+
+⇒ `improvement = 0.0000`（门槛 +0.03），`gate_pass = false`，`gate_failure_mode = DEGENERATE_IDENTICAL_PREDICTIONS`。**这不是"两阶段没用"，是 metal_out 这个协议看不见这个杠杆**：任何以金属为自变量的交互项，在留出金属上都没有系数可乘。gate 退化这件事本身，是这一项的主要产出。
+
+**within_metal（配体分组 5 折，金属在训练侧）**：这才是杠杆能起作用的地方。
+
+| 臂 | 加权 R² | 加权 MAE |
+|---|---:|---:|
+| 加性（stage1） | 0.2128 | 0.5093 |
+| 加性 + 秩-1 交互 | 0.1954 | 0.5168 |
+| **自由交互（UP-1 的 free 臂）** | **0.2519** | 0.4933 |
+
+按金属（加性 → 秩-1 → 自由）：Ru 0.2503 → 0.2362 → 0.2727；Ir 0.0974 → 0.0473 → 0.1547；Rh 0.0637 → **0.0890** → 0.2265；Os 0.3290 → 0.3297 → 0.3811；Re 0.0934 → 0.0934 → 0.1992。
+
+**三件事同时成立**：(1) 金属在训练侧时，**不受约束**的交互比加性高 **+0.0391**；(2) 秩-1 支持受限的交互反而低 **−0.0174**，Ir 单独掉 **−0.0501**；(3) 同一个自由交互模型在 metal_out 上掉到 −0.097（UP-1）。所以交互**存在且可学**，但**只在金属被观测到时**；把参数化收紧并不能换来外推能力。
+
+**秩-1 为什么输**：`stage2_r2_inner` 在五折里是 **−0.0138 到 +0.0650**，这个投影对**留出配体**的 Δ 几乎没有预测力；`λ_raw` 是 **1.77–4.68**，闭式收缩要求把投影放大 2–5 倍才能匹配 Δ 的量级 —— 方向不对，放大只是放大噪声。
+
+kill（套用到 within_metal，因为冻结的 metal_out gate 已退化）：improvement −0.0174 < 0.01、Ir 掉 −0.0501 < −0.02 ⇒ **触发**。
+
+### 2.15 UP-14 支持度分层：DOI 协议下只有 **0.57%** 的测试行在训练折里有配对证据（2026-10-22）
+
+`msrs_support_stratified.json`（CPU，21,045 行；加性 descriptors 臂）。
+
+两个轴，每个轴两种定义：**corpus**（全表统计，描述性）与 **train_evidence**（只看该折训练行，这才是模型能用的证据）。
+
+语料层面：跨 ≥2 金属的单元占 **5.47%** 的行（1,151 行），金属属于支持对的行占 **96.41%**（20,289 行）—— 后者几乎覆盖全表，因为它只要求"这个金属在某个支持对里出现过"，不代表这一行有配对证据。**真正的数字是 fold-aware 的那个。**
+
+| 协议 | 池化 R² | 行级：训练折里有配对 | 无配对 |
+|---|---:|---|---|
+| DOI（`GroupKFold` on doi） | 0.1629 | **0.57%（120 行）**，R² 0.3414，占 SSE **0.49%** | 99.43%，R² 0.1585，占 SSE **99.51%** |
+| within_metal（配体分组） | 0.2530 | **0 行**（构造使然） | 100%，R² 0.2530 |
+| metal_out | −0.0228（加权 −0.0734） | **0 行**（构造使然） | 100%，R² −0.0228 |
+
+**为什么 DOI 下只剩 0.57%**：同一配体同一细胞系在两个金属下的测量，绝大多数出自**同一篇论文**，于是落在**同一个折**里。配对是**论文内现象**，整篇留出把它整体拿走了。这与 UP-17 的 `paper×metal = 0.5484` 是同一件事的两面。
+
+**金属轴**（金属是否在训练侧的支持对里）：DOI 与 within_metal 下都是 96.41% / 3.59%（Re 是那 3.59%）。Re 在 within_metal 的 R² 是 **0.0934**，其余四个金属 **0.2563** —— Re 没有配对证据，只能靠加性。
+
+kill 规则（支持行 <5% ⇒ 该指标退化为 case study）**在 DOI 协议上触发**：0.57% < 5%。
+
+**一个必须说清的估计量区别**：本表 `metal_out.overall.r2 = −0.0228` 是**池化**（1 − SSE/SST 全部行），`weighted_r2_per_metal = −0.0734` 是**逐金属 R² 按 n 加权**，与 `msrs_lomo_surface` 同一个估计量。两者不可互换，引用时写明是哪一个。
+
+### 2.16 UP-16 排序的支持度分解：360 对**定义上**全在支持组内，且没有一个金属对单独过半（2026-10-22）
+
+`msrs_ranking_support.json`（纯重切，不重训）。
+
+**支持度是协议的性质，不是测量结果**：一个排序对就是同一 `(ligand, cell)` 组在两金属下的两行，所以它**必然**落在"该组有 ≥2 金属"里。100% 支持是**同义反复**；不存在 unsupported 层，也无法在不补数据的情况下构造出来。
+
+| 金属对 | n | TPR | TNR | balanced | Wilson 95% | 达到半宽 <0.05 所需 n |
+|---|---:|---:|---:|---:|---|---:|
+| Ir–Rh | 86 | 0.120 | 1.000 | 0.5600 | [0.4799, 0.6190] | 130（现有 86） |
+| Os–Ru | 258 | 0.384 | 0.778 | 0.5807 | [0.4990, 0.6548] | 642（现有 258） |
+| Rh–Ru | 16 | 1.000 | 0.000 | 0.5000 | [0.3981, 0.8967] | 226（现有 16） |
+
+池化的 0.5985 来自存储的配体簇 bootstrap：**[0.5262, 0.6663]**，不含 0.5。但**没有任何一个金属对单独把自己的 CI 抬离 0.5**：Os–Ru 的下界 0.4990、Ir–Rh 的 0.4799，Rh–Ru 只有 1 个负例。**显著性来自合并，不来自任何一对。**
+
+留一金属对（精确重算，不是加权平均）：去掉 Ir–Rh → 0.6034（n=274）；去掉 Os–Ru → **0.6480**（n=102）；去掉 Rh–Ru → 0.5788（n=344）。去掉 Os–Ru 反而**升高**，所以冻结的 kill 规则（"若 Os–Ru 单独解释全部信号"）**不触发**；但 0.6480 建立在 Ir–Rh 的 36 个负例上，TPR 只有 0.323，不能当成更强的结论。
+
+**样本量需求**（按各对自身的 TPR/TNR 与正例率反解，Jeffreys 平滑避免 TNR=1.0 声称零方差）：Os–Ru 要 **642** 对（现有 258），Ir–Rh 要 **130**（现有 86），Rh–Ru 要 **226**（现有 16）。**现有语料最多只能把 Os–Ru 做到一半。**
+
+⇒ DP-5 = **YES**：排序数字必须写成"3 个已观测金属对内"，不能写成跨金属排序能力。
 
 ---
 

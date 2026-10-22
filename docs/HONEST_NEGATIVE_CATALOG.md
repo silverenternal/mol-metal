@@ -10717,6 +10717,17 @@ the residual `last_v` edge term cannot carry the target on its own. This is not 
 under-training artefact — it is the same result at 10x the lr on one batch, which is the most
 favourable setting the field will ever see.
 
+**Why `last_v` cannot take over — the mechanism, in code.** With
+`bounded_coordinate_messages=True` the layer's coordinate update is
+`v_agg = sum_j tanh(phi_ij) * (x_j - x_i) / max(n - 1, 1)`
+(`models/velocity_net.py:287-299`): a mean over ALL `n-1` other atoms of a
+tanh-gated relative position. Its magnitude is therefore bounded by the mean
+pair distance (~5 A) times the mean gate, and the gate is ~0.06 at init. The
+radial term is the only one with a free magnitude, and the optimiser turns it
+off because its direction is wrong. Both paths to a 5 A displacement are
+closed, which is why the overfit test sits at the `v = 0` floor rather than
+converging slowly toward the radial ceiling.
+
 **Consequence.** `generate_clouds_from_noise` returns `x0`. MEASURED on the matched-sigma pair:
 generated `mean_pair_distance` **5.67 A** and `pairs-in-cutoff` **0.197** against the prior's
 **5.59 A / 0.203** and the truth's **5.00 A / 0.412**. Every generation number the CFM line has

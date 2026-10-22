@@ -1,0 +1,520 @@
+{
+  "artifact": "msrs_two_stage",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "UP-12 two-stage residual model",
+  "generated_utc": "2026-10-22T02:42:55+00:00",
+  "provenance": {
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "molmetal/data/metal_chemistry_5.csv",
+    "script": "molmetal/scripts/msrs_two_stage.py",
+    "git_commit": "52a81bda0cc912bd1231e557a14b52af9d0028d9",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "stage1": "LightGBM, interaction_constraints [[ligand],[metal],[cell]], descriptors representation (3 metal columns)",
+    "stage2": "rank-1: interaction(l,m) = lambda * (w . ecfp4(l)) * v_m",
+    "stage2_target": "per-ligand residual difference d = resid(b) - resid(a) on matched (ligand, cell) groups of a supported pair",
+    "residual_source": "out-of-fold residuals inside the training side (GroupKFold 5 by ligand)",
+    "supported_pair_rule": "n matched groups >= 20 (UP-10 kill rule)",
+    "metal_coefficient": "least squares, v_b - v_a = 1 per pair, sum_m v_m = 0",
+    "unsupported_metal_coefficient": 0.0,
+    "alpha_grid": [
+      0.1,
+      0.3,
+      1.0,
+      3.0,
+      10.0,
+      30.0,
+      100.0,
+      300.0,
+      1000.0
+    ],
+    "inner_folds": 3,
+    "protocols": [
+      "metal_out",
+      "within_metal"
+    ]
+  },
+  "support_full_corpus": {
+    "counts": {
+      "Ir-Os": 0,
+      "Ir-Re": 0,
+      "Ir-Rh": 170,
+      "Ir-Ru": 0,
+      "Os-Re": 0,
+      "Os-Rh": 0,
+      "Os-Ru": 347,
+      "Re-Rh": 0,
+      "Re-Ru": 0,
+      "Rh-Ru": 15
+    },
+    "supported": {
+      "Ir-Rh": 170,
+      "Os-Ru": 347
+    }
+  },
+  "metal_out": {
+    "per_metal": {
+      "Ru": {
+        "status": "OK",
+        "n_train": 6260,
+        "n_test": 14785,
+        "supported_pairs_train": {
+          "Ir-Rh": 170
+        },
+        "pair_counts_train": {
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Ir-Rh": 170,
+          "Os-Re": 0,
+          "Os-Rh": 0,
+          "Re-Rh": 0
+        },
+        "metal_coefficients_train": {
+          "Ir": -0.5,
+          "Rh": 0.5
+        },
+        "v_held_out": 0.0,
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "n_pair_rows": 78,
+        "n_test_rows_nonzero_interaction": 0,
+        "stage1": {
+          "mae": 0.6347,
+          "r2": -0.0777,
+          "rmse": 0.7971
+        },
+        "stage1_plus_stage2": {
+          "mae": 0.6347,
+          "r2": -0.0777,
+          "rmse": 0.7971
+        },
+        "max_abs_prediction_delta": 0.0
+      },
+      "Ir": {
+        "status": "OK",
+        "n_train": 17379,
+        "n_test": 3666,
+        "supported_pairs_train": {
+          "Os-Ru": 347
+        },
+        "pair_counts_train": {
+          "Os-Re": 0,
+          "Os-Rh": 0,
+          "Os-Ru": 347,
+          "Re-Rh": 0,
+          "Re-Ru": 0,
+          "Rh-Ru": 15
+        },
+        "metal_coefficients_train": {
+          "Os": -0.5,
+          "Ru": 0.5
+        },
+        "v_held_out": 0.0,
+        "stage2_alpha": 1000.0,
+        "stage2_lambda": 1.0,
+        "n_pair_rows": 108,
+        "n_test_rows_nonzero_interaction": 0,
+        "stage1": {
+          "mae": 0.5391,
+          "r2": -0.1283,
+          "rmse": 0.6807
+        },
+        "stage1_plus_stage2": {
+          "mae": 0.5391,
+          "r2": -0.1283,
+          "rmse": 0.6807
+        },
+        "max_abs_prediction_delta": 0.0
+      },
+      "Rh": {
+        "status": "OK",
+        "n_train": 20086,
+        "n_test": 959,
+        "supported_pairs_train": {
+          "Os-Ru": 347
+        },
+        "pair_counts_train": {
+          "Ir-Os": 0,
+          "Ir-Re": 0,
+          "Ir-Ru": 0,
+          "Os-Re": 0,
+          "Os-Ru": 347,
+          "Re-Ru": 0
+        },
+        "metal_coefficients_train": {
+          "Os": -0.5,
+          "Ru": 0.5
+        },
+        "v_held_out": 0.0,
+        "stage2_alpha": 1000.0,
+        "stage2_lambda": 1.0,
+        "n_pair_rows": 108,
+        "n_test_rows_nonzero_interaction": 0,
+        "stage1": {
+          "mae": 0.5924,
+          "r2": -0.1589,
+          "rmse": 0.7789
+        },
+        "stage1_plus_stage2": {
+          "mae": 0.5924,
+          "r2": -0.1589,
+          "rmse": 0.7789
+        },
+        "max_abs_prediction_delta": 0.0
+      },
+      "Os": {
+        "status": "OK",
+        "n_train": 20166,
+        "n_test": 879,
+        "supported_pairs_train": {
+          "Ir-Rh": 170
+        },
+        "pair_counts_train": {
+          "Ir-Re": 0,
+          "Ir-Rh": 170,
+          "Ir-Ru": 0,
+          "Re-Rh": 0,
+          "Re-Ru": 0,
+          "Rh-Ru": 15
+        },
+        "metal_coefficients_train": {
+          "Ir": -0.5,
+          "Rh": 0.5
+        },
+        "v_held_out": 0.0,
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "n_pair_rows": 78,
+        "n_test_rows_nonzero_interaction": 0,
+        "stage1": {
+          "mae": 0.5718,
+          "r2": 0.3479,
+          "rmse": 0.7046
+        },
+        "stage1_plus_stage2": {
+          "mae": 0.5718,
+          "r2": 0.3479,
+          "rmse": 0.7046
+        },
+        "max_abs_prediction_delta": 0.0
+      },
+      "Re": {
+        "status": "OK",
+        "n_train": 20289,
+        "n_test": 756,
+        "supported_pairs_train": {
+          "Ir-Rh": 170,
+          "Os-Ru": 347
+        },
+        "pair_counts_train": {
+          "Ir-Os": 0,
+          "Ir-Rh": 170,
+          "Ir-Ru": 0,
+          "Os-Rh": 0,
+          "Os-Ru": 347,
+          "Rh-Ru": 15
+        },
+        "metal_coefficients_train": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "v_held_out": 0.0,
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "n_pair_rows": 186,
+        "n_test_rows_nonzero_interaction": 0,
+        "stage1": {
+          "mae": 0.5371,
+          "r2": -0.1034,
+          "rmse": 0.6843
+        },
+        "stage1_plus_stage2": {
+          "mae": 0.5371,
+          "r2": -0.1034,
+          "rmse": 0.6843
+        },
+        "max_abs_prediction_delta": 0.0
+      }
+    },
+    "max_abs_delta_over_metals": 0.0
+  },
+  "within_metal": {
+    "per_metal": {
+      "Ru": {
+        "status": "OK",
+        "n_test": 14785,
+        "additive": {
+          "mae": 0.5168,
+          "r2": 0.2503,
+          "rmse": 0.6648
+        },
+        "two_stage": {
+          "mae": 0.5248,
+          "r2": 0.2362,
+          "rmse": 0.671
+        },
+        "free": {
+          "mae": 0.5062,
+          "r2": 0.2727,
+          "rmse": 0.6548
+        },
+        "delta_two_stage_vs_additive": -0.0141
+      },
+      "Ir": {
+        "status": "OK",
+        "n_test": 3666,
+        "additive": {
+          "mae": 0.4715,
+          "r2": 0.0974,
+          "rmse": 0.6089
+        },
+        "two_stage": {
+          "mae": 0.4836,
+          "r2": 0.0473,
+          "rmse": 0.6255
+        },
+        "free": {
+          "mae": 0.4475,
+          "r2": 0.1547,
+          "rmse": 0.5892
+        },
+        "delta_two_stage_vs_additive": -0.0501
+      },
+      "Rh": {
+        "status": "OK",
+        "n_test": 959,
+        "additive": {
+          "mae": 0.5178,
+          "r2": 0.0637,
+          "rmse": 0.7001
+        },
+        "two_stage": {
+          "mae": 0.5153,
+          "r2": 0.089,
+          "rmse": 0.6906
+        },
+        "free": {
+          "mae": 0.4747,
+          "r2": 0.2265,
+          "rmse": 0.6364
+        },
+        "delta_two_stage_vs_additive": 0.0253
+      },
+      "Os": {
+        "status": "OK",
+        "n_test": 879,
+        "additive": {
+          "mae": 0.5636,
+          "r2": 0.329,
+          "rmse": 0.7148
+        },
+        "two_stage": {
+          "mae": 0.5624,
+          "r2": 0.3297,
+          "rmse": 0.7144
+        },
+        "free": {
+          "mae": 0.5356,
+          "r2": 0.3811,
+          "rmse": 0.6864
+        },
+        "delta_two_stage_vs_additive": 0.0007
+      },
+      "Re": {
+        "status": "OK",
+        "n_test": 756,
+        "additive": {
+          "mae": 0.4716,
+          "r2": 0.0934,
+          "rmse": 0.6203
+        },
+        "two_stage": {
+          "mae": 0.4716,
+          "r2": 0.0934,
+          "rmse": 0.6203
+        },
+        "free": {
+          "mae": 0.4378,
+          "r2": 0.1992,
+          "rmse": 0.583
+        },
+        "delta_two_stage_vs_additive": 0.0
+      }
+    },
+    "aggregate": {
+      "additive": {
+        "weighted_r2": 0.2128,
+        "weighted_mae": 0.5093,
+        "n_metals_negative_r2": 0
+      },
+      "two_stage": {
+        "weighted_r2": 0.1954,
+        "weighted_mae": 0.5168,
+        "n_metals_negative_r2": 0
+      },
+      "free": {
+        "weighted_r2": 0.2519,
+        "weighted_mae": 0.4933,
+        "n_metals_negative_r2": 0
+      },
+      "delta_two_stage_vs_additive": -0.0174,
+      "delta_two_stage_vs_free": -0.0565
+    },
+    "folds": [
+      {
+        "fold": 0,
+        "n_train": 16836,
+        "n_test": 4209,
+        "supported_pairs": {
+          "Ir-Rh": 131,
+          "Os-Ru": 297
+        },
+        "metal_coefficients": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "stage2_lambda_raw": 2.7139,
+        "stage2_r2_inner": 0.0179,
+        "n_pair_rows": 153,
+        "interaction_sd": 0.05,
+        "interaction_mean": -0.0152
+      },
+      {
+        "fold": 1,
+        "n_train": 16836,
+        "n_test": 4209,
+        "supported_pairs": {
+          "Ir-Rh": 142,
+          "Os-Ru": 289
+        },
+        "metal_coefficients": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "stage2_alpha": 30.0,
+        "stage2_lambda": 1.0,
+        "stage2_lambda_raw": 1.7695,
+        "stage2_r2_inner": 0.065,
+        "n_pair_rows": 153,
+        "interaction_sd": 0.1261,
+        "interaction_mean": -0.0265
+      },
+      {
+        "fold": 2,
+        "n_train": 16836,
+        "n_test": 4209,
+        "supported_pairs": {
+          "Ir-Rh": 148,
+          "Os-Ru": 263
+        },
+        "metal_coefficients": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "stage2_lambda_raw": 2.8197,
+        "stage2_r2_inner": 0.0206,
+        "n_pair_rows": 147,
+        "interaction_sd": 0.05,
+        "interaction_mean": -0.0136
+      },
+      {
+        "fold": 3,
+        "n_train": 16836,
+        "n_test": 4209,
+        "supported_pairs": {
+          "Ir-Rh": 131,
+          "Os-Ru": 267
+        },
+        "metal_coefficients": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "stage2_alpha": 1000.0,
+        "stage2_lambda": 1.0,
+        "stage2_lambda_raw": 4.6752,
+        "stage2_r2_inner": -0.0063,
+        "n_pair_rows": 145,
+        "interaction_sd": 0.0152,
+        "interaction_mean": -0.0084
+      },
+      {
+        "fold": 4,
+        "n_train": 16836,
+        "n_test": 4209,
+        "supported_pairs": {
+          "Ir-Rh": 128,
+          "Os-Ru": 272
+        },
+        "metal_coefficients": {
+          "Ir": -0.5,
+          "Os": -0.5,
+          "Rh": 0.5,
+          "Ru": 0.5
+        },
+        "stage2_alpha": 100.0,
+        "stage2_lambda": 1.0,
+        "stage2_lambda_raw": 2.3678,
+        "stage2_r2_inner": -0.0138,
+        "n_pair_rows": 146,
+        "interaction_sd": 0.0827,
+        "interaction_mean": -0.0264
+      }
+    ]
+  },
+  "gate": {
+    "frozen_at": "2026-10-21T20:30+08:00",
+    "baseline_source": "metrics/by_metric/msrs_lomo_surface.json:/endpoints/potency/splits/metal_out/aggregate/descriptors/weighted_r2",
+    "baseline_metal_out_weighted_r2": -0.0734,
+    "metal_out_weighted_r2": -0.0734,
+    "improvement": 0.0,
+    "improvement_required": 0.03,
+    "per_metal_delta": {
+      "Ru": 0.0,
+      "Ir": 0.0,
+      "Rh": 0.0,
+      "Os": 0.0,
+      "Re": 0.0
+    },
+    "max_per_metal_drop": 0.0,
+    "no_metal_drops_more_than": 0.02,
+    "gate_pass": false,
+    "gate_failure_mode": "DEGENERATE_IDENTICAL_PREDICTIONS"
+  },
+  "kill": {
+    "threshold_improvement": 0.01,
+    "threshold_per_metal_drop": 0.02,
+    "applied_to": "within_metal (the frozen metal_out gate is degenerate)",
+    "improvement": -0.0174,
+    "max_supported_metal_drop": -0.0501,
+    "kill_triggered": true
+  },
+  "verdict": "METAL_OUT_CANNOT_TEST_THE_LEVER",
+  "caveats": [
+    "On metal_out the held-out metal has no supported pair by construction, so v_held = 0 and the stage-2 term is exactly zero. The frozen gate therefore measures stage 1 against stage 1. That is a property of the protocol, not a result about the two-stage model; the within_metal block is the informative test.",
+    "The two-stage arm is evaluated against the same additive stage 1 it is built on, so its gain is bounded by how much residual structure a rank-1 ligand projection can capture. It is not a claim about the ceiling.",
+    "v_m is a fixed unit vector given the supported pairs, not a fitted quantity. With one supported pair inside a training fold it is (+0.5, -0.5) exactly; the only fitted object is the 2048-dimensional ligand projection.",
+    "lambda is a single closed-form shrinkage on the training pair differences; it is not cross-validated, so a small positive lambda is weak evidence of a real interaction rather than of ridge under-fitting.",
+    "Stage-2 residuals are out-of-fold, which removes in-sample overfit but also shrinks them; a real interaction will appear smaller than it is."
+  ],
+  "elapsed_seconds": 395.0
+}

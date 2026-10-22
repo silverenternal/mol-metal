@@ -1,0 +1,431 @@
+{
+  "artifact": "msrs_support_stratified",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "UP-14 support-stratified re-report",
+  "generated_utc": "2026-10-22T02:38:02+00:00",
+  "provenance": {
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "molmetal/data/metal_chemistry_5.csv",
+    "script": "molmetal/scripts/msrs_support_stratified.py",
+    "git_commit": "52a81bda0cc912bd1231e557a14b52af9d0028d9",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "model": "additive LightGBM, descriptors representation, interaction_constraints [[ligand],[metal],[cell]]",
+    "unit_definition": "(ligand, cell) group carries >= 2 metals",
+    "metal_definition": "metal is in a pair with >= 20 matched groups",
+    "corpus_vs_train_evidence": "corpus counts the whole table; train_evidence counts only the fold's training rows",
+    "supported_pairs_full_corpus": {
+      "Ir-Rh": 170,
+      "Os-Ru": 347
+    },
+    "metal_in_supported_pair_corpus": [
+      "Ir",
+      "Os",
+      "Rh",
+      "Ru"
+    ],
+    "error_share": "stratum SSE / total SSE of the same out-of-fold predictions"
+  },
+  "row_flags_corpus": {
+    "n_rows": 21045,
+    "n_cross_metal_unit": 1151,
+    "n_metal_in_supported_pair": 20289
+  },
+  "protocols": {
+    "doi": {
+      "split": "GroupKFold(5) on doi",
+      "overall": {
+        "mae": 0.543,
+        "r2": 0.1629,
+        "rmse": 0.6962,
+        "n": 21045
+      },
+      "unit_corpus": {
+        "cross_metal": {
+          "n": 1151,
+          "r2": 0.1075,
+          "mae": 0.5989,
+          "sse": 688.53,
+          "share_of_rows": 0.0547,
+          "share_of_sse": 0.0675
+        },
+        "singleton": {
+          "n": 19894,
+          "r2": 0.1615,
+          "mae": 0.5398,
+          "sse": 9512.38,
+          "share_of_rows": 0.9453,
+          "share_of_sse": 0.9325
+        }
+      },
+      "unit_train_evidence": {
+        "has_pair_in_train": {
+          "n": 120,
+          "r2": 0.3414,
+          "mae": 0.4902,
+          "sse": 50.16,
+          "share_of_rows": 0.0057,
+          "share_of_sse": 0.0049
+        },
+        "no_pair_in_train": {
+          "n": 20925,
+          "r2": 0.1585,
+          "mae": 0.5433,
+          "sse": 10150.75,
+          "share_of_rows": 0.9943,
+          "share_of_sse": 0.9951
+        }
+      },
+      "metal_corpus": {
+        "metal_in_supported_pair": {
+          "n": 20289,
+          "r2": 0.1619,
+          "mae": 0.5468,
+          "sse": 9931.11,
+          "share_of_rows": 0.9641,
+          "share_of_sse": 0.9736
+        },
+        "metal_without_supported_pair": {
+          "n": 756,
+          "r2": 0.1591,
+          "mae": 0.4411,
+          "sse": 269.8,
+          "share_of_rows": 0.0359,
+          "share_of_sse": 0.0264
+        }
+      },
+      "metal_train_evidence": {
+        "metal_paired_in_train": {
+          "n": 20289,
+          "r2": 0.1619,
+          "mae": 0.5468,
+          "sse": 9931.11,
+          "share_of_rows": 0.9641,
+          "share_of_sse": 0.9736
+        },
+        "metal_unpaired_in_train": {
+          "n": 756,
+          "r2": 0.1591,
+          "mae": 0.4411,
+          "sse": 269.8,
+          "share_of_rows": 0.0359,
+          "share_of_sse": 0.0264
+        }
+      }
+    },
+    "within_metal": {
+      "split": "GroupKFold(5) on ligand_main_fragment",
+      "overall": {
+        "mae": 0.5093,
+        "r2": 0.253,
+        "rmse": 0.6577,
+        "n": 21045
+      },
+      "unit_corpus": {
+        "cross_metal": {
+          "n": 1151,
+          "r2": 0.1542,
+          "mae": 0.5788,
+          "sse": 652.51,
+          "share_of_rows": 0.0547,
+          "share_of_sse": 0.0717
+        },
+        "singleton": {
+          "n": 19894,
+          "r2": 0.2551,
+          "mae": 0.5053,
+          "sse": 8450.73,
+          "share_of_rows": 0.9453,
+          "share_of_sse": 0.9283
+        }
+      },
+      "unit_train_evidence": {
+        "has_pair_in_train": {
+          "n": 0,
+          "status": "EMPTY"
+        },
+        "no_pair_in_train": {
+          "n": 21045,
+          "r2": 0.253,
+          "mae": 0.5093,
+          "sse": 9103.25,
+          "share_of_rows": 1.0,
+          "share_of_sse": 1.0
+        }
+      },
+      "metal_corpus": {
+        "metal_in_supported_pair": {
+          "n": 20289,
+          "r2": 0.2563,
+          "mae": 0.5107,
+          "sse": 8812.39,
+          "share_of_rows": 0.9641,
+          "share_of_sse": 0.968
+        },
+        "metal_without_supported_pair": {
+          "n": 756,
+          "r2": 0.0934,
+          "mae": 0.4716,
+          "sse": 290.85,
+          "share_of_rows": 0.0359,
+          "share_of_sse": 0.032
+        }
+      },
+      "metal_train_evidence": {
+        "metal_paired_in_train": {
+          "n": 20289,
+          "r2": 0.2563,
+          "mae": 0.5107,
+          "sse": 8812.39,
+          "share_of_rows": 0.9641,
+          "share_of_sse": 0.968
+        },
+        "metal_unpaired_in_train": {
+          "n": 756,
+          "r2": 0.0934,
+          "mae": 0.4716,
+          "sse": 290.85,
+          "share_of_rows": 0.0359,
+          "share_of_sse": 0.032
+        }
+      },
+      "per_metal": {
+        "Ru": {
+          "mae": 0.5168,
+          "r2": 0.2503,
+          "rmse": 0.6648,
+          "n": 14785,
+          "metal_in_supported_pair_corpus": true,
+          "metal_paired_in_train_share": 1.0,
+          "cross_metal_unit_share": 0.0275
+        },
+        "Ir": {
+          "mae": 0.4715,
+          "r2": 0.0974,
+          "rmse": 0.6089,
+          "n": 3666,
+          "metal_in_supported_pair_corpus": true,
+          "metal_paired_in_train_share": 1.0,
+          "cross_metal_unit_share": 0.0483
+        },
+        "Rh": {
+          "mae": 0.5178,
+          "r2": 0.0637,
+          "rmse": 0.7001,
+          "n": 959,
+          "metal_in_supported_pair_corpus": true,
+          "metal_paired_in_train_share": 1.0,
+          "cross_metal_unit_share": 0.2002
+        },
+        "Os": {
+          "mae": 0.5636,
+          "r2": 0.329,
+          "rmse": 0.7148,
+          "n": 879,
+          "metal_in_supported_pair_corpus": true,
+          "metal_paired_in_train_share": 1.0,
+          "cross_metal_unit_share": 0.4278
+        },
+        "Re": {
+          "mae": 0.4716,
+          "r2": 0.0934,
+          "rmse": 0.6203,
+          "n": 756,
+          "metal_in_supported_pair_corpus": false,
+          "metal_paired_in_train_share": 0.0,
+          "cross_metal_unit_share": 0.0
+        }
+      }
+    },
+    "metal_out": {
+      "split": "leave one metal out",
+      "per_held_out_metal": {
+        "Ru": {
+          "supported_pairs_train": {
+            "Ir-Rh": 170
+          },
+          "metal_in_train_pair": false
+        },
+        "Ir": {
+          "supported_pairs_train": {
+            "Os-Ru": 347
+          },
+          "metal_in_train_pair": false
+        },
+        "Rh": {
+          "supported_pairs_train": {
+            "Os-Ru": 347
+          },
+          "metal_in_train_pair": false
+        },
+        "Os": {
+          "supported_pairs_train": {
+            "Ir-Rh": 170
+          },
+          "metal_in_train_pair": false
+        },
+        "Re": {
+          "supported_pairs_train": {
+            "Ir-Rh": 170,
+            "Os-Ru": 347
+          },
+          "metal_in_train_pair": false
+        }
+      },
+      "per_metal": {
+        "Ru": {
+          "mae": 0.6347,
+          "r2": -0.0777,
+          "rmse": 0.7971,
+          "n": 14785
+        },
+        "Ir": {
+          "mae": 0.5391,
+          "r2": -0.1283,
+          "rmse": 0.6807,
+          "n": 3666
+        },
+        "Rh": {
+          "mae": 0.5924,
+          "r2": -0.1589,
+          "rmse": 0.7789,
+          "n": 959
+        },
+        "Os": {
+          "mae": 0.5718,
+          "r2": 0.3479,
+          "rmse": 0.7046,
+          "n": 879
+        },
+        "Re": {
+          "mae": 0.5371,
+          "r2": -0.1034,
+          "rmse": 0.6843,
+          "n": 756
+        }
+      },
+      "weighted_r2_per_metal": -0.0734,
+      "weighted_r2_source": "same estimator as msrs_lomo_surface.json:/endpoints/potency/splits/metal_out/aggregate/descriptors",
+      "overall": {
+        "mae": 0.61,
+        "r2": -0.0228,
+        "rmse": 0.7696,
+        "n": 21045
+      },
+      "unit_corpus": {
+        "cross_metal": {
+          "n": 1151,
+          "r2": 0.3425,
+          "mae": 0.5158,
+          "sse": 507.24,
+          "share_of_rows": 0.0547,
+          "share_of_sse": 0.0407
+        },
+        "singleton": {
+          "n": 19894,
+          "r2": -0.0539,
+          "mae": 0.6154,
+          "sse": 11956.98,
+          "share_of_rows": 0.9453,
+          "share_of_sse": 0.9593
+        }
+      },
+      "unit_train_evidence": {
+        "has_pair_in_train": {
+          "n": 0,
+          "status": "EMPTY"
+        },
+        "no_pair_in_train": {
+          "n": 21045,
+          "r2": -0.0228,
+          "mae": 0.61,
+          "sse": 12464.22,
+          "share_of_rows": 1.0,
+          "share_of_sse": 1.0
+        }
+      },
+      "metal_corpus": {
+        "metal_in_supported_pair": {
+          "n": 20289,
+          "r2": -0.0219,
+          "mae": 0.6127,
+          "sse": 12110.2,
+          "share_of_rows": 0.9641,
+          "share_of_sse": 0.9716
+        },
+        "metal_without_supported_pair": {
+          "n": 756,
+          "r2": -0.1034,
+          "mae": 0.5371,
+          "sse": 354.02,
+          "share_of_rows": 0.0359,
+          "share_of_sse": 0.0284
+        }
+      },
+      "metal_train_evidence": {
+        "metal_paired_in_train": {
+          "n": 0,
+          "status": "EMPTY"
+        },
+        "metal_unpaired_in_train": {
+          "n": 21045,
+          "r2": -0.0228,
+          "mae": 0.61,
+          "sse": 12464.22,
+          "share_of_rows": 1.0,
+          "share_of_sse": 1.0
+        }
+      }
+    }
+  },
+  "ranking_reference": {
+    "artifact": "metrics/by_metric/msrs_ranking_support.json",
+    "why": "every ranking pair is two rows of one (ligand, cell) group, so the supported share is 1.0 by construction; UP-16 reports it per pair"
+  },
+  "gate": {
+    "every_axis_has_two_non_empty_strata": {
+      "doi.unit_corpus": true,
+      "doi.unit_train_evidence": true,
+      "doi.metal_corpus": true,
+      "doi.metal_train_evidence": true,
+      "within_metal.unit_corpus": true,
+      "within_metal.unit_train_evidence": false,
+      "within_metal.metal_corpus": true,
+      "within_metal.metal_train_evidence": true
+    },
+    "exempt_empty_by_construction": [
+      "within_metal.unit_train_evidence"
+    ],
+    "metal_out_exempt": "the held-out metal is in no training pair, so every evidence stratum is empty by construction",
+    "no_threshold": true,
+    "gate_pass": true
+  },
+  "kill": {
+    "rule": "supported-row share < 5% => the metric is a case study, not a capability",
+    "share_has_pair_in_train_doi": 0.0057,
+    "share_has_pair_in_train_within_metal": null,
+    "share_metal_paired_in_train_doi": 0.9641,
+    "share_metal_paired_in_train_within_metal": 0.9641,
+    "kill_triggered": {
+      "share_has_pair_in_train_doi": true,
+      "share_has_pair_in_train_within_metal": false,
+      "share_metal_paired_in_train_doi": false,
+      "share_metal_paired_in_train_within_metal": false
+    }
+  },
+  "verdict": "SUPPORT_STRATIFIED",
+  "caveats": [
+    "The unit and metal axes are not independent: a cross-metal unit is by definition inside a metal pair. They answer different questions about the same rows, not two independent effects.",
+    "In metal_out every evidence stratum is empty, because the held-out metal is in no training pair. The whole test set is the unsupported stratum; that is the finding, not a stratification bug.",
+    "In within_metal the ligand is unseen, so a cross-metal unit has its partner metal in the same test fold. The unit axis is therefore empty there by construction and only the metal axis carries information.",
+    "R2 is computed inside each stratum against that stratum's own variance, so the stratum R2 values do not add up to the pooled R2. The SSE shares do add up and are the quantity to quote.",
+    "The corpus-level flags are descriptive only. A test row's corpus-level cross-metal partner may sit in the same fold, which is why the fold-aware train_evidence flags are the primary table."
+  ],
+  "elapsed_seconds": 101.7
+}
