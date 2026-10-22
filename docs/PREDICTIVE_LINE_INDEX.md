@@ -24,6 +24,8 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **配对是论文内现象，整篇留出把它整体拿走**（UP-14）：语料里 5.47% 的行属于跨金属单元，但 **DOI 留出下只有 0.57%（120/21,045）的测试行在训练折里有配对证据**。配对的两行几乎总在同一篇论文里，于是同折。冻结的 kill 规则（<5%）在 DOI 协议上触发。
 - **交互在金属被观测到时是真实收益，在留出金属上不存在**（UP-12）：配体分组下自由交互比加性高 **+0.0391**（0.2519 vs 0.2128），同一模型在 metal_out 上是 −0.097；秩-1 支持受限的交互在配体分组下反而 **−0.0174**。metal_out 的两阶段预测与 stage1 **逐位相同**（`max|Δ| = 0`）—— 该协议结构上看不见这个杠杆。
 - **0.5985 只在合并后显著，没有任何一个金属对单独过半**（UP-16）：Os–Ru 0.5807 [0.4990, 0.6548]、Ir–Rh 0.5600 [0.4799, 0.6190]、Rh–Ru 0.5000（n=16、1 个负例）。且 360 对 100% 落在支持组内是**定义使然**（排序对本身就是同组两金属两行），不是测出来的覆盖率。
+- **金属图是一棵树，而且「有效边」与「精确边」不是同一个集合**（UP-18）：观测子图 4 节点 3 边、无环，Re 是孤立点；树上 node-splitting 无定义、残差自由度 0。按效应 {Ru–Os +0.134 (t=3.36), Ru–Rh +1.077 (t=2.58)}，按精度 {Ru–Os 0.59, Ir–Rh 0.40} —— 只在 Ru–Os 上重合。UP-10 判 OK 的 Ir–Rh 均值与 0 不可区分（t=0.96）。
+- **metal_out 的负 R² 是行构成，不是模型缺陷**（UP-19）：**94.5% 的测试行没有任何 (配体, 细胞系) 伙伴在训练金属下**，这部分 R² = **−0.0913**；有伙伴的 **5.47%（1,151 行）上 R² = 0.3299**、去中心化 0.3806，高于同模型 within_metal 的 0.2128。headline −0.0734 是这两块按 SSE/SST 加权的结果。
 - **shape 里结构与论文批次各自都超过 50%**（UP-17）：配体×金属 0.8015 [0.7884, 0.8151]、论文×金属 0.5484 [0.5801, 0.6297]，**两块在自己的优先顺序下都过 0.5、在对方的顺序下都归 0**；细胞×金属两种顺序都是 0.0。冻结的 kill 规则触发，但它的推论（"建模即拟合噪声"）**不成立**。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
@@ -52,6 +54,13 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-12 | 两阶段能不能只在配对数据上开交互 | **FAIL**（gate 退化） | metal_out 上交互**恒为 0**；within-metal 秩-1 −0.0174、自由交互 +0.0391 |
 | UP-14 | 支持度分层后 headline 还剩什么 | **PASS**（无阈值） | DOI 下只有 **0.57%** 的测试行在训练折里有配对证据 |
 | UP-16 | 0.5985 是不是只在支持组内 | **PASS**（无阈值） | 360 对 100% 支持（定义使然）；**没有一个金属对单独过半** |
+
+**UP 第三轮记分牌（可识别性阶段，门槛在 2026-10-22T12:42+08:00 写死）**
+
+| 项 | 问题 | 判决 | 一个数字 |
+|---|---|---|---|
+| UP-18 | 金属图是什么形状，哪条边携带水平信息 | **FAIL**（2/4 断言） | 观测子图是树；t（簇）Ru–Os 3.36 / Ru–Rh 2.58 / Ir–Rh 0.96；kill 未触发 |
+| UP-19 | metal_out 的负 R² 是模型还是估计目标 | **PASS** | 可识别行仅 **5.47%**，其上 R² = **0.3299**（去中心化 0.3806）；其余 94.5% 上 −0.0913 |
 
 ---
 
@@ -290,7 +299,24 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP16.irrh_balanced", "value": 0.56, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Ir-Rh.balanced_accuracy"},
   {"id": "UP16.irrh_ci_low", "value": 0.4799, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.by_metal_pair.Ir-Rh.balanced_wilson95.0"},
   {"id": "UP16.drop_osru_balanced", "value": 0.648, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.leave_one_pair_out.Os-Ru.balanced_accuracy"},
-  {"id": "UP16.osru_n_needed", "value": 642, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.sample_size.Os-Ru.n_for_half_width_0p05"}
+  {"id": "UP16.osru_n_needed", "value": 642, "artifact": "metrics/by_metric/msrs_ranking_support.json", "path": "strata.listwise_ligand_cell.sample_size.Os-Ru.n_for_half_width_0p05"},
+  {"id": "UP18.n_edges", "value": 3, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "graph.n_edges"},
+  {"id": "UP18.is_tree", "value": true, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "graph.is_tree_observed_subgraph"},
+  {"id": "UP18.ruos_t_cluster", "value": 3.364, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "edges_by_pair.Ru-Os.t_cluster"},
+  {"id": "UP18.ruroh_t_cluster", "value": 2.577, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "edges_by_pair.Ru-Rh.t_cluster"},
+  {"id": "UP18.irrh_t_cluster", "value": 0.958, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "edges_by_pair.Ir-Rh.t_cluster"},
+  {"id": "UP18.ruos_precision_share_cluster", "value": 0.5903, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "edges_by_pair.Ru-Os.precision_share_cluster"},
+  {"id": "UP18.ruroh_precision_share_cluster", "value": 0.0054, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "edges_by_pair.Ru-Rh.precision_share_cluster"},
+  {"id": "UP18.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "gate.kill.triggered"},
+  {"id": "UP18.identifiable_dim_holdout_ru", "value": 1, "artifact": "metrics/by_metric/msrs_metal_graph.json", "path": "graph.per_metal_out.Ru.identifiable_level_dim_train"},
+  {"id": "UP19.identifiable_rows", "value": 1151, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.pooled.descriptors.identifiable_unit_rows.n"},
+  {"id": "UP19.identifiable_share", "value": 0.0547, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "decomposition_summary.identifiable_row_share"},
+  {"id": "UP19.pooled_all_r2_abs", "value": -0.064, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.pooled.descriptors.all_rows.r2_abs"},
+  {"id": "UP19.pooled_identifiable_r2_abs", "value": 0.3299, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.pooled.descriptors.identifiable_unit_rows.r2_abs"},
+  {"id": "UP19.pooled_identifiable_r2_centred", "value": 0.3806, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.pooled.descriptors.identifiable_unit_rows.r2_centred"},
+  {"id": "UP19.ru_centred_identifiable", "value": 0.4078, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.per_metal.Ru.representations.descriptors.identifiable_unit_rows.r2_centred"},
+  {"id": "UP19.re_identifiable_rows", "value": 0, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "metal_out.per_metal.Re.n_identifiable_unit_rows"},
+  {"id": "UP19.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_identifiability.json", "path": "gate.gate_pass"}
 ]
 ```
 
@@ -589,6 +615,69 @@ kill 规则（支持行 <5% ⇒ 该指标退化为 case study）**在 DOI 协议
 **样本量需求**（按各对自身的 TPR/TNR 与正例率反解，Jeffreys 平滑避免 TNR=1.0 声称零方差）：Os–Ru 要 **642** 对（现有 258），Ir–Rh 要 **130**（现有 86），Rh–Ru 要 **226**（现有 16）。**现有语料最多只能把 Os–Ru 做到一半。**
 
 ⇒ DP-5 = **YES**：排序数字必须写成"3 个已观测金属对内"，不能写成跨金属排序能力。
+
+### 2.17 UP-18 金属图的图论诊断：按精度排边，「有效」与「精确」是两个不同的集合（2026-10-22）
+
+`msrs_metal_graph.json`（CPU，potency，21,045 行）。UP-10 用 `n_groups >= 20` 判边，本项改用三条边各自的均值 Δ 与三种标准误。
+
+| 边 | 组数 | 配体 | mean Δ | sd Δ | ICC(配体内) | deff | t（化验噪声） | t（经验） | **t（配体簇 bootstrap）** | 95% CI | 精度份额（簇） |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| Ru–Os | 354 | 121 | +0.1340 | 0.4641 | 0.6615 | 2.274 | 11.14 | 5.43 | **3.364** | [0.0618, 0.2164] | 0.5903 |
+| Ir–Rh | 170 | 73 | −0.0461 | 0.4395 | 0.7378 | 1.980 | 1.50 | 1.37 | **0.958** | [−0.1382, 0.0454] | 0.4044 |
+| Ru–Rh | 15 | 10 | +1.0767 | 1.4003 | 0.9865 | 1.493 | 9.54 | 2.98 | **2.577** | [0.3931, 2.0333] | 0.0054 |
+
+**UP-10 的判定维度确实错了，但错法与计划里写的不同。** 计划说「`n≥20` 把 t=9.54 的 Ru–Rh 判死、把 t=1.50 的 Ir–Rh 判活」。实测：
+
+- t=9.54 只在**化验噪声**口径下成立。Ru–Rh 的 sd Δ 是 **1.4003**（ICC 0.9865，deff 1.493），配体簇校正后 t 掉到 **2.577**。它仍 ≥2（kill 未触发），但远不到 9.54。
+- Ir–Rh 的 t 在三种口径下都 <1.5，**它的均值与 0 不可区分**。UP-10 判它 OK 的依据是组数，不是效应。
+- 所以**「携带非零效应的边」= {Ru–Os, Ru–Rh}**，**「精度份额高的边」= {Ru–Os (0.59), Ir–Rh (0.40)}**。两个集合只在 Ru–Os 上重合。Ru–Rh 的效应最大但精度份额只有 **0.0054**，因为它的组间散布（sd 1.40）几乎全是配体间的真实差异（ICC 0.99），把均值的不确定度放大了。
+
+**图结构**：观测子图（有边的金属）4 节点 3 边，**是树**（E=V−1，无环）；Re 度数为 0，是全图的孤立点（全图 = 2 个连通分量，E=V−2）。割点 = 全部 4 个节点。**树上没有环 ⇒ 没有间接路径 ⇒ node-splitting 无定义**（`NOT_APPLICABLE`，残差自由度 0）。不一致性不是"不存在"，是"不可检验"。
+
+**水平解**（GLS，约束 Σu=0）：Ru +0.5834、Os +0.4494、Ir −0.5394、Rh −0.4933；对应 t 只有 **1.373–1.789**，**没有任何一个金属相对总均值的偏离是显著的**。树上是方阵（3 边 + 1 约束 = 4 未知），所以**点估计与权重无关**（两种加权逐位相同），精度只影响 SE。
+
+**metal_out 的训练侧可识别维数**（V − 连通分量数）：留出 Ru → 1（只剩 Ir–Rh）；留出 Rh → 1（只剩 Ru–Os）；留出 Ir → 2；留出 Os → 2；留出 Re → 3。留出节点自身永远与训练图断开（它的边全被删掉），所以**留出金属的水平在任何场景下都不可识别**。
+
+**Gate：FAIL（2/4 条断言）。** `assert_tree` ✓、`assert_edge_count` ✓、`assert_ruos_dominant` ✗（0.5903 < 0.80；只有化验噪声口径 0.8592 才过）、`assert_ruroh_survives_cluster` ✗（2.577 < 3.0）。**kill 未触发**（2.577 ≥ 2），所以「按精度有效边只有两条」这句不撤回 —— 但要说清是哪两条：按效应是 {Ru–Os, Ru–Rh}，按精度是 {Ru–Os, Ir–Rh}。
+
+**Gate 写错了一处**：`assert_ruos_dominant` 的 0.80 是按化验噪声口径定的（它复现了计划里的 11.14/9.54/1.50），而同一张 gate 里另一条却要求"聚类校正后"。本项按簇口径为主、同时报噪声口径，两者都写进 artifact，不掩饰。
+
+### 2.18 UP-19 metal_out 的可识别子集：**98.5% 的测试行没有配对伙伴**，有伙伴的那 5.47% 上 R² = 0.33（2026-10-22）
+
+`msrs_identifiability.json`（CPU，1 min 47 s；与 `msrs_lomo_surface` 同模型同 seed，逐金属 R² **逐位复现**，`max_abs_delta = 0.0`）。
+
+**分解恒等式**（逐金属，`r2_score` 的基线就是该金属测试均值）：
+
+```
+SSE_abs = SSE_centred + n·bias²
+R²_centred = R²_abs + bias²/Var(y)
+```
+
+`R²_centred` 就是"若有一个 oracle 告诉你该金属的偏移，模型能拿多少分"——即**不依赖那个不可识别水平的那部分**。
+
+| 留出金属 | n_test | 可识别行 | 占比 | R²_abs | bias | R²_centred | 偏移惩罚 | **R²_centred（仅可识别行）** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ru | 14,785 | 406 | 2.7% | −0.0777 | −0.2096 | −0.0031 | 0.0745 | **+0.4078** |
+| Ir | 3,666 | 177 | 4.8% | −0.1283 | +0.1778 | −0.0513 | 0.0770 | **+0.2883** |
+| Rh | 959 | 192 | 20.0% | −0.1589 | +0.3358 | +0.0565 | 0.2154 | **+0.2941** |
+| Os | 879 | 376 | 42.8% | +0.3479 | −0.0562 | +0.3520 | 0.0041 | **+0.4281** |
+| Re | 756 | **0** | 0.0% | −0.1034 | −0.2832 | +0.0855 | 0.1890 | NOT_EVALUABLE |
+| **池化（全部行）** | 21,045 | 1,151 | 5.47% | **−0.0640** | — | **+0.0160** | 0.0800 | — |
+| **池化（仅可识别）** | 1,151 | 1,151 | 100% | **+0.3299** | — | **+0.3806** | 0.0507 | — |
+
+**这是本轮第一个正结果，但它不是"模型变好了"。** 三个事实同时成立：
+
+1. **可识别子集上模型是有效的**：池化 R²_abs = **0.3299**、去中心化 **0.3806**，高于同一模型在 within_metal 的 0.2128。也就是说，当同一 (配体, 细胞系) 在别的金属下被测量过时，模型对该金属的配体排序**是有预测力的**。
+2. **不可识别子集把 headline 拉成负数**：**94.5%** 的测试行（19,894 行）没有配对伙伴。它们的 R² 由池化恒等式（SSE 与 SST 分别相减）反解为 **-0.0913**，与 headline 同号同量级。所以 −0.0734 的构成是"5.47% 的行 +0.33"与"94.5% 的行 −0.09"的加权，**不是模型全面失效**。
+3. **偏移项本身很大**：全行去中心化 R² 从 −0.064 升到 +0.016，惩罚 0.080；Rh 的惩罚是 **0.2154**（bias 0.3358）。这一项正是不可识别的金属水平。
+
+**Gate：PASS。** primary 0.3806 ≥ 0.20（参照 within_metal 加性 0.2128）；secondary **4/4 个可评估金属** > 0.10（Re 有 0 个可识别行，计为 NOT_EVALUABLE 但仍留在 5 的分母里）。**kill 未触发**。
+
+**必须同时说的三条边界**：
+
+- **去中心化用了留出标签**，所以 0.3806 是 oracle-offset 上界，不是可部署分数。它能支撑的结论是"金属内排序可迁移"，不是"新金属的绝对活性可预测"。
+- **可识别子集是选出来的**：能进这个子集的配体，都是被至少两个金属测过的配体（多为研究充分的化合物）。0.33 不是对任意新配体的能力。
+- **Re 完全没有可识别行**：Re 的 756 行里没有任何 (配体, 细胞系) 在别的金属下出现过，所以 Re 一行都没有迁移，只能靠加性模型。
 
 ---
 

@@ -60,7 +60,9 @@
       "校准：DOI 留出 α=0.10 覆盖 0.9004、中位宽 2.0052 log10；metal-Mondrian 覆盖 0.9002（无效）；difficulty-normalized 覆盖 0.8789、宽 1.9195。多金属子群覆盖 0.8096。",
       "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538），seed 集成 0.5946。",
       "k-shot：k=50 时可用金属 1/5。",
-      "噪声地板 σ=0.2091 log10（msrs_variance_decomposition.json）；UP-17 用未去重表测得 σ²=0.0437、df=371。"
+      "噪声地板 σ=0.2091 log10（msrs_variance_decomposition.json）；UP-17 用未去重表测得 σ²=0.0437、df=371。",
+      "金属图（UP-18）：观测子图 4 节点 3 边、是树、无环，Re 度数 0。配体簇校正后 t 为 Ru–Os 3.364、Ru–Rh 2.577、Ir–Rh 0.958；精度份额 Ru–Os 0.5903 / Ir–Rh 0.4044 / Ru–Rh 0.0054。「按效应」={Ru–Os, Ru–Rh} 与「按精度」={Ru–Os, Ir–Rh} 不是同一集合。GLS 水平 t 全 <1.8，树上 node-splitting 无定义（msrs_metal_graph.json）。",
+      "metal_out 的真实构成（UP-19）：可识别行（同 (配体, 细胞系) 在训练金属下有测量）只占 5.47%（1,151/21,045），其上 R²_abs=0.3299、去中心化 0.3806；其余 94.5% 上 R²=−0.0913。headline −0.0734 是这两块的加权，不是模型全面失效（msrs_identifiability.json）。去中心化用留出标签，是 oracle-offset 上界。"
     ]
   },
   "metric_gap_analysis": {
@@ -293,7 +295,8 @@
       ],
       "note": "纯 CPU，约 1.5 小时。必须先做：它决定后面所有指标的口径。",
       "depends_on": [],
-      "status": "PLANNED"
+      "status": "DONE",
+      "result": "UP-18 FAIL（gate 2/4；kill 未触发）—— 树结构确认，但「有效边」与「精确边」不是同一集合。UP-19 PASS —— metal_out 的负 R² 是行构成效应：5.47% 可识别行上 R²=0.33，94.5% 上 −0.09。"
     },
     "wave_2_three_weak": {
       "items": [
@@ -336,7 +339,7 @@
       "id": "UP-18",
       "priority": "P0",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE-FAIL",
       "title": "金属图的图论诊断与精度加权边表",
       "question": "把「支持度」换成「图上的可识别性」：图是不是连通的、是不是树、哪条边真正携带水平信息（按精度而不是按组数）？",
       "why_now": "UP-10 用 n≥20 判边，把 t=9.54 的 Ru–Rh 判为 UNSUPPORTED、把 t=1.50 的 Ir–Rh 判为 OK。判据维度错了，后面所有结论都建在这上面。",
@@ -359,13 +362,15 @@
       },
       "kill": "若 Ru–Rh 的聚类 t < 2，则「按精度有效边只有两条」的结论撤回，退回 UP-10 的三边口径。",
       "cost": "CPU ~30 min",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate FAIL（2/4 断言）：assert_tree ✓、assert_edge_count ✓、assert_ruos_dominant ✗（簇口径 0.5903 < 0.80；噪声口径 0.8592 才过）、assert_ruroh_survives_cluster ✗（2.577 < 3.0）。kill 未触发（2.577 ≥ 2）。观测子图 4 节点 3 边、是树、无环；Re 孤立（全图 2 分量，E=V−2）。三种口径的 t：Ru–Os 11.14/5.43/3.36、Ir–Rh 1.50/1.37/0.96、Ru–Rh 9.54/2.98/2.58。「按效应」={Ru–Os, Ru–Rh}，「按精度」={Ru–Os 0.59, Ir–Rh 0.40}，两个集合只在 Ru–Os 重合。GLS 水平 Ru +0.5834 / Os +0.4494 / Ir −0.5394 / Rh −0.4933，t 1.37–1.79 全不显著；树上点估计与权重无关。node-splitting = NOT_APPLICABLE（残差自由度 0）。"
     },
     {
       "id": "UP-19",
       "priority": "P0",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE-PASS",
       "title": "metal_out 的可识别子空间与去中心化重报",
       "question": "metal_out 的绝对 R² 是模型不行，还是这个量在树上根本不可识别？可识别的那部分有多大、模型做到了多少？",
       "why_now": "−0.0734 被当成模型缺陷追了两轮（UP-1/UP-12 全败）。若它其实是估计目标错误，继续投就是浪费。",
@@ -386,7 +391,9 @@
       },
       "kill": "若去中心化 R² < 0.10 或 <2/5 金属 >0.10，则 metal_out 线彻底关闭，本轮及以后不再投任何资源，论文只写 NOT_IDENTIFIABLE。",
       "cost": "CPU ~1 hr（复用 lomo 的 5 次拟合，加 5 次去中心化评估）",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate PASS：primary 池化去中心化 R²（仅可识别行）0.3806 ≥ 0.20（参照 within_metal 0.2128）；secondary 4/4 个可评估金属 > 0.10（Ru 0.4078 / Ir 0.2883 / Rh 0.2941 / Os 0.4281；Re 0 行 NOT_EVALUABLE）。kill 未触发。核心事实：可识别行只占 5.47%（1,151/21,045），其上 R²_abs = 0.3299；其余 94.5%（19,894 行）R² = −0.0913。全行 R²_abs −0.0640、去中心化 +0.0160（偏移惩罚 0.0800）。逐金属 R² 与 msrs_lomo_surface 逐位复现（max|Δ| = 0.0）。"
     },
     {
       "id": "UP-20",

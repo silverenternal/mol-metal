@@ -10765,3 +10765,146 @@ sets. The honest reading is "assembly amplifies a dense graph", not "assembly am
 
 **Workflow** | Wf-A107g/h (2026-10-22; GPU0: 2 arms x 5 epochs = 796 s total, 2 probes;
 §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.171 — UP-18: the edge list by precision is not the edge list by effect, and neither is the edge list by group count (2026-10-22)
+
+**The rule being replaced.** UP-10 cut the metal-pair edge list at `n_groups >= 20`. That
+marked Ru–Rh (15 units) UNSUPPORTED and Ir–Rh (170 units) OK. The round-three plan
+asserted this was backwards because Ru–Rh has the larger effect. The plan's own numbers
+(t = 9.54 for Ru–Rh, 1.50 for Ir–Rh) came from an assay-noise-only standard error, which
+ignores the between-unit spread the same script measures.
+
+**Measured** (`metrics/by_metric/msrs_metal_graph.json`, potency, 21,045 rows):
+
+| edge | n | mean Δ | sd Δ | ICC | deff | t (noise) | t (empirical) | t (cluster) | 95% CI (cluster) | precision share |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| Ru–Os | 354 | +0.1340 | 0.4641 | 0.6615 | 2.274 | 11.14 | 5.43 | **3.364** | [0.0618, 0.2164] | 0.5903 |
+| Ir–Rh | 170 | −0.0461 | 0.4395 | 0.7378 | 1.980 | 1.50 | 1.37 | **0.958** | [−0.1382, 0.0454] | 0.4044 |
+| Ru–Rh | 15 | +1.0767 | 1.4003 | 0.9865 | 1.493 | 9.54 | 2.98 | **2.577** | [0.3931, 2.0333] | 0.0054 |
+
+**Three different edge rankings, all defensible, none equal.**
+
+  * **By group count** (UP-10): {Ru–Os, Ir–Rh}.
+  * **By non-zero effect** (cluster CI excludes 0): {Ru–Os, Ru–Rh}. Ir–Rh's mean is
+    indistinguishable from zero at t = 0.958.
+  * **By precision share** (1/se_cluster²): {Ru–Os 0.59, Ir–Rh 0.40}; Ru–Rh contributes
+    0.0054.
+
+The plan's premise — "the count rule inverted the ranking" — is half right. Ru–Rh does
+carry a real effect that the count rule discarded. But its precision is the worst in the
+table, not the best: sd Δ = 1.4003 with ICC 0.9865, i.e. the spread is almost entirely
+between-ligand, and the mean of 15 such units is not well determined. Quoting 9.54 as the
+SNR of that edge was wrong.
+
+**A precise zero is still information.** Ir–Rh's high precision share does not mean it is
+uninformative: it constrains `u_Ir ≈ u_Rh`, and the GLS level solution uses all three
+edges. "Effective edges = 2" is a statement about effects, not about constraints.
+
+**Graph structure.** The observed-node subgraph (4 metals, 3 edges) is a tree: E = V − 1,
+no cycle, every node is a cut vertex. Re has degree 0, so the full graph is a forest with
+2 components (E = V − 2). On a tree the level system (3 edges + Σu = 0) is square, so the
+point estimates are identical under every weighting and the residual degrees of freedom
+are zero. Node-splitting is therefore `NOT_APPLICABLE`: inconsistency is untestable, not
+absent.
+
+**Levels are identified but unresolved.** Ru +0.5834, Os +0.4494, Ir −0.5394, Rh −0.4933,
+with t = 1.373–1.789. No metal's deviation from the grand mean is significant, so even the
+relative levels are weak; only the differences along edges are.
+
+**Gate: FAIL, 2 of 4 assertions.** `assert_tree` and `assert_edge_count` pass;
+`assert_ruos_dominant` fails (0.5903 < 0.80; it passes only under the noise-only share
+0.8592) and `assert_ruroh_survives_cluster` fails (2.577 < 3.0). The frozen gate mixed
+two SE definitions — the 0.80 threshold was calibrated to the noise-only numbers, while
+the neighbouring assertion demanded cluster correction. That is a defect in the gate, and
+both definitions are now reported in the artifact rather than one being chosen silently.
+
+**Kill: not triggered.** t_cluster(Ru–Rh) = 2.577 ≥ 2, so the "two effective edges"
+conclusion stands — but it must name which two, and the two definitions disagree.
+
+**Honest boundaries (ACTIVE).**
+  * **Units are cell-matched but not DOI-matched**, so part of Δ can be a paper effect.
+    Clustering by ligand widens the interval; it does not remove between-paper drift.
+  * **ICC(1) assumes exchangeable units within a ligand.** Cell lines differ in scale, so
+    the deff is approximate; the 2,000-draw ligand-clustered bootstrap is the primary SE.
+  * **Ru–Rh's kill survival rests on 15 units.** t = 2.577 is above the line but the
+    interval [0.3931, 2.0333] spans a factor of five.
+  * **metal_out cannot identify a held-out level in any scenario**, because the held-out
+    node's edges are all removed with it. What varies is how much of the *training* system
+    remains: identifiable dimension 1 for Ru-out and Rh-out, 2 for Ir-out and Os-out,
+    3 for Re-out.
+
+**Artifacts.** `molmetal/scripts/msrs_metal_graph.py`,
+`metrics/by_metric/msrs_metal_graph.json`.
+
+**§6.171 catalog-count math.** Net **+1**. Cumulative **225 → 226**. ACTIVE **181 → 182**.
+
+**Workflow** | UP-18 (2026-10-22; CPU, ~40 s including 3 x 2,000 ligand-clustered
+resamples; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.172 — UP-19: metal_out's negative R² is a row-composition effect, and the identifiable slice is 5.47% (2026-10-22)
+
+**What was being measured, and what it was not.** `metal_out` R² = −0.0734 has been read
+as a model-capacity failure for two rounds (UP-1 interaction arms, UP-12 two-stage). It is
+neither: it is the average over two very different populations of test rows.
+
+**Measured** (`metrics/by_metric/msrs_identifiability.json`; same additive LightGBM, same
+seed as `msrs_lomo_surface`, whose per-metal R² it reproduces to 4 decimals,
+`max_abs_delta = 0.0`).
+
+| held-out | n_test | identifiable | share | R²_abs | bias | R²_centred | offset penalty | R²_centred on identifiable |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ru | 14,785 | 406 | 2.7% | −0.0777 | −0.2096 | −0.0031 | 0.0745 | **+0.4078** |
+| Ir | 3,666 | 177 | 4.8% | −0.1283 | +0.1778 | −0.0513 | 0.0770 | **+0.2883** |
+| Rh | 959 | 192 | 20.0% | −0.1589 | +0.3358 | +0.0565 | 0.2154 | **+0.2941** |
+| Os | 879 | 376 | 42.8% | +0.3479 | −0.0562 | +0.3520 | 0.0041 | **+0.4281** |
+| Re | 756 | **0** | 0.0% | −0.1034 | −0.2832 | +0.0855 | 0.1890 | NOT_EVALUABLE |
+| pooled, all rows | 21,045 | 1,151 | 5.47% | −0.0640 | — | +0.0160 | 0.0800 | — |
+| pooled, identifiable | 1,151 | 1,151 | 100% | **+0.3299** | — | **+0.3806** | 0.0507 | — |
+
+The complement (19,894 rows, 94.5%) has R² = **−0.0913**, obtained by subtracting the two
+sets of SSE and SST. So the headline is a weighted mixture of +0.33 and −0.09, not a
+uniform failure.
+
+**Gate: PASS.** Primary 0.3806 ≥ 0.20 (reference: within_metal additive 0.2128, the same
+model with the metal inside training). Secondary 4 of 4 evaluable metals above 0.10; Re
+has zero identifiable rows and is `NOT_EVALUABLE`, still counted in the 5-metal
+denominator. Kill not triggered.
+
+**This is not a capability claim, and the three reasons matter more than the number.**
+  * **Centring uses held-out labels.** R²_centred = R²_abs + bias²/Var(y) is what the
+    model would score if an oracle supplied the per-metal offset. It bounds the
+    identifiable part of the task; it is not a deployable score.
+  * **The identifiable slice is selected.** A row qualifies only when the same
+    (ligand_canonical, cell_line_key) is measured under another metal. Those ligands are
+    the well-studied ones. 0.33 is not the accuracy on an arbitrary new ligand.
+  * **Re transfers nothing.** None of its 756 rows has a partner under another metal, so
+    every Re prediction is ligand extrapolation plus an unknown level.
+
+**The offset is large, which is the point.** For Rh the offset penalty alone is 0.2154
+(bias 0.3358). That is the unidentifiable metal level, and it is why R²_abs is negative
+while the within-metal ordering is positive.
+
+**Honest boundaries (ACTIVE).**
+  * **Keying on `ligand_main_fragment` instead of `ligand_canonical`** (the Morgan input,
+    a coarser key) would enlarge the identifiable set to 37.9–74.3% of rows. That set
+    conflates "seen this ligand" with "seen this scaffold", so it is reported as a
+    sensitivity, not as the primary definition.
+  * **Per-metal centred R² on 177–406 rows is noisy.** The secondary gate counts metals;
+    it does not test any one of them.
+  * **Rows are deduplicated (21,045) but not independent**: a ligand measured in many cell
+    lines contributes many rows, so no confidence interval is attached to the pooled R².
+  * **The 0.3299 is pooled across metals with different n.** Pooling is 1 − ΣSSE/ΣSST, so
+    Ru (14,785 rows) dominates the denominator even though only 406 of its rows are
+    identifiable. The per-metal column is the one to read for any single metal.
+
+**Artifacts.** `molmetal/scripts/msrs_identifiability.py`,
+`metrics/by_metric/msrs_identifiability.json`.
+
+**§6.172 catalog-count math.** Net **+1**. Cumulative **226 → 227**. ACTIVE **182 → 183**.
+
+**Workflow** | UP-19 (2026-10-22; CPU, 1 min 47 s for 15 LightGBM fits; §5.2 every number
+is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

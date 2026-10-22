@@ -1,0 +1,578 @@
+{
+  "artifact": "msrs_metal_graph",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L0 graph diagnostics (UP-18)",
+  "generated_utc": "2026-10-22T06:28:02+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_metal_graph.py",
+    "git_commit": "6de24b0c08d14025c71207ad2a213d3ebe1f7a59",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "unit": "(ligand_canonical, cell_line_key) measured under >=2 metals",
+    "edge_effect": "mean over units of mean(y|a) - mean(y|b)",
+    "se_noise": "sqrt(sigma2_a + sigma2_b) / sqrt(n); assay noise only",
+    "se_empirical": "sd(Delta) / sqrt(n); includes ligand x metal interaction",
+    "se_cluster": "ligand-clustered bootstrap of the mean, 2000 draws, seed 20261022",
+    "design_effect": "1 + (mean_units_per_ligand - 1) * ICC(1) of Delta within ligand",
+    "level_model": "weighted least squares on u_a - u_b = mean Delta, sum(u) = 0",
+    "gate_frozen_at": "2026-10-22T12:42+08:00"
+  },
+  "noise_floor_per_metal": {
+    "Ru": {
+      "n_replicate_groups": 235,
+      "df": 275,
+      "sigma2": 0.049223,
+      "sigma": 0.2219
+    },
+    "Ir": {
+      "n_replicate_groups": 52,
+      "df": 62,
+      "sigma2": 0.019672,
+      "sigma": 0.1403
+    },
+    "Rh": {
+      "n_replicate_groups": 4,
+      "df": 8,
+      "sigma2": 0.141691,
+      "sigma": 0.3764
+    },
+    "Os": {
+      "n_replicate_groups": 20,
+      "df": 21,
+      "sigma2": 0.002018,
+      "sigma": 0.0449
+    },
+    "Re": {
+      "n_replicate_groups": 5,
+      "df": 5,
+      "sigma2": 0.057024,
+      "sigma": 0.2388
+    }
+  },
+  "edges": [
+    {
+      "pair": "Ru-Rh",
+      "n_groups": 15,
+      "n_ligands": 10,
+      "n_cells": 8,
+      "mean_delta": 1.0767,
+      "sd_delta": 1.4003,
+      "noise_sd_delta": 0.4369,
+      "se_noise": 0.112817,
+      "t_noise": 9.544,
+      "se_empirical": 0.361561,
+      "t_empirical": 2.978,
+      "icc_ligand": 0.9865,
+      "icc_f_ratio": 110.872,
+      "mean_units_per_ligand": 1.5,
+      "design_effect": 1.4933,
+      "se_cluster_deff": 0.441825,
+      "t_cluster_deff": 2.437,
+      "se_cluster_bootstrap": 0.417805,
+      "t_cluster": 2.577,
+      "mean_delta_ci95_cluster": [
+        0.3931,
+        2.0333
+      ],
+      "ci_excludes_zero": true,
+      "status_up10": "UNSUPPORTED",
+      "precision_cluster": 5.729,
+      "precision_share_cluster": 0.0054,
+      "precision_noise": 78.569,
+      "precision_share_noise": 0.0098
+    },
+    {
+      "pair": "Ru-Os",
+      "n_groups": 354,
+      "n_ligands": 121,
+      "n_cells": 36,
+      "mean_delta": 0.134,
+      "sd_delta": 0.4641,
+      "noise_sd_delta": 0.2264,
+      "se_noise": 0.012031,
+      "t_noise": 11.135,
+      "se_empirical": 0.024665,
+      "t_empirical": 5.432,
+      "icc_ligand": 0.6615,
+      "icc_f_ratio": 6.716,
+      "mean_units_per_ligand": 2.926,
+      "design_effect": 2.2737,
+      "se_cluster_deff": 0.037192,
+      "t_cluster_deff": 3.602,
+      "se_cluster_bootstrap": 0.03983,
+      "t_cluster": 3.364,
+      "mean_delta_ci95_cluster": [
+        0.0618,
+        0.2164
+      ],
+      "ci_excludes_zero": true,
+      "status_up10": "OK",
+      "precision_cluster": 630.347,
+      "precision_share_cluster": 0.5903,
+      "precision_noise": 6908.703,
+      "precision_share_noise": 0.8592
+    },
+    {
+      "pair": "Ir-Rh",
+      "n_groups": 170,
+      "n_ligands": 73,
+      "n_cells": 33,
+      "mean_delta": -0.0461,
+      "sd_delta": 0.4395,
+      "noise_sd_delta": 0.4017,
+      "se_noise": 0.030809,
+      "t_noise": 1.496,
+      "se_empirical": 0.033708,
+      "t_empirical": 1.368,
+      "icc_ligand": 0.7378,
+      "icc_f_ratio": 7.555,
+      "mean_units_per_ligand": 2.329,
+      "design_effect": 1.9804,
+      "se_cluster_deff": 0.047436,
+      "t_cluster_deff": 0.972,
+      "se_cluster_bootstrap": 0.048121,
+      "t_cluster": 0.958,
+      "mean_delta_ci95_cluster": [
+        -0.1382,
+        0.0454
+      ],
+      "ci_excludes_zero": false,
+      "status_up10": "OK",
+      "precision_cluster": 431.848,
+      "precision_share_cluster": 0.4044,
+      "precision_noise": 1053.525,
+      "precision_share_noise": 0.131
+    }
+  ],
+  "edges_by_pair": {
+    "Ru-Rh": {
+      "pair": "Ru-Rh",
+      "n_groups": 15,
+      "n_ligands": 10,
+      "n_cells": 8,
+      "mean_delta": 1.0767,
+      "sd_delta": 1.4003,
+      "noise_sd_delta": 0.4369,
+      "se_noise": 0.112817,
+      "t_noise": 9.544,
+      "se_empirical": 0.361561,
+      "t_empirical": 2.978,
+      "icc_ligand": 0.9865,
+      "icc_f_ratio": 110.872,
+      "mean_units_per_ligand": 1.5,
+      "design_effect": 1.4933,
+      "se_cluster_deff": 0.441825,
+      "t_cluster_deff": 2.437,
+      "se_cluster_bootstrap": 0.417805,
+      "t_cluster": 2.577,
+      "mean_delta_ci95_cluster": [
+        0.3931,
+        2.0333
+      ],
+      "ci_excludes_zero": true,
+      "status_up10": "UNSUPPORTED",
+      "precision_cluster": 5.729,
+      "precision_share_cluster": 0.0054,
+      "precision_noise": 78.569,
+      "precision_share_noise": 0.0098
+    },
+    "Ru-Os": {
+      "pair": "Ru-Os",
+      "n_groups": 354,
+      "n_ligands": 121,
+      "n_cells": 36,
+      "mean_delta": 0.134,
+      "sd_delta": 0.4641,
+      "noise_sd_delta": 0.2264,
+      "se_noise": 0.012031,
+      "t_noise": 11.135,
+      "se_empirical": 0.024665,
+      "t_empirical": 5.432,
+      "icc_ligand": 0.6615,
+      "icc_f_ratio": 6.716,
+      "mean_units_per_ligand": 2.926,
+      "design_effect": 2.2737,
+      "se_cluster_deff": 0.037192,
+      "t_cluster_deff": 3.602,
+      "se_cluster_bootstrap": 0.03983,
+      "t_cluster": 3.364,
+      "mean_delta_ci95_cluster": [
+        0.0618,
+        0.2164
+      ],
+      "ci_excludes_zero": true,
+      "status_up10": "OK",
+      "precision_cluster": 630.347,
+      "precision_share_cluster": 0.5903,
+      "precision_noise": 6908.703,
+      "precision_share_noise": 0.8592
+    },
+    "Ir-Rh": {
+      "pair": "Ir-Rh",
+      "n_groups": 170,
+      "n_ligands": 73,
+      "n_cells": 33,
+      "mean_delta": -0.0461,
+      "sd_delta": 0.4395,
+      "noise_sd_delta": 0.4017,
+      "se_noise": 0.030809,
+      "t_noise": 1.496,
+      "se_empirical": 0.033708,
+      "t_empirical": 1.368,
+      "icc_ligand": 0.7378,
+      "icc_f_ratio": 7.555,
+      "mean_units_per_ligand": 2.329,
+      "design_effect": 1.9804,
+      "se_cluster_deff": 0.047436,
+      "t_cluster_deff": 0.972,
+      "se_cluster_bootstrap": 0.048121,
+      "t_cluster": 0.958,
+      "mean_delta_ci95_cluster": [
+        -0.1382,
+        0.0454
+      ],
+      "ci_excludes_zero": false,
+      "status_up10": "OK",
+      "precision_cluster": 431.848,
+      "precision_share_cluster": 0.4044,
+      "precision_noise": 1053.525,
+      "precision_share_noise": 0.131
+    }
+  },
+  "graph": {
+    "nodes_all_metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "nodes_with_edges": [
+      "Ir",
+      "Os",
+      "Rh",
+      "Ru"
+    ],
+    "isolated_metals": [
+      "Re"
+    ],
+    "n_nodes_all": 5,
+    "n_nodes_with_edges": 4,
+    "n_edges": 3,
+    "edges": [
+      "Rh-Ru",
+      "Os-Ru",
+      "Ir-Rh"
+    ],
+    "degrees": {
+      "Ru": 2,
+      "Ir": 1,
+      "Rh": 2,
+      "Os": 1,
+      "Re": 0
+    },
+    "components_all_metals": [
+      [
+        "Ir",
+        "Os",
+        "Rh",
+        "Ru"
+      ],
+      [
+        "Re"
+      ]
+    ],
+    "components_observed_subgraph": [
+      [
+        "Ir",
+        "Os",
+        "Rh",
+        "Ru"
+      ]
+    ],
+    "n_components_all_metals": 2,
+    "is_forest_all_metals": true,
+    "is_tree_observed_subgraph": true,
+    "has_cycle": false,
+    "cut_vertices_observed_subgraph": [
+      "Rh",
+      "Ru"
+    ],
+    "identifiable_level_dim_full": 3,
+    "null_space_dim_full": 1,
+    "per_metal_out": {
+      "Ru": {
+        "train_metals": [
+          "Ir",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "n_train_edges": 1,
+        "train_edges": [
+          "Ir-Rh"
+        ],
+        "n_train_components": 3,
+        "train_components": [
+          [
+            "Ir",
+            "Rh"
+          ],
+          [
+            "Os"
+          ],
+          [
+            "Re"
+          ]
+        ],
+        "identifiable_level_dim_train": 1,
+        "held_out_degree": 2,
+        "held_out_connected_to_train": false
+      },
+      "Ir": {
+        "train_metals": [
+          "Ru",
+          "Rh",
+          "Os",
+          "Re"
+        ],
+        "n_train_edges": 2,
+        "train_edges": [
+          "Rh-Ru",
+          "Os-Ru"
+        ],
+        "n_train_components": 2,
+        "train_components": [
+          [
+            "Os",
+            "Rh",
+            "Ru"
+          ],
+          [
+            "Re"
+          ]
+        ],
+        "identifiable_level_dim_train": 2,
+        "held_out_degree": 1,
+        "held_out_connected_to_train": false
+      },
+      "Rh": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Os",
+          "Re"
+        ],
+        "n_train_edges": 1,
+        "train_edges": [
+          "Os-Ru"
+        ],
+        "n_train_components": 3,
+        "train_components": [
+          [
+            "Os",
+            "Ru"
+          ],
+          [
+            "Ir"
+          ],
+          [
+            "Re"
+          ]
+        ],
+        "identifiable_level_dim_train": 1,
+        "held_out_degree": 2,
+        "held_out_connected_to_train": false
+      },
+      "Os": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Re"
+        ],
+        "n_train_edges": 2,
+        "train_edges": [
+          "Rh-Ru",
+          "Ir-Rh"
+        ],
+        "n_train_components": 2,
+        "train_components": [
+          [
+            "Ir",
+            "Rh",
+            "Ru"
+          ],
+          [
+            "Re"
+          ]
+        ],
+        "identifiable_level_dim_train": 2,
+        "held_out_degree": 1,
+        "held_out_connected_to_train": false
+      },
+      "Re": {
+        "train_metals": [
+          "Ru",
+          "Ir",
+          "Rh",
+          "Os"
+        ],
+        "n_train_edges": 3,
+        "train_edges": [
+          "Rh-Ru",
+          "Os-Ru",
+          "Ir-Rh"
+        ],
+        "n_train_components": 1,
+        "train_components": [
+          [
+            "Ir",
+            "Os",
+            "Rh",
+            "Ru"
+          ]
+        ],
+        "identifiable_level_dim_train": 3,
+        "held_out_degree": 0,
+        "held_out_connected_to_train": false
+      }
+    }
+  },
+  "levels": {
+    "cluster_weighted": {
+      "weights": "se_cluster_bootstrap",
+      "levels": {
+        "Ir": -0.5394,
+        "Os": 0.4494,
+        "Rh": -0.4933,
+        "Ru": 0.5834
+      },
+      "se": {
+        "Ir": 0.3279,
+        "Os": 0.3274,
+        "Rh": 0.3262,
+        "Ru": 0.3262
+      },
+      "t": {
+        "Ir": 1.645,
+        "Os": 1.373,
+        "Rh": 1.512,
+        "Ru": 1.789
+      },
+      "rank_edge_design": 3,
+      "rank_with_constraint": 4,
+      "n_levels": 4,
+      "residual_df": 0,
+      "identifiable_subspace_dim": 3,
+      "note": "On a tree the system is square, so the point estimates are identical under every weighting; only the SEs change."
+    },
+    "noise_weighted": {
+      "weights": "se_noise",
+      "levels": {
+        "Ir": -0.5394,
+        "Os": 0.4494,
+        "Rh": -0.4933,
+        "Ru": 0.5834
+      },
+      "se": {
+        "Ir": 0.2573,
+        "Os": 0.2566,
+        "Rh": 0.2564,
+        "Ru": 0.2564
+      },
+      "t": {
+        "Ir": 2.096,
+        "Os": 1.752,
+        "Rh": 1.924,
+        "Ru": 2.275
+      },
+      "rank_edge_design": 3,
+      "rank_with_constraint": 4,
+      "n_levels": 4,
+      "residual_df": 0,
+      "identifiable_subspace_dim": 3,
+      "note": "On a tree the system is square, so the point estimates are identical under every weighting; only the SEs change."
+    },
+    "estimates_identical_across_weightings": true
+  },
+  "node_split": {
+    "status": "NOT_APPLICABLE",
+    "reason": "The observed-subgraph is a tree (E = V - 1, no cycle). Every level difference is informed by exactly one edge, so there is no indirect path to compare against a direct one. Inconsistency is not testable, not absent.",
+    "residual_df": 0
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T12:42+08:00",
+    "assertions": {
+      "assert_tree": {
+        "pass": true,
+        "value": {
+          "n_nodes_with_edges": 4,
+          "n_edges": 3,
+          "is_tree": true,
+          "has_cycle": false
+        },
+        "definition": "Evaluated on the observed-node subgraph (metals with >=1 edge). Including Re the graph is a forest with 2 components, E = V - 2; Re has degree 0 in every scenario."
+      },
+      "assert_edge_count": {
+        "pass": true,
+        "value": 3,
+        "pairs": [
+          "Rh-Ru",
+          "Os-Ru",
+          "Ir-Rh"
+        ]
+      },
+      "assert_ruos_dominant": {
+        "threshold": 0.8,
+        "value_cluster": 0.5903,
+        "value_noise_only": 0.8592,
+        "pass_cluster": false,
+        "pass_noise_only": true,
+        "pass": false,
+        "definition": "Primary = ligand-clustered precision (1/se_cluster^2). The noise-only share is reported because the frozen t values in the plan were computed from it; it is not the robust one."
+      },
+      "assert_ruroh_survives_cluster": {
+        "threshold": 3.0,
+        "value": 2.577,
+        "pass": false
+      }
+    },
+    "failing_assertions": [
+      "assert_ruos_dominant",
+      "assert_ruroh_survives_cluster"
+    ],
+    "gate_pass": false,
+    "kill": {
+      "rule": "cluster-corrected t(Ru-Rh) < 2 retracts the two-effective-edges claim",
+      "value": 2.577,
+      "triggered": false
+    }
+  },
+  "headline": {
+    "edge_with_nonzero_effect": [
+      "Ru-Rh",
+      "Ru-Os"
+    ],
+    "edge_without_detectable_effect": [
+      "Ir-Rh"
+    ],
+    "up10_ok_but_flat": "Ir-Rh",
+    "up10_unsupported_but_large": "Ru-Rh",
+    "max_abs_level_t": 1.789
+  },
+  "caveats": [
+    "A unit is cell-matched but not DOI-matched; part of Delta can be a paper effect, and the clustered SE does not remove it, it only widens the interval.",
+    "ICC(1) assumes exchangeable units within a ligand. Cell lines differ in scale, so the deff estimate is approximate; the bootstrap SE is the primary one.",
+    "A non-significant edge is not an uninformative edge. Ir-Rh's mean is indistinguishable from zero, which is itself a constraint (u_Ir ~ u_Rh). The GLS level solution uses all three edges.",
+    "Levels are identifiable only up to the sum-zero constraint; the absolute offset of the whole metal block is not estimable from these data.",
+    "Re has degree 0 in every scenario: it appears in no cell-matched pair, so no statement about its level is possible at all."
+  ]
+}
