@@ -1,0 +1,120 @@
+{
+ "metric": "wfa108d_t_sensitivity",
+ "tag": "MEASURED",
+ "date": "2026-10-22",
+ "what": "Same coordinates and atom types, five values of t: how much does the trained velocity field's output change with t?  The interpolant's conditional mean flips sign between t->0 (-x_t) and t->1 (+x_t), so a field that is even approximately right must change direction across the path.",
+ "checkpoint": "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+ "field": "results/wfa108d_fields/vc8_temb64_2k.pt",
+ "velocity_head": "vector_channels",
+ "vector_channels": 8,
+ "t_embedding_dim": 64,
+ "field_steps": 2000,
+ "field_cycle_batches": 25,
+ "field_t_uniform": true,
+ "eval_seed": 999,
+ "noise_sigma": 2.485,
+ "n_clouds": 7,
+ "per_t": [
+  {
+   "t": 0.05,
+   "mean_v_norm": 2.8742263317108154,
+   "rms_v_per_coord": 1.936389446258545,
+   "cos_to_signflip_ref": -0.1264120191335678
+  },
+  {
+   "t": 0.25,
+   "mean_v_norm": 2.007333278656006,
+   "rms_v_per_coord": 1.4096734523773193,
+   "cos_to_signflip_ref": 0.15988829731941223
+  },
+  {
+   "t": 0.5,
+   "mean_v_norm": 1.669525146484375,
+   "rms_v_per_coord": 1.113289713859558,
+   "cos_to_signflip_ref": -0.20775973796844482
+  },
+  {
+   "t": 0.75,
+   "mean_v_norm": 1.801059603691101,
+   "rms_v_per_coord": 1.2456806898117065,
+   "cos_to_signflip_ref": 0.2861383855342865
+  },
+  {
+   "t": 0.95,
+   "mean_v_norm": 2.2726986408233643,
+   "rms_v_per_coord": 1.6834245920181274,
+   "cos_to_signflip_ref": 0.6637252569198608
+  }
+ ],
+ "pairwise": [
+  {
+   "t_a": 0.05,
+   "t_b": 0.25,
+   "cosine": 0.7010623216629028,
+   "relative_l2_change": 0.8259400633529278
+  },
+  {
+   "t_a": 0.05,
+   "t_b": 0.5,
+   "cosine": 0.22712218761444092,
+   "relative_l2_change": 1.3132151286691822
+  },
+  {
+   "t_a": 0.05,
+   "t_b": 0.75,
+   "cosine": 0.07501295953989029,
+   "relative_l2_change": 1.3968805590201498
+  },
+  {
+   "t_a": 0.05,
+   "t_b": 0.95,
+   "cosine": -0.006234277039766312,
+   "relative_l2_change": 1.4220320073203132
+  },
+  {
+   "t_a": 0.25,
+   "t_b": 0.5,
+   "cosine": 0.6187281608581543,
+   "relative_l2_change": 0.898454956416429
+  },
+  {
+   "t_a": 0.25,
+   "t_b": 0.75,
+   "cosine": 0.32888972759246826,
+   "relative_l2_change": 1.162909225377634
+  },
+  {
+   "t_a": 0.25,
+   "t_b": 0.95,
+   "cosine": 0.1131833866238594,
+   "relative_l2_change": 1.338309454525058
+  },
+  {
+   "t_a": 0.5,
+   "t_b": 0.75,
+   "cosine": 0.7716163396835327,
+   "relative_l2_change": 0.6840522931775774
+  },
+  {
+   "t_a": 0.5,
+   "t_b": 0.95,
+   "cosine": 0.4416623115539551,
+   "relative_l2_change": 1.1119810787293378
+  },
+  {
+   "t_a": 0.75,
+   "t_b": 0.95,
+   "cosine": 0.8255473971366882,
+   "relative_l2_change": 0.6560864985834538
+  }
+ ],
+ "endpoint_relative_l2_change": 0.8259400633529278,
+ "endpoint_cosine": 0.7010623216629028,
+ "verdict": "T_SENSITIVE",
+ "sign_flip_achieved": false,
+ "honest_limits": [
+  "One held-out cohort (8 clouds) and one noise draw.  This measures the field's t-response on that draw, not a population average.",
+  "relative_l2_change = ||v(t_a) - v(t_b)|| / (||v(t_a)|| ||v(t_b)||) is a scale-free direction change; it is 0 for a t-blind field and sqrt(2) for two orthogonal fields of equal norm.",
+  "The sign-flip reference is the t->0 / t->1 limit of the conditional mean for a Gaussian prior, not the exact conditional mean at intermediate t."
+ ]
+}

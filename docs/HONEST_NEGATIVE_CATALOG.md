@@ -11834,6 +11834,14 @@ untested is a change of regime rather than of step count — c7 is 26,715 clouds
 i.e. 8x the batch and 100x the data, and that is the only remaining arm that raises the
 signal-to-noise of the FM gradient instead of just taking more steps along it.
 
+**Amended the same day by §6.187 (Wf-A108d).** Both readings above were measured under a
+sampling distribution the trainer does not use. Repeating the arms with 25 cycling cohorts
+at `t ~ U(0,1)` shows the field does learn under that distribution — 0.186 of the gap at
+500 steps, 0.255 at 10,000 — so "the FM gradient carries no signal" is wrong, and so is
+"c7 is the only remaining arm": 4x the corpus at fixed steps moved the gap 0.193 -> 0.198
+(null). What is actually wrong is the low-`t` end, where the field is 64% worse than
+predicting zero while a one-parameter Gaussian posterior mean is 2.5x better (§6.187).
+
 **Honest boundaries (ACTIVE).**
   * **One seed per arm.** The 5-epoch drift is smaller than the epoch-to-epoch spread, so a
     slow trend is not excluded; what is excluded is a 10x-lr effect of the size the capacity
@@ -11861,6 +11869,109 @@ signal-to-noise of the FM gradient instead of just taking more steps along it.
 
 **Workflow** | Wf-A108b (2026-10-22; GPU0: B1 987 s + 4-epoch probe 413 s + 1-epoch probe
 103 s; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.187 — Wf-A108d: the capacity gate measured memorisation, and the real defect is at low `t` (2026-10-22)
+
+**What this wave was for.** §6.173 established that the radial coordinate head cannot fit
+one 8-cloud batch (MSE 10.529 against a 10.652 `v=0` baseline). §6.186 then found that 10x
+the learning rate leaves `fm_term` flat and concluded the lever was the flow-matching
+gradient's signal-to-noise, with c7 as the only remaining arm. Both measurements share a
+protocol the trainer does not use: one fixed batch at one fixed `t`. Wf-A108d repeats the
+gate under the trainer's own sampling distribution.
+
+**Method.** `wfa107h_velocity_capacity.py --cycle-batches N --t-uniform --eval-seed 999`:
+each step uses the next of `N` cohorts and resamples `t ~ U(0,1)` per cloud, and the
+trajectory is always read on a fixed held-out cohort at `t = 0.5`, so arms with different
+training distributions stay comparable. `gap_closed = (mse_zero - mse_reached) / mse_zero`.
+
+| arm | steps | `mse_zero` | reached | gap closed |
+|---|---:|---:|---:|---:|
+| single cohort, `t=0.5` (the §6.173 gate) | 125 | 10.652 | 7.120 | 0.332 |
+| 1 cohort, `t~U` | 125 | 10.652 | 8.890 | 0.165 |
+| 25 cohorts, `t=0.5` | 125 | 10.652 | 9.025 | 0.153 |
+| 25 cohorts, `t~U` | 125 | 10.652 | 10.102 | 0.052 |
+| 25 cohorts, `t~U` | 2000 | 10.652 | 8.338 | 0.217 |
+| radial head, 25 cohorts, `t~U` | 1000 | 10.652 | 10.530 | 0.012 |
+| held-out, 25 cohorts | 500 | 9.008 | 7.267 | 0.193 |
+| held-out, 100 cohorts | 500 | 9.008 | 7.227 | 0.198 |
+| held-out, 25 cohorts | 2000 | 9.008 | 7.033 | 0.219 |
+| held-out, 25 cohorts | 10000 | 9.008 | 6.713 | 0.255 |
+| held-out, `C=32` | 2000 | 9.008 | 7.051 | 0.217 |
+| held-out, sinusoidal `t` (64 dims) | 2000 | 9.008 | 6.994 | 0.224 |
+
+**Finding 1 — the head fix survives the change of regime.** At 1000 steps under the
+training distribution the radial head closes 1.2% of the gap and the vector-channel head
+20.1%. §6.173's conclusion was measured on a memorisation protocol; this one is measured
+where the trainer operates, and it is stronger.
+
+**Finding 2 — the 5-epoch A/B was reading the start of a curve.** 125 steps under the
+training distribution closes 5.2%; 500 closes 18.6%; 2000 closes 21.7%. §6.186's
+"the field moves 2.1% of its coherent-Adam bound" was true and its interpretation was not:
+the bound is per-step, and the curve is slow rather than absent.
+
+**Finding 3 — three plausible levers are null.** Corpus breadth at fixed steps: 0.193 ->
+0.198 for 4x the cohorts. Channel count at fixed steps: 0.217 -> 0.217 for `C=32`.
+Sinusoidal time embedding: 0.219 -> 0.224 at 2000 steps and 0.193 -> 0.152 (worse) at 500.
+None of these is the binding constraint.
+
+**Finding 4 — the field is wrong exactly where the ODE starts.** Splitting the 10,000-step
+field by `t`:
+
+| `t` | `v=0` | network | closed-form Gaussian `c(t)·x_t` |
+|---:|---:|---:|---:|
+| 0.05 | 9.008 | **14.781** | 3.605 |
+| 0.25 | 9.008 | **9.638** | 5.458 |
+| 0.50 | 9.008 | 7.445 | 8.344 |
+| 0.75 | 9.008 | 6.744 | 8.537 |
+| 0.95 | 9.008 | 6.994 | 6.305 |
+
+At `t = 0.05` the field is 64% worse than predicting zero, and worse than a one-parameter
+Gaussian posterior mean by a factor of 4.1. Mean over the five `t`: network 9.12, closed
+form 6.45. The direction explains it — with `x_t = (1-t)x0 + t x1` and `x0 ~ N(0, sigma^2)`
+the conditional mean of the target is `-x_t` as `t -> 0` and `+x_t` as `t -> 1`, so it must
+reverse; the measured endpoint cosine `v(0.05)·v(0.95)` is **+0.736**, i.e. the field is
+t-sensitive but never reverses, and its low-`t` output is orthogonal to the required
+direction (cosine -0.04).
+
+**Consequence.** §6.186's "the lever is the gradient's signal-to-noise, c7 is the only
+remaining arm" is **withdrawn**. The next single-factor test is an absolute-position (x1)
+head, which changes what the low-`t` target is rather than asking a velocity head to
+represent a sign reversal. The caveat recorded in §6.173 still holds: `x1_hat = x_t + (1-t)u`
+is a time weight, not a re-parameterisation, so the head must emit a position.
+
+**Honest boundaries (ACTIVE).**
+  * **GPU run-to-run nondeterminism is not zero.** The identical single-cohort 125-step
+    command returned 7.120 in one process and 7.957 in another (gap 0.332 vs 0.253), so
+    differences below ~0.8 MSE at 125 steps are not effects. The long arms differ by far
+    more than that, but the three nulls in Finding 3 are nulls against a single-seed
+    spread, not equivalence tests.
+  * **Held-out and in-rotation numbers are not comparable.** The held-out cohort is
+    `eval_seed 999`, where the builder skips 1 of 8 rows as un-embeddable, so it has 7
+    clouds and a different zero baseline (9.008 vs 10.652). Only `gap_closed` is compared
+    across the two, never the raw MSE.
+  * **The radial ceiling is an oracle.** `wfa107h` computes it by projecting the TARGET onto
+    the radial direction, so it is a lower bound no model can reach from its inputs. It is
+    not used as a denominator anywhere in this wave.
+  * **The closed-form Gaussian reference is an approximation.** It treats `(x0, x1)` as
+    jointly Gaussian with isotropic variance, which the real coordinate distribution is
+    not. It is a reference point, not the Bayes-optimal field.
+  * **One seed per arm, and the fields are 10,000-step diagnostic fields, not shipped
+    checkpoints.** The shipped 5-epoch checkpoint still sits at the prior
+    (`|v|` 0.106-0.136 across `t`), so nothing here is a regression — it is the same model
+    with a sharper diagnosis.
+
+**Artifacts.** `metrics/by_metric/wfa108d_regime_gate.json`,
+`metrics/by_metric/wfa108d_t_sensitivity{,_temb64,_trainer_ckpt}.json`,
+`results/wfa108d_fields/*.pt`, `molmetal/scripts/wfa108d_regime_summary.py`,
+`molmetal/scripts/wfa108d_t_sensitivity.py`, `docs/WF_A108_VELOCITY_HEAD_SURVEY.md` §6.
+
+**§6.187 catalog-count math.** Net **+1**. Cumulative **241 → 242**. ACTIVE
+**197 → 198**.
+
+**Workflow** | Wf-A108d (2026-10-22; GPU0: 22 arms, ~14 min total; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
 

@@ -269,7 +269,76 @@ one fixed batch at one `t`, and the trainer draws 25 different batches per epoch
 `t ~ U(0,1)`. The remaining untested change is a **regime** change (c7: 8x the batch, 100x
 the data), and it is blocked on VRAM, not on intent.
 
-## 6. References
+## 6. Wf-A108d — the gate measured memorisation; the real defect is at low t
+
+The capacity gate in §5.1 fitted ONE 8-cloud batch at ONE `t`. The trainer draws 25
+different batches per epoch at `t ~ U(0,1)` per cloud. Wf-A108d repeats the gate with the
+trainer's sampling distribution (`wfa107h_velocity_capacity.py --cycle-batches N
+--t-uniform --eval-seed 999`), always reading the result on a fixed cohort so the arms are
+comparable. `gap_closed = (mse_zero - mse_reached) / mse_zero`.
+
+| arm | steps | `mse_zero` | reached | gap closed |
+|---|---:|---:|---:|---:|
+| single cohort, `t=0.5` (the §5.1 gate) | 125 | 10.652 | 7.120 | 0.332 |
+| 1 cohort, `t~U` | 125 | 10.652 | 8.890 | 0.165 |
+| 25 cohorts, `t=0.5` | 125 | 10.652 | 9.025 | 0.153 |
+| 25 cohorts, `t~U` | 125 | 10.652 | 10.102 | 0.052 |
+| 25 cohorts, `t~U` | 500 | 10.652 | 8.669 | 0.186 |
+| 25 cohorts, `t~U` | 2000 | 10.652 | 8.338 | 0.217 |
+| radial head, 25 cohorts, `t~U` | 1000 | 10.652 | 10.530 | 0.012 |
+| held-out, 25 cohorts | 500 | 9.008 | 7.267 | 0.193 |
+| held-out, 100 cohorts | 500 | 9.008 | 7.227 | 0.198 |
+| held-out, 25 cohorts | 2000 | 9.008 | 7.033 | 0.219 |
+| held-out, 25 cohorts | 10000 | 9.008 | 6.713 | 0.255 |
+| held-out, `C=32` | 2000 | 9.008 | 7.051 | 0.217 |
+| held-out, sinusoidal `t` (64) | 2000 | 9.008 | 6.994 | 0.224 |
+
+**What this says.** The head fix survives the change of regime: at 1000 steps under the
+training distribution the radial head closes 1.2% of the gap and the vector-channel head
+20.1%. That is a stronger statement than §5.1, because it is measured where the trainer
+actually operates. It also says the 5-epoch A/B (§6.186) was reading the first 5% of a
+curve, not a dead term.
+
+**What does not move it.** Quadrupling the corpus at fixed steps: 0.193 -> 0.198 (null).
+Quadrupling the channel count at fixed steps: 0.217 -> 0.217 (null). A sinusoidal time
+embedding at 64 dims: 0.219 -> 0.224 at 2000 steps, and 0.193 -> 0.152 at 500 (worse).
+Ten thousand steps buys 0.255, i.e. the curve is still rising but by ~0.03 per 8000 steps.
+
+**The defect the table hides.** Splitting the 10,000-step field by `t`
+(`wfa108d_t_sensitivity.py`) shows it is not uniformly weak — it is wrong at the end where
+the ODE starts:
+
+| `t` | `v=0` | network | closed-form Gaussian `c(t)·x_t` |
+|---:|---:|---:|---:|
+| 0.05 | 9.008 | **14.781** | 3.605 |
+| 0.25 | 9.008 | **9.638** | 5.458 |
+| 0.50 | 9.008 | 7.445 | 8.344 |
+| 0.75 | 9.008 | 6.744 | 8.537 |
+| 0.95 | 9.008 | 6.994 | 6.305 |
+
+At `t = 0.05` the field is 64% WORSE than predicting zero, while a one-parameter Gaussian
+posterior mean — `c(t) = (t s^2 - (1-t) sigma^2) / ((1-t)^2 sigma^2 + t^2 s^2)`, one scalar
+applied to the input — reaches 3.605. Averaged over these five `t` the network is 9.12 and
+the closed form is 6.45, so the network is worse than a model with one degree of freedom.
+The reason is visible in the direction: with `x_t = (1-t)x0 + t x1` and `x0 ~ N(0, sigma^2)`
+the conditional mean of `x1 - x0` is `-x_t` as `t -> 0` and `+x_t` as `t -> 1`, i.e. it must
+reverse. MEASURED endpoint cosine between `v(0.05)` and `v(0.95)` is **+0.736** — the field
+is t-sensitive (relative L2 change 0.76) but never reverses, and its low-`t` output is
+orthogonal to the required `mu - x_t` (cosine -0.04).
+
+**Where that leaves the plan.** The shipped 5-epoch checkpoint is still at the prior
+(`|v|` 0.106-0.136 across `t`), so nothing here is a regression — it is the same model with
+a sharper diagnosis. The next single-factor test is the one §3.2 already scheduled: an
+**absolute-position (x1) head**, which changes what the low-`t` target is instead of asking
+the same velocity head to represent a sign reversal. The earlier caveat stands and is now
+load-bearing: `x1_hat = x_t + (1-t)u` is only a time weight, so the head has to emit a
+position, not a displacement.
+
+Artifacts: `metrics/by_metric/wfa108d_regime_gate.json` (all arms),
+`metrics/by_metric/wfa108d_t_sensitivity*.json` (three fields),
+`results/wfa108d_fields/*.pt` (the trained fields the probes read).
+
+## 7. References
 
 * Satorras, Hoogeboom, Welling. *E(n) Equivariant Graph Neural Networks.* ICML 2021. arXiv:2102.09844.
 * Thomas et al. *Tensor Field Networks.* arXiv:1802.08219.

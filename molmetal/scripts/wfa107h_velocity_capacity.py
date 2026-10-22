@@ -93,10 +93,22 @@ def main() -> int:
     ap.add_argument("--csv", default=".data/molmetal/metalcytotox_5metal_multitask_v3.csv")
     ap.add_argument("--n-clouds", type=int, default=8)
     ap.add_argument("--val-seed", type=int, default=0)
+    # Wf-A108c — the evaluation cohort.  When the training rotation is
+    # `--cycle-batches N` from `--val-seed`, cohort 0 is IN the rotation, so
+    # the trajectory is a training-set fit and a wider rotation looks worse
+    # only because it sees that batch less often.  --eval-seed separates the
+    # two: pick a seed outside [val_seed, val_seed + N) to measure
+    # generalisation instead of memorisation.
+    ap.add_argument("--eval-seed", type=int, default=None)
     ap.add_argument("--noise-seed", type=int, default=0)
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--t", type=float, default=0.5)
+    # Wf-A108c — cycle through N cohorts (val_seed + k) instead of fitting one.
+    # This is the only difference between "the head can fit this batch" and
+    # "the trainer's per-step gradient carries the same information".
+    ap.add_argument("--cycle-batches", type=int, default=0)
+    ap.add_argument("--t-uniform", action="store_true", default=False)
     # Init seed.  Without it the fresh-field arms are not reproducible:
     # three 400-step runs of the SAME config reached 0.548 / 1.060 / 1.352
     # purely from the unseeded model build, which is wider than the effect
@@ -115,6 +127,7 @@ def main() -> int:
         ),
     )
     ap.add_argument("--vector-channels", type=int, default=8)
+    ap.add_argument("--t-embedding-dim", type=int, default=None)
     ap.add_argument(
         "--metal-frame-channels", action="store_true", default=False
     )
@@ -128,6 +141,10 @@ def main() -> int:
         help="Build a fresh field instead of loading the checkpoint weights.",
     )
     ap.add_argument("--out", default="metrics/by_metric/wfa107h_velocity_capacity.json")
+    # Wf-A108c — dump the trained velocity field so a later probe can ask what
+    # the field actually learned (t-sensitivity, channel usage) instead of
+    # re-running the whole arm.
+    ap.add_argument("--save-field", default=None)
     args = ap.parse_args()
 
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
@@ -153,6 +170,11 @@ def main() -> int:
     else:
         ns.velocity_head = "radial"
         ns.radial_centroid_masked = bool(args.radial_centroid_masked)
+    # Wf-A108d — the sinusoidal-t surface is already wired end to end
+    # (`--t-embedding-dim` on the trainer, `SinusoidalEmbedding` in the field);
+    # the gate only needs to be able to turn it on.
+    if args.t_embedding_dim is not None:
+        ns.t_embedding_dim = int(args.t_embedding_dim)
     model = build_joint_model(ns).to(dev)
     if fresh:
         print(
@@ -161,9 +183,12 @@ def main() -> int:
     else:
         model.load_state_dict(ck["model_state_dict"])
 
+    _eval_seed = (
+        int(args.val_seed) if args.eval_seed is None else int(args.eval_seed)
+    )
     clouds = build_csv_cohort(
         args.csv, split="val", n_clouds=int(args.n_clouds),
-        seed=int(args.val_seed),
+        seed=_eval_seed,
         metal_placement=str(getattr(ns, "metal_placement", "legacy")),
         dative_distance_cutoff=float(getattr(ns, "dative_distance_cutoff", 2.6)),
     )
@@ -182,25 +207,84 @@ def main() -> int:
     zero_baseline = float(F.mse_loss(torch.zeros_like(tgt), tgt))
     radial_ceiling = _radial_best_mse(x0, x1, sizes)
 
+    # Wf-A108c — the single-batch gate above answers "is the target inside the
+    # head's function class".  It does NOT answer "does the trainer's per-step
+    # gradient carry the same information", because the trainer draws 25
+    # different batches per epoch at t ~ U(0,1).  --cycle-batches reproduces
+    # that: each step uses the next of N cohorts (val_seed + k), and with
+    # --t-uniform the interpolant time is resampled per cloud per step.
+    # `--cycle-batches 0` leaves every tensor above untouched, so the
+    # single-batch path stays bit-exact.
+    batches: List[Dict[str, Any]] = []
+    if int(args.cycle_batches) > 0:
+        for k in range(int(args.cycle_batches)):
+            cs = build_csv_cohort(
+                args.csv, split="val", n_clouds=int(args.n_clouds),
+                seed=int(args.val_seed) + k,
+                metal_placement=str(getattr(ns, "metal_placement", "legacy")),
+                dative_distance_cutoff=float(
+                    getattr(ns, "dative_distance_cutoff", 2.6)
+                ),
+            )
+            bx1 = torch.cat([c.positions.float() for c in cs], 0).to(dev)
+            bz = torch.cat([c.atomic_numbers.long() for c in cs], 0).to(dev)
+            bg = torch.Generator(device=dev).manual_seed(int(args.noise_seed) + k)
+            bx0 = torch.randn(bx1.shape, generator=bg, device=dev) * sigma
+            batches.append(
+                {
+                    "x0": bx0,
+                    "x1": bx1,
+                    "z": bz,
+                    "sizes": [int(c.atomic_numbers.shape[0]) for c in cs],
+                    "gen": bg,
+                }
+            )
+        print(
+            f"[wfa107h] CYCLE mode: {len(batches)} cohorts, "
+            f"t={'U(0,1) per cloud per step' if args.t_uniform else f'fixed {t}'}"
+        )
+
     model.train()
     opt = torch.optim.AdamW(model.vel_field.parameters(), lr=float(args.lr))
     traj: List[Dict[str, Any]] = []
+    train_rows: List[Dict[str, Any]] = []
     with torch.no_grad():
         v0 = model.fm_velocity(xt, t_col, z, cloud_sizes=sizes)
     traj.append({"step": 0, **_stats(v0, tgt)})
     print(f"[wfa107h] step   0 {traj[-1]}")
     for step in range(1, int(args.steps) + 1):
-        vp = model.fm_velocity(xt, t_col, z, cloud_sizes=sizes)
-        loss = F.mse_loss(vp, tgt)
+        if not batches:
+            bxt, bt, bz_, bsz, btgt = xt, t_col, z, sizes, tgt
+        else:
+            b = batches[(step - 1) % len(batches)]
+            if args.t_uniform:
+                bt = torch.rand(
+                    b["x1"].shape[0], generator=b["gen"], device=dev
+                )
+            else:
+                bt = torch.full((b["x1"].shape[0],), t, device=dev)
+            bxt = (
+                (1.0 - bt)[:, None] * b["x0"] + bt[:, None] * b["x1"]
+            )
+            btgt = b["x1"] - b["x0"]
+            bz_, bsz = b["z"], b["sizes"]
+        vp = model.fm_velocity(bxt, bt, bz_, cloud_sizes=bsz)
+        loss = F.mse_loss(vp, btgt)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()
         if step % 40 == 0:
+            # Eval is ALWAYS the fixed batch at the fixed t, so arms with
+            # different training distributions remain comparable.
             with torch.no_grad():
                 vp = model.fm_velocity(xt, t_col, z, cloud_sizes=sizes)
                 row = {"step": step, **_stats(vp, tgt)}
             traj.append(row)
-            print(f"[wfa107h] step {step:3d} {row}")
+            train_rows.append({"step": step, "train_mse": float(loss)})
+            print(
+                f"[wfa107h] step {step:3d} {row} "
+                f"train_mse={float(loss):.3f}"
+            )
 
     last = traj[-1]
     doc = {
@@ -219,6 +303,7 @@ def main() -> int:
         "vector_channels": (
             int(args.vector_channels) if head == "vector_channels" else 0
         ),
+        "t_embedding_dim": int(getattr(ns, "t_embedding_dim", 0)),
         "metal_frame_channels": bool(args.metal_frame_channels),
         "radial_centroid_masked": bool(args.radial_centroid_masked),
         "fresh_field": fresh,
@@ -227,6 +312,10 @@ def main() -> int:
         ),
         "noise_sigma": sigma,
         "t": t,
+        "cycle_batches": int(args.cycle_batches),
+        "t_uniform": bool(args.t_uniform),
+        "eval_seed": int(_eval_seed),
+        "train_rows": train_rows,
         "n_clouds": len(clouds),
         "n_atoms": int(x1.shape[0]),
         "steps": int(args.steps),
@@ -242,6 +331,9 @@ def main() -> int:
             else "FITS_ONE_BATCH"
         ),
         "honest_limits": [
+            "The trajectory is ALWAYS evaluated on the fixed first cohort at "
+            "t=0.5, whatever the training distribution was, so arms with "
+            "different --cycle-batches / --t-uniform settings are comparable.",
             "One batch, one t (0.5).  A field that fits t=0.5 need not fit the "
             "whole path; a field that cannot fit t=0.5 cannot fit the path.",
             "The radial ceiling is computed on the SAME batch, so it is an "
@@ -256,6 +348,23 @@ def main() -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+    if args.save_field:
+        sf = Path(args.save_field)
+        sf.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "vel_field": model.vel_field.state_dict(),
+                "velocity_head": head,
+                "vector_channels": int(args.vector_channels),
+                "t_embedding_dim": int(getattr(ns, "t_embedding_dim", 0)),
+                "steps": int(args.steps),
+                "cycle_batches": int(args.cycle_batches),
+                "t_uniform": bool(args.t_uniform),
+                "eval_seed": int(_eval_seed),
+            },
+            sf,
+        )
+        print(f"[wfa107h] saved field -> {sf}")
     print(
         f"[wfa107h] zero={zero_baseline:.3f} radial_ceiling={radial_ceiling:.3f} "
         f"reached={last['mse']:.3f} |v|={last['mean_v_norm']:.3f} "
