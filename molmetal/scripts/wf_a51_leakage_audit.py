@@ -24,6 +24,10 @@ Outputs
 Usage
 -----
     .venv/bin/python molmetal/scripts/wf_a51_leakage_audit.py
+
+    # re-measure only the NCI-60 section, reusing the rest of an artifact
+    .venv/bin/python molmetal/scripts/wf_a51_leakage_audit.py \
+        --reuse molmetal/reports/wf_a51_leakage_audit/leakage_audit.json
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ import json
 import sys
 from itertools import combinations
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -92,10 +96,19 @@ def _scaffold(values: Sequence[str]) -> np.ndarray:
 
 
 def _scaffold_split_key(values: Sequence[str]) -> np.ndarray:
-    """The key ``ScaffoldSplitter`` actually uses: empty -> per-molecule."""
+    """The key ``ScaffoldSplitter`` actually uses: empty -> per-molecule.
+
+    Canonicalise before hashing, because that is what the splitter does
+    (``ScaffoldSplitter._scaffold_for(canon)``).  Computing the key on the raw
+    string is not equivalent: on the Pt 4-cell real cohort it disagrees for
+    359/1,966 molecules (18 %) and manufactures two "shared" scaffolds that
+    the splitter never groups together.  On cohorts whose SMILES are already
+    canonical (MoleculeNet, NCI-60) the two agree.
+    """
     return _map_unique(
         values,
-        lambda s: _bemis_murcko_key(s) or f"__empty__{canonicalize_smiles(s)}",
+        lambda s: _bemis_murcko_key(canonicalize_smiles(s))
+        or f"__empty__{canonicalize_smiles(s)}",
     )
 
 
@@ -515,62 +528,181 @@ def audit_platinai_4cell() -> Dict[str, object]:
 # 4. NCI-60 9-cell control
 # ---------------------------------------------------------------------------
 def audit_nci60() -> Dict[str, object]:
-    from molmetal.data.splits import ScaffoldSplitter
+    """Audit both NCI-60 protocols through the production loader.
+
+    The loader is imported rather than re-implemented, for the same reason as
+    §4: the split that matters is the one the trainer builds.  Both protocols
+    are measured because the legacy one is still what every shipped m21
+    artifact was scored on and is pinned in five configs -- auditing only the
+    default would leave the legacy reference unverified, and auditing only the
+    legacy (as this section did before 2026-10-22) would describe a protocol
+    no bare run uses.
+    """
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        load_nci60_9cell_split_table,
+    )
 
     path = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
-    df = pd.read_csv(path, low_memory=False)
-    uniq = np.asarray(sorted(df["smiles"].astype(str).unique()), dtype=object)
+    raw = pd.read_csv(path, low_memory=False)
+    cells = sorted(raw["cell_line"].astype(str).unique())
+    splits = ("train", "val", "test")
 
-    class _Adapter:
-        smiles = uniq
+    def _one(strategy: str) -> Dict[str, object]:
+        df = load_nci60_9cell_split_table(path, split_strategy=strategy)
+        df = df.assign(
+            smiles=df["smiles"].astype(str), split=df["split"].astype(str),
+            cell_line=df["cell_line"].astype(str),
+        )
+        uniq = df.drop_duplicates(subset=["smiles"])[["smiles", "split"]]
+        smiles = uniq["smiles"].to_numpy(dtype=object)
+        split = uniq["split"].to_numpy(dtype=object)
 
-        def __len__(self):
-            return len(uniq)
+        canon = _canon(smiles)
+        scaf = _scaffold_split_key(smiles)
+        lig = _map_unique(smiles, _ligand_key)
 
-    res = ScaffoldSplitter(
-        strategy="largest_first", fractions=(0.7, 0.1, 0.2), seed=0
-    )(_Adapter())
+        pairs = {}
+        for a, b in combinations(splits, 2):
+            pairs[f"{a}_vs_{b}"] = {
+                "canonical": _overlap(smiles, split, a, b, canon),
+                "bemis_murcko_split_key": _overlap(smiles, split, a, b, scaf),
+                "bemis_murcko_desalted": _overlap(smiles, split, a, b, scaf),
+                "ligand": _overlap(smiles, split, a, b, lig),
+            }
 
-    label = np.full(len(uniq), "train", dtype=object)
-    label[res.val_idx] = "val"
-    label[res.test_idx] = "test"
-    canon = _canon(uniq)
-    scaf = _scaffold_split_key(uniq)
-    # Same key the splitter uses.  Empty scaffolds are per-molecule in the
-    # splitter, so grouping all of them under "" would be an audit artefact.
-    scaf_lig = scaf
-    lig = _map_unique(uniq, _ligand_key)
+        # Per-cell row counts.  Iterating ``cells`` rather than groupby keeps a
+        # cell that has zero rows in a split visible -- that is how the legacy
+        # protocol's SKOV3 val=0 was found.
+        per_cell = {
+            c: {s: int(((df["cell_line"] == c) & (df["split"] == s)).sum())
+                for s in splits}
+            for c in cells
+        }
+
+        # A scaffold may not span two splits.  Measured on the key set, not on
+        # index ranks: two distinct scaffolds can share a rank.
+        scaf_sets = {s: set(scaf[split == s].tolist()) for s in splits}
+        spanning = sum(
+            len(scaf_sets[a] & scaf_sets[b]) for a, b in combinations(splits, 2)
+        )
+
+        return {
+            "split_strategy": strategy,
+            "split_sizes_unique_smiles": {
+                s: int((split == s).sum()) for s in splits
+            },
+            "split_sizes_rows": {s: int((df["split"] == s).sum()) for s in splits},
+            "row_fraction": {
+                s: round(float((df["split"] == s).sum()) / len(df), 4)
+                for s in splits
+            },
+            "per_cell_rows": per_cell,
+            "min_test_rows_per_cell": min(v["test"] for v in per_cell.values()),
+            "min_val_rows_per_cell": min(v["val"] for v in per_cell.values()),
+            "cells_below_30_test_rows": sorted(
+                c for c, v in per_cell.items() if v["test"] < 30
+            ),
+            "cells_with_zero_val_rows": sorted(
+                c for c, v in per_cell.items() if v["val"] == 0
+            ),
+            "n_scaffolds_spanning_splits": int(spanning),
+            "n_smiles_with_multiple_split_labels": int(
+                (pd.Series(split).groupby(pd.Series(smiles)).nunique() > 1).sum()
+            ),
+            "pairs": pairs,
+        }
+
+    legacy = _one("scaffold_70_10_10")
+    coverage = _one("scaffold_coverage_70_10_20")
+
+    # Sets used by the cross-dataset section.  Protocol-independent: both
+    # protocols partition the same 5,207 molecules.
+    smiles_all = np.asarray(sorted(raw["smiles"].astype(str).unique()), dtype=object)
+    canon = _canon(smiles_all)
+    lig = _map_unique(smiles_all, _ligand_key)
+
+    return {
+        "path": str(path),
+        "n_rows": int(len(raw)),
+        "n_cells": len(cells),
+        "n_parse_failures": _n_parse_failures(smiles_all),
+        "n_unique_raw_smiles": int(len(smiles_all)),
+        "n_unique_canonical": int(len(set(canon.tolist()))),
+        "n_unique_bemis_murcko": int(
+            len(set(_scaffold_split_key(smiles_all).tolist()))
+        ),
+        "default_protocol": "scaffold_coverage_70_10_20",
+        "protocols": {
+            "scaffold_70_10_10": legacy,
+            "scaffold_coverage_70_10_20": coverage,
+        },
+        # The figure the m21 docstring carried before 2026-10-21.  It is not
+        # reproducible: it came from the pre-BLK-PA12 splitter, which returned
+        # an empty scaffold key for every molecule.
+        "pre_blk_pa12_claim": {
+            "split_sizes_unique_smiles": {"train": 3645, "val": 521, "test": 1041},
+            "reproducible": False,
+        },
+        "_canon": set(canon.tolist()),
+        "_lig": set(lig.tolist()),
+    }
+
+
+# ---------------------------------------------------------------------------
+# 4b. Platinum 4-cell REAL-label cohort
+# ---------------------------------------------------------------------------
+def audit_platinai_4cell_real() -> Dict[str, object]:
+    """Leakage at the scaffold key for the REAL-label 4-cell cohort.
+
+    §4 audits ``platinai_4cell.csv``, whose labels are synthetic and which is
+    marked DO-NOT-TRAIN.  The cohort the trainer is actually pointed at is
+    ``platinai_4cell_real_trainer.csv``.  Its split is built inline in
+    ``train_cisplatin_resistance.main`` (there is no loader function to
+    import), so this section calls the same splitter with the same coverage
+    dict; the row counts are cross-checked against the recorded
+    ``metrics/by_metric/split_coverage_4cell.json``.
+    """
+    from molmetal.data.splits import ScaffoldSplitter
+    from molmetal.scripts import wf_a61_split_coverage_audit as a61
+    from molmetal.scripts.train_cisplatin_resistance import CELL_LINES
+
+    rows, smiles, labels, _values = a61._load()
+    result = ScaffoldSplitter(
+        fractions=a61.FRACTIONS, coverage={cl: labels[cl] for cl in CELL_LINES}
+    )(a61._Smiles(smiles))
+
+    split = np.full(len(smiles), "train", dtype=object)
+    split[np.asarray(result.val_idx, dtype=np.int64)] = "val"
+    split[np.asarray(result.test_idx, dtype=np.int64)] = "test"
+    smi = np.asarray(smiles, dtype=object)
+
+    canon = _canon(smi)
+    scaf = _scaffold_split_key(smi)
 
     pairs = {}
     for a, b in combinations(("train", "val", "test"), 2):
         pairs[f"{a}_vs_{b}"] = {
-            "canonical": _overlap(uniq, label, a, b, canon),
-            "bemis_murcko_split_key": _overlap(uniq, label, a, b, scaf),
-            "bemis_murcko_desalted": _overlap(uniq, label, a, b, scaf_lig),
-            "ligand": _overlap(uniq, label, a, b, lig),
+            "canonical": _overlap(smi, split, a, b, canon),
+            "bemis_murcko_split_key": _overlap(smi, split, a, b, scaf),
         }
 
+    scaf_sets = {s: set(scaf[split == s].tolist()) for s in ("train", "val", "test")}
+    spanning = sum(
+        len(scaf_sets[a] & scaf_sets[b])
+        for a, b in combinations(("train", "val", "test"), 2)
+    )
+
     return {
-        "path": str(path),
-        "n_rows": int(len(df)),
-        "n_parse_failures": _n_parse_failures(uniq),
-        "n_unique_raw_smiles": int(len(uniq)),
-        "n_unique_canonical": int(len(set(canon.tolist()))),
-        "n_unique_bemis_murcko": int(len(set(scaf_lig.tolist()))),
-        "split_sizes": {
-            "train": int(len(res.train_idx)),
-            "val": int(len(res.val_idx)),
-            "test": int(len(res.test_idx)),
+        "path": str(a61.COHORT),
+        "split_strategy": "scaffold_coverage (default since 2026-10-21)",
+        "n_compounds": len(rows),
+        "n_unique_smiles": int(len(set(smi.tolist()))),
+        "n_parse_failures": _n_parse_failures(smi),
+        "split_sizes_rows": {
+            s: int((split == s).sum()) for s in ("train", "val", "test")
         },
-        "historical_split_sizes": {"train": 3645, "val": 521, "test": 1041},
-        "historical_split_matches_current_code": bool(
-            len(res.train_idx) == 3645
-            and len(res.val_idx) == 521
-            and len(res.test_idx) == 1041
-        ),
+        "n_scaffolds_spanning_splits": int(spanning),
         "pairs": pairs,
-        "_canon": set(canon.tolist()),
-        "_lig": set(lig.tolist()),
     }
 
 
@@ -882,7 +1014,16 @@ def render_markdown(result: Dict[str, object]) -> str:
     add(f"- Fixed split column present: **{pt['has_split_column']}** — the pool is not partitioned.")
     add("")
 
-    add("## 4. Platinum 4-cell training cohort")
+    add("## 4. Platinum 4-cell cohorts")
+    add("")
+    add(
+        "Two files with the same four cell lines and different labels. The "
+        "synthetic one is audited here because it is what the legacy loader "
+        "still defaults to; the real one is the cohort the trainer is pointed "
+        "at, and it is audited separately below."
+    )
+    add("")
+    add("### 4.1 `platinai_4cell.csv` — synthetic labels, DO-NOT-TRAIN")
     add("")
     add(
         "This is a different file from the pool above, and it *is* partitioned. "
@@ -930,28 +1071,103 @@ def render_markdown(result: Dict[str, object]) -> str:
         )
     add("")
 
+    add("### 4.2 `platinai_4cell_real_trainer.csv` — REAL labels, the live cohort")
+    add("")
+    p4r = result["platinai_4cell_real"]
+    rw = p4r["split_sizes_rows"]
+    add(
+        f"- {p4r['n_compounds']:,} compounds / {p4r['n_unique_smiles']:,} unique "
+        f"SMILES (28 SMILES carry more than one compound code); parse failures "
+        f"{p4r['n_parse_failures']:,}."
+    )
+    add(
+        f"- `split_strategy` **`{p4r['split_strategy']}`**: "
+        f"{rw['train']:,} / {rw['val']:,} / {rw['test']:,} rows, "
+        f"{p4r['n_scaffolds_spanning_splits']} scaffolds spanning two splits."
+    )
+    for pair_name, rec in p4r["pairs"].items():
+        add(
+            f"- {pair_name}: canonical {rec['canonical']['n_intersect_keys']}, "
+            f"split-key BM {rec['bemis_murcko_split_key']['n_intersect_keys']} "
+            f"({_pct(rec['bemis_murcko_split_key']['frac_b_rows_seen_in_a'])} of B rows)"
+        )
+    add(
+        "- The split is built inline in `train_cisplatin_resistance.main`, so "
+        "this section calls the same splitter with the same coverage dict "
+        "rather than importing a loader. Per-cell coverage and the "
+        "order-sensitivity measurements behind it are in "
+        "`metrics/by_metric/split_coverage_4cell.json`."
+    )
+    add("")
+
     add("## 5. Controls")
     add("")
     nci = result["nci60"]
+    legacy = nci["protocols"]["scaffold_70_10_10"]
+    cov = nci["protocols"]["scaffold_coverage_70_10_20"]
     add(
         f"**NCI-60 9-cell** — {nci['n_rows']:,} rows / {nci['n_unique_canonical']:,} "
-        f"canonical molecules; parse failures {nci['n_parse_failures']:,}; "
-        f"split {nci['split_sizes']}. "
+        f"canonical molecules / {nci['n_cells']} cell lines; parse failures "
+        f"{nci['n_parse_failures']:,}. Two protocols, both measured through the "
+        f"production loader (`load_nci60_9cell_split_table`). The default since "
+        f"2026-10-21 is `{nci['default_protocol']}`."
+    )
+    add("")
+    add(
+        "| Protocol | molecules train/val/test | rows train/val/test "
+        "| row % | min test rows per cell | min val rows per cell "
+        "| cells < 30 test rows | scaffolds spanning splits |"
+    )
+    add("|---|---|---|---:|---:|---:|---:|---:|")
+    for rec in (legacy, cov):
+        sz = rec["split_sizes_unique_smiles"]
+        rw = rec["split_sizes_rows"]
+        fr = rec["row_fraction"]
+        add(
+            f"| `{rec['split_strategy']}` "
+            f"| {sz['train']:,} / {sz['val']:,} / {sz['test']:,} "
+            f"| {rw['train']:,} / {rw['val']:,} / {rw['test']:,} "
+            f"| {100 * fr['train']:.1f} / {100 * fr['val']:.1f} / {100 * fr['test']:.1f} "
+            f"| {rec['min_test_rows_per_cell']} | {rec['min_val_rows_per_cell']} "
+            f"| {len(rec['cells_below_30_test_rows'])} "
+            f"| {rec['n_scaffolds_spanning_splits']} |"
+        )
+    add("")
+    _zero_val = legacy["cells_with_zero_val_rows"]
+    add(
+        f"- The legacy protocol budgets fractions in *scaffold counts*, so the "
+        f"largest scaffolds take the whole train budget and test receives the "
+        f"singleton leftovers: {len(legacy['cells_below_30_test_rows'])} of "
+        f"{nci['n_cells']} cells have < 30 test rows "
+        f"({', '.join(legacy['cells_below_30_test_rows']) or 'none'}) and "
+        f"{len(_zero_val)} "
+        f"{'has' if len(_zero_val) == 1 else 'have'} no val rows "
+        f"({', '.join(_zero_val) or 'none'}). "
+        f"Every shipped m21 artifact was scored on it; it is pinned in the "
+        f"configs that reproduce them."
     )
     add(
-        f"- Historical split (m21 docstring / pre-2026-10-19 inventory): "
-        f"3,645/521/1,041 molecules. Current code produces {nci['split_sizes']} — "
-        f"match: **{nci['historical_split_matches_current_code']}**. The "
-        f"difference is the BLK-PA12 scaffold-key fix (2026-10-12); the old "
-        f"split was effectively molecule-level because every scaffold key was "
-        f"empty."
+        f"- The coverage protocol targets fractions of *each cell line's "
+        f"labelled rows* on the same scaffold partition. Measured: "
+        f"{cov['split_sizes_rows']['train']:,} / {cov['split_sizes_rows']['val']:,} "
+        f"/ {cov['split_sizes_rows']['test']:,} rows, every cell >= "
+        f"{cov['min_test_rows_per_cell']} test and >= {cov['min_val_rows_per_cell']} "
+        f"val rows. No model has been retrained on it yet."
     )
-    for pair_name, rec in nci["pairs"].items():
-        add(
-            f"- {pair_name}: canonical {rec['canonical']['n_intersect_keys']}, "
-            f"split-key BM {rec['bemis_murcko_split_key']['n_intersect_keys']}, "
-            f"desalted BM {rec['bemis_murcko_desalted']['n_intersect_keys']}"
-        )
+    add(
+        f"- The pre-2026-10-21 claim of "
+        f"{'/'.join(f'{v:,}' for v in nci['pre_blk_pa12_claim']['split_sizes_unique_smiles'].values())} "
+        f"molecules is **not reproducible**: it came from the pre-BLK-PA12 "
+        f"splitter, which returned an empty scaffold key for every molecule."
+    )
+    for proto_name, rec in (("legacy", legacy), ("coverage", cov)):
+        for pair_name, o in rec["pairs"].items():
+            add(
+                f"- {proto_name} {pair_name}: canonical "
+                f"{o['canonical']['n_intersect_keys']}, split-key BM "
+                f"{o['bemis_murcko_split_key']['n_intersect_keys']}, desalted BM "
+                f"{o['bemis_murcko_desalted']['n_intersect_keys']}"
+            )
     add("")
     add("| MoleculeNet task | rows | parse failures | canonical | seeds | max canonical train/test overlap | max split-key BM overlap | max stereo-blind BM overlap | max desalted BM overlap | random fallback |")
     add("|---|---:|---:|---:|---:|---:|---:|---:|---:|---|")
@@ -1024,49 +1240,18 @@ def render_markdown(result: Dict[str, object]) -> str:
     return "\n".join(L)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-def main() -> int:
-    print("[1/8] predictive cohorts ...", flush=True)
-    pred = audit_predictive()
-    print("[2/8] CFM v3 ...", flush=True)
-    cfm_v3 = audit_cfm(
-        DATA / "metalcytotox_5metal_multitask_v3.csv", "SMILES_Ligands", "Metal"
-    )
-    print("[3/8] CFM v4 ...", flush=True)
-    cfm_v4 = audit_cfm(
-        DATA / "metalcytotox_5metal_multitask_v4.csv", "smiles", "metal"
-    )
-    print("[4/8] platinum pool ...", flush=True)
-    pt = audit_pt()
-    print("[5/8] platinum 4-cell training cohort ...", flush=True)
-    pt4 = audit_platinai_4cell()
-    print("[6/8] NCI-60 ...", flush=True)
-    nci = audit_nci60()
-    print("[7/8] MoleculeNet ...", flush=True)
-    molnet = audit_moleculenet()
-    print("[8/8] DrugOOD + cross-dataset ...", flush=True)
-    drugood = audit_drugood()
-    cross = cross_overlap(pred, cfm_v3, pt, nci, molnet)
+def build_verdict(result: Dict[str, object]) -> str:
+    """Derive the §7 verdict from the measured result dict.
 
-    result = {
-        "workflow": "Wf-A51",
-        "title": "Train/validation/test leakage audit",
-        "predictive": {k: v for k, v in pred.items() if not k.startswith("_")},
-        "cfm": {"v3": cfm_v3, "v4": cfm_v4},
-        "pt": {k: v for k, v in pt.items() if not k.startswith("_")},
-        "platinai_4cell": pt4,
-        "nci60": {k: v for k, v in nci.items() if not k.startswith("_")},
-        "moleculenet": {
-            "tasks": {
-                t: {k: v for k, v in rec.items() if not k.startswith("_")}
-                for t, rec in molnet["tasks"].items()
-            }
-        },
-        "drugood": {k: v for k, v in drugood.items() if not k.startswith("_")},
-        "cross": cross,
-    }
+    Kept separate from ``main`` so a partial re-measurement (``--reuse``)
+    re-derives the verdict instead of inheriting stale prose.
+    """
+    pred = result["predictive"]
+    cfm_v3 = result["cfm"]["v3"]
+    pt4 = result["platinai_4cell"]
+    molnet = result["moleculenet"]
+    cross = result["cross"]
+    nci = result["nci60"]
 
     # Verdict, derived from the measured numbers rather than asserted.
     skf_seen = [
@@ -1122,9 +1307,16 @@ def main() -> int:
         for rec in molnet["tasks"].values()
         for s in rec["per_seed"]
     )
-    nci_c = nci["pairs"]["train_vs_test"]["canonical"]["n_intersect_keys"]
-    nci_bm = nci["pairs"]["train_vs_test"]["bemis_murcko_split_key"]["n_intersect_keys"]
-    nci_doc = nci["historical_split_matches_current_code"]
+    nci_legacy = nci["protocols"]["scaffold_70_10_10"]
+    nci_cov = nci["protocols"]["scaffold_coverage_70_10_20"]
+    nci_c = nci_legacy["pairs"]["train_vs_test"]["canonical"]["n_intersect_keys"]
+    nci_c_cov = nci_cov["pairs"]["train_vs_test"]["canonical"]["n_intersect_keys"]
+    nci_bm = nci_legacy["pairs"]["train_vs_test"]["bemis_murcko_split_key"][
+        "n_intersect_keys"
+    ]
+    nci_bm_cov = nci_cov["pairs"]["train_vs_test"]["bemis_murcko_split_key"][
+        "n_intersect_keys"
+    ]
     nci_pred = cross["nci60_vs_predictive5"]["canonical"]["n_intersect"]
     nci_cfm = cross["nci60_vs_cfm_all"]["canonical"]["n_intersect"]
     doi_seen_mean = float(
@@ -1144,9 +1336,10 @@ def main() -> int:
         f"**No molecule-level leak.**",
         f"- CFM v3: {cfm_multi:,} SMILES carry more than one split label; "
         f"canonical train/test overlap 0. **No molecule-level leak.**",
-        f"- NCI-60: canonical train/test overlap {nci_c}; MoleculeNet: max canonical "
-        f"train/test overlap {molnet_max}; DrugOOD train vs ood_test: 0. "
-        f"**No molecule-level leak in these splits.**",
+        f"- NCI-60: canonical train/test overlap {nci_c} under the legacy "
+        f"protocol and {nci_c_cov} under the coverage default; MoleculeNet: max "
+        f"canonical train/test overlap {molnet_max}; DrugOOD train vs ood_test: "
+        f"0. **No molecule-level leak in these splits.**",
         "",
         "**Scaffold-level (same Bemis-Murcko scaffold in train and test):**",
         f"- Predictive random CV: {_pct(min(skf_scaf))}-{_pct(max(skf_scaf))} of "
@@ -1169,8 +1362,10 @@ def main() -> int:
         f"one measurement and both are 0 by construction. The pre-fix key kept "
         f"chirality; its test-set turnover and old overlap figures are in "
         f"`metrics/by_metric/moleculenet_scaffold_key_alignment.json`.",
-        f"- NCI-60: split-key BM overlap {nci_bm} (zero after the empty-scaffold "
-        f"fix).",
+        f"- NCI-60: split-key BM overlap {nci_bm} (legacy) and {nci_bm_cov} "
+        f"(coverage); {nci_legacy['n_scaffolds_spanning_splits']} and "
+        f"{nci_cov['n_scaffolds_spanning_splits']} scaffolds span two splits "
+        f"respectively. Neither protocol leaks a scaffold.",
         f"- Pt 4-cell: the loader's `split_strategy` is named "
         f"`scaffold_70_10_10` but "
         + (
@@ -1206,15 +1401,20 @@ def main() -> int:
         f"{result['pt']['n_duplicate_code_cell_rows']:,}, exact duplicate "
         f"measurements {result['pt']['n_duplicate_code_cell_value_rows']:,}.",
         "",
-        "**Documentation drift (not leakage):**",
-        f"- The m21 docstring and the pre-2026-10-19 inventory state the NCI-60 "
-        f"split is 3,645/521/1,041; the current code produces {nci['split_sizes']} "
-        f"(match={nci_doc}). The 2026-10-12 BLK-PA12 scaffold-key fix changed it. "
-        f"The inventory now records the current split.",
+        "**Protocol change (not leakage):**",
+        f"- The NCI-60 default split moved on 2026-10-21 from "
+        f"`scaffold_70_10_10` to `scaffold_coverage_70_10_20`, because the legacy "
+        f"protocol budgets fractions in scaffold counts and left "
+        f"{len(nci_legacy['cells_below_30_test_rows'])} of {nci['n_cells']} cells "
+        f"with < 30 test rows. Both protocols are measured above. The shipped "
+        f"numbers (0.7294 m21, 0.6683 m3) were scored on the legacy protocol and "
+        f"are reproducible only through the configs that pin it; no model has "
+        f"been retrained on the coverage split, and the two test sets differ "
+        f"~4.5x in size, so the numbers are not comparable.",
         "",
         "**Action:**",
         "- No re-split is required to remove molecule-level leakage: none was found.",
-        "- Three split *labels* did not describe their implementations. Two are "
+        "- Two split *labels* did not describe their implementations and are "
         "aligned as of 2026-10-19: `train_moleculenet._bemis_murcko_scaffold` uses "
         "the astartes stereo-blind key, and the Pt 4-cell loader offers a real "
         "`bemis_murcko_70_10_10` strategy beside the legacy hash. The CFM file "
@@ -1228,7 +1428,89 @@ def main() -> int:
         "needs de-duplication before use as an external evaluation set. The Pt "
         "**4-cell cohort** is partitioned and is the split that needs fixing.",
     ]
-    result["verdict"] = "\n".join(verdict_lines)
+    return "\n".join(verdict_lines)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        description="Measure train/val/test leakage for every active dataset."
+    )
+    ap.add_argument(
+        "--reuse",
+        type=Path,
+        default=None,
+        help="Reuse the measured sections of an existing artifact and re-measure "
+        "only NCI-60, then re-render. Exists because the NCI-60 section is cheap "
+        "to measure and the MoleculeNet/DrugOOD sections are not; a full re-run "
+        "to refresh one section would also churn numbers this change did not "
+        "touch.",
+    )
+    args = ap.parse_args(argv)
+
+    if args.reuse is not None:
+        result = json.loads(args.reuse.read_text(encoding="utf-8"))
+        print(f"reusing {args.reuse} for sections 1-4, 6-7", flush=True)
+        nci = audit_nci60()
+        pt4_real = audit_platinai_4cell_real()
+        # The cross-dataset section is protocol-independent (same molecule set
+        # under both protocols); refuse to mix if that is no longer true.
+        if result["nci60"]["n_unique_canonical"] != nci["n_unique_canonical"]:
+            raise SystemExit(
+                "reused artifact was measured on a different NCI-60 molecule "
+                f"set ({result['nci60']['n_unique_canonical']} -> "
+                f"{nci['n_unique_canonical']}); re-run without --reuse"
+            )
+        result["nci60"] = {k: v for k, v in nci.items() if not k.startswith("_")}
+        result["platinai_4cell_real"] = pt4_real
+    else:
+        print("[1/8] predictive cohorts ...", flush=True)
+        pred = audit_predictive()
+        print("[2/8] CFM v3 ...", flush=True)
+        cfm_v3 = audit_cfm(
+            DATA / "metalcytotox_5metal_multitask_v3.csv", "SMILES_Ligands", "Metal"
+        )
+        print("[3/8] CFM v4 ...", flush=True)
+        cfm_v4 = audit_cfm(
+            DATA / "metalcytotox_5metal_multitask_v4.csv", "smiles", "metal"
+        )
+        print("[4/8] platinum pool ...", flush=True)
+        pt = audit_pt()
+        print("[5/8] platinum 4-cell training cohort ...", flush=True)
+        pt4 = audit_platinai_4cell()
+        pt4_real = audit_platinai_4cell_real()
+        print("[6/8] NCI-60 ...", flush=True)
+        nci = audit_nci60()
+        print("[7/8] MoleculeNet ...", flush=True)
+        molnet = audit_moleculenet()
+        print("[8/8] DrugOOD + cross-dataset ...", flush=True)
+        drugood = audit_drugood()
+        cross = cross_overlap(pred, cfm_v3, pt, nci, molnet)
+
+        result = {
+            "workflow": "Wf-A51",
+            "title": "Train/validation/test leakage audit",
+            "predictive": {k: v for k, v in pred.items() if not k.startswith("_")},
+            "cfm": {"v3": cfm_v3, "v4": cfm_v4},
+            "pt": {k: v for k, v in pt.items() if not k.startswith("_")},
+            "platinai_4cell": pt4,
+            "platinai_4cell_real": pt4_real,
+            "nci60": {k: v for k, v in nci.items() if not k.startswith("_")},
+            "moleculenet": {
+                "tasks": {
+                    t: {k: v for k, v in rec.items() if not k.startswith("_")}
+                    for t, rec in molnet["tasks"].items()
+                }
+            },
+            "drugood": {k: v for k, v in drugood.items() if not k.startswith("_")},
+            "cross": cross,
+        }
+
+    result["verdict"] = build_verdict(result)
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(result, indent=2, sort_keys=True, default=str))

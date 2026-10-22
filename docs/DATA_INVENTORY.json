@@ -152,7 +152,7 @@
       "status": "ACTIVE",
       "rows": 7823,
       "bytes": 787626,
-      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. The DEFAULT split is now the per-cell-row coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); the legacy protocol is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded."
+      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. The DEFAULT split is the per-cell-row coverage split (`scaffold_coverage_70_10_20`, since 2026-10-21): 5,371/920/1,532 rows and 3,636/548/1,023 molecules, every cell >= 25 test and >= 22 val. The legacy `scaffold_70_10_10` protocol (4,860/115/232 molecules, which is 7,320/160/343 rows = 93.6/2.0/4.4 %, five of nine cells under 30 test rows) is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded."
     },
     {
       "id": "nci60_gi50_raw",
@@ -206,7 +206,16 @@
       "status": "ACTIVE",
       "rows": 5000,
       "bytes": 1023834,
-      "note": "5,000 d-block complexes with geometry; TMQM init is OFF in the current CFM config (does not transfer to ligand-only rows)."
+      "note": "5,000 d-block complexes with geometry -- a small subset, not the CFM corpus (that is `tmqm_corpus_6metal` below). The tmQM-pretrained encoder (`models/tmqm_pretrained/tmqm_pretrained_encoder.pt`) IS loaded by the current CFM configs (`use_tmqm_init: true`; 47/51 params transfer, 0 unexpected, 4 missing). Before 2026-10-20 `cfm.yaml` alone omitted the key, so production trained from random init while nine ablations warm-started -- see `TODO/risks.md` R6."
+    },
+    {
+      "id": "tmqm_corpus_6metal",
+      "path": ".data/molmetal/tmQM/tmqm_parsed.csv",
+      "role": "generative_train",
+      "status": "ACTIVE",
+      "rows": 108541,
+      "bytes": 23417916,
+      "note": "The tmQM corpus the CFM geometry path trains on. The file holds 108,541 complexes over the whole d block; the CFM cohorts are the six-metal subset, 33,429 complexes over Pt / Ru / Ir / Rh / Os / Re, and every one of those carries all three shards a cloud needs (geometry, Wiberg bond orders, NBO charges) -- 33,429/33,429 on each. No duplicate CSD codes, no non-finite coordinates, exactly one metal atom per complex, and the `metal` column agrees with that atom in 33,429/33,429 rows. 2,277 of the 33,429 (6.8 %) have an empty SMILES and fall back to a CSD-prefix scaffold key. Two measured protocol facts, not corpus defects: the scaffold split is 87.7/6.2/6.2 % of rows rather than 80/10/10 (fractions are budgeted in scaffold counts, so `tmqm_val_frac` is inert on that branch), and the default `n_val=192` cohort with `tmqm_min_per_metal=0` is Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Measured: `metrics/by_metric/tmqm_cfm_data_audit.json`."
     },
     {
       "id": "crossdocked100",

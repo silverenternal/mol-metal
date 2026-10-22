@@ -8,11 +8,11 @@ The trainer keys its split on the **raw SMILES string**. A molecule written two 
 
 | Metal | rows | parse failures | canonical keys | multi-string molecules | SKF test rows seen in train | SKF test scaffolds seen in train | DOI-10fold test rows seen in train |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Ru | 4,793 | 0 | 4,793 | 0 | 0.00% | 85.52% | 0.00% |
 | Ir | 1,281 | 0 | 1,281 | 0 | 0.00% | 84.59% | 0.00% |
-| Rh | 334 | 0 | 334 | 0 | 0.00% | 79.40% | 0.00% |
 | Os | 333 | 0 | 333 | 0 | 0.00% | 81.44% | 0.00% |
 | Re | 250 | 0 | 250 | 0 | 0.00% | 76.72% | 0.00% |
+| Rh | 334 | 0 | 334 | 0 | 0.00% | 79.40% | 0.00% |
+| Ru | 4,793 | 0 | 4,793 | 0 | 0.00% | 85.52% | 0.00% |
 
 `multi-string molecules` counts canonical molecules represented by more than one distinct raw SMILES string in that metal's cohort.
 
@@ -51,27 +51,51 @@ The trainer keys its split on the **raw SMILES string**. A molecule written two 
 - Duplicate (code, cell) rows 3,668; duplicate (code, cell, value) rows 987
 - Fixed split column present: **False** — the pool is not partitioned.
 
-## 4. Platinum 4-cell training cohort
+## 4. Platinum 4-cell cohorts
+
+Two files with the same four cell lines and different labels. The synthetic one is audited here because it is what the legacy loader still defaults to; the real one is the cohort the trainer is pointed at, and it is audited separately below.
+
+### 4.1 `platinai_4cell.csv` — synthetic labels, DO-NOT-TRAIN
 
 This is a different file from the pool above, and it *is* partitioned. The loader is imported so the audit measures the split the trainer builds, not a re-implementation of it.
 
 - `split_strategy` in code: **`scaffold_70_10_10`** — despite the name, `scaffold_id` is a numeric hash of the SMILES string (`_stable_hash_int(smiles, 10**8)`, `train_dmpnn_multitask_wasserstein.py:702`), so this is a molecule-level hash split.
-- 4,078 unique SMILES / 16,312 long-format rows; split {'train': 2855, 'val': 414, 'test': 809}; parse failures 0; SMILES with >1 split label 0.
-- Opt-in real scaffold split **`bemis_murcko_70_10_10`** (added 2026-10-19): split {'train': 3287, 'val': 264, 'test': 527}; test rows sharing a desalted stereo-blind scaffold with train 0.00% (0 shared scaffolds). It is not the default because it changes the training cohort.
+- 4,078 unique SMILES / 16,312 long-format rows; split {'test': 809, 'train': 2855, 'val': 414}; parse failures 0; SMILES with >1 split label 0.
+- Opt-in real scaffold split **`bemis_murcko_70_10_10`** (added 2026-10-19): split {'test': 527, 'train': 3287, 'val': 264}; test rows sharing a desalted stereo-blind scaffold with train 0.00% (0 shared scaffolds). It is not the default because it changes the training cohort.
 
 | Pair | canonical shared | desalted stereo-blind BM shared | frac of B rows | whole-complex stereo-blind BM shared | frac of B rows |
 |---|---:|---:|---:|---:|---:|
-| train_vs_val | 0 | 105 | 40.82% | 105 | 40.82% |
 | train_vs_test | 0 | 172 | 41.90% | 172 | 41.90% |
+| train_vs_val | 0 | 105 | 40.82% | 105 | 40.82% |
 | val_vs_test | 0 | 55 | 22.99% | 55 | 22.99% |
+
+### 4.2 `platinai_4cell_real_trainer.csv` — REAL labels, the live cohort
+
+- 1,966 compounds / 1,935 unique SMILES (28 SMILES carry more than one compound code); parse failures 0.
+- `split_strategy` **`scaffold_coverage (default since 2026-10-21)`**: 1,376 / 197 / 393 rows, 0 scaffolds spanning two splits.
+- train_vs_val: canonical 0, split-key BM 0 (0.00% of B rows)
+- train_vs_test: canonical 0, split-key BM 0 (0.00% of B rows)
+- val_vs_test: canonical 0, split-key BM 0 (0.00% of B rows)
+- The split is built inline in `train_cisplatin_resistance.main`, so this section calls the same splitter with the same coverage dict rather than importing a loader. Per-cell coverage and the order-sensitivity measurements behind it are in `metrics/by_metric/split_coverage_4cell.json`.
 
 ## 5. Controls
 
-**NCI-60 9-cell** — 7,823 rows / 5,207 canonical molecules; parse failures 0; split {'train': 4860, 'val': 115, 'test': 232}. 
-- Historical split (m21 docstring / pre-2026-10-19 inventory): 3,645/521/1,041 molecules. Current code produces {'train': 4860, 'val': 115, 'test': 232} — match: **False**. The difference is the BLK-PA12 scaffold-key fix (2026-10-12); the old split was effectively molecule-level because every scaffold key was empty.
-- train_vs_val: canonical 0, split-key BM 0, desalted BM 0
-- train_vs_test: canonical 0, split-key BM 0, desalted BM 0
-- val_vs_test: canonical 0, split-key BM 0, desalted BM 0
+**NCI-60 9-cell** — 7,823 rows / 5,207 canonical molecules / 9 cell lines; parse failures 0. Two protocols, both measured through the production loader (`load_nci60_9cell_split_table`). The default since 2026-10-21 is `scaffold_coverage_70_10_20`.
+
+| Protocol | molecules train/val/test | rows train/val/test | row % | min test rows per cell | min val rows per cell | cells < 30 test rows | scaffolds spanning splits |
+|---|---|---|---:|---:|---:|---:|---:|
+| `scaffold_70_10_10` | 4,860 / 115 / 232 | 7,320 / 160 / 343 | 93.6 / 2.1 / 4.4 | 3 | 0 | 5 | 0 |
+| `scaffold_coverage_70_10_20` | 3,636 / 548 / 1,023 | 5,371 / 920 / 1,532 | 68.7 / 11.8 / 19.6 | 25 | 22 | 1 | 0 |
+
+- The legacy protocol budgets fractions in *scaffold counts*, so the largest scaffolds take the whole train budget and test receives the singleton leftovers: 5 of 9 cells have < 30 test rows (A2780cis, DU145, HL60, PC3, SKOV3) and 1 has no val rows (SKOV3). Every shipped m21 artifact was scored on it; it is pinned in the configs that reproduce them.
+- The coverage protocol targets fractions of *each cell line's labelled rows* on the same scaffold partition. Measured: 5,371 / 920 / 1,532 rows, every cell >= 25 test and >= 22 val rows. No model has been retrained on it yet.
+- The pre-2026-10-21 claim of 3,645/521/1,041 molecules is **not reproducible**: it came from the pre-BLK-PA12 splitter, which returned an empty scaffold key for every molecule.
+- legacy train_vs_val: canonical 0, split-key BM 0, desalted BM 0
+- legacy train_vs_test: canonical 0, split-key BM 0, desalted BM 0
+- legacy val_vs_test: canonical 0, split-key BM 0, desalted BM 0
+- coverage train_vs_val: canonical 0, split-key BM 0, desalted BM 0
+- coverage train_vs_test: canonical 0, split-key BM 0, desalted BM 0
+- coverage val_vs_test: canonical 0, split-key BM 0, desalted BM 0
 
 | MoleculeNet task | rows | parse failures | canonical | seeds | max canonical train/test overlap | max split-key BM overlap | max stereo-blind BM overlap | max desalted BM overlap | random fallback |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -86,25 +110,25 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 
 | Pair | level | shared | frac of A | frac of B |
 |---|---|---:|---:|---:|
+| moleculenet vs predictive5 | canonical | 0 | 0.00% | 0.00% |
+| nci60 vs cfm_all | canonical | 5,183 | 99.54% | 76.86% |
+| nci60 vs cfm_all | ligand | 2,448 | 99.11% | 76.45% |
+| nci60 vs predictive5 | canonical | 5,207 | 100.00% | 77.42% |
+| nci60 vs predictive5 | ligand | 2,470 | 100.00% | 77.14% |
+| nci60 vs pt | canonical | 0 | 0.00% | 0.00% |
+| nci60 vs pt | ligand | 71 | 2.87% | 3.55% |
 | predictive5 vs cfm_all | canonical | 6,693 | 99.51% | 99.26% |
 | predictive5 vs cfm_all | ligand | 3,176 | 99.19% | 99.19% |
 | predictive5 vs cfm_train | canonical | 4,557 | 67.75% | 99.13% |
 | predictive5 vs cfm_train | ligand | 2,357 | 73.61% | 99.03% |
-| pt vs predictive5 | canonical | 0 | 0.00% | 0.00% |
-| pt vs predictive5 | ligand | 79 | 3.95% | 2.47% |
-| pt_fragments vs predictive5_fragments | fragment | 111 | 4.99% | 2.95% |
 | pt vs cfm_all | canonical | 0 | 0.00% | 0.00% |
 | pt vs cfm_all | ligand | 77 | 3.85% | 2.40% |
 | pt_fragments vs cfm_fragments | fragment | 111 | 4.99% | 2.97% |
 | pt vs cfm_train | canonical | 0 | 0.00% | 0.00% |
 | pt vs cfm_train | ligand | 71 | 3.55% | 2.98% |
-| nci60 vs predictive5 | canonical | 5,207 | 100.00% | 77.42% |
-| nci60 vs predictive5 | ligand | 2,470 | 100.00% | 77.14% |
-| nci60 vs cfm_all | canonical | 5,183 | 99.54% | 76.86% |
-| nci60 vs cfm_all | ligand | 2,448 | 99.11% | 76.45% |
-| nci60 vs pt | canonical | 0 | 0.00% | 0.00% |
-| nci60 vs pt | ligand | 71 | 2.87% | 3.55% |
-| moleculenet vs predictive5 | canonical | 0 | 0.00% | 0.00% |
+| pt vs predictive5 | canonical | 0 | 0.00% | 0.00% |
+| pt vs predictive5 | ligand | 79 | 3.95% | 2.47% |
+| pt_fragments vs predictive5_fragments | fragment | 111 | 4.99% | 2.95% |
 
 `canonical` = whole-SMILES identity after RDKit canonicalisation. `ligand` = metal-stripped largest organic fragment. `fragment` = any metal-stripped organic fragment with >= 6 heavy atoms shared. The fragment level is the loosest and is reported to show how much of the apparent overlap is a real shared ligand versus a fragment-selection artefact.
 
@@ -113,13 +137,13 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 **Molecule-level (same canonical SMILES in train and test):**
 - Predictive 5-metal cohorts: 0.00% of test rows under StratifiedKFold (max 0.00%), 0.00% under DOI-grouped 10-fold. **No molecule-level leak.**
 - CFM v3: 0 SMILES carry more than one split label; canonical train/test overlap 0. **No molecule-level leak.**
-- NCI-60: canonical train/test overlap 0; MoleculeNet: max canonical train/test overlap 0; DrugOOD train vs ood_test: 0. **No molecule-level leak in these splits.**
+- NCI-60: canonical train/test overlap 0 under the legacy protocol and 0 under the coverage default; MoleculeNet: max canonical train/test overlap 0; DrugOOD train vs ood_test: 0. **No molecule-level leak in these splits.**
 
 **Scaffold-level (same Bemis-Murcko scaffold in train and test):**
 - Predictive random CV: 74.80%-85.73% of test rows share a BM scaffold with train (DOI-grouped 10-fold: 45.70%-64.24%). This is the expected property of random CV, not a bug, but the number is **not** a scaffold-generalisation estimate.
 - CFM v3: in-file `scaffold_id` overlap 0. The split key is stereo-aware and full-complex. Removing stereo alone leaves 30 shared scaffolds (4.18% of test rows); removing counterions as well leaves 222 (73.71% of test rows). The dominant gap is counterion/solvent fragments in the split key, not stereochemistry. Train vs val is worse: 79.63% of val rows share a desalted ligand scaffold with train — and val clouds are what the CFM quality metrics are measured on.
 - MoleculeNet: **key aligned 2026-10-19.** The split key is now the stereo-blind `includeChirality=False` key (the `astartes`/chemprop reference), so the `split-key BM` and `stereo-blind BM` columns are one measurement and both are 0 by construction. The pre-fix key kept chirality; its test-set turnover and old overlap figures are in `metrics/by_metric/moleculenet_scaffold_key_alignment.json`.
-- NCI-60: split-key BM overlap 0 (zero after the empty-scaffold fix).
+- NCI-60: split-key BM overlap 0 (legacy) and 0 (coverage); 0 and 0 scaffolds span two splits respectively. Neither protocol leaks a scaffold.
 - Pt 4-cell: the loader's `split_strategy` is named `scaffold_70_10_10` but is a stable hash of the SMILES string, i.e. a molecule-level split. Measured: 172 shared desalted scaffolds (41.90% of test rows) and 40.82% of val rows; canonical overlap 0. **Opt-in fix 2026-10-19:** `bemis_murcko_70_10_10` gives a real scaffold split at 0.0% test-row overlap (`metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`); it is not the default because it changes the training cohort.
 
 **Cross-dataset:**
@@ -127,12 +151,12 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 - Pt pool vs 5-metal training: exact canonical overlap 0; shared organic fragments 111. Pt is a different metal, so this is ligand-level overlap, not molecule identity. 296/3,555 unique Pt SMILES fail RDKit parsing and are compared as raw strings only.
 - Pt pool has **no split column**; it is a pool, not a train/val/test partition. Duplicate (code, cell) rows 3,668, exact duplicate measurements 987.
 
-**Documentation drift (not leakage):**
-- The m21 docstring and the pre-2026-10-19 inventory state the NCI-60 split is 3,645/521/1,041; the current code produces {'train': 4860, 'val': 115, 'test': 232} (match=False). The 2026-10-12 BLK-PA12 scaffold-key fix changed it. The inventory now records the current split.
+**Protocol change (not leakage):**
+- The NCI-60 default split moved on 2026-10-21 from `scaffold_70_10_10` to `scaffold_coverage_70_10_20`, because the legacy protocol budgets fractions in scaffold counts and left 5 of 9 cells with < 30 test rows. Both protocols are measured above. The shipped numbers (0.7294 m21, 0.6683 m3) were scored on the legacy protocol and are reproducible only through the configs that pin it; no model has been retrained on the coverage split, and the two test sets differ ~4.5x in size, so the numbers are not comparable.
 
 **Action:**
 - No re-split is required to remove molecule-level leakage: none was found.
-- Three split *labels* did not describe their implementations. Two are aligned as of 2026-10-19: `train_moleculenet._bemis_murcko_scaffold` uses the astartes stereo-blind key, and the Pt 4-cell loader offers a real `bemis_murcko_70_10_10` strategy beside the legacy hash. The CFM file still claims a strict Bemis-Murcko split while its key is stereo-aware and full-complex; that file belongs to the CFM session and remains open.
+- Two split *labels* did not describe their implementations and are aligned as of 2026-10-19: `train_moleculenet._bemis_murcko_scaffold` uses the astartes stereo-blind key, and the Pt 4-cell loader offers a real `bemis_murcko_70_10_10` strategy beside the legacy hash. The CFM file still claims a strict Bemis-Murcko split while its key is stereo-aware and full-complex; that file belongs to the CFM session and remains open.
 - Before reporting a scaffold/OOD number, group by a **stereo-blind, desalted ligand scaffold** (``_bemis_murcko_key`` with ``includeChirality=False``). For MoleculeNet comparability the reference key is astartes' stereo-blind, *non*-desalted key.
 - The Pt **pool** is not partitioned, so it needs no scaffold split; it needs de-duplication before use as an external evaluation set. The Pt **4-cell cohort** is partitioned and is the split that needs fixing.
 

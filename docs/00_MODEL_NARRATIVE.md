@@ -291,6 +291,13 @@ headline 在 2026-10-12 由 **0.8007 降到 0.7294**。artifact 记录的原因�
 实际是分子级随机 split。修复后整条 scaffold 被留出，split 从 3,645/521/1,041 变为
 4,860/115/232。
 
+**补记（2026-10-21）：** 4,860/115/232 之后又被替换了一次。该协议按 *scaffold 个数* 分配
+70/10/20，最大的 70% scaffold 装走了 94.3–100% 的行，test 只剩零散单例：**7,320/160/343
+行 = 93.6/2.0/4.4%**，9 个细胞里 5 个 test 行数 < 30，SKOV3 的 val 为 0。默认已改为
+coverage split（`scaffold_coverage_70_10_20`：5,371/920/1,532 行，每个细胞 ≥ 25 test、
+≥ 22 val），旧协议在复现 0.7294 的 config 里显式 pin 住。**所以 0.7294 现在是 legacy
+协议下的数字，且没有模型在新默认上重训过；两个 test 集大小差 ~4.5 倍，不可直接比较。**
+
 **同一天还换了 trainer**（`train_nci60_10cell.py` → `train_dmpnn_multitask_wasserstein.py`
 + `configs/training/nci60_9cell_5seed_50ep_v1.yaml`），所以 0.8007→0.7294 的差值里
 splitter 与 trainer 两个因素**是混在一起的**，不能单独归因于其中一个。原文把原因全归给

@@ -1,6 +1,6 @@
 # docs/ index
 
-Generated 2026-10-14 by scanning the directory. 40 files.
+Generated 2026-10-22 by scanning the directory. 51 files.
 
 **If a document contradicts what is on disk, the disk wins.** Several
 entries below are marked SUPERSEDED because a later decision replaced
@@ -49,7 +49,10 @@ be audited (AGENTS.md section 5.5).
 ## What data do we train and test on?
 
 - `DATA_INVENTORY.md` — Every training/eval dataset with measured row counts, role, and status (ACTIVE / SUPERSEDED / DO-NOT-TRAIN). Regenerate with `molmetal/scripts/wf_a50_data_inventory.py`; do not hand-edit.
-- `DATA_LEAKAGE_AUDIT.md` — Measured train/val/test leakage audit for every active dataset (molecule-level, scaffold-level, cross-dataset). Regenerate with `molmetal/scripts/wf_a51_leakage_audit.py`; do not hand-edit.
+- `DATA_LEAKAGE_AUDIT.md` — Measured train/val/test leakage audit for every active dataset (molecule-level, scaffold-level, cross-dataset). Regenerate with `molmetal/scripts/wf_a51_leakage_audit.py`; do not hand-edit. §4 covers both Pt 4-cell cohorts, §5 both NCI-60 protocols.
+- `DATASET_CARD.md` — Card for the MSRS precious-metal potency corpus (21,404 modelling rows): label definition, inclusion filter, censoring bias, four split protocols, duplicates/ties. Regenerate with `molmetal/scripts/msrs_data_card.py`.
+- `DATA_PROVENANCE.json` — Machine-readable label provenance per dataset (who measured it, from which file, with which unit). Consumed by `registry.py`; a dataset with no entry shows up as unlabelled.
+- **Per-corpus split audits** — `metrics/by_metric/nci60_split_coverage_audit.json` (both NCI-60 protocols, per-cell coverage), `metrics/by_metric/split_coverage_4cell.json` (Pt 4-cell, per-cell coverage + order sensitivity), `metrics/by_metric/tmqm_cfm_data_audit.json` (tmQM shard completeness + val-cohort metal balance). These are the numbers the two documents above quote.
 
 ## Superseded but retained
 
@@ -78,6 +81,11 @@ these should be canonical, say so and it gets an entry.
 - `PREREG_TEMPLATE.md` (last modified 2026-10-03)
 - `PROJECT_ARCHITECTURE_INSIGHTS_Q4.md` (last modified 2026-10-03)
 - `RESOURCE_SCALING.md` (last modified 2026-10-03)
+- `CFM_WEAKNESSES_2026_10_13.md` — CFM weak-spot inventory; every number carries its metric path. Read with `CFM_SIX_ROUND_CONCLUSION_2026_10_13.md`.
+- `WF_A108_VELOCITY_HEAD_SURVEY.md` — What a 3D velocity head can express; read before changing `EGNNVelocityField`'s coordinate head.
+- `CHEMPROP_V2_SCHEMA_DECISION.md` — chemprop_v2 vs dmpnn_v2 atom-feature schema; no first-39-dim overlap, so features are not interchangeable.
+- `WF_A38_PLATINAI_FULL_HARVEST_FOLLOWUP.md` — PlatinAI full-harvest follow-up note (2026-10-15).
+- `wf_a44_verify_receipts.md` — Wf-A44 on-disk verification receipts (filesystem-truth audit).
 - `SCI_PAPER_SETUP.md` (last modified 2026-10-03)
 - `SESSION_FINAL_SYNTHESIS.md` (last modified 2026-10-06)
 - `USER_OK_OUTSTANDING_REPORT.md` (last modified 2026-10-03)

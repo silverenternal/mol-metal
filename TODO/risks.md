@@ -77,9 +77,12 @@ than they deliver:
   `include_chirality=False`. Our split is therefore easier than the reference,
   and the chemprop comparison is understated by an unmeasured amount.
 - **Pt 4-cell** — `load_platinai_4cell_split_table(split_strategy="scaffold_70_10_10")`
+  on `platinai_4cell.csv` (the synthetic-label file, DO-NOT-TRAIN)
   sets `scaffold_id = _stable_hash_int(smiles, 10**8)` and buckets on it: a
   molecule-level hash split. 41.9 % of test rows and 40.8 % of val rows share a
-  desalted scaffold with train.
+  desalted scaffold with train. The real-label cohort
+  (`platinai_4cell_real_trainer.csv`) is on the coverage split instead and
+  measures 0 shared scaffolds — see `docs/DATA_LEAKAGE_AUDIT.md` §4.2.
 
 Data-side mitigation landed 2026-10-19: `metalcytotox_5metal_multitask_v5.csv`
 is deduplicated (24,483 rows) and split on the desalted stereo-blind ligand

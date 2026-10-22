@@ -42,16 +42,19 @@ docking), not by a train/test AUC.
 
 **Leakage (measured):** the in-file `scaffold_id` is stereo-aware and full-complex (counterions/solvent included). It is disjoint across train/val/test (0 shared) and no SMILES carries more than one split label. At the **desalted, stereo-blind ligand-scaffold** level, however, 222 scaffolds are shared between train and test (73.7 % of test rows) and 131 between train and val (79.6 % of val rows). Removing stereo alone leaves 30 shared scaffolds (4.2 % of test rows); the gap is dominated by counterion/solvent fragments. The split is not a ligand-scaffold OOD split.
 
+**Second data path — tmQM geometry.** The CFM configs that train the velocity field on 3-D clouds read `.data/molmetal/tmQM` instead of a CSV: 33,429 six-metal complexes with geometry, Wiberg bond orders and NBO charges on every row (see `tmqm_corpus_6metal` in §2). The corpus itself is complete; two protocol facts are worth knowing before quoting a generation metric — the scaffold split is 87.7/6.2/6.2 % of rows, and the default 192-cloud val cohort is Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Measured: `metrics/by_metric/tmqm_cfm_data_audit.json`.
+
 ### 1.3 Platinum external evaluation
 
 - Rows **17,735**, unique compounds **3,630**, cell lines contributing Pt rows **369**
 - Rows with SMILES **17,735** / 17,735; training-ready (value + SMILES) **15,953**
 - **No split column** — a pool, not a partition. Duplicate `(compound_code, cell_line)` rows **3,668**; exact duplicate `(code, cell, value)` rows **987**. 296/3,555 unique SMILES fail RDKit parsing.
-- **Pt 4-cell training cohort** (`.data/molmetal/platinai_4cell.csv`, a different file from the pool): the loader's `split_strategy` is named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash of the SMILES string, i.e. a molecule-level split. 172 desalted scaffolds are shared between train and test (41.9 % of test rows) and 40.8 % of val rows. Canonical overlap is 0.
+- **Pt 4-cell synthetic cohort** (`.data/molmetal/platinai_4cell.csv`, labels are simulated — DO-NOT-TRAIN): the loader's `split_strategy` is named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash of the SMILES string, i.e. a molecule-level split. 172 desalted scaffolds are shared between train and test (41.9 % of test rows) and 40.8 % of val rows. Canonical overlap is 0.
+- **Pt 4-cell real cohort** (`.data/molmetal/platinai_4cell_real_trainer.csv`, the cohort the trainer is pointed at): `scaffold_coverage` split, 1,376 / 197 / 393 rows, 0 scaffolds spanning two splits, canonical train/test overlap 0.
 
 ### 1.4 Controls
 
-- **NCI-60 precious-metal panel**: 7,823 rows / 5,207 unique SMILES / 9 cell lines. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: train 4,860 / val 115 / test 232 molecules. It is a **subset of MetalCytoToxDB** (5,207/5,207 canonical molecules in the 5-metal pool, 5,183 in CFM), not an independent corpus. The older 3,645/521/1,041 figure came from the pre-BLK-PA12 splitter (empty scaffold key).
+- **NCI-60 precious-metal panel**: 7,823 rows / 5,207 unique SMILES / 9 cell lines. The default split (`scaffold_coverage_70_10_20`, since 2026-10-21) gives train 3,636 / val 548 / test 1,023 molecules and 5,371 / 920 / 1,532 rows; every cell has >= 25 test and >= 22 val rows. The legacy `scaffold_70_10_10` protocol is 4,860 / 115 / 232 molecules (93.6 / 2.1 / 4.4 % of rows), with 5 of 9 cells under 30 test rows. It is a **subset of MetalCytoToxDB** (5,207/5,207 canonical molecules in the 5-metal pool, 5,183 in CFM), not an independent corpus. The older 3,645/521/1,041 figure came from the pre-BLK-PA12 splitter (empty scaffold key).
 - **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds. The split key is **stereo-aware**. At the stereo-blind level up to 0 scaffolds are shared between train and test (0.0 % of test rows, bace); desalting adds a counterion-driven component up to 52 scaffolds (hiv), with a row-level maximum of 35.3 % (bbbp). No canonical molecule overlap.
 - **DrugOOD lbap**: 266,522 rows with iid/ood train/val/test as a column; used as the OOD control, not as a headline result. train vs ood_test has 0 canonical and 0 scaffold_split_id overlap; train vs iid_test shares scaffold IDs by design.
 
@@ -65,6 +68,7 @@ docking), not by a train/test AUC.
 | `cfm_5metal_v5` | generative_train | **UNUSED** | 24,483 | `.data/molmetal/metalcytotox_5metal_multitask_v5.csv` |
 | `cfm_5metal_v2` | generative_train | **SUPERSEDED** | 26,632 | `.data/molmetal/metalcytotox_5metal_multitask_v2.csv` |
 | `cfm_5metal_v1` | generative_train | **SUPERSEDED** | 26,801 | `.data/molmetal/metalcytotox_5metal_multitask.csv` |
+| `tmqm_corpus_6metal` | generative_train | **ACTIVE** | 108,541 | `.data/molmetal/tmQM/tmqm_parsed.csv` |
 | `pt_biodata_all` | eval_pt | **ACTIVE** | 17,735 | `.data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl` |
 | `pt_biodata_raw` | eval_pt | **ACTIVE** | 30,185 | `.data/molmetal/wf_a37_platinai_biodata/harvest_summary_2026-10-16.json` |
 | `pt_4cell_real` | eval_pt | **ACTIVE** | 1,966 | `.data/molmetal/platinai_4cell_real_cohort.csv` |
@@ -104,13 +108,14 @@ docking), not by a train/test AUC.
 - **`moleculenet_bbbp`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_clintox`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
 - **`moleculenet_hiv`** (ACTIVE) — Scaffold 70/10/20, 5 seeds.
-- **`nci60_9cell`** (ACTIVE) — 9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine cells have < 30 test rows. The DEFAULT split is now the per-cell-row coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: 5,371/920/1,532 rows); the legacy protocol is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded.
+- **`nci60_9cell`** (ACTIVE) — 9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. The DEFAULT split is the per-cell-row coverage split (`scaffold_coverage_70_10_20`, since 2026-10-21): 5,371/920/1,532 rows and 3,636/548/1,023 molecules, every cell >= 25 test and >= 22 val. The legacy `scaffold_70_10_10` protocol (4,860/115/232 molecules, which is 7,320/160/343 rows = 93.6/2.0/4.4 %, five of nine cells under 30 test rows) is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded.
 - **`nci60_gi50_raw`** (UNUSED) — Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used.
 - **`drugood_lbap_scaffold`** (ACTIVE) — OOD control; iid/ood train/val/test split is a column.
 - **`drugood_lbap_assay`** (ACTIVE) — The same 266,522 LBAP records as the scaffold split, partitioned by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml.
 - **`drugood_lbap_size`** (ACTIVE) — The same 266,522 LBAP records as the scaffold split, partitioned by size instead of scaffold. Same gap as drugood_lbap_assay.
 - **`metallo_drugs_500`** (ACTIVE) — 449 metal-drug SMILES with a `source` column and no activity column. A structure pool for metallo_pool_scaffold_split.py / r10_cfg_real_crossdocked.py / ablation_runner.py, not a labelled cohort.
-- **`tmqm_dblock`** (ACTIVE) — 5,000 d-block complexes with geometry; TMQM init is OFF in the current CFM config (does not transfer to ligand-only rows).
+- **`tmqm_dblock`** (ACTIVE) — 5,000 d-block complexes with geometry -- a small subset, not the CFM corpus (that is `tmqm_corpus_6metal` below). The tmQM-pretrained encoder (`models/tmqm_pretrained/tmqm_pretrained_encoder.pt`) IS loaded by the current CFM configs (`use_tmqm_init: true`; 47/51 params transfer, 0 unexpected, 4 missing). Before 2026-10-20 `cfm.yaml` alone omitted the key, so production trained from random init while nine ablations warm-started -- see `TODO/risks.md` R6.
+- **`tmqm_corpus_6metal`** (ACTIVE) — The tmQM corpus the CFM geometry path trains on. The file holds 108,541 complexes over the whole d block; the CFM cohorts are the six-metal subset, 33,429 complexes over Pt / Ru / Ir / Rh / Os / Re, and every one of those carries all three shards a cloud needs (geometry, Wiberg bond orders, NBO charges) -- 33,429/33,429 on each. No duplicate CSD codes, no non-finite coordinates, exactly one metal atom per complex, and the `metal` column agrees with that atom in 33,429/33,429 rows. 2,277 of the 33,429 (6.8 %) have an empty SMILES and fall back to a CSD-prefix scaffold key. Two measured protocol facts, not corpus defects: the scaffold split is 87.7/6.2/6.2 % of rows rather than 80/10/10 (fractions are budgeted in scaffold counts, so `tmqm_val_frac` is inert on that branch), and the default `n_val=192` cohort with `tmqm_min_per_metal=0` is Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Measured: `metrics/by_metric/tmqm_cfm_data_audit.json`.
 - **`crossdocked100`** (ACTIVE) — 100-pocket docking manifest for the pocket encoder.
 - **`rusanov_s5_ece`** (REFERENCE) — Published ECE values; compared against, never trained on.
 - **`rusanov_s7_pt_wet_lab`** (REFERENCE) — Published Pt-1..19 wet-lab panel; reference only (no wet lab per §5.4).
@@ -126,19 +131,20 @@ docking), not by a train/test AUC.
 
 Open:
 
-- **NCI-60 9-cell split is not 70/10/20 by rows.** The shipped
-  `scaffold_70_10_10` protocol budgets fractions in *scaffold counts*, so
-  the largest 70 % of the 1,151 scaffolds (94.3-100 % of every cell's
-  rows) go to train and test receives the singleton leftovers:
-  **7,320 / 160 / 343 rows** (93.6 / 2.0 / 4.4 %). Five of nine cells
-  have < 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28)
-  and SKOV3 has 0 val rows. The coverage split
-  (`--nci60-split-strategy scaffold_coverage_70_10_20`: 5,371 / 920 /
-  1,532 rows, every cell >= 25 test and >= 22 val) is now the loader
-  default; the shipped configs pin the legacy protocol. **No model has
-  been retrained on the new default yet.** Measured:
+- **No model has been retrained on the NCI-60 coverage split.** The
+  default moved on 2026-10-21 (see Closed, below); until a run lands,
+  the only 9-cell number on disk (0.7294) is a legacy-protocol number
+  and is not comparable to anything measured on the new test set
+  (1,532 vs 343 rows). Measured:
   `metrics/by_metric/nci60_split_coverage_audit.json`; risk
   `TODO/risks.md` R11.
+- **tmQM's val cohort is not metal-balanced.** `n_val` defaults to 192
+  and `tmqm_min_per_metal` to 0, so the cohort every generation metric
+  is averaged over is a 192-of-960 reservoir window: at seed 0 it is
+  Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Setting
+  `tmqm_min_per_metal: 20` gives Pt 46 / Ru 52 and forces a full
+  2,061-candidate scan. Measured:
+  `metrics/by_metric/tmqm_cfm_data_audit.json`.
 - **CFM v3/v4 `scaffold_id` is a full-complex, stereo-aware key**, so
   73.7 % of test rows share a desalted scaffold with train.
   `cfm_5metal_v5` fixes this (0 shared scaffolds) but no checkpoint has
@@ -151,6 +157,18 @@ Open:
 
 Closed (kept here so the old claims are not re-quoted):
 
+- ~~NCI-60 split is not 70/10/20 by rows~~ — the legacy
+  `scaffold_70_10_10` protocol budgeted fractions in *scaffold counts*,
+  so the largest 70 % of the 1,151 scaffolds (94.3-100 % of every
+  cell's rows) went to train and test received the singleton
+  leftovers: 7,320 / 160 / 343 rows (93.6 / 2.0 / 4.4 %), five of nine
+  cells under 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18,
+  A2780cis 28) and SKOV3 with 0 val rows. The coverage split
+  (`scaffold_coverage_70_10_20`: 5,371 / 920 / 1,532 rows, every cell
+  >= 25 test and >= 22 val, 0 scaffolds spanning splits) has been the
+  loader default since 2026-10-21. The configs that reproduce shipped
+  numbers pin the legacy protocol, and `pre_flight_check.py` now
+  verifies both.
 - ~~BindingDB path BLOCKED~~ — fixed 2026-10-19;
   `.data/molmetal/bindingdb_ic50.csv` points at the 990,630-row export
   and `_load_real_bindingdb` accepts both headers.

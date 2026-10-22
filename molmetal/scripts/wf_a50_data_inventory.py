@@ -121,14 +121,15 @@ DECLARED: List[tuple] = [
     ("nci60_9cell", ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv",
      "control_general", "ACTIVE",
      "9-cell precious-metal panel. It is a subset of MetalCytoToxDB "
-     "(5,207/5,207 canonical molecules), not an independent corpus. Split is a "
-     "Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 "
-     "molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %) — five of nine "
-     "cells have < 30 test rows. The DEFAULT split is now the per-cell-row "
-     "coverage split (--nci60-split-strategy scaffold_coverage_70_10_20: "
-     "5,371/920/1,532 rows); the legacy protocol is pinned in the shipped "
-     "configs. See section 5. The older 3,645/521/1,041 figure is the "
-     "pre-BLK-PA12 molecule-level split and is superseded."),
+     "(5,207/5,207 canonical molecules), not an independent corpus. The "
+     "DEFAULT split is the per-cell-row coverage split "
+     "(`scaffold_coverage_70_10_20`, since 2026-10-21): 5,371/920/1,532 rows "
+     "and 3,636/548/1,023 molecules, every cell >= 25 test and >= 22 val. The "
+     "legacy `scaffold_70_10_10` protocol (4,860/115/232 molecules, which is "
+     "7,320/160/343 rows = 93.6/2.0/4.4 %, five of nine cells under 30 test "
+     "rows) is pinned in the shipped configs. See section 5. The older "
+     "3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is "
+     "superseded."),
     ("nci60_gi50_raw", DATA / "NCI60_GI50" / "GI50.csv", "reference", "UNUSED",
      "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."),
     ("drugood_lbap_scaffold", DATA / "drugood" / "ic50" / "csv" /
@@ -153,8 +154,30 @@ DECLARED: List[tuple] = [
     # --- pretraining -----------------------------------------------------
     ("tmqm_dblock", ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv",
      "pretrain", "ACTIVE",
-     "5,000 d-block complexes with geometry; TMQM init is OFF in the current "
-     "CFM config (does not transfer to ligand-only rows)."),
+     "5,000 d-block complexes with geometry -- a small subset, not the CFM "
+     "corpus (that is `tmqm_corpus_6metal` below). The tmQM-pretrained "
+     "encoder (`models/tmqm_pretrained/tmqm_pretrained_encoder.pt`) IS loaded "
+     "by the current CFM configs (`use_tmqm_init: true`; 47/51 params "
+     "transfer, 0 unexpected, 4 missing). Before 2026-10-20 `cfm.yaml` alone "
+     "omitted the key, so production trained from random init while nine "
+     "ablations warm-started -- see `TODO/risks.md` R6."),
+    ("tmqm_corpus_6metal", DATA / "tmQM" / "tmqm_parsed.csv",
+     "generative_train", "ACTIVE",
+     "The tmQM corpus the CFM geometry path trains on. The file holds 108,541 "
+     "complexes over the whole d block; the CFM cohorts are the six-metal "
+     "subset, 33,429 complexes over Pt / Ru / Ir / Rh / Os / Re, and every one "
+     "of those carries all three shards a cloud needs (geometry, Wiberg bond "
+     "orders, NBO charges) -- 33,429/33,429 on each. No duplicate CSD codes, "
+     "no non-finite coordinates, exactly one metal atom per complex, and the "
+     "`metal` column agrees with that atom in 33,429/33,429 rows. 2,277 of the "
+     "33,429 (6.8 %) have an empty SMILES and fall back to a CSD-prefix "
+     "scaffold key. Two measured protocol facts, not corpus defects: the "
+     "scaffold split is 87.7/6.2/6.2 % of rows rather than 80/10/10 "
+     "(fractions are budgeted in scaffold counts, so `tmqm_val_frac` is inert "
+     "on that branch), and the default `n_val=192` cohort with "
+     "`tmqm_min_per_metal=0` is Pt 19 / Ru 93 against a corpus that is "
+     "Pt 24.8 / Ru 29.3. Measured: "
+     "`metrics/by_metric/tmqm_cfm_data_audit.json`."),
     ("crossdocked100", ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv",
      "pretrain", "ACTIVE", "100-pocket docking manifest for the pocket encoder."),
     # --- reference -------------------------------------------------------
@@ -323,9 +346,12 @@ def render_md(doc: Dict[str, Any]) -> str:
         cfm_val = cfm["pairs"]["train_vs_val"]["bemis_murcko"]
         cfm_full_ns = cfm["pairs"]["train_vs_test"]["bemis_murcko_full_nostereo"]
         nci_lk = lk["nci60"]
-        nci_split = nci_lk["split_sizes"]
+        nci_default = nci_lk["protocols"][nci_lk["default_protocol"]]
+        nci_legacy = nci_lk["protocols"]["scaffold_70_10_10"]
+        nci_split = nci_default["split_sizes_unique_smiles"]
         pt_lk = lk["pt"]
         pt4_lk = lk.get("platinai_4cell")
+        pt4r_lk = lk.get("platinai_4cell_real")
         molnet = lk["moleculenet"]["tasks"]
         molnet_bm_max = max(
             s["bemis_murcko_desalted"]["train_vs_test"]["n_intersect_keys"]
@@ -354,8 +380,10 @@ def render_md(doc: Dict[str, Any]) -> str:
         pred_doi_min = pred_doi_max = 0.0
         cfm = cfm_test = cfm_val = cfm_full_ns = None
         nci_split = None
+        nci_default = nci_legacy = None
         pt_lk = None
         pt4_lk = None
+        pt4r_lk = None
         molnet_bm_max = 0
         molnet_bm_frac = 0.0
         molnet_ns_max = 0
@@ -441,6 +469,16 @@ def render_md(doc: Dict[str, Any]) -> str:
             "wf_a51_leakage_audit.py`."
         ),
         "",
+        "**Second data path — tmQM geometry.** The CFM configs that train the "
+        "velocity field on 3-D clouds read `.data/molmetal/tmQM` instead of a "
+        "CSV: 33,429 six-metal complexes with geometry, Wiberg bond orders and "
+        "NBO charges on every row (see `tmqm_corpus_6metal` in §2). The corpus "
+        "itself is complete; two protocol facts are worth knowing before "
+        "quoting a generation metric — the scaffold split is 87.7/6.2/6.2 % of "
+        "rows, and the default 192-cloud val cohort is Pt 19 / Ru 93 against a "
+        "corpus that is Pt 24.8 / Ru 29.3. Measured: "
+        "`metrics/by_metric/tmqm_cfm_data_audit.json`.",
+        "",
         "### 1.3 Platinum external evaluation",
         "",
         f"- Rows **{_fmt(pt['rows'])}**, unique compounds **{_fmt(pt['compounds'])}**, "
@@ -459,10 +497,10 @@ def render_md(doc: Dict[str, Any]) -> str:
             else "- Split status: not measured — run `wf_a51_leakage_audit.py`."
         ),
         (
-            f"- **Pt 4-cell training cohort** (`.data/molmetal/platinai_4cell.csv`, "
-            f"a different file from the pool): the loader's `split_strategy` is "
-            f"named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash of "
-            f"the SMILES string, i.e. a molecule-level split. "
+            f"- **Pt 4-cell synthetic cohort** (`.data/molmetal/platinai_4cell.csv`, "
+            f"labels are simulated — DO-NOT-TRAIN): the loader's `split_strategy` "
+            f"is named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash "
+            f"of the SMILES string, i.e. a molecule-level split. "
             f"{pt4_lk['pairs']['train_vs_test']['bemis_murcko']['n_intersect_keys']} "
             f"desalted scaffolds are shared between train and test "
             f"({100.0 * pt4_lk['pairs']['train_vs_test']['bemis_murcko']['frac_b_rows_seen_in_a']:.1f} % "
@@ -470,7 +508,20 @@ def render_md(doc: Dict[str, Any]) -> str:
             f"{100.0 * pt4_lk['pairs']['train_vs_val']['bemis_murcko']['frac_b_rows_seen_in_a']:.1f} % "
             f"of val rows. Canonical overlap is 0."
             if pt4_lk
-            else "- **Pt 4-cell training cohort**: split not measured — run "
+            else "- **Pt 4-cell synthetic cohort**: split not measured — run "
+            "`wf_a51_leakage_audit.py`."
+        ),
+        (
+            f"- **Pt 4-cell real cohort** (`.data/molmetal/platinai_4cell_real_trainer.csv`, "
+            f"the cohort the trainer is pointed at): `scaffold_coverage` split, "
+            f"{pt4r_lk['split_sizes_rows']['train']:,} / "
+            f"{pt4r_lk['split_sizes_rows']['val']:,} / "
+            f"{pt4r_lk['split_sizes_rows']['test']:,} rows, "
+            f"{pt4r_lk['n_scaffolds_spanning_splits']} scaffolds spanning two "
+            f"splits, canonical train/test overlap "
+            f"{pt4r_lk['pairs']['train_vs_test']['canonical']['n_intersect_keys']}."
+            if pt4r_lk
+            else "- **Pt 4-cell real cohort**: split not measured — run "
             "`wf_a51_leakage_audit.py`."
         ),
         "",
@@ -479,9 +530,23 @@ def render_md(doc: Dict[str, Any]) -> str:
         (
             f"- **NCI-60 precious-metal panel**: {_fmt(n['rows'])} rows / "
             f"{_fmt(n['unique_smiles'])} unique SMILES / {n['cells']} cell lines. "
-            f"Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: "
-            f"train {nci_split['train']:,} / val {nci_split['val']:,} / "
-            f"test {nci_split['test']:,} molecules. It is a **subset of "
+            f"The default split (`{nci_lk['default_protocol']}`, since "
+            f"2026-10-21) gives train {nci_split['train']:,} / val "
+            f"{nci_split['val']:,} / test {nci_split['test']:,} molecules and "
+            f"{nci_default['split_sizes_rows']['train']:,} / "
+            f"{nci_default['split_sizes_rows']['val']:,} / "
+            f"{nci_default['split_sizes_rows']['test']:,} rows; every cell has "
+            f">= {nci_default['min_test_rows_per_cell']} test and >= "
+            f"{nci_default['min_val_rows_per_cell']} val rows. The legacy "
+            f"`scaffold_70_10_10` protocol is "
+            f"{nci_legacy['split_sizes_unique_smiles']['train']:,} / "
+            f"{nci_legacy['split_sizes_unique_smiles']['val']:,} / "
+            f"{nci_legacy['split_sizes_unique_smiles']['test']:,} molecules "
+            f"({100 * nci_legacy['row_fraction']['train']:.1f} / "
+            f"{100 * nci_legacy['row_fraction']['val']:.1f} / "
+            f"{100 * nci_legacy['row_fraction']['test']:.1f} % of rows), with "
+            f"{len(nci_legacy['cells_below_30_test_rows'])} of {nci_lk['n_cells']} "
+            f"cells under 30 test rows. It is a **subset of "
             f"MetalCytoToxDB** ({nci_pred:,}/{n['unique_smiles']:,} canonical "
             f"molecules in the 5-metal pool, {nci_cfm:,} in CFM), not an "
             f"independent corpus. The older 3,645/521/1,041 figure came from the "
@@ -541,19 +606,20 @@ def render_md(doc: Dict[str, Any]) -> str:
         "",
         "Open:",
         "",
-        "- **NCI-60 9-cell split is not 70/10/20 by rows.** The shipped",
-        "  `scaffold_70_10_10` protocol budgets fractions in *scaffold counts*, so",
-        "  the largest 70 % of the 1,151 scaffolds (94.3-100 % of every cell's",
-        "  rows) go to train and test receives the singleton leftovers:",
-        "  **7,320 / 160 / 343 rows** (93.6 / 2.0 / 4.4 %). Five of nine cells",
-        "  have < 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18, A2780cis 28)",
-        "  and SKOV3 has 0 val rows. The coverage split",
-        "  (`--nci60-split-strategy scaffold_coverage_70_10_20`: 5,371 / 920 /",
-        "  1,532 rows, every cell >= 25 test and >= 22 val) is now the loader",
-        "  default; the shipped configs pin the legacy protocol. **No model has",
-        "  been retrained on the new default yet.** Measured:",
+        "- **No model has been retrained on the NCI-60 coverage split.** The",
+        "  default moved on 2026-10-21 (see Closed, below); until a run lands,",
+        "  the only 9-cell number on disk (0.7294) is a legacy-protocol number",
+        "  and is not comparable to anything measured on the new test set",
+        "  (1,532 vs 343 rows). Measured:",
         "  `metrics/by_metric/nci60_split_coverage_audit.json`; risk",
         "  `TODO/risks.md` R11.",
+        "- **tmQM's val cohort is not metal-balanced.** `n_val` defaults to 192",
+        "  and `tmqm_min_per_metal` to 0, so the cohort every generation metric",
+        "  is averaged over is a 192-of-960 reservoir window: at seed 0 it is",
+        "  Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Setting",
+        "  `tmqm_min_per_metal: 20` gives Pt 46 / Ru 52 and forces a full",
+        "  2,061-candidate scan. Measured:",
+        "  `metrics/by_metric/tmqm_cfm_data_audit.json`.",
         "- **CFM v3/v4 `scaffold_id` is a full-complex, stereo-aware key**, so",
         "  73.7 % of test rows share a desalted scaffold with train.",
         "  `cfm_5metal_v5` fixes this (0 shared scaffolds) but no checkpoint has",
@@ -566,6 +632,18 @@ def render_md(doc: Dict[str, Any]) -> str:
         "",
         "Closed (kept here so the old claims are not re-quoted):",
         "",
+        "- ~~NCI-60 split is not 70/10/20 by rows~~ — the legacy",
+        "  `scaffold_70_10_10` protocol budgeted fractions in *scaffold counts*,",
+        "  so the largest 70 % of the 1,151 scaffolds (94.3-100 % of every",
+        "  cell's rows) went to train and test received the singleton",
+        "  leftovers: 7,320 / 160 / 343 rows (93.6 / 2.0 / 4.4 %), five of nine",
+        "  cells under 30 test rows (SKOV3 3, DU145 7, HL60 11, PC3 18,",
+        "  A2780cis 28) and SKOV3 with 0 val rows. The coverage split",
+        "  (`scaffold_coverage_70_10_20`: 5,371 / 920 / 1,532 rows, every cell",
+        "  >= 25 test and >= 22 val, 0 scaffolds spanning splits) has been the",
+        "  loader default since 2026-10-21. The configs that reproduce shipped",
+        "  numbers pin the legacy protocol, and `pre_flight_check.py` now",
+        "  verifies both.",
         "- ~~BindingDB path BLOCKED~~ — fixed 2026-10-19;",
         "  `.data/molmetal/bindingdb_ic50.csv` points at the 990,630-row export",
         "  and `_load_real_bindingdb` accepts both headers.",
