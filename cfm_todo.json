@@ -603,6 +603,16 @@
       "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.148",
       "status": "RESOLVED 2026-10-20 (Wf-A106, §6.149) - deleted, not kept",
       "resolution": "The four wrappers were strict duplicates of inline paths already in the loss sum, so deleting them loses no capability. They were deleted together with their five flags, _LAST_DIAGNOSTIC_TERMS, the A103 sweep script and its test. MEASURED: the post-deletion epoch-0 result is bit-identical to the pre-deletion '--consistency-term-weight 0 --edm-term-weight 0' arm (5.0606 / 1.1691 / 48.909), i.e. the old default was the clean baseline plus a random stream no objective used. Epoch 1 moves (3.4511 -> 6.0958) because the trajectories differ from step 1. Wall time on the toy cohort is unchanged (1.0 s vs 1.1 s), so the gain is correctness, not speed."
+    },
+    {
+      "id": "DEC_widen_batch_to_64_or_255",
+      "blocking": "not blocking; changes every arm's optimizer steps per epoch",
+      "question": "Wf-A108g 实测 batch 8 远在吞吐拐点左侧（B=8 与 B=32 的 FM 前向分别是 3.30 ms 与 4.22 ms，405 vs 1,289 原子），且显存从来不是限制（B=8 占 41 MB，B=64 占 1.25 GB，卡有 97,887 MiB）。是否把 wfa108 这一线的 batch_size 从 8 加宽到 64（配 fm_batch_chunk_ratio: 2.0，157 MB / 13.9 ms），还是保持 8 以便与已完成的 Wf-A108a/c/d 各臂可比？",
+      "evidence": "metrics/by_metric/wfa108g_batch_chunk_memory.json；docs/HONEST_NEGATIVE_CATALOG.md §6.188",
+      "added_by": "Wf-A108g (2026-10-23)",
+      "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.188",
+      "status": "OPEN",
+      "why_it_is_a_decision_not_a_fix": "加宽 batch 会改变每 epoch 的 optimizer steps 和 RNG 流，已完成的 5-epoch 各臂（AUC/gap_closed 表）就不再与新的 run 同协议；这不是省显存的开关，是一次协议切换。"
     }
   ],
   "pocket_pool": {
