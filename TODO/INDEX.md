@@ -164,16 +164,16 @@ TODO/
 | ⚪ **UNDEFINED** | 5 | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (per Wf-377-A1 + Wf-411-A4 — to be dropped from §3 main-result, promoted top-3 WEAK correlates to §3 supplementary sub-table); m9/m20 not in pipeline; diversity_subpocket; steric_clash; vina_*_test_001; (4 external_scorers MOCK_DELETED per TODO-294 are HISTORICAL DELETIONS, no longer "live" MOCK items) |
 | 🔵 **PROJECTED** (R20 plan) | 8 | R20·P1..P6 + Wf-44 P2 (per TODO-92..99 R20 plan items) |
 
-> **SUPERSEDED — m21 (annotated 2026-10-22).** This table is a Wf-R42 (2026-10-08)
-> snapshot and is kept as history; the counts above describe that date, not today.
-> Its m21 entry `0.8007±0.0160` has been superseded twice: on 2026-10-12 the
-> BLK-PA12 scaffold-key fix moved it to **0.7294**, and on 2026-10-21 the default
-> split moved again to `scaffold_coverage_70_10_20`, on which **no model has been
-> retrained**. Neither 0.8007 nor 0.7294 is what a bare default run produces now.
-> The authoritative value and its protocol caveat live in
-> `metrics/by_metric/nci60_precious_9cell_auc.json` (`overall_mean_auc` = 0.7294,
-> status `MEASURED_HONEST_NEGATIVE`, legacy `scaffold_70_10_10` protocol, pinned in
-> `configs/training/nci60_9cell_5seed_50ep_v1.yaml`); do not quote 0.8007.
+> **SUPERSEDED (m21).** Note added 2026-10-22. The table above is a Wf-R42
+> snapshot dated 2026-10-08; its counts describe that date, not the current
+> state. The m21 figure `0.8007±0.0160` was replaced twice. The BLK-PA12
+> scaffold-key fix moved it to 0.7294 on 2026-10-12, and the default split
+> moved to `scaffold_coverage_70_10_20` on 2026-10-21, on which no model has
+> been retrained. Current value: `overall_mean_auc` = 0.7294 in
+> `metrics/by_metric/nci60_precious_9cell_auc.json`, status
+> `MEASURED_HONEST_NEGATIVE`. It was measured on the legacy
+> `scaffold_70_10_10` protocol, pinned in
+> `configs/training/nci60_9cell_5seed_50ep_v1.yaml`. Do not quote 0.8007.
 
 **Final 22-metric state**: 🟢 7 + 🟡 7 + 🔴 3 + ⚪ 5 = 22 (Wf-R42 2026-10-08: 🔴 4 → 3 + 🟡 6 → 7 per the 5 L3 MOCK→REAL gates re-registered; m3 Vina + m15 RMSD + m17 DrugOOD + m21 NCI-60 confirmed REAL-MEASURED on disk).
 

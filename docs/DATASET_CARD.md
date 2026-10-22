@@ -1,4 +1,4 @@
-# Dataset card — MSRS precious-metal potency corpus
+# Dataset card: MSRS precious-metal potency corpus
 
 **Version**: 1.0 (2026-10-19)
 **Producer**: `molmetal/scripts/msrs_data_card.py`
@@ -6,8 +6,8 @@
 **Raw file**: `data/msrs/measurements.parquet`
 **Raw SHA-256**: see `provenance.long_sha256` in the artifact
 
-Every number below is MEASURED from the parquet on 2026-10-19. Re-run the script
-rather than editing this card.
+Every number below is measured from the parquet on 2026-10-19. Re-run the
+script; do not edit this card.
 
 ---
 
@@ -49,8 +49,8 @@ Metal imbalance is severe:
 
 **Consequence.** Any aggregate metric is dominated by Ru. Within-metal metrics
 (MET-3, the transfer line) are the only fair read; a pooled R² is mostly a Ru
-model. Metal-pair analyses cover only three pairs (Os–Ru, Ir–Rh, Rh–Ru) because
-the corpus rarely measures two metals on the same ligand/cell/paper/time.
+model. Metal-pair analyses cover three pairs (Os–Ru, Ir–Rh, Rh–Ru), because the
+corpus rarely measures two metals on the same ligand, cell, paper and time.
 
 ## 3. Label definition
 
@@ -109,7 +109,7 @@ The strong arm (`ligand+both`) is:
 the metal atom is not in the SMILES (measured: 0 of 21,404 rows contain
 `[Ru`/`[Ir`/`[Rh`/`[Os`/`[Re`/`[Pt`). Metal identity therefore reaches the model
 only through the state, coordination and categorical blocks. This is what makes
-the MET-6 ablation meaningful: the ECFP4 block cannot smuggle the metal in.
+the MET-6 ablation meaningful: the ECFP4 block cannot encode the metal.
 
 ## 6. Splits
 
@@ -126,20 +126,20 @@ Rows with no usable key get fold `-1`: they train in every fold and are never
 evaluated. For `year` this is the 69.6% of rows whose DOI has no parseable year.
 
 Leakage quantities for each split are in `docs/DATA_LEAKAGE_AUDIT.md` §8 and in
-the artifact's `protocols` block. The headline: the `ligand` protocol leaves
-89.4% of test rows in a paper that is also in train; that is why MET-2 measured
-R² 0.5556 there and 0.3321 under `doi`.
+the artifact's `protocols` block. The `ligand` protocol leaves 89.4% of test
+rows in a paper that is also in train, which is why MET-2 measured R² 0.5556
+there and 0.3321 under `doi`.
 
 ## 7. Duplicates and ties
 
 **Duplicates.** 304 keys on `(ligand, metal, cell, DOI, time)` occur more than
 once (663 rows, 3.1%); 176 keys carry conflicting values (393 rows, 1.8%); 142
-rows are exact duplicates. **No de-duplication is applied** — each row is a
+rows are exact duplicates. No de-duplication is applied: each row is a
 measurement and replicates carry assay variance.
 
-**No duplicate key crosses a fold under any of the four protocols** (measured:
-0 crossing keys each). The key is nested inside every group key, so this is a
-property of the partition, not a coincidence. 188 rows (0.9%) have no `time_h`
+No duplicate key crosses a fold under any of the four protocols (measured:
+0 crossing keys each). The key is nested inside every group key, so this
+follows from the partition. 188 rows (0.9%) have no `time_h`
 and cannot be keyed; they are still assigned to folds by ligand/DOI.
 
 **Ties.** Decision-layer rankings use `sort_values(kind="stable")`, so exact

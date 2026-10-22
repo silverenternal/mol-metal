@@ -8,7 +8,7 @@
       "status": "ACTIVE",
       "rows": 26801,
       "bytes": 4839261,
-      "note": "Raw Krasnov corpus. Predictive cohorts are derived from this by build_paper_cohort() + collapse_duplicates(tie->active)."
+      "note": "Raw Krasnov corpus. Predictive cohorts are derived from this by `build_paper_cohort()` and `collapse_duplicates(tie -> active)`."
     },
     {
       "id": "cfm_5metal_v3",
@@ -17,7 +17,7 @@
       "status": "ACTIVE",
       "rows": 26632,
       "bytes": 4772774,
-      "note": "Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file; it is stereo-aware and full-complex, not a desalted ligand-scaffold split (see docs/DATA_LEAKAGE_AUDIT.md)."
+      "note": "Canonical CFM cohort (`configs/cfm_5metal_default.yaml`). The in-file `split` column is stereo-aware and covers the whole complex; it is not a desalted ligand-scaffold split (see `docs/DATA_LEAKAGE_AUDIT.md`)."
     },
     {
       "id": "cfm_5metal_v4",
@@ -26,7 +26,7 @@
       "status": "ACTIVE",
       "rows": 26632,
       "bytes": 6902370,
-      "note": "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired. Same split caveat as v3."
+      "note": "Same rows as v3, plus lowercase `smiles`/`metal` aliases and a `source` column. Ten configs read it; kept because both are wired. Same split caveat as v3."
     },
     {
       "id": "cfm_5metal_v5",
@@ -35,7 +35,7 @@
       "status": "UNUSED",
       "rows": 24483,
       "bytes": 5174117,
-      "note": "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py. No training config points at it yet, but its test split now HAS a consumer: wf_a53_eval_cfm_test_split.py scores a checkpoint on split='test' read-only (4,888 of 4,897 rows embed; 4,888 carry bond truth)."
+      "note": "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all five metals in all three splits. Built by `wf_a52_rebuild_cfm_split.py`. No training config reads it yet. Its test split has one consumer: `wf_a53_eval_cfm_test_split.py` scores a checkpoint on `split='test'` read-only (4,888 of 4,897 rows embed; 4,888 carry bond truth)."
     },
     {
       "id": "cfm_5metal_v2",
@@ -44,7 +44,7 @@
       "status": "SUPERSEDED",
       "rows": 26632,
       "bytes": 4671916,
-      "note": "Same 26,632 rows as v3, differing only in column naming (lowercase smiles/metal vs canonical SMILES_Ligands/Metal). Use v3."
+      "note": "Same 26,632 rows as v3, differing only in column naming (lowercase `smiles`/`metal` against `SMILES_Ligands`/`Metal`). Use v3."
     },
     {
       "id": "cfm_5metal_v1",
@@ -62,7 +62,7 @@
       "status": "ACTIVE",
       "rows": 17735,
       "bytes": 12219589,
-      "note": "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49). No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate measurements. 296 unique SMILES fail RDKit parsing."
+      "note": "17,735 real MB-Finder Pt IC50 rows, all SMILES-joined (Wf-A46/47/48/49). No split column; 3,668 duplicate `(code, cell)` rows and 987 exact duplicate measurements; 296 unique SMILES fail RDKit parsing."
     },
     {
       "id": "pt_biodata_raw",
@@ -80,7 +80,7 @@
       "status": "DO-NOT-TRAIN",
       "rows": 4078,
       "bytes": 472144,
-      "note": "SYNTHETIC pIC50 (meta says 'synthetic IC50 labels for pipeline test'). Its ~0.50 AUC is a null test, not a measurement."
+      "note": "Synthetic pIC50 (its meta file says 'synthetic IC50 labels for pipeline test'). Its ~0.50 AUC is a null test, not a measurement."
     },
     {
       "id": "pt_real_label_pool",
@@ -89,7 +89,7 @@
       "status": "SUPERSEDED",
       "rows": 2053,
       "bytes": 211854,
-      "note": "Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all."
+      "note": "Real labels, but only 1 of 2,053 rows carries SMILES; superseded by `pt_biodata_all`."
     },
     {
       "id": "pt_4cell_real",
@@ -98,7 +98,7 @@
       "status": "ACTIVE",
       "rows": 1966,
       "bytes": 212405,
-      "note": "REAL structures + REAL IC50 labels for the four PlatinAI cell lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 unique (compound, cell) pairs from 4,370 raw biodata rows (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2 cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). 1,935 unique SMILES, not 1,966: 28 SMILES appear under 2-3 compound codes (59 rows), with per-cell labels up to 1.45 log units apart. The split groups by scaffold, so duplicates cannot cross train/test, but the compound count overstates chemical diversity by 1.6 %. This is the cohort that can replace pt_4cell_synthetic (which carries simulated labels)."
+      "note": "Real structures and real IC50 labels for the four PlatinAI cell lines, built from the 2026-10-19 MB-Finder harvest by `build_platinai_4cell_real_cohort.py`. 1,966 compounds and 3,144 unique (compound, cell) pairs from 4,370 raw biodata rows (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover at least two cells and 56 cover all four. Units are µM, taken from the Rusanov 2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). The file holds 1,935 unique SMILES rather than 1,966, because 28 SMILES appear under 2-3 compound codes (59 rows) with per-cell labels up to 1.45 log units apart. The split groups by scaffold, so those duplicates cannot cross train/test, but the compound count overstates chemical diversity by 1.6 %."
     },
     {
       "id": "pt_4cell_real_trainer",
@@ -107,7 +107,7 @@
       "status": "ACTIVE",
       "rows": 1966,
       "bytes": 180729,
-      "note": "The same 1,966 compounds projected into the schema load_platinai_4cell_split_table accepts (SMILES_Ligands + pIC50_{a549,a2780,a2780cis,mcf7} + metal=Pt). A projection, not a second cohort: no measurement is added, dropped or imputed, and a compound with no IC50 for a cell line has an empty cell that the loader turns into NaN and masks out of the loss. Exists so the D-MPNN trainer can be pointed at REAL labels without hand-editing a CSV."
+      "note": "The same 1,966 compounds projected into the schema `load_platinai_4cell_split_table` accepts (`SMILES_Ligands`, `pIC50_{a549,a2780,a2780cis,mcf7}`, `metal=Pt`). No measurement is added, dropped or imputed. A compound with no IC50 for a cell line has an empty cell, which the loader turns into NaN and masks out of the loss. The file exists so the D-MPNN trainer can read real labels without a hand-edited CSV."
     },
     {
       "id": "moleculenet_bace",
@@ -152,7 +152,7 @@
       "status": "ACTIVE",
       "rows": 7823,
       "bytes": 787626,
-      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. The DEFAULT split is the per-cell-row coverage split (`scaffold_coverage_70_10_20`, since 2026-10-21): 5,371/920/1,532 rows and 3,636/548/1,023 molecules, every cell >= 25 test and >= 22 val. The legacy `scaffold_70_10_10` protocol (4,860/115/232 molecules, which is 7,320/160/343 rows = 93.6/2.0/4.4 %, five of nine cells under 30 test rows) is pinned in the shipped configs. See section 5. The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and is superseded."
+      "note": "9-cell precious-metal panel. The default split is the per-cell-row coverage split (`scaffold_coverage_70_10_20`, since 2026-10-21): 5,371/920/1,532 rows and 3,636/548/1,023 molecules, with every cell at least 25 test and 22 val rows. The legacy `scaffold_70_10_10` protocol gives 4,860/115/232 molecules, which is 7,320/160/343 rows (93.6/2.0/4.4 %), with five of nine cells under 30 test rows; the shipped configs pin it. The panel is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules). The older 3,645/521/1,041 figure is the pre-BLK-PA12 molecule-level split and no longer reproduces. See section 5."
     },
     {
       "id": "nci60_gi50_raw",
@@ -161,7 +161,7 @@
       "status": "UNUSED",
       "rows": 4851917,
       "bytes": 420971534,
-      "note": "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."
+      "note": "Raw NCI-60 GI50 dump; the 9-cell panel is the cohort in use."
     },
     {
       "id": "drugood_lbap_scaffold",
@@ -179,7 +179,7 @@
       "status": "ACTIVE",
       "rows": 266522,
       "bytes": 31895094,
-      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by assay instead of scaffold. Consumed by wf182/wf174 DrugOOD runs; was absent from this inventory, so it had no lifecycle and no label provenance in registry/datasets.yaml."
+      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by assay. Read by the wf182/wf174 DrugOOD runs. It had no row in this inventory, so it carried no lifecycle or label provenance in `registry/datasets.yaml`."
     },
     {
       "id": "drugood_lbap_size",
@@ -188,7 +188,7 @@
       "status": "ACTIVE",
       "rows": 266522,
       "bytes": 31516153,
-      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by size instead of scaffold. Same gap as drugood_lbap_assay."
+      "note": "The same 266,522 LBAP records as the scaffold split, partitioned by size. Same registry gap as `drugood_lbap_assay`."
     },
     {
       "id": "metallo_drugs_500",
@@ -197,7 +197,7 @@
       "status": "ACTIVE",
       "rows": 449,
       "bytes": 49439,
-      "note": "449 metal-drug SMILES with a `source` column and no activity column. A structure pool for metallo_pool_scaffold_split.py / r10_cfg_real_crossdocked.py / ablation_runner.py, not a labelled cohort."
+      "note": "449 metal-drug SMILES with a `source` column and no activity column. A structure pool for `metallo_pool_scaffold_split.py`, `r10_cfg_real_crossdocked.py` and `ablation_runner.py`; not a labelled cohort."
     },
     {
       "id": "tmqm_dblock",
@@ -206,7 +206,7 @@
       "status": "ACTIVE",
       "rows": 5000,
       "bytes": 1023834,
-      "note": "5,000 d-block complexes with geometry -- a small subset, not the CFM corpus (that is `tmqm_corpus_6metal` below). The tmQM-pretrained encoder (`models/tmqm_pretrained/tmqm_pretrained_encoder.pt`) IS loaded by the current CFM configs (`use_tmqm_init: true`; 47/51 params transfer, 0 unexpected, 4 missing). Before 2026-10-20 `cfm.yaml` alone omitted the key, so production trained from random init while nine ablations warm-started -- see `TODO/risks.md` R6."
+      "note": "5,000 d-block complexes with geometry. A small subset, not the CFM corpus, which is `tmqm_corpus_6metal` below. The tmQM-pretrained encoder (`models/tmqm_pretrained/tmqm_pretrained_encoder.pt`) is loaded by the current CFM configs (`use_tmqm_init: true`; 47/51 parameters transfer, 0 unexpected, 4 missing). Before 2026-10-20 `cfm.yaml` alone omitted the key, so production trained from random init while nine ablations warm-started; see `TODO/risks.md` R6."
     },
     {
       "id": "tmqm_corpus_6metal",
@@ -215,7 +215,7 @@
       "status": "ACTIVE",
       "rows": 108541,
       "bytes": 23417916,
-      "note": "The tmQM corpus the CFM geometry path trains on. The file holds 108,541 complexes over the whole d block; the CFM cohorts are the six-metal subset, 33,429 complexes over Pt / Ru / Ir / Rh / Os / Re, and every one of those carries all three shards a cloud needs (geometry, Wiberg bond orders, NBO charges) -- 33,429/33,429 on each. No duplicate CSD codes, no non-finite coordinates, exactly one metal atom per complex, and the `metal` column agrees with that atom in 33,429/33,429 rows. 2,277 of the 33,429 (6.8 %) have an empty SMILES and fall back to a CSD-prefix scaffold key. Two measured protocol facts, not corpus defects: the scaffold split is 87.7/6.2/6.2 % of rows rather than 80/10/10 (fractions are budgeted in scaffold counts, so `tmqm_val_frac` is inert on that branch), and the default `n_val=192` cohort with `tmqm_min_per_metal=0` is Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Measured: `metrics/by_metric/tmqm_cfm_data_audit.json`."
+      "note": "The tmQM corpus the CFM geometry path trains on. The file holds 108,541 complexes over the whole d block; the CFM cohorts are the six-metal subset, 33,429 complexes over Pt, Ru, Ir, Rh, Os and Re. Every one of those carries all three shards a cloud needs (geometry, Wiberg bond orders, NBO charges): 33,429/33,429 on each. No duplicate CSD codes, no non-finite coordinates, one metal atom per complex, and the `metal` column agrees with that atom in 33,429/33,429 rows. 2,277 rows (6.8 %) have an empty SMILES and fall back to a CSD-prefix scaffold key. Two protocol values, not corpus defects: the scaffold split is 87.7/6.2/6.2 % of rows rather than 80/10/10 (fractions are budgeted in scaffold counts, so `tmqm_val_frac` has no effect on that branch), and the default `n_val=192` cohort with `tmqm_min_per_metal=0` is Pt 19 / Ru 93 against a corpus that is Pt 24.8 / Ru 29.3. Source: `metrics/by_metric/tmqm_cfm_data_audit.json`."
     },
     {
       "id": "crossdocked100",
@@ -242,7 +242,7 @@
       "status": "REFERENCE",
       "rows": null,
       "bytes": 9715,
-      "note": "Published Pt-1..19 wet-lab panel; reference only (no wet lab per §5.4)."
+      "note": "Published Pt-1..19 wet-lab panel; reference only (§5.4 bars wet-lab work)."
     }
   ],
   "predictive_cohort": {
