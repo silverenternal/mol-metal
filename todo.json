@@ -770,7 +770,7 @@
       "id": "UP-32",
       "priority": "P2",
       "wave": 4,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "复核与主表重排",
       "question": "七个包的新数字进来后，主表与索引还自洽吗？哪些旧标签要改？",
       "why_now": "UP-25 的主表是快照；新增 7 行后必须重跑，否则文档开始撒谎。",
@@ -790,7 +790,37 @@
       },
       "kill": "若任一数字无法标注估计目标，该数字从主表移除而不是猜。",
       "cost": "CPU ~1 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "result": {
+        "verdict": "PASS",
+        "headline": "主表 43 → 55 行，三项断言全过，55/55 与索引机器校验块一致；registry 461 metrics、0 uncovered",
+        "numbers": {
+          "n_rows": 55,
+          "by_estimand": {
+            "pooled": 27,
+            "centered": 3,
+            "per_pair": 9,
+            "conditional": 9,
+            "edge_level": 7
+          },
+          "by_identifiable": {
+            "yes": 28,
+            "no": 6,
+            "partial": 21
+          },
+          "n_cross_checked": 55,
+          "registry_metrics": 461,
+          "uncovered_metric_files": 0,
+          "index_entries": 268
+        },
+        "reading": "七个包进来后主表从 43 行扩到 55 行，新增 12 行（UP-26 2、UP-27 2、UP-28 3、UP-29 1、UP-30 2、UP-31 2）。所有值都从 artifact 按 dot-path 读出，没有手打。三处旧的 UP25.* 计数（43/5/17/43）随 artifact 一起改到 55/6/21/55 —— 这正是「只校验块内自洽的 gate 会在占位表上 PASS」的反面：计数必须来自 artifact，不能来自文档。",
+        "caveats": [
+          "主表只覆盖 headline 数字，不是全量；artifact 里另有 400+ 指标。",
+          "UP-30 的两行必须成对读（94.5× 的 size 与 −0.1457 的 quality），单独引用任一行都会给出错误印象。",
+          "UP-28 的 fp_reproduce 行与 G.doi.maccs 同值（0.3767），保留它是为了记录「同次运行内复现」，不是为了新增一个数。"
+        ],
+        "artifact": "metrics/by_metric/msrs_main_table.json"
+      }
     }
   ],
   "open_decisions": [
@@ -822,11 +852,10 @@
       "UP-28",
       "UP-29",
       "UP-30",
-      "UP-31"
-    ],
-    "open": [
+      "UP-31",
       "UP-32"
     ],
-    "note": "UP-28 完成（kill 触发）；仅剩 UP-32 汇总。"
+    "open": [],
+    "note": "第四轮 7 个包全部完成：5 个 FAIL（UP-27 / UP-28 / UP-29 / UP-30 / UP-31），2 个 PASS（UP-26 / UP-32）。"
   }
 }
