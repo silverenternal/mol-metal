@@ -1,0 +1,494 @@
+{
+  "artifact": "msrs_main_table",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L0 summary / UP-25",
+  "generated_utc": "2026-10-22T07:22:19+00:00",
+  "provenance": {
+    "script": "molmetal/scripts/msrs_main_table.py",
+    "index": "docs/PREDICTIVE_LINE_INDEX.md",
+    "markdown": "docs/PREDICTIVE_LINE_MAIN_TABLE.md"
+  },
+  "design": {
+    "n_rows": 43,
+    "by_estimand": {
+      "pooled": 18,
+      "centered": 3,
+      "per_pair": 8,
+      "conditional": 7,
+      "edge_level": 7
+    },
+    "by_identifiable": {
+      "yes": 21,
+      "no": 5,
+      "partial": 17
+    },
+    "estimand_vocabulary": [
+      "pooled",
+      "centered",
+      "per_pair",
+      "conditional",
+      "edge_level"
+    ],
+    "identifiable_vocabulary": [
+      "yes",
+      "no",
+      "partial"
+    ],
+    "value_source": "read from the artifact at the recorded path; never typed in"
+  },
+  "rows": [
+    {
+      "id": "G.ligand.ecfp4",
+      "artifact": "metrics/by_metric/msrs_seed_ensemble.json",
+      "artifact_name": "msrs_seed_ensemble",
+      "path": "protocols.ligand.ensemble.r2",
+      "value": 0.5596,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "ligand-grouped split: 89.4% of test rows share a DOI with training (retracted 2026-10-19)"
+    },
+    {
+      "id": "G.doi.maccs",
+      "artifact": "metrics/by_metric/msrs_feature_expansion_5seed.json",
+      "artifact_name": "msrs_feature_expansion_5seed",
+      "path": "protocols.doi.r2_seed_averaged",
+      "value": 0.3767,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "whole-paper hold-out; the headline the paper quotes"
+    },
+    {
+      "id": "G.doi.fused",
+      "artifact": "metrics/by_metric/msrs_feature_fusion.json",
+      "artifact_name": "msrs_feature_fusion",
+      "path": "protocols.doi.fused_r2",
+      "value": 0.3811,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "same split, GNN fused in"
+    },
+    {
+      "id": "C1.metal_blind_delta",
+      "artifact": "metrics/by_metric/msrs_metal_ablation.json",
+      "artifact_name": "msrs_metal_ablation",
+      "path": "protocols.ligand.arms.metal_blind.delta_r2_vs_full",
+      "value": 0.0683,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "ligand split; the sign of the metal-aware gain is identified, the level is not"
+    },
+    {
+      "id": "C3.majority_class",
+      "artifact": "metrics/by_metric/msrs_delta_metric_audit.json",
+      "artifact_name": "msrs_delta_metric_audit",
+      "path": "baselines.majority_class_rate",
+      "value": 0.6009,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "strict 218-pair set only; a 0.58 raw score is below this"
+    },
+    {
+      "id": "C3.diff_raw",
+      "artifact": "metrics/by_metric/msrs_delta_metric_audit.json",
+      "artifact_name": "msrs_delta_metric_audit",
+      "path": "routes.level_differencing.raw_sign",
+      "value": 0.5826,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "same strict pairs; raw sign accuracy, not balanced"
+    },
+    {
+      "id": "C5.coverage",
+      "artifact": "metrics/by_metric/msrs_calibration.json",
+      "artifact_name": "msrs_calibration",
+      "path": "protocols.doi.variants.global.coverage",
+      "value": 0.9004,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "marginal coverage under the DOI protocol"
+    },
+    {
+      "id": "C5.median_width",
+      "artifact": "metrics/by_metric/msrs_calibration.json",
+      "artifact_name": "msrs_calibration",
+      "path": "protocols.doi.variants.global.median_width",
+      "value": 2.0052,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "width at that coverage; the pair must always be quoted together"
+    },
+    {
+      "id": "C6.lomo_resolvable",
+      "artifact": "metrics/by_metric/lomo_resolvability_audit.json",
+      "artifact_name": "lomo_resolvability_audit",
+      "path": "aggregates.resolvable_only.value",
+      "value": 0.5974,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "Ru+Ir folds only; Rh/Os/Re are below MIN_UNIQUE_FOR_GATE"
+    },
+    {
+      "id": "UP2b.ligand_cell_balanced",
+      "artifact": "metrics/by_metric/msrs_listwise_ranker.json",
+      "artifact_name": "msrs_listwise_ranker",
+      "path": "pairs.ligand_cell.overall.balanced_accuracy",
+      "value": 0.5985,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "360 cross-paper pairs; no single metal pair clears 0.5 on its own (UP-16)"
+    },
+    {
+      "id": "UP6.cohort_metal_worst_stratum",
+      "artifact": "metrics/by_metric/msrs_calibration_shift.json",
+      "artifact_name": "msrs_calibration_shift",
+      "path": "variants.cohort_metal.worst_stratum.coverage",
+      "value": 0.8956,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "worst stratum after Mondrian; a repair of the tail, not of the width"
+    },
+    {
+      "id": "UP8.zero_shot_os",
+      "artifact": "metrics/by_metric/msrs_meta_kshot.json",
+      "artifact_name": "msrs_meta_kshot",
+      "path": "results.potency.splits.metal_out.per_metal.Os.zero_shot_r2",
+      "value": 0.3479,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "Os is the one metal whose level transfers; not a general statement"
+    },
+    {
+      "id": "UP10.potency.ruos_separability",
+      "artifact": "metrics/by_metric/msrs_support_audit.json",
+      "artifact_name": "msrs_support_audit",
+      "path": "endpoints.potency.pairs.2.separability",
+      "value": 0.592,
+      "estimand": "edge_level",
+      "identifiable": "yes",
+      "reason": "Ru-Os: the only edge whose effect exceeds its own assay noise"
+    },
+    {
+      "id": "UP10.potency.irrh_separability",
+      "artifact": "metrics/by_metric/msrs_support_audit.json",
+      "artifact_name": "msrs_support_audit",
+      "path": "endpoints.potency.pairs.4.separability",
+      "value": 0.115,
+      "estimand": "edge_level",
+      "identifiable": "yes",
+      "reason": "Ir-Rh: a precise zero, i.e. it constrains u_Ir ~ u_Rh rather than reporting an effect"
+    },
+    {
+      "id": "UP11.complete_case_ligands",
+      "artifact": "metrics/by_metric/msrs_pair_delta.json",
+      "artifact_name": "msrs_pair_delta",
+      "path": "rank_structure.complete_case_ligands",
+      "value": 0,
+      "estimand": "edge_level",
+      "identifiable": "no",
+      "reason": "zero ligands span 3 metals, so the rank-1 interaction model has no identifiable row"
+    },
+    {
+      "id": "UP12.additive_within",
+      "artifact": "metrics/by_metric/msrs_two_stage.json",
+      "artifact_name": "msrs_two_stage",
+      "path": "within_metal.aggregate.additive.weighted_r2",
+      "value": 0.2128,
+      "estimand": "centered",
+      "identifiable": "yes",
+      "reason": "ligand-grouped within-metal; the reference the interaction arms are measured against"
+    },
+    {
+      "id": "UP12.free_within",
+      "artifact": "metrics/by_metric/msrs_two_stage.json",
+      "artifact_name": "msrs_two_stage",
+      "path": "within_metal.aggregate.free.weighted_r2",
+      "value": 0.2519,
+      "estimand": "centered",
+      "identifiable": "yes",
+      "reason": "free interaction, same protocol: +0.0391 over additive"
+    },
+    {
+      "id": "UP14.doi_pair_in_train_share",
+      "artifact": "metrics/by_metric/msrs_support_stratified.json",
+      "artifact_name": "msrs_support_stratified",
+      "path": "protocols.doi.unit_train_evidence.has_pair_in_train.share_of_rows",
+      "value": 0.0057,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "0.57% of DOI-hold-out test rows have paired evidence in training"
+    },
+    {
+      "id": "UP14.metal_out_weighted_r2",
+      "artifact": "metrics/by_metric/msrs_support_stratified.json",
+      "artifact_name": "msrs_support_stratified",
+      "path": "protocols.metal_out.weighted_r2_per_metal",
+      "value": -0.0734,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "the held-out metal's level is unidentifiable; 94.5% of these rows have no paired partner"
+    },
+    {
+      "id": "UP16.osru_balanced",
+      "artifact": "metrics/by_metric/msrs_ranking_support.json",
+      "artifact_name": "msrs_ranking_support",
+      "path": "strata.listwise_ligand_cell.by_metal_pair.Os-Ru.balanced_accuracy",
+      "value": 0.5807,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "Wilson CI [0.4990, 0.6548] includes 0.5"
+    },
+    {
+      "id": "UP16.irrh_balanced",
+      "artifact": "metrics/by_metric/msrs_ranking_support.json",
+      "artifact_name": "msrs_ranking_support",
+      "path": "strata.listwise_ligand_cell.by_metal_pair.Ir-Rh.balanced_accuracy",
+      "value": 0.56,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "Wilson CI [0.4799, 0.6190] includes 0.5"
+    },
+    {
+      "id": "UP17.ligand_metal_forward",
+      "artifact": "metrics/by_metric/msrs_shape_decomposition.json",
+      "artifact_name": "msrs_shape_decomposition",
+      "path": "independent.ligand_x_metal.share_forward",
+      "value": 0.8015,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "order-dependent: 0.8015 structure-first vs 0.0 batch-first"
+    },
+    {
+      "id": "UP17.paper_metal_batch_first",
+      "artifact": "metrics/by_metric/msrs_shape_decomposition.json",
+      "artifact_name": "msrs_shape_decomposition",
+      "path": "independent.paper_x_metal.share_batch_first",
+      "value": 0.5484,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "the same block under the other ordering: 0.5484 vs 0.0"
+    },
+    {
+      "id": "UP18.ruos_t_cluster",
+      "artifact": "metrics/by_metric/msrs_metal_graph.json",
+      "artifact_name": "msrs_metal_graph",
+      "path": "edges_by_pair.Ru-Os.t_cluster",
+      "value": 3.364,
+      "estimand": "edge_level",
+      "identifiable": "yes",
+      "reason": "ligand-clustered; 3.364 with a 95% CI [0.0618, 0.2164] on the mean"
+    },
+    {
+      "id": "UP18.ruroh_t_cluster",
+      "artifact": "metrics/by_metric/msrs_metal_graph.json",
+      "artifact_name": "msrs_metal_graph",
+      "path": "edges_by_pair.Ru-Rh.t_cluster",
+      "value": 2.577,
+      "estimand": "edge_level",
+      "identifiable": "partial",
+      "reason": "15 units, sd 1.4003; t=2.577 survives but the interval spans a factor of five"
+    },
+    {
+      "id": "UP18.irrh_t_cluster",
+      "artifact": "metrics/by_metric/msrs_metal_graph.json",
+      "artifact_name": "msrs_metal_graph",
+      "path": "edges_by_pair.Ir-Rh.t_cluster",
+      "value": 0.958,
+      "estimand": "edge_level",
+      "identifiable": "yes",
+      "reason": "0.958: the mean is indistinguishable from zero, which is itself the constraint"
+    },
+    {
+      "id": "UP18.ruroh_precision_share_cluster",
+      "artifact": "metrics/by_metric/msrs_metal_graph.json",
+      "artifact_name": "msrs_metal_graph",
+      "path": "edges_by_pair.Ru-Rh.precision_share_cluster",
+      "value": 0.0054,
+      "estimand": "edge_level",
+      "identifiable": "yes",
+      "reason": "largest effect, worst precision: the two edge rankings are different sets"
+    },
+    {
+      "id": "UP19.identifiable_share",
+      "artifact": "metrics/by_metric/msrs_identifiability.json",
+      "artifact_name": "msrs_identifiability",
+      "path": "decomposition_summary.identifiable_row_share",
+      "value": 0.0547,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "5.47% of metal-out test rows have a paired partner in training"
+    },
+    {
+      "id": "UP19.pooled_all_r2_abs",
+      "artifact": "metrics/by_metric/msrs_identifiability.json",
+      "artifact_name": "msrs_identifiability",
+      "path": "metal_out.pooled.descriptors.all_rows.r2_abs",
+      "value": -0.064,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "dominated by the 94.5% of rows whose metal level cannot be recovered"
+    },
+    {
+      "id": "UP19.pooled_identifiable_r2_abs",
+      "artifact": "metrics/by_metric/msrs_identifiability.json",
+      "artifact_name": "msrs_identifiability",
+      "path": "metal_out.pooled.descriptors.identifiable_unit_rows.r2_abs",
+      "value": 0.3299,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "same model restricted to rows that carry paired evidence: 0.3299"
+    },
+    {
+      "id": "UP19.pooled_identifiable_r2_centred",
+      "artifact": "metrics/by_metric/msrs_identifiability.json",
+      "artifact_name": "msrs_identifiability",
+      "path": "metal_out.pooled.descriptors.identifiable_unit_rows.r2_centred",
+      "value": 0.3806,
+      "estimand": "centered",
+      "identifiable": "yes",
+      "reason": "oracle-offset upper bound 0.3806; not a deployable score"
+    },
+    {
+      "id": "UP20.cqr_coverage",
+      "artifact": "metrics/by_metric/msrs_cqr.json",
+      "artifact_name": "msrs_cqr",
+      "path": "aggregate.cqr.coverage_mean",
+      "value": 0.9,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "marginal coverage at the nominal 0.90"
+    },
+    {
+      "id": "UP20.cqr_width",
+      "artifact": "metrics/by_metric/msrs_cqr.json",
+      "artifact_name": "msrs_cqr",
+      "path": "aggregate.cqr.median_width_mean",
+      "value": 1.9871,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "width at that coverage; 1.9871, i.e. the width target is not met"
+    },
+    {
+      "id": "UP21.base_r2",
+      "artifact": "metrics/by_metric/msrs_paper_meta_offset.json",
+      "artifact_name": "msrs_paper_meta_offset",
+      "path": "aggregate.base.r2_mean",
+      "value": 0.367,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "DOI hold-out with no offset correction"
+    },
+    {
+      "id": "UP21.ridge_design_r2",
+      "artifact": "metrics/by_metric/msrs_paper_meta_offset.json",
+      "artifact_name": "msrs_paper_meta_offset",
+      "path": "aggregate.ridge_design.r2_mean",
+      "value": 0.3557,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "metadata-only offset model: 0.3557, worse than doing nothing"
+    },
+    {
+      "id": "UP21.lopo_ridge_r2",
+      "artifact": "metrics/by_metric/msrs_paper_meta_offset.json",
+      "artifact_name": "msrs_paper_meta_offset",
+      "path": "per_seed.20261022.offset_diagnostics_fold0.lopo_ridge_r2",
+      "value": -0.0259,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "leave-one-paper-out R2 of the offset model: -0.0259, i.e. worse than the mean"
+    },
+    {
+      "id": "UP22.rh_np0_r2",
+      "artifact": "metrics/by_metric/msrs_paired_kshot.json",
+      "artifact_name": "msrs_paired_kshot",
+      "path": "aggregate.Rh.ridge|0.mean_r2",
+      "value": 0.0709,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "row-level sampling with zero paired points: the gain is not a pairing effect"
+    },
+    {
+      "id": "UP22.re_np3_r2",
+      "artifact": "metrics/by_metric/msrs_paired_kshot.json",
+      "artifact_name": "msrs_paired_kshot",
+      "path": "aggregate.Re.ridge|3.mean_r2",
+      "value": 0.1745,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "Re has 0 paired rows, so this number cannot come from pairing by construction"
+    },
+    {
+      "id": "UP23.n_pairs_kept",
+      "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json",
+      "artifact_name": "msrs_ranking_hierarchical",
+      "path": "design.n_pairs_kept",
+      "value": 315,
+      "estimand": "per_pair",
+      "identifiable": "yes",
+      "reason": "315 of 651 pairs survive the deadzone (|delta| >= the metal pair's noise SD)"
+    },
+    {
+      "id": "UP23.lambdarank_none_balanced",
+      "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json",
+      "artifact_name": "msrs_ranking_hierarchical",
+      "path": "arms.lambdarank_none.all_pairs.overall.balanced_accuracy",
+      "value": 0.5985,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "reproduces UP-2b's 0.5985 on all 360 pairs"
+    },
+    {
+      "id": "UP23.lambdarank_deadzone_balanced",
+      "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json",
+      "artifact_name": "msrs_ranking_hierarchical",
+      "path": "arms.lambdarank_deadzone.all_pairs.overall.balanced_accuracy",
+      "value": 0.5612,
+      "estimand": "per_pair",
+      "identifiable": "partial",
+      "reason": "tie-aware labels: 0.5612, worse than leaving the noisy pairs alone"
+    },
+    {
+      "id": "UP24.bce_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_pairwise.json",
+      "artifact_name": "msrs_lomo_pairwise",
+      "path": "aggregate.bce.auc_overall_resolvable",
+      "value": 0.5449,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "linear ECFP4 baseline on Ru+Ir; not the D-MPNN 0.5974"
+    },
+    {
+      "id": "UP24.pairwise_edge_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_pairwise.json",
+      "artifact_name": "msrs_lomo_pairwise",
+      "path": "aggregate.pairwise_edge.auc_overall_resolvable",
+      "value": 0.5529,
+      "estimand": "pooled",
+      "identifiable": "partial",
+      "reason": "+0.0080 over the matched BCE arm: the loss is not the binding constraint"
+    }
+  ],
+  "checks": {
+    "all_rows_tagged": true,
+    "no_orphan": true,
+    "orphans": [],
+    "index_consistent": true,
+    "n_cross_checked": 43,
+    "mismatches": [],
+    "gate_pass": true
+  },
+  "gate": {
+    "no_threshold": true,
+    "assert_all_rows_tagged": true,
+    "assert_no_orphan": true,
+    "assert_index_consistent": true,
+    "gate_pass": true
+  },
+  "verdict": "PASS",
+  "caveats": [
+    "The ESTIMAND / IDENTIFIABLE tags are analyst judgements, not measurements. They are recorded here so a reader can disagree with a specific tag rather than with a table.",
+    "Rows are a curated headline set, not every number in every artifact. The index's machine-check block is the complete list; this table selects the ones a paper would quote.",
+    "Cross-checking against the index catches drift in the value, not in the tag."
+  ]
+}

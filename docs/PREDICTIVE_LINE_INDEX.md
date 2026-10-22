@@ -32,6 +32,7 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **UP-8 的 1/5 是采样粒度，不是缺配对点**（UP-22）：换成行级采样后 n_paired=3 有 **3/5** 金属 R² > 0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 从 0 增到 3 的平均 R² 是 **0.0407 → 0.0306**，不单调。**Re 有 0 个配对行却拿到 +0.1734**，增益在定义上不来自配对。gate FAIL（secondary），kill 未触发。
 - **噪声标签不是排序的瓶颈**（UP-23）：deadzone（|Δ| < 该对 noise SD）在 651 对里保留 **315** 对；把噪声对并成同 label 后 lambdarank **0.5985 → 0.5612**（保留子集上 0.6050 → 0.5615），因为 **279/1,586 个组（17.6%）被整组并成一个 label**、梯度归零。kill 触发（0.6050 < 0.62）⇒ **DP-8 = yes，排序线关闭**。
 - **换 pairwise 损失与边感知负采样只值 +0.008 AUC**（UP-24）：同学习器同划分，BCE **0.5449** → pairwise_edge **0.5529**（Ru +0.0271 / Ir −0.0112）；五金属均值反而从 0.6185 掉到 0.5352。**0.5974 与 0.63 的差距不是损失或负采样造成的**；该项的绝对门槛按 D-MPNN 冻结、学习器却是特征模型，属计划口径错误，kill 文本触发但未适用。
+- **43 个 headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -71,6 +72,7 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-22 | UP-8 的 1/5 是不是因为缺配对点 | **FAIL**（secondary） | n_paired=3 时 3/5 金属 >0 ✓，但 0→3 平均 R² **0.0407 → 0.0306** 不单调；Re 有 0 个配对行却 +0.1734 |
 | UP-23 | 噪声标签是不是排序上不去的主因 | **FAIL**（kill 触发） | deadzone 保留 315/651；lambdarank **0.5985 → 0.5612**（变差）；BT 臂全部 ≤0.5411 |
 | UP-24 | 换 pairwise logistic + 边感知负采样能不能救 LOMO | **FAIL**（kill 文本触发但未适用） | 同学习器 BCE 0.5449 vs pairwise_edge 0.5529（**+0.0080**）；绝对门槛 0.63 不可达 |
+| UP-25 | 三轮数字按可识别性重排后主表长什么样 | **PASS**（三条断言） | 43 行：yes 21 / partial 17 / **no 5**；43 个 id 与索引机器校验逐个一致 |
 
 ---
 
@@ -362,7 +364,12 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP24.pairwise_edge_auc_all_metals", "value": 0.5352, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.pairwise_edge.auc_all_metals"},
   {"id": "UP24.bce_ru_auc", "value": 0.548, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.per_metal.Ru"},
   {"id": "UP24.kill_applied", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.applied"},
-  {"id": "UP24.kill_triggered_by_rule_text", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.triggered_by_rule_text"}
+  {"id": "UP24.kill_triggered_by_rule_text", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.triggered_by_rule_text"},
+  {"id": "UP25.n_rows", "value": 43, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.n_rows"},
+  {"id": "UP25.n_not_identifiable", "value": 5, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
+  {"id": "UP25.n_partial", "value": 17, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.partial"},
+  {"id": "UP25.n_cross_checked", "value": 43, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
+  {"id": "UP25.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "gate.gate_pass"}
 ]
 ```
 
@@ -840,6 +847,24 @@ R²_centred = R²_abs + bias²/Var(y)
 4. **能支撑的结论只有一条**：在**同一学习器、同一划分、同一 seed** 下，把 BCE 换成 pairwise logistic、并把负样本换成同配体异金属，Ru/Ir 均值从 0.5449 到 0.5529。**0.5974 与 0.63 之间的差距不是损失函数或负采样造成的。**
 
 **Gate：FAIL（3 条过 1 条）。** `auc_overall_ge_0.63` ✗（0.5529）、`auc_per_metal_ru_ir_ge_0.60` ✗（Ru 0.5751 / Ir 0.5306）、`must_report_bce_baseline` ✓。**kill 文本触发（0.5529 < 0.61）但不适用**，理由见第 3 条；**LOMO 线的去留不由这一项裁定**，仍按 0.5974 的 D-MPNN 结果记。
+
+### 2.24 UP-25 可识别性分层主表：43 个 headline 数字里 5 个不可识别、17 个只部分可识别（2026-10-22）
+
+`msrs_main_table.json` + [`docs/PREDICTIVE_LINE_MAIN_TABLE.md`](PREDICTIVE_LINE_MAIN_TABLE.md)（CPU，纯汇总，不重训）。
+
+主表把三轮的 headline 数字按**估计目标**重排，每个数字带 `ESTIMAND`（pooled / centered / per_pair / conditional / edge_level）与 `IDENTIFIABLE`（yes / partial / no）。**值一律从 artifact 读出、不手抄**，再与本索引的机器校验块交叉核对。
+
+| 维度 | 分布 |
+|---|---|
+| 行数 | **43** |
+| ESTIMAND | pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3 |
+| IDENTIFIABLE | **yes 21 / partial 17 / no 5** |
+
+**三条断言全 PASS**：每行都有 ESTIMAND + IDENTIFIABLE + artifact 路径；43 个 artifact 全部在 registry 里；**43 个 id 与机器校验块逐个一致**（`mismatches = []`）。
+
+**"不可识别"的 5 个**（`G.ligand.ecfp4` 0.5596、`UP14.metal_out_weighted_r2` −0.0734、`UP19.pooled_all_r2_abs` −0.0640、`UP21.lopo_ridge_r2` −0.0259、`UP11.complete_case_ligands` 0）**不是"估计得不好"，是目标本身依赖留出金属自己携带的水平**（或依赖一个语料里不存在的完整行）。它们可以出现在方法讨论里，**不能**作为能力陈述引用。
+
+**"部分可识别"的 17 个**是最容易误用的一档：`UP2b.ligand_cell_balanced` 0.5985、`C6.lomo_resolvable` 0.5974、`UP16.osru_balanced` 0.5807 都属于"只在有配对证据的子群上成立"。引用时必须同时给出子群定义，否则就是把部分识别读成全体识别。
 
 ---
 

@@ -11340,3 +11340,56 @@ D-MPNN 0.5974.
 artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+
+## §6.179 — UP-25: five of 43 headline numbers are not identifiable, and seventeen are only partially so (2026-10-22)
+
+**Why this entry exists.** Three rounds produced 20+ artifacts whose numbers do not share
+an estimand: a pooled R² over mixed rows, a within-metal centred R², a per-metal-pair
+balanced accuracy, a conditional coverage and an edge-level t statistic are five different
+quantities. Collected into one table without labels they read as comparable, and the ones
+that look worst are not the ones that are least trustworthy. This item re-sorts them and
+records the tags.
+
+**Measured** (`metrics/by_metric/msrs_main_table.json`, `docs/PREDICTIVE_LINE_MAIN_TABLE.md`;
+values are read from the artifacts at the recorded paths, never typed in):
+
+| dimension | distribution |
+|---|---|
+| rows | **43** |
+| ESTIMAND | pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3 |
+| IDENTIFIABLE | **yes 21 / partial 17 / no 5** |
+
+**The five `no` rows** — `G.ligand.ecfp4` 0.5596, `UP14.metal_out_weighted_r2` −0.0734,
+`UP19.pooled_all_r2_abs` −0.0640, `UP21.lopo_ridge_r2` −0.0259,
+`UP11.complete_case_ligands` 0. Four of them depend on a level the held-out metal carries
+and no hold-out protocol can supply; the fifth depends on a complete Δ-matrix row that the
+corpus does not contain. They may appear in a methods discussion. They may **not** appear as
+capability statements.
+
+**The seventeen `partial` rows are the dangerous ones.** `UP2b.ligand_cell_balanced` 0.5985,
+`C6.lomo_resolvable` 0.5974 and `UP16.osru_balanced` 0.5807 are all identified only on the
+subpopulation that carries paired evidence. Quoting any of them without the subpopulation
+definition converts a partial identification into a population claim — which is exactly the
+error the retraction log records for 0.5828.
+
+**Three assertions, all PASS.** Every row carries ESTIMAND + IDENTIFIABLE + an artifact
+path; all 43 artifacts resolve in the registry; all 43 ids that also appear in
+`PREDICTIVE_LINE_INDEX.md`'s machine-check block agree exactly (`mismatches = []`).
+
+**Honest boundaries (ACTIVE).**
+  * **The tags are analyst judgements, not measurements.** They are written down so a reader
+    can dispute a specific tag rather than the whole table.
+  * **The table is a curated headline set**, not every number in every artifact; the index's
+    machine-check block remains the complete list.
+  * **The cross-check catches value drift, not tag drift.** If an estimand is misclassified,
+    nothing in the pipeline notices.
+
+**Artifacts.** `molmetal/scripts/msrs_main_table.py`,
+`metrics/by_metric/msrs_main_table.json`, `docs/PREDICTIVE_LINE_MAIN_TABLE.md`.
+
+**§6.179 catalog-count math.** Net **+1**. Cumulative **233 → 234**. ACTIVE **189 → 190**.
+
+**Workflow** | UP-25 (2026-10-22; CPU, summary only, no retrain; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

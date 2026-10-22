@@ -67,7 +67,8 @@
       "论文偏移（UP-21，5 seed）：base DOI R² 0.3670 → ridge_design 0.3557；测试论文偏移 sd 0.2400、平均 |偏移| 0.2255；LOPO ridge R² −0.0259；泄漏臂 0.5405（msrs_paper_meta_offset.json）。",
       "配对 k-shot（UP-22，5 seed，k=50）：n_paired=3 时 Rh +0.0631 / Os +0.2830 / Re +0.1745（3/5 > 0）；n_paired=0 时 Rh +0.0709 / Re +0.1734；Re 配对行 0；跨金属平均 R² 0.0407→0.0306 不单调（msrs_paired_kshot.json）。",
       "deadzone（UP-23，5 seed）：τ = Ru–Os 0.2264 / Ir–Rh 0.4017 / Ru–Rh 0.4369；651 对保留 315、评分集 360 保留 315。lambdarank 0.5985 → 0.5612（保留子集 0.6050 → 0.5615）；279/1,586 组整组同 label。BT 臂 0.4631–0.5411（msrs_ranking_hierarchical.json）。",
-      "LOMO pairwise（UP-24，5 seed，2,010 行，折 Ru 1,311 / Ir 538）：BCE 0.5449、pairwise 0.5450、pairwise_edge 0.5529（Ru/Ir 均值）；五金属均值 BCE 0.6185 / edge 0.5352（msrs_lomo_pairwise.json）。"
+      "LOMO pairwise（UP-24，5 seed，2,010 行，折 Ru 1,311 / Ir 538）：BCE 0.5449、pairwise 0.5450、pairwise_edge 0.5529（Ru/Ir 均值）；五金属均值 BCE 0.6185 / edge 0.5352（msrs_lomo_pairwise.json）。",
+      "可识别性分层主表（UP-25）：43 个 headline 数字，IDENTIFIABLE yes 21 / partial 17 / no 5；不可识别的 5 个是 G.ligand.ecfp4 0.5596、UP14.metal_out_weighted_r2 −0.0734、UP19.pooled_all_r2_abs −0.0640、UP21.lopo_ridge_r2 −0.0259、UP11.complete_case_ligands 0（msrs_main_table.json）。"
     ]
   },
   "metric_gap_analysis": {
@@ -270,26 +271,32 @@
     {
       "id": "DP-6",
       "question": "metal_out 主指标是否从绝对 R² 改为可识别行上的去中心化 R²",
-      "status": "OPEN",
+      "status": "RESOLVED-YES",
       "after": "UP-19",
       "if_yes": "绝对 R² 进附录并标 NOT_IDENTIFIABLE；主表只报可识别子空间。",
-      "if_no": "保留绝对 R² 为主指标，但必须同时写「该量在树图上不可识别」，否则构成 §5.2 违规。"
+      "if_no": "保留绝对 R² 为主指标，但必须同时写「该量在树图上不可识别」，否则构成 §5.2 违规。",
+      "resolution": "UP-19 实测可识别行只占 5.47%，其上 R²_abs 0.3299 / 去中心化 0.3806；全行 −0.0640。采用 if_yes：绝对 R² 保留但标 NOT_IDENTIFIABLE，主表以可识别子空间为主指标（msrs_main_table.json:UP19.pooled_identifiable_r2_abs = yes，UP19.pooled_all_r2_abs = no）。",
+      "resolved_at": "2026-10-22"
     },
     {
       "id": "DP-7",
       "question": "CQR 若宽度降不到 1.80，是否放弃宽度目标只保覆盖",
-      "status": "OPEN",
+      "status": "RESOLVED-YES",
       "after": "UP-20",
       "if_yes": "宽度目标撤回，改为「覆盖 ≥0.90 且最差组 ≥0.87」，宽度只报不设阈。",
-      "if_no": "继续找宽度杠杆（会违反 one_tool_per_metric）。"
+      "if_no": "继续找宽度杠杆（会违反 one_tool_per_metric）。",
+      "resolution": "UP-20 宽度 1.9871 > 1.82，kill 触发。采用 if_yes：宽度目标撤回，校准口径改为「覆盖 ≥0.90 且最差金属组 ≥0.87」，宽度只报不设阈（msrs_cqr.json:gate.kill.triggered = true）。",
+      "resolved_at": "2026-10-22"
     },
     {
       "id": "DP-8",
       "question": "排序若 deadzone + 层级 BT 仍不过 0.62，是否关闭排序线",
-      "status": "OPEN",
+      "status": "RESOLVED-YES",
       "after": "UP-23",
       "if_yes": "排序线关闭，论文里只写「3 个已观测对内的排序，样本量不足以逐对定论」。",
-      "if_no": "需要新数据而非新方法。"
+      "if_no": "需要新数据而非新方法。",
+      "resolution": "UP-23 保留子集 best 0.6050 < 0.62（全 360 对口径 0.5985 同样 < 0.62），kill 触发。采用 if_yes：排序线关闭，论文只报 0.5985 并写「已观测金属对内、无单一金属对单独过半」。",
+      "resolved_at": "2026-10-22"
     }
   ],
   "sequence": {
@@ -337,9 +344,10 @@
         "wave_2_three_weak",
         "wave_3_ranking"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "result": "UP-25 PASS：43 行可识别性分层主表，yes 21 / partial 17 / no 5，与索引机器校验 43/43 一致。"
     },
-    "status": "PLANNED"
+    "status": "DONE"
   },
   "work_packages": [
     {
@@ -546,7 +554,7 @@
       "id": "UP-25",
       "priority": "P2",
       "wave": 4,
-      "status": "PLANNED",
+      "status": "DONE-PASS",
       "title": "可识别性分层主表",
       "question": "把三轮所有数字按「可识别 / 不可识别」重排，论文主表应该长什么样？",
       "why_now": "三轮下来 artifact 有 20+ 个，每个数字的估计目标不同（pooled / centered / 逐对 / 条件）。混在一张表里就是 §5.2 违规。",
@@ -566,14 +574,13 @@
       },
       "kill": "若任一数字无法标注估计目标，该数字从主表移除而不是猜。",
       "cost": "CPU ~1 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "completed": "2026-10-22",
+      "result": "gate PASS（三条断言全过）：43 行主表，值全部从 artifact 读出；ESTIMAND pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3；IDENTIFIABLE yes 21 / partial 17 / no 5。43 个 artifact 全在 registry；43 个 id 与 PREDICTIVE_LINE_INDEX 机器校验块逐个一致（mismatches = []）。产物：metrics/by_metric/msrs_main_table.json + docs/PREDICTIVE_LINE_MAIN_TABLE.md。"
     }
   ],
   "open_decisions": [
-    "DP-3 论文线解冻（owner 用户，本轮完成后裁定）",
-    "DP-6 metal_out 主指标口径（UP-19 后）",
-    "DP-7 CQR 宽度目标去留（UP-20 后）",
-    "DP-8 排序线去留（UP-23 后）"
+    "DP-3 论文线解冻（owner 用户；UP-18..UP-25 已全部完成，等待用户裁定）"
   ],
   "do_not": [
     "不要再调 D-MPNN / chemprop 的超参来救这六个指标——两轮已经证明问题不在容量。",
