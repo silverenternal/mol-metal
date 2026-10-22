@@ -1,6 +1,6 @@
 # PREDICTIVE_LINE_MAIN_TABLE — 按估计目标分层的数字主表
 
-由 `molmetal/scripts/msrs_main_table.py` 生成（2026-10-22T10:45:35+00:00）。
+由 `molmetal/scripts/msrs_main_table.py` 生成（2026-10-22T16:07:31+00:00）。
 **每个数字都从 artifact 读出，不手抄**；与 `docs/PREDICTIVE_LINE_INDEX.md` 的机器校验块交叉核对。
 
 ## §1 怎么读

@@ -3,7 +3,7 @@
   "version": "1.0",
   "framework": "MSRS — Metal Substitution Response Surface",
   "level": "L0 summary / UP-25",
-  "generated_utc": "2026-10-22T10:45:35+00:00",
+  "generated_utc": "2026-10-22T16:07:31+00:00",
   "provenance": {
     "script": "molmetal/scripts/msrs_main_table.py",
     "index": "docs/PREDICTIVE_LINE_INDEX.md",
