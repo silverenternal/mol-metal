@@ -12166,3 +12166,173 @@ an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
 
+
+## §6.190 — UP-34: a metal-level offset cannot be estimated from ten rows, and the pre-registered kill fires (2026-10-23)
+
+**What this wave was for.** UP-26 established that shrinking a per-paper offset toward the
+pooled mean, with `kappa = sigma^2_noise / tau^2_paper`, raises held-out R^2 from 0.3674 at
+`n_cal = 0` to 0.6839 at `n_cal = 10`. The obvious extension is the metal axis: a
+leave-one-metal-out model predicts a metal it has never seen, so the same shrinkage applied
+to `tau^2_between-metal` should transfer something. UP-34 measured whether it does.
+
+**The ceiling was computed before the experiment, and it is small.** A per-metal constant
+offset can only recover the between-metal bias, whose share of the variance is
+`bias^2 / Var(y)`. Summing the per-metal `r2_centred` values in
+`msrs_identifiability.json`, weighted by `n`, gives an oracle of **0.0092** against a
+baseline of **-0.0734**. The recoverable gap is **0.0826** R^2, not the 0.30 the first draft
+of the gate demanded. That first threshold was unreachable by a factor of 33 on any data,
+so it was replaced, with the replacement written into `gate_original_frozen` before the
+first `k` curve existed: pass means recovering at least 70% of the oracle gap, kill means
+less than 30%.
+
+**Result.** The primary arm is worse than not calibrating at every `k`:
+**-0.1306 / -0.1291 / -0.1250 / -0.1195 / -0.1072** for `k = 0 / 5 / 10 / 20 / 50`. At
+`k = 10` the recovery fraction is **-0.6247**, so `kill.triggered` is true. The baseline
+reproduces at **-0.0734** exactly and the monotone check passes (4 of 4 non-decreasing
+steps), which is what makes the failure attributable to the estimator rather than to a
+broken harness.
+
+**Two mechanisms, measured separately rather than argued.**
+
+  * `paper_only` alone drops R^2 from -0.0734 to **-0.1306**. A paper offset estimated on
+    the training metals carries their level; applied to a held-out metal it moves the
+    prediction in the wrong direction. The metal-axis offset is not paper offset plus
+    noise, it is a different estimand.
+  * `kappa_metal` blows up under leave-one-metal-out: `tau^2` is estimated on the four
+    observed metals and lands at the floor, so `kappa` reaches **247 to 496,811** and the
+    shrinkage factor `10 / (10 + kappa)` is approximately zero. The estimator is
+    well-defined and correctly implemented; it is being asked to estimate a variance it
+    cannot see.
+
+**What the diagnostic says about reopening.** `metal_only_raw`, the unshrunk mean of the
+same `k` rows, recovers **0.10** of the gap at `k = 10` and **0.68** at `k = 50`
+(R^2 -0.0171). The level is in the rows. Ten of them are not enough to read it past the
+sampling error that the shrinkage is designed to absorb. Killing the line at `k = 10` is
+the correct call for the pre-registered protocol; reopening it requires a new
+pre-registration at `k` near 50, which is a different experiment and a different claim.
+
+**Honest boundaries (ACTIVE).**
+
+  * Four metals, one dataset, five seeds. `tau^2` estimated on four groups is a variance
+    estimate with three degrees of freedom, which is why it hits the floor.
+  * The oracle ceiling of 0.0092 means no metal-level offset, however estimated, can move
+    the headline R^2 by more than 0.08. This line was never able to carry the paper; the
+    question was only whether it pays for itself, and it does not.
+  * The `k` rows are drawn from the held-out metal's test set after the leakage rule is
+    applied, so they are rows a deployment would plausibly have measured. They are not a
+    random sample of a prospective plate.
+
+**Artifacts.** `metrics/by_metric/msrs_metal_calibration.json`,
+`molmetal/scripts/msrs_metal_calibration.py`.
+
+**§6.190 catalog-count math.** Net **+1**. Cumulative **244 → 245**. ACTIVE
+**200 → 201**.
+
+**Workflow** | UP-34 (2026-10-23; CPU, 5 folds x 5 `k` x 20 repeats; §5.2 every number is
+an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.191 — UP-33: pooled conformal coverage holds at 0.9007 overall but misses Os at 0.8088 (2026-10-23)
+
+**What this wave was for.** UP-27 measured the split-conformal interval at a median width
+of **2.0073** log-units for nominal 90% coverage. UP-33 asked whether putting the UP-26
+EB calibration in front of the conformal step narrows the interval without paying for it
+in coverage. Both uncalibrated arms reproduce their targets bit-for-bit (2.0073 and
+1.9871), so the comparison is attributable rather than approximate.
+
+**What passed.** Width falls to **1.4478** with coverage at **0.9007**, a 27.9% narrowing
+against a 20% requirement. The CQR arm narrows only 22.1% (1.9871 to 1.5507) because a
+constant shift leaves `q_hi - q_lo` untouched and only the conformity correction `E`
+shrinks. That difference is itself the measurement: calibration changes the residual
+scale, not the quantile model.
+
+**What failed.** Pooled conformal coverage is one quantile applied to every metal. The
+worst group is **Os at 0.8088** against a 0.87 gate. Os residuals are heavier-tailed than
+the pool, so a global quantile under-covers it. Metal-Mondrian per-group quantiles fix the
+failure at **0.8888** coverage, and the median width falls to **1.4390** rather than rising:
+the width budget is redistributed across groups, not widened overall.
+
+**A statistic was wrong before the result was reported.** The first version took the
+minimum across metals inside each draw and then averaged, which estimates the expectation
+of a minimum of five noisy quantities and is biased downward by construction (0.8331). The
+reported value takes the mean across draws per metal first, then the minimum, giving
+0.8888. The biased variant is retained in the artifact as
+`worst_metal_coverage_per_draw_mean` so the two cannot be confused.
+
+**Honest boundaries (ACTIVE).**
+
+  * Group-conditional coverage is estimated from roughly one sixth of the calibration
+    mass. Mondrian buys group coverage with a noisier per-group quantile, and the
+    finite-sample undercoverage at small `n_cal` is not measured here.
+  * The failure is reported for one grouping variable. Whether other groupings (assay
+    type, paper) show the same tail behaviour was not tested.
+  * Coverage is marginal over 20 draws x 5 seeds, not conditional on a single deployment
+    batch.
+
+**Artifacts.** `metrics/by_metric/msrs_conformal_calibrated.json`,
+`molmetal/scripts/msrs_conformal_calibrated.py`.
+
+**§6.191 catalog-count math.** Net **+1**. Cumulative **245 → 246**. ACTIVE
+**201 → 202**.
+
+**Workflow** | UP-33 (2026-10-23; CPU, 7 arms x 20 repeats x 5 seeds; §5.2 every number is
+an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.192 — UP-35: giving the held-out metal k measured rows does not close the 0.05 AUC gap, and the LOMO line closes for the third and last time (2026-10-23)
+
+**What this wave was for.** The published LOMO AUC is 0.5974 on the two resolvable folds
+(Ru, Ir) under a zero-shot protocol: the model sees no row of the metal it is scoring.
+A deployment never sees a new metal with zero measured compounds. It runs a plate, then
+asks about the rest. UP-35 moved `k` rows of the held-out metal from test into train and
+retrained, which is the only change relative to the published protocol. DP-12 allowed this
+as the third attempt on the LOMO line because the mechanism differs from the two that
+failed before (loss change, UP-31; backbone change, UP-28). The gate was written fresh at
+k=10 AUC >= 0.65, and the rule was that a miss closes the line permanently.
+
+**Result.** The curve is **0.5975 / 0.5934 / 0.5897 / 0.5804 / 0.6028** for
+`k = 0 / 5 / 10 / 20 / 50`. At `k = 10` the AUC is **0.5897**, below the 0.62 kill line.
+Four checks, two pass: `k = 0` reproduces 0.5975 against the published 0.5974 within the
+frozen 0.01 tolerance, and the shift arm moves AUC by **5.75e-07** (a theorem check: a
+constant logit shift cannot change a rank statistic, and the same arm's Brier score rises
+from 0.3215 to 0.4110, which is what proves the scores were actually shifted). The
+primary threshold and the monotone rule both fail: only one of four steps is
+non-decreasing.
+
+**The gap is not a sample-size gap.** At `k = 50` the AUC is 0.6028, which is **+0.0053**
+over zero-shot. The distance to the 0.65 gate is 0.0526, so fifty measured rows buy **10%**
+of it. Three independent mechanisms have now failed on this line: a loss change bought
++0.0003 (UP-31), a backbone change cost -0.0485 (UP-28), and adding rows is negative up to
+k = 20 and worth +0.005 at k = 50. Whatever the 0.05 is made of, it is not the quantity of
+labelled rows in the held-out metal, and it is not the training objective or the encoder.
+
+**Honest boundaries (ACTIVE).**
+
+  * The five points are not paired. Moving `k` rows out of the test set changes the
+    evaluation population at every `k`, so a difference between adjacent points carries
+    both a model effect and a composition effect. The `k = 10` drop of 0.0078 is about
+    twice the standard error of the mean (~0.004); the `k = 20` to `k = 50` rise of 0.0224
+    is clearly resolvable.
+  * The three small folds (Os, Rh, Re) are excluded. Each has fewer than 200 unique
+    compounds and an AUC standard error of 0.08 to 0.10, so a `k` curve there would be
+    noise. This means the conclusion covers two metals out of five.
+  * CUDA is not bit-reproducible in this trainer, so `k = 0` is expected within ~0.01 of
+    the published 0.5974 rather than on it. The tolerance was frozen at that width before
+    the run, not chosen after seeing the number.
+  * The `k` rows are uniform draws, not a designed plate. A deployment that chooses which
+    compounds to measure could do better; that experiment was not run and is the only
+    remaining version of this question.
+
+**Artifacts.** `metrics/by_metric/msrs_lomo_kcal.json`,
+`molmetal/scripts/msrs_lomo_kcal.py`,
+`configs/msrs_lomo_kcal_k{0,5,10,20,50}.yaml`.
+
+**§6.192 catalog-count math.** Net **+1**. Cumulative **246 → 247**. ACTIVE
+**202 → 203**.
+
+**Workflow** | UP-35 (2026-10-23; GPU0 863 s, 50 trainings = 2 metals x 5 seeds x 5 k;
+§5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

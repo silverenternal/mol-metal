@@ -10,7 +10,7 @@
 
 ## §1 一句话结论
 
-- **跨论文绝对强度预测过关，主协议是「新论文自带 10 行校准」**：n_cal=10 时 DOI 留出 R² **0.6839**（UP-26，门槛 ≥0.45，上界 0.7353；DP-10 已裁定为主协议）。零校准行是下界 **0.3767**（MACCS+RDKit 树）/ **0.3811**（+GNN 融合），门槛 0.36，必须同报 —— 从 0.3674 到 0.6839 的 +0.3165 里，**+0.2834 来自校正、+0.0331 来自评估行构成**（n_cal=10 只剩 9,885 行，偏向大论文，同批行零校正已是 0.4005）。**表示路线已关闭**：换 in-house D-MPNN 主干只有 0.3282（UP-28，同批行同折同 seed，指纹树臂在同次运行里逐位复现 0.3767）—— 0.3767 是次优表示的成绩，也是目前最好的表示。
+- **跨论文绝对强度预测过关，主协议是「新论文自带 10 行校准」**：n_cal=10 时 DOI 留出 R² **0.6839**（UP-26，门槛 ≥0.45，上界 0.7353；DP-10 已裁定为主协议）。零校准行是下界 **0.3767**（MACCS+RDKit 树）/ **0.3811**（+GNN 融合），门槛 0.36，必须同报 —— 从 0.3674 到 0.6839 的 +0.3165 里，**+0.2834 来自校正、+0.0331 来自评估行构成**（n_cal=10 只剩 9,885 行，偏向大论文，同批行零校正已是 0.4005）。0.6839 是 100 次抽样的均值，**5% 分位是 0.676**、最小 0.673（UP-36），所以「给 10 行」的承诺下限是 0.676 而不是 0.6839；maxmin 选样在 5% 分位上只多 0.0005，选样买不到下界。**表示路线已关闭**：换 in-house D-MPNN 主干只有 0.3282（UP-28，同批行同折同 seed，指纹树臂在同次运行里逐位复现 0.3767）—— 0.3767 是次优表示的成绩，也是目前最好的表示。
 - **"换哪个金属更好"点估计不可学、balanced 口径可学**：门内 218 对的多数类率 **0.6009**，三条点估计路线（相减 0.5826 / 融合 0.5505 / 直接回归 0.5183）**全部低于恒定预测**；但同一批折改 listwise 目标后 balanced **0.5985 [0.5262, 0.6663]**，首次显著优于 0.5（raw 仍只有 0.5417）。**这是"方向学到了、精度没到"，不是"可用了"。** 详见 §2.7。
 - **跨金属迁移不到可用水平**：可入闸的 Ru/Ir LOMO **0.5974** < 0.6；within-metal 稳定超过 Krasnov（Ru 0.8271 vs 0.81，Ir 0.8430 vs 0.73）。
 - **加性约束不是 metal_out 的瓶颈**（UP-1，2026-10-21）：放开 ligand×metal 交互三个臂全部**更差**（free −0.097 / pair −0.113 / product −0.164 R²），最好的 free_onehot 只 +0.0204 且 CI 含 0。**方差分解里 0.712 的交互份额，在留出金属上不可外推。**
@@ -32,12 +32,15 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **UP-8 的 1/5 是采样粒度，不是缺配对点**（UP-22）：换成行级采样后 n_paired=3 有 **3/5** 金属 R² > 0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 从 0 增到 3 的平均 R² 是 **0.0407 → 0.0306**，不单调。**Re 有 0 个配对行却拿到 +0.1734**，增益在定义上不来自配对。gate FAIL（secondary），kill 未触发。
 - **噪声标签不是排序的瓶颈**（UP-23）：deadzone（|Δ| < 该对 noise SD）在 651 对里保留 **315** 对；把噪声对并成同 label 后 lambdarank **0.5985 → 0.5612**（保留子集上 0.6050 → 0.5615），因为 **279/1,586 个组（17.6%）被整组并成一个 label**、梯度归零。kill 触发（0.6050 < 0.62）⇒ **DP-8 = yes，排序线关闭**。
 - **换 pairwise 损失与边感知负采样只值 +0.008 AUC**（UP-24）：同学习器同划分，BCE **0.5449** → pairwise_edge **0.5529**（Ru +0.0271 / Ir −0.0112）；五金属均值反而从 0.6185 掉到 0.5352。**0.5974 与 0.63 的差距不是损失或负采样造成的**；该项的绝对门槛按 D-MPNN 冻结、学习器却是特征模型，属计划口径错误，kill 文本触发但未适用。
-- **headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。UP-32 之后主表扩到 **55 行**（pooled 27 / per_pair 9 / conditional 9 / edge_level 7 / centered 3；yes 28 / partial 21 / no 6），55/55 交叉核对一致。
+- **headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。UP-32 之后主表扩到 **55 行**（pooled 27 / per_pair 9 / conditional 9 / edge_level 7 / centered 3；yes 28 / partial 21 / no 6），55/55 交叉核对一致。**UP-37 之后是 71 行**（pooled 42 / per_pair 9 / conditional 10 / edge_level 7 / centered 3；yes 42 / partial 21 / no 8），71/71 交叉核对一致、0 orphan。
 - **论文偏移不需要预测，只需要测**（UP-26）：给新论文 **1 行**已测值，DOI R² 从 **0.3674 → 0.5559**；给 **10 行**到 **0.6839**（同批行不校正为 0.4005，校正贡献 **+0.2834**）；给 50 行到 0.7243。完美去除论文偏移的上界是 **0.7353**（artifact 字段 `aggregate.oracle_bound.r2_mean`，五 seed 0.7342–0.7364），所以 10 行已经拿到这个上界的 **93%**。**前三轮全部在"零校准行"下评估，等于自愿放弃了部署时真实存在的信息。**
 - **破坏可交换性的是论文随机效应，不是协变量漂移**（UP-27）：用 23 维论文元特征训练"测试论文 vs 校准论文"分类器，**AUC 只有 0.5678**、加权后有效样本量仍是校准集的 **94.5%** —— 两个总体在 x 上几乎不可分。于是加权 conformal 只把宽度从 1.9871 挪到 **1.9849**（−0.1%），按年覆盖漂移曲线每年变动 ≤0.003。ACI 能买到覆盖（**0.9106**），代价是宽度 **2.0572**。**能被 reweight 的偏移才叫协变量漂移；这个偏移不在 x 里。**
 - **平局作为第三类结果也救不了排序**（UP-29）：Davidson 模型（δ 由数据估到 **2.28**，五个折 1.86–2.75）在保留子集上 balanced **0.5312**，与 Bradley-Terry 的 **0.5317** 无差别，低于 lambdarank 的 0.5985，kill 触发。模型自己给出的诊断是：δ 拟合到边际平局率后，**98.7% 的配对被判为平局** —— 分数分辨率低于噪声下限，平局类吸收了全部概率。**UP-23 的"噪声标签不是瓶颈"换一个机制重做，结论不变。**
 
 - **换主干救不了 DOI 线，图表示反而更差**（UP-28）：同一批 21,404 行、同一 DOI GroupKFold(5)、同一评估器，in-house D-MPNN 拿到 **0.3282**（seed-averaged）/ **0.2760**（seed 均值），指纹树臂在同一次运行里逐位复现 **0.3767**。差 **−0.0485**，kill 触发。失败机制是过拟合不是欠训练：训练 MSE 收敛到 **0.2677–0.2813**（五个折，标准化 y 的方差为 1），测试 R² 0.33 对应测试 MSE 约 0.67，两者差 2.4 倍，而五个 seed 的测试 R² 只在 0.2622–0.2949 摆动。**在 DOI 留出下，2,261 维指纹树比 1.4M 参数的图模型更抗偏移。**
+
+- **把校准放在 conformal 之前，宽度降 27.9% 而覆盖不动**（UP-33）：中位宽度 **2.0073 → 1.4478**，覆盖 **0.9007**；两个未校准臂把 UP-27 的 2.0073 与 1.9871 **逐位复现**，所以差值可归因。CQR 只窄 **22.1%**（1.9871 → 1.5507），因为常数平移不改变 `q_hi − q_lo`，只有符合性修正 E 会缩 —— 这条差异本身证明校准改的是残差尺度，不是分位数模型。**唯一失败项是 Os 组覆盖 0.8088**（门槛 0.87）；metal-Mondrian 修到 **0.8888**，中位宽反而降到 **1.4390**（宽度预算重新分配，不是拿宽度换覆盖）。
+- **金属级偏移在 leave-one-metal-out 下不可估，kill 已触发**（UP-34）：逐金属常数偏移的 oracle 上界只有 **0.0092**（按 n 加权的 `r2_centred`），基线 −0.0734，可恢复缺口 0.0826。主臂在**每个 k 上都比不校正更差**（k=0/5/10/20/50：−0.1306/−0.1291/−0.1250/−0.1195/−0.1072），k=10 恢复率 **−0.6247**。两个机制分开测过：`paper_only` 单独就把 R² 拉到 −0.1306（论文偏移含训练金属的水平）；`kappa_metal` 在 4 个已观测金属上估到 **247–496,811**（tau2 触底），收缩系数≈0。诊断臂 `metal_only_raw` 在 **k=50 恢复 0.68** 的缺口，所以信息在行里、10 行读不出；重开必须按 k≈50 重新预注册。
 
 **UP 第四轮记分牌（部署阶段，门槛在 2026-10-22T15:45+08:00 写死）**
 
@@ -49,6 +52,18 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-29 | 把平局当第三类结果能不能救排序 | **FAIL**（kill 触发） | Davidson **0.5312** vs BT 0.5317 vs lambdarank 0.5985；δ=2.28；98.7% 判平局 |
 | UP-30 | 把可识别集从「同一配体」放宽到「同一 core」能不能救 Δ | **FAIL**（质量、kill 触发） | 对数 651→**61,539**（94.5×，size PASS）；但留出金属 Δ R² 最好 **−0.1457**，常数基线 −0.0163 |
 | UP-31 | 在同一个 D-MPNN 上只换损失，pairwise 能不能到 0.63 | **FAIL**（主指标、per_metal、kill） | pairwise **0.5928** vs BCE **0.5924**（Δ+0.0003）；Ru 0.6191↑ / Ir 0.5665↓；BCE 复现 0.5924（目标 0.5974±0.01） |
+
+**UP 第五轮记分牌（部署加固阶段，门槛在 2026-10-23T03:20+08:00 写死）**
+
+| 项 | 问题 | 判决 | 一个数字 |
+|---|---|---|---|
+| UP-33 | 把 EB 校准放进 conformal 里面，能不能在覆盖不动的前提下把宽度压到 1.50 | **FAIL**（4/5，最差组） | 宽度 **1.4478**（−27.9%）、覆盖 **0.9007** ✓；Os 组 **0.8088** < 0.87 ✗；Mondrian 修到 0.8888 且宽度 1.4390 |
+| UP-34 | 金属级 EB 能不能给留出金属估出一个水平项 | **FAIL**（kill 触发） | k=10 恢复 **−0.6247**（门槛 ≥0.70）；主臂每个 k 都差于 −0.0734；oracle 上界 0.0092 |
+| UP-35 | 把留出金属的 k 行放进训练，能不能把 0.5974 推到 0.65 | **FAIL**（主指标、monotone、kill） | k=10 **0.5897** < 0.62；k=50 **0.6028**（+0.0053）；k=0 复现 0.5975 ✓；shift 定理 5.75e-07 ✓ |
+| UP-36 | 0.6839 的下界是多少 | **PASS** | 100 次抽样 5% 分位 **0.676**；maxmin 0.6765（选样买不到下界） |
+| UP-37 | 主表 / 索引 / registry 是否自洽 | **PASS** | **71 行**、71/71 交叉核对、0 orphan、0 mismatch |
+
+**第五轮只过一项（UP-36 是把已有数字说清楚，不是新增益）。** 三项 FAIL 里有两项是 kill 触发（UP-34 的 metal_out 校准、UP-35 的 LOMO 少样本），按 `reopen_rule` 这两条线到此关闭；UP-33 的失败是可修的（Mondrian），主臂已经给出修法与代价。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -381,10 +396,10 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP24.bce_ru_auc", "value": 0.548, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "aggregate.bce.per_metal.Ru"},
   {"id": "UP24.kill_applied", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.applied"},
   {"id": "UP24.kill_triggered_by_rule_text", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise.json", "path": "gate.kill.triggered_by_rule_text"},
-  {"id": "UP25.n_rows", "value": 55, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.n_rows"},
-  {"id": "UP25.n_not_identifiable", "value": 6, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
+  {"id": "UP25.n_rows", "value": 71, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.n_rows"},
+  {"id": "UP25.n_not_identifiable", "value": 8, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
   {"id": "UP25.n_partial", "value": 21, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.partial"},
-  {"id": "UP25.n_cross_checked", "value": 55, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
+  {"id": "UP25.n_cross_checked", "value": 71, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
   {"id": "UP25.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "gate.gate_pass"},
   {"id": "UP26.r2_n0", "value": 0.3674, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.0.eb_random.r2_mean"},
   {"id": "UP26.r2_n1", "value": 0.5559, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.1.eb_random.r2_mean"},
@@ -440,7 +455,48 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP28.budget10_r2", "value": 0.2415, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget10.json", "path": "results.dmpnn.r2_per_seed.0"},
   {"id": "UP28.budget10_mse", "value": 0.5578, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget10.json", "path": "results.dmpnn.fold_diagnostics.0.train_loss_last"},
   {"id": "UP28.budget120_r2", "value": 0.2554, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget120.json", "path": "results.dmpnn.r2_per_seed.0"},
-  {"id": "UP28.budget120_mse", "value": 0.1637, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget120.json", "path": "results.dmpnn.fold_diagnostics.0.train_loss_last"}
+  {"id": "UP28.budget120_mse", "value": 0.1637, "artifact": "metrics/by_metric/msrs_dmpnn_doi_budget120.json", "path": "results.dmpnn.fold_diagnostics.0.train_loss_last"},
+  {"id": "UP33.split_cal_width", "value": 1.4478, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.primary.median_width_mean"},
+  {"id": "UP33.split_cal_coverage", "value": 0.9007, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.primary.coverage_mean"},
+  {"id": "UP33.worst_metal", "value": 0.8088, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.primary.worst_metal_coverage"},
+  {"id": "UP33.mondrian_width", "value": 1.439, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.mondrian.median_width_mean"},
+  {"id": "UP33.mondrian_worst_metal", "value": 0.8888, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.mondrian.worst_metal_coverage"},
+  {"id": "UP33.uncal_width", "value": 2.0073, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.split_uncal.median_width_mean"},
+  {"id": "UP33.cqr_uncal_width", "value": 1.9871, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.cqr_uncal.median_width_mean"},
+  {"id": "UP33.cqr_cal_width", "value": 1.5507, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.cqr_cal.median_width_mean"},
+  {"id": "UP33.oracle_width", "value": 1.3717, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.split_oracle.median_width_mean"},
+  {"id": "UP33.narrowing", "value": 0.2787, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "gate.checks.paired_narrowing.relative_narrowing"},
+  {"id": "UP33.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "gate.gate_pass"},
+  {"id": "UP33.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "gate.kill.triggered"},
+  {"id": "UP34.baseline", "value": -0.0734, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.baseline.weighted_r2"},
+  {"id": "UP34.oracle", "value": 0.0092, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.oracle.weighted_r2"},
+  {"id": "UP34.paper_only", "value": -0.1306, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.paper_only.weighted_r2"},
+  {"id": "UP34.k10_primary", "value": -0.125, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.k_curve.10.primary"},
+  {"id": "UP34.k10_raw", "value": -0.0651, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.k_curve.10.metal_only_raw"},
+  {"id": "UP34.k50_raw", "value": -0.0171, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.k_curve.50.metal_only_raw"},
+  {"id": "UP34.k10_recovery", "value": -0.6247, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "gate.checks.primary_recovery_k10.value"},
+  {"id": "UP34.gap", "value": 0.0826, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "aggregate.oracle_gap"},
+  {"id": "UP34.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "gate.gate_pass"},
+  {"id": "UP34.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_metal_calibration.json", "path": "gate.kill.triggered"},
+  {"id": "UP36.n10_p05", "value": 0.676, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_by_repeat.p05"},
+  {"id": "UP36.n10_p50", "value": 0.6838, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_by_repeat.p50"},
+  {"id": "UP36.n10_min", "value": 0.673, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_by_repeat.min"},
+  {"id": "UP36.maxmin_p05", "value": 0.6765, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_maxmin.r2_by_repeat.p05"},
+  {"id": "UP36.n0_r2", "value": 0.3674, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.0.eb_random.r2_mean"},
+  {"id": "UP36.n10_r2", "value": 0.6839, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_mean"},
+  {"id": "UP36.n50_r2", "value": 0.7243, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.50.eb_random.r2_mean"},
+  {"id": "UP35.k0_auc", "value": 0.5975, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.0.mean_auc"},
+  {"id": "UP35.k5_auc", "value": 0.5934, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.5.mean_auc"},
+  {"id": "UP35.k10_auc", "value": 0.5897, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.10.mean_auc"},
+  {"id": "UP35.k20_auc", "value": 0.5804, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.20.mean_auc"},
+  {"id": "UP35.k50_auc", "value": 0.6028, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.50.mean_auc"},
+  {"id": "UP35.k10_ru", "value": 0.5861, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.10.per_fold.Ru.auc_mean"},
+  {"id": "UP35.k10_ir", "value": 0.5932, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.10.per_fold.Ir.auc_mean"},
+  {"id": "UP35.shift_diff", "value": 5.754499251553469e-07, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "shift_arm.max_abs_auc_diff"},
+  {"id": "UP35.k10_n_train_ru", "value": 1452, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.10.per_fold.Ru.n_train"},
+  {"id": "UP35.shift_auc_diff", "value": 5.754499251553469e-07, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "shift_arm.max_abs_auc_diff"},
+  {"id": "UP33.cqr_reproduce", "value": 1.9871, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.cqr_uncal.median_width_mean"},
+  {"id": "UP33.oracle", "value": 1.3717, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.split_oracle.median_width_mean"}
 ]
 ```
 
@@ -998,6 +1054,8 @@ UP-20 在可交换 conformal 下拿到覆盖 0.9000、宽度 1.9871。UP-27 改�
 
 **ACI 的代价是诚实的**：覆盖从 0.9000 抬到 0.9106，宽度同时从 1.9871 涨到 2.0572。理论就是这么预言的（在线更新只保证长期边际覆盖），这里没有任何超额收益。gate 在宽度与最差组上 FAIL，kill（宽 >2.00 或覆盖 <0.88）**未触发** —— 覆盖本身是可达的，达不到的是宽度。
 
+**DP-14 裁定（2026-10-23，agent）：本节的宽度结论是条件性的。** UP-33 把 UP-26 的 EB 校准放到 conformal 之前，中位宽 **1.4478**、覆盖 **0.9007**，低于本节冻结的 1.90。所以「达不到的是宽度」只在**零校准行 + 未校准点预测**这一格成立。1.90 作为历史门槛保留并标 **SUPERSEDED**，不改数字；新协议下的实测值是 1.4478。本节其余结论（加权无效、ACI 只买到覆盖、漂移不在 x 里）不受影响，因为它们比较的都是同一格内的臂。
+
 ### 2.27 UP-29 平局作为第三类结果：Davidson 与 Bradley-Terry 无差别（2026-10-22）
 
 `msrs_davidson_ties.json`（CPU 31 s）。
@@ -1104,6 +1162,126 @@ DOI 线从第一轮起就用指纹树（MACCS+RDKit），0.3767 是这个**次�
 **seed 集成对 D-MPNN 值 +0.0522，对树只值 +0.0070。** 这个差本身就是过拟合的第三个读数：单个 D-MPNN 的方差大到五个 checkpoint 平均能把 R² 抬 0.05，而树的五个 seed 几乎等价。所以 0.3282 已经是"5 个模型集成交付"的数，不是一次训练的数。
 
 **kill 触发（0.3282 < 0.3767）⇒ 表示路线关闭，DOI 线维持指纹树并注明。** 结论要写清楚边界：这**不是**"图神经网络不如指纹"的一般性结论，而是"在这个 21,404 行、DOI 留出、40 epoch 无早停的协议下，1.4M 参数的图模型比 2,261 维指纹树更差"。D-MPNN 看到的信息严格多于树（图替代指纹，侧块还多给金属与细胞系标识），所以它是表示比较，不是 graph-vs-fingerprint 的受控消融。
+
+---
+
+### 2.31 UP-33 把校准放在区间里面：宽度 2.0073 → 1.4478，代价是 Os 组覆盖 0.8088（2026-10-23）
+
+`msrs_conformal_calibrated.json`（CPU，5 seed × 20 次抽样，448 s）。
+
+UP-20 与 UP-27 试了四种区间族（split、CQR、difficulty、metal-Mondrian），宽度一直锁在 1.99 附近。这四种都在**未校准的点预测**上做：half-width 是 |y − ŷ| 的分位数，而 |y − ŷ| 里含一个每篇论文的水平偏移（UP-21 测得 sd 0.24）。UP-26 用 10 行已测值把这个偏移去掉，R² 从 0.3674 抬到 0.6839，残差 sd 只剩原来的 71%，所以分位数本身就应该跟着掉。
+
+UP-33 只改一件事：在算 conformal 分数之前先把 ô 加上。校准论文与测试论文用同一条规则——先抽 n_cal 行估 ô，再在**剩余行**上算分数。两边的行不重叠是这一步唯一容易做错的地方：一旦重叠，分数分布就是在被 ô 压过的残差上算的，分位数偏低，覆盖会在没见过校正的数据上掉到名义值以下。
+
+| 臂 | 覆盖 | 中位宽 | 口径 |
+|---|---:|---:|---|
+| `split_uncal`（UP-27 global） | 0.9003 | 2.0073 | 单次抽样 |
+| `split_cal`（主臂） | 0.9007 | **1.4478** | 20 次抽样均值 |
+| `split_cal_metal`（Mondrian） | 0.9011 | 1.4390 | 20 次抽样均值 |
+| `split_oracle` | 0.9569 | 1.3717 | 单次抽样 |
+| `cqr_uncal`（UP-27 cqr） | 0.9000 | 1.9871 | 单次抽样 |
+| `cqr_cal` | 0.8975 | 1.5507 | 单次抽样 |
+
+两个未校准臂把 UP-27 的数**逐位复现**（2.0073 与 1.9871），所以比较可归因。校准把宽度压掉 **27.9%**，覆盖不动。
+
+**CQR 只压掉 22.1%，这是结构决定的，不是实现差异。** CQR 的区间是 [q_lo − E, q_hi + E]；把一个论文整体平移一个常数，q_lo 与 q_hi 一起动，差不变，只有 conformal 修正项 E 会缩。split-conformal 的整个半宽就是分位数本身，所以校准对它的作用是对 CQR 的两倍以上。这条差异本身是"校准改的是残差尺度，不是分位数模型"的读数。
+
+**唯一没过的检查是组覆盖。** 主臂最差金属是 Os：**0.8088**，门槛 0.87。按金属拆开（20 次抽样均值）：
+
+| 金属 | `split_cal` | `split_cal_metal` |
+|---|---:|---:|
+| Ir | 0.9167 | 0.9004 |
+| Os | **0.8088** | **0.8888** |
+| Re | 0.9141 | 0.8983 |
+| Rh | 0.8753 | 0.8976 |
+| Ru | 0.9019 | 0.9000 |
+
+Mondrian 把五个金属全拉到 0.888–0.900，中位宽还从 1.4478 降到 1.4390（Os 与 Rh 变宽，占 90% 行数的 Ru 变窄）。**这不是用一个更宽的区间换覆盖，是同一个宽度预算的重新分配。**
+
+统计量上有一个必须写清楚的更正：最初把"每次抽样取五个金属的最小值、再对 20 次取平均"当作 worst-group，得到 0.8331，比真实值低。那个量是**五个带噪估计的最小值的期望**，按构造低于"先按金属平均、再取最小"。artifact 同时存两个：`worst_metal_coverage`（正确口径）与 `worst_metal_coverage_per_draw_mean`（旧口径，只作对照）。
+
+**gate 4/5 通过，FAIL 落在 Os。kill 未触发（1.4478 < 1.90）。** 结论按部署口径写：主臂宽度可用、边际覆盖可用、Os 组需要 Mondrian；Mondrian 版本五项全过。
+
+---
+
+### 2.32 UP-34 金属水平的 EB：k=10 读不出新金属，k=50 能读出 0.68（2026-10-23）
+
+`msrs_metal_calibration.json`（CPU，5 折 × 5 个 k × 20 次抽样，215 s）。
+
+UP-19 证明 94.5% 的行没有配对伙伴，金属水平不能从配体相似性推；UP-30 证明放宽配对也学不到。UP-34 换一条路：不预测，直接测 k 行、减掉水平。这就是 UP-26 在金属轴上的同一个算子。
+
+**门槛在运行前被改过一次，原因是算术不可达。** 冻结的门槛要求 k=10 时 metal_out 加权 R² ≥ 0.30。但任何逐金属常数偏移能移动的 R² 上限是 bias²/Var(y)，用已发布的 `msrs_identifiability.json` 逐金属 `r2_centred` 按 n 加权算是 **0.0092**，基线 −0.0734，整个可恢复缺口只有 **0.0826**。0.30 是上限的 33 倍。改后的门槛按 oracle 缺口归一化，仍然可证伪；kill 也从"绝对 R² < 0.10"改成"恢复 < 30% 的缺口"，因为前者会把"可估但很小"误判成"不可识别"。两版门槛都写在 artifact 的 `gate_original_frozen` / `gate` 里。
+
+| 臂 | 加权 R² | 缺口恢复 |
+|---|---:|---:|
+| `baseline`（LOMO，无校正） | −0.0734 | 0 |
+| `paper_only` | −0.1306 | −0.69 |
+| `oracle`（每金属残差全减） | 0.0092 | 1.00 |
+| `paper_metal` k=10（主臂） | −0.1250 | −0.62 |
+| `metal_only_eb` k=10 | −0.0679 | 0.07 |
+| `metal_only_raw` k=10 | −0.0651 | 0.10 |
+| `metal_only_raw` k=50 | −0.0171 | **0.68** |
+
+**主臂在每一个 k 上都比不校正更差**，原因有两个，artifact 把两个都量了。
+
+第一，**论文偏移跨金属不迁移**。`paper_only` 单独就把 R² 从 −0.0734 拉到 −0.1306：一篇论文在 Ir 下的残差里含 Ir 这个金属的水平，把它加到 Ru 的行上等于加了一个错的常数。这正是计划里写的"论文项与金属项共线"，只是它在这里表现为**有害**而不只是不可识别。
+
+第二，**κ_metal 在被观测金属上被估成无穷大**。留出 Ru 时用 Ir/Rh/Os/Re 的跨折残差估 tau2，四个金属的水平几乎相同（模型见过它们），tau2 触底到 1e-6，κ 变成 247 到 496,811。而被留出的那个金属按构造就是模型错得最厉害的那个，它落在那个方差之外。于是收缩系数 10/(10+κ) 近似为 0，金属项等于没加。
+
+**但信息确实在 k 行里。** 同一个 k 行、不收缩、直接取均值：k=10 恢复 0.10，k=50 恢复 **0.68**。所以 k=10 的失败是**样本量**（10 行均值的标准误与被去掉的偏差同量级），不是"水平不可学"。
+
+| k | 0 | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|---:|
+| `paper_metal`（主臂） | −0.1306 | −0.1291 | −0.1250 | −0.1195 | −0.1072 |
+| `metal_only_eb` | −0.0734 | −0.0718 | −0.0679 | −0.0626 | −0.0509 |
+| `metal_only_raw` | −0.0734 | −0.1760 | −0.0651 | −0.0564 | −0.0171 |
+
+`metal_only_raw` 在 k=5 上比基线差 0.10，是 5 行均值方差太大；从 k=10 起转正，k=50 到 −0.0171。**这条曲线是"部署时需要多少行"的答案，而门槛问的是"10 行够不够"，答案是不够。**
+
+gate FAIL、kill 触发。artifact 的 `kill.interpretation` 写明了它该被怎么读：按 k=10 的部署故事关线是正确的，但如果要重开，必须按 k≈50 重新预注册，不能把这次的曲线直接当成通过。
+
+---
+
+### 2.33 UP-36 0.6839 的下界是 0.676：100 次抽样，5% 分位（2026-10-23）
+
+`msrs_paper_calibration.json`（CPU，5 seed × 20 次抽样，310 s）。
+
+0.6839 是 20 次 10 行抽样的平均，而部署只抽一次。原来的 artifact 只存 seed 间的 min/max，没有存抽样间的分布。UP-36 让 `sweep_ncal` 保留每次抽样的 R²，聚合时把五个 seed 的 100 次抽样**合并**再取分位数（先对每个 seed 取分位再平均会低估尾部）。
+
+| 统计量 | 值 |
+|---|---:|
+| 5% 分位 | **0.676** |
+| 中位 | 0.6838 |
+| 最小 | 0.673 |
+| maxmin 臂 5% 分位 | 0.6765 |
+
+随机抽样与 maxmin（按 Tanimoto 最远点铺开化学空间）在 5% 分位上**没有差别**（0.676 vs 0.6765）。选样设计买不到下界，只买均值。
+
+n0 / n10 / n50 = 0.3674 / 0.6839 / 0.7243 **逐位不变**，gate 里有一条 `reproduce_bitwise` 专门检查这一点，而不是靠"看起来一样"。
+
+gate PASS（0.676 ≥ 0.55），kill 未触发。引用规则随之改变：0.6839 可以带下界 **0.676** 报，不再只能作为均值报。
+
+### 2.34 UP-35 把留出金属的 k 行放进训练：k=10 掉到 0.5897，kill 触发（2026-10-23）
+
+`msrs_lomo_kcal.json`（GPU0 863 s，50 次训练 = 2 金属 × 5 seed × 5 个 k）。
+
+DP-11 关闭的是「换损失 / 换主干」。这一项换的是机制：不动损失、不动主干，只把留出金属的 k 行从测试集移进训练集，再重训 30 epoch。这是 DP-12 允许的第三次、也是最后一次尝试，门槛新写为 k=10 ≥ 0.65。
+
+| k | Ru | Ir | 均值 | 移入训练的行 |
+|---:|---:|---:|---:|---:|
+| 0 | 0.5917 | 0.6032 | **0.5975** | 0 |
+| 5 | 0.5820 | 0.6048 | 0.5934 | 5 / 金属 |
+| 10 | 0.5861 | 0.5932 | **0.5897** | 10 / 金属 |
+| 20 | 0.5841 | 0.5767 | 0.5804 | 20 / 金属 |
+| 50 | 0.6057 | 0.5999 | **0.6028** | 50 / 金属 |
+
+**四项检查过两项。** k=0 复现 0.5975（目标 0.5974 ± 0.01）✓；shift 臂的 AUC 差 **5.75e-07** < 1e-6 ✓（常数平移不改 AUC，这是定理核对，同一臂的 Brier 从 0.3215 涨到 0.4110，说明分数确实被平移了）；k=10 的 **0.5897** < 0.65 ✗；5 个点里只有 1 个不降（k20→k50 的 +0.0224）✗。
+
+**kill 触发（k=10 < 0.62）⇒ LOMO 线第三次关闭，且按 DP-12 是永久关闭。**
+
+**这条线不是被一个坏点关掉的。** 三个机制各自独立地失败过：换损失 +0.0003（UP-31）、换主干 −0.0485（UP-28）、加 k 行在 k≤20 上是负的（本轮）。到 k=50 才回到 0.6028，比零样本高 **0.0053**，只有到 0.65 还差的 0.0526 的 **10%**。所以「LOMO 差 0.05」不是样本量差距，是这个协议下可迁移的信号本身只有这么强。
+
+**必须声明的口径。** 五个 k 点的测试集不同（k 行被移出去了），所以曲线不是配对比较，逐点之间的差含行构成变化。k=10 相对 k=0 的 −0.0078 约为均值标准误（约 0.004）的两倍，属于可分辨但不大；k=50 相对 k=20 的 +0.0224 则是明确可分辨的。三个金属折（Os / Rh / Re）不足 200 个唯一化合物、AUC 标准误 0.08–0.10，没有进曲线。
 
 ---
 

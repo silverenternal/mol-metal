@@ -3,24 +3,24 @@
   "version": "1.0",
   "framework": "MSRS — Metal Substitution Response Surface",
   "level": "L0 summary / UP-25",
-  "generated_utc": "2026-10-22T16:07:31+00:00",
+  "generated_utc": "2026-10-22T20:58:33+00:00",
   "provenance": {
     "script": "molmetal/scripts/msrs_main_table.py",
     "index": "docs/PREDICTIVE_LINE_INDEX.md",
     "markdown": "docs/PREDICTIVE_LINE_MAIN_TABLE.md"
   },
   "design": {
-    "n_rows": 55,
+    "n_rows": 71,
     "by_estimand": {
-      "pooled": 27,
+      "pooled": 42,
       "centered": 3,
       "per_pair": 9,
-      "conditional": 9,
+      "conditional": 10,
       "edge_level": 7
     },
     "by_identifiable": {
-      "yes": 28,
-      "no": 6,
+      "yes": 42,
+      "no": 8,
       "partial": 21
     },
     "estimand_vocabulary": [
@@ -587,6 +587,166 @@
       "estimand": "pooled",
       "identifiable": "yes",
       "reason": "the protocol check inside the same run: 0.3767, bit-identical to the quoted headline"
+    },
+    {
+      "id": "UP33.split_cal_width",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.primary.median_width_mean",
+      "value": 1.4478,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "calibrated split-conformal at 0.9007 coverage: 1.4478 against 2.0073 uncalibrated on the same rows"
+    },
+    {
+      "id": "UP33.split_cal_coverage",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.primary.coverage_mean",
+      "value": 0.9007,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "marginal 90% coverage holds after the offset is applied inside the score"
+    },
+    {
+      "id": "UP33.worst_metal",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.primary.worst_metal_coverage",
+      "value": 0.8088,
+      "estimand": "conditional",
+      "identifiable": "yes",
+      "reason": "Os is the failing group at 0.8088 against a 0.87 gate; the metal-Mondrian variant reaches 0.8888"
+    },
+    {
+      "id": "UP33.mondrian_width",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.mondrian.median_width_mean",
+      "value": 1.439,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the group-coverage repair costs nothing: 1.4390, narrower than the global arm"
+    },
+    {
+      "id": "UP33.cqr_reproduce",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.cqr_uncal.median_width_mean",
+      "value": 1.9871,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the UP-27 CQR arm reproduces 1.9871 bit for bit inside this run"
+    },
+    {
+      "id": "UP33.oracle",
+      "artifact": "metrics/by_metric/msrs_conformal_calibrated.json",
+      "artifact_name": "msrs_conformal_calibrated",
+      "path": "aggregate.split_oracle.median_width_mean",
+      "value": 1.3717,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "per-paper oracle at 1.3717 with realized coverage 0.9569: a floor, not a deployable interval"
+    },
+    {
+      "id": "UP34.baseline",
+      "artifact": "metrics/by_metric/msrs_metal_calibration.json",
+      "artifact_name": "msrs_metal_calibration",
+      "path": "aggregate.baseline.weighted_r2",
+      "value": -0.0734,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "leave-one-metal-out with no correction reproduces -0.0734"
+    },
+    {
+      "id": "UP34.oracle",
+      "artifact": "metrics/by_metric/msrs_metal_calibration.json",
+      "artifact_name": "msrs_metal_calibration",
+      "path": "aggregate.oracle.weighted_r2",
+      "value": 0.0092,
+      "estimand": "pooled",
+      "identifiable": "no",
+      "reason": "the ceiling for any per-metal constant offset is 0.0092; the whole recoverable gap is 0.0826"
+    },
+    {
+      "id": "UP34.k10_primary",
+      "artifact": "metrics/by_metric/msrs_metal_calibration.json",
+      "artifact_name": "msrs_metal_calibration",
+      "path": "aggregate.k_curve.10.primary",
+      "value": -0.125,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the pre-registered two-level EB arm at k=10 is -0.1250, worse than no correction"
+    },
+    {
+      "id": "UP34.k10_raw",
+      "artifact": "metrics/by_metric/msrs_metal_calibration.json",
+      "artifact_name": "msrs_metal_calibration",
+      "path": "aggregate.k_curve.10.metal_only_raw",
+      "value": -0.0651,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the unshrunk mean of the same 10 rows recovers 0.10 of the gap: the rows carry little at this k"
+    },
+    {
+      "id": "UP34.k50_raw",
+      "artifact": "metrics/by_metric/msrs_metal_calibration.json",
+      "artifact_name": "msrs_metal_calibration",
+      "path": "aggregate.k_curve.50.metal_only_raw",
+      "value": -0.0171,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "at k=50 the same estimator recovers 0.68, so the information is there but needs five times the rows"
+    },
+    {
+      "id": "UP35.k0_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_kcal.json",
+      "artifact_name": "msrs_lomo_kcal",
+      "path": "per_k.0.mean_auc",
+      "value": 0.5975,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "k=0 reproduces the published zero-shot LOMO AUC 0.5974 within the frozen 0.01 tolerance"
+    },
+    {
+      "id": "UP35.k10_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_kcal.json",
+      "artifact_name": "msrs_lomo_kcal",
+      "path": "per_k.10.mean_auc",
+      "value": 0.5897,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "ten measured rows in training drop the AUC to 0.5897, below the 0.62 kill line"
+    },
+    {
+      "id": "UP35.k50_auc",
+      "artifact": "metrics/by_metric/msrs_lomo_kcal.json",
+      "artifact_name": "msrs_lomo_kcal",
+      "path": "per_k.50.mean_auc",
+      "value": 0.6028,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "fifty rows buy +0.0053 over zero-shot, 10% of the distance to 0.65: not a sample-size gap"
+    },
+    {
+      "id": "UP35.k10_ru",
+      "artifact": "metrics/by_metric/msrs_lomo_kcal.json",
+      "artifact_name": "msrs_lomo_kcal",
+      "path": "per_k.10.per_fold.Ru.auc_mean",
+      "value": 0.5861,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "the Ru fold falls 0.0056 and the Ir fold 0.0100 at k=10: both metals move the same way"
+    },
+    {
+      "id": "UP35.shift_auc_diff",
+      "artifact": "metrics/by_metric/msrs_lomo_kcal.json",
+      "artifact_name": "msrs_lomo_kcal",
+      "path": "shift_arm.max_abs_auc_diff",
+      "value": 5.754499251553469e-07,
+      "estimand": "pooled",
+      "identifiable": "yes",
+      "reason": "a constant logit shift moves AUC by 5.75e-07, confirming the shift arm is a theorem check"
     }
   ],
   "checks": {
@@ -594,7 +754,7 @@
     "no_orphan": true,
     "orphans": [],
     "index_consistent": true,
-    "n_cross_checked": 55,
+    "n_cross_checked": 71,
     "mismatches": [],
     "gate_pass": true
   },

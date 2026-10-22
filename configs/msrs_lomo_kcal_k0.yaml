@@ -1,0 +1,49 @@
+# msrs_lomo_kcal_k0.yaml — UP-35: k measured rows of the held-out metal join training.
+#
+# WHY: the published LOMO AUC (0.5974 on the two resolvable folds, Ru and Ir)
+# is zero-shot. A deployment never sees a new metal with zero measured
+# compounds: a plate is run first, and the rest is what the model is asked
+# about. This config moves k of the held-out metal's rows from test into
+# train, which is the only change relative to the published protocol.
+#
+# k=0 is the reproduction arm and must land within 0.01 of 0.5974.
+# Nothing else differs from configs/c6_lomo_seed_dump.yaml: same CSV, same
+# hidden/depth/alpha, same 30 epochs, same wasserstein weight, same seeds.
+data:
+  metals:
+    - Ru
+    - Ir
+  rh_oversample: 0
+  time_threshold: 24
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+  support_k: 0
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/up35_lomo_kcal/k0
+  out_dir: molmetal/reports/up35_lomo_kcal/k0
+  dump_test_scores_dir: results/up35_lomo_kcal/k0
+  out_metric: molmetal/reports/up35_lomo_kcal/k0/metrics.json
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: UP-35 — does k rows of a new metal buy AUC that a post-hoc shift cannot?
+  note: >-
+    The shift arm is a theorem check, not a model: AUC is invariant to a
+    monotone transform, so shifting every logit by a constant must leave the
+    AUC bit-identical. Only the finetune arm can move the gate.

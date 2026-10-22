@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v5",
   "created": "2026-10-22",
-  "updated": "2026-10-23",
+  "updated": "2026-10-23T05:10+08:00",
   "rewritten": "2026-10-23T04:35+08:00",
   "supersedes": "molmetal-todo-v4。第四轮 UP-26..UP-32 全部关闭（5 FAIL / 2 PASS），已完成的包从本文件删除，结论压进 closed_decisions R14-R21 与 current_position。",
   "purpose": "第五轮强化。第四轮证明了这个项目里唯一被验证能改变绝对性能的算子是「用目标域自己的少量标签做经验贝叶斯校准」（UP-26：0.3674 → 0.6839，达上界 93%）。其余五个包（表示、损失、平局似然、配对宽度、reweight）全部失败，失败机制各自被测量排除。第五轮不再找新模型，只把这一个算子推到它还没去过的三个地方 —— 区间宽度、金属水平、少样本适配 —— 并给已经成为 headline 的主数字补一个抽样下界。",
@@ -44,17 +44,18 @@
   "current_position": {
     "baseline_facts": [
       "DOI 主协议（DP-10 = YES）：n_cal=10 行自校准 R² 0.6839；零校准 0.3674 / 指纹树 0.3767；同批行零校正 0.4005；理论上界 0.7353（artifact 字段 aggregate.oracle_bound）。",
-      "conformal：global 覆盖 0.9004 / 中位宽 2.0052；CQR 0.9000 / 1.9871；ACI 0.9106 / 2.0572；最差金属组 0.8716（UP-20/27）。宽度目标 1.90 未达。",
+      "conformal：global 覆盖 0.9004 / 中位宽 2.0052；CQR 0.9000 / 1.9871；ACI 0.9106 / 2.0572；最差金属组 0.8716（UP-20/27）。校准放在 conformal 之前把中位宽压到 1.4478、覆盖 0.9007，但 Os 组 0.8088（UP-33）；metal-Mondrian 修到 0.8888 / 1.4390。旧的 1.90 目标标 SUPERSEDED（DP-14）。",
       "metal_out：绝对 R² −0.0734，可识别行仅 5.47%（1,151/21,045），其上 R² 0.3299；放宽到 61,539 个 MMP 对后 Δ R² 仍 −0.1457（UP-19/30）。",
-      "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538，D-MPNN+Wasserstein）；pairwise 0.5928 vs BCE 0.5924（UP-31）；损失与主干两条路线已关闭。",
+      "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538，D-MPNN+Wasserstein）；pairwise 0.5928 vs BCE 0.5924（UP-31）；把留出金属的 k 行放进训练：k=10 0.5897、k=50 0.6028（UP-35）。损失、主干、少样本三条路线全部关闭，线永久关闭（DP-12）。",
       "排序：Davidson 0.5312 vs BT 0.5317 vs lambdarank 0.5985；DP-9 = NO，线关闭。",
       "表示：DOI 线 D-MPNN 0.3282 < 指纹树 0.3767（UP-28，预算对照 10/40/120 = 0.2415/0.2686/0.2554），线关闭。",
-      "语料：21,404 行 potency / 5 金属 / 3 条观测金属边；跨金属配体 3.64%；1,784 个 DOI 组。"
+      "语料：21,404 行 potency / 5 金属 / 3 条观测金属边；跨金属配体 3.64%；1,784 个 DOI 组。",
+      "metal_out 的金属级 EB：oracle 上界 0.0092、基线 −0.0734，主臂每个 k 都更差，k=10 恢复 −0.6247（UP-34，kill）。"
     ],
     "deployment_gap": [
-      "校准已经被验证，但只用在「点预测的论文水平」。同一个算子的三个推论（区间、金属水平、少样本适配）一个都没测。",
-      "主数字 0.6839 是 20 次抽样的均值，没有抽样分布；部署要的是下界，不是均值。",
-      "所有区间结论都建立在「点预测没有校准」这个前提上。校准之后残差尺度降了 29%，宽度结论必须重做。"
+      "论文水平校准的三个推论都已测完：区间宽度（UP-33，1.4478）、金属水平（UP-34，kill）、少样本适配（UP-35，kill）。没有第四个推论。",
+      "0.6839 的抽样下界已测（UP-36，5% 分位 0.676）；maxmin 选样在 5% 分位上只多 0.0005，选样设计买不到下界。",
+      "剩余未测的三件：①「设计过的 k 行」而不是均匀抽样（UP-35 的唯一未跑版本）；②Os/Rh/Re 三个小组金属的组条件覆盖（样本不足）；③Mondrian 在小 n_cal 下的有限样本欠覆盖。"
     ]
   },
   "metric_gap_analysis": {
@@ -295,19 +296,25 @@
       "id": "DP-13",
       "question": "若 UP-34 过门，metal_out 的主数字是否从「不可识别」改成「k=10 校准后」",
       "owner": "用户",
-      "status": "OPEN",
+      "status": "RESOLVED-BY-RULE",
       "after": "UP-34",
       "if_yes": "主表新增 metal_out 的 k=10 行，旧 −0.0734 标注为「零校准行」。",
-      "if_no": "主表维持 −0.0734，k=10 只作为敏感性分析。"
+      "if_no": "主表维持 −0.0734，k=10 只作为敏感性分析。",
+      "resolution": "NO（条件未成立；用户仍可否决）",
+      "why": "DP-13 的前提是「UP-34 过门」。UP-34 gate_pass=false 且 kill.triggered=true（k=10 恢复 −0.6247，门槛 ≥0.70），前提不成立，所以主数字维持 −0.0734。",
+      "action": "主表 metal_out 维持 −0.0734 并标「零校准行」；UP-34 的 k 曲线只作为敏感性分析，不进主表 headline。若用户要改，唯一有依据的候选是 k≈50 的未收缩均值（恢复 0.68），那是另一个预注册，不是本轮的 k=10 臂。"
     },
     {
       "id": "DP-14",
       "question": "若 UP-33 的中位宽 <1.50，是否撤回 UP-27 的「宽度目标不可达」结论",
       "owner": "agent（有实测依据即可裁定）",
-      "status": "OPEN",
+      "status": "RESOLVED-BY-RULE",
       "after": "UP-33",
       "if_yes": "改写 §2.26 的结论为「不可达的是未校准点预测下的宽度」，并把 1.90 的目标换成新实测值。",
-      "if_no": "维持原结论，UP-33 的宽度只作为附带读数。"
+      "if_no": "维持原结论，UP-33 的宽度只作为附带读数。",
+      "resolution": "YES",
+      "why": "UP-33 实测中位宽 1.4478 < 1.50（metrics/by_metric/msrs_conformal_calibrated.json:aggregate.primary.median_width_mean），且覆盖 0.9007 不动。所以 UP-27 的「宽度目标不可达」只在「零校准行 + 未校准点预测」这一格成立；把 UP-26 的 EB 校准放在 conformal 之前，1.90 的目标不仅可达，还超额。",
+      "action": "§2.26 结论改写为条件句；1.90 标记 SUPERSEDED（不改历史数字），新目标写 1.4478 实测值并注明协议是 n_cal=10 的 split-conformal。UP-27 的 ACI 结论（0.9106 覆盖 / 2.0572 宽度）不受影响。"
     }
   ],
   "sequence": {
@@ -429,7 +436,7 @@
       "id": "UP-35",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "LOMO 少样本适配：k 行能不能把 0.5974 推到 0.65",
       "question": "LOMO 的 0.5974 是零样本 AUC。新金属进场时至少有 k 个已测化合物。把它们放进训练（而不是只做后处理），AUC 能到多少？",
       "why_now": "DP-11 关闭的是「换损失 / 换主干」这条训练侧路线。少样本适配是另一条机制：不动损失与主干，只让 k 行进入训练。按 reopen_rule 机制不同允许重开一次（DP-12），门槛新写。",
@@ -451,9 +458,27 @@
         "theorem": "shift 臂的 AUC 与 k=0 逐位相同（差 <1e-6）",
         "monotone": "5 个 k 点里 ≥4 个不降"
       },
-      "kill": "k=10 <0.62 ⇒ LOMO 线第三次、也是最后一次关闭。",
+      "kill": {
+        "triggered": true,
+        "value": 0.5897,
+        "rule": "finetune at k=10 < 0.62 closes the LOMO line for the third and last time",
+        "consequence": "LOMO 线按 DP-12 永久关闭；三个机制（换损失 +0.0003 / 换主干 −0.0485 / 加 k 行 −0.0078@k10）都已失败"
+      },
       "cost": "GPU0 ~25 min（50 次训练）+ CPU 10 min",
-      "device": "cuda:0"
+      "device": "cuda:0",
+      "verdict": "FAIL",
+      "headline": "k 曲线 0.5975 / 0.5934 / 0.5897 / 0.5804 / 0.6028（k=0/5/10/20/50）；k=10 0.5897 < 0.62 ⇒ kill 触发；k=50 只买到 +0.0053，离 0.65 的 0.0526 还差 90%；k=0 复现 0.5975（0.5974±0.01）；shift 定理差 5.75e-07",
+      "gate_pass": false,
+      "note": "只评分 Ru/Ir 两折（其余三折 <200 唯一化合物、AUC 标准误 0.08–0.10）。五个 k 点的测试集不同（k 行被移出），曲线不是配对比较。CUDA 非确定性 ⇒ k=0 的容差在跑之前冻结为 0.01。唯一未做的版本是「设计过的 k 行」（不是均匀抽样），未跑。",
+      "artifacts": [
+        "metrics/by_metric/msrs_lomo_kcal.json",
+        "molmetal/scripts/msrs_lomo_kcal.py",
+        "configs/msrs_lomo_kcal_k0.yaml",
+        "configs/msrs_lomo_kcal_k5.yaml",
+        "configs/msrs_lomo_kcal_k10.yaml",
+        "configs/msrs_lomo_kcal_k20.yaml",
+        "configs/msrs_lomo_kcal_k50.yaml"
+      ]
     },
     {
       "id": "UP-36",
@@ -489,7 +514,7 @@
       "id": "UP-37",
       "priority": "P2",
       "wave": 3,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "复核与主表重排（第五轮）",
       "question": "五个包的新数字进来后，主表、索引、catalog 还自洽吗？哪些旧标签要改？",
       "why_now": "UP-32 的主表是 55 行快照；本轮新增 3 个 artifact 后必须重跑，否则文档开始撒谎。",
@@ -508,7 +533,17 @@
       },
       "kill": "任一数字无法标注估计目标，从主表移除而不是猜。",
       "cost": "CPU ~40 min",
-      "device": "cpu"
+      "device": "cpu",
+      "verdict": "PASS",
+      "headline": "主表 71 行（pooled 42 / per_pair 9 / conditional 10 / edge_level 7 / centered 3；yes 42 / partial 21 / no 8），71/71 交叉核对、0 orphan、0 mismatch；registry 492 条 metrics、0 stale；test_predictive_line_index 310 passed",
+      "gate_pass": true,
+      "note": "本轮新增 4 条 catalog 条目（§6.190 UP-34 / §6.191 UP-33 / §6.192 UP-35），累计 247、ACTIVE 203。DP-13 裁 NO（前提不成立）、DP-14 裁 YES（1.4478 < 1.50）。",
+      "artifacts": [
+        "metrics/by_metric/msrs_main_table.json",
+        "docs/PREDICTIVE_LINE_MAIN_TABLE.md",
+        "docs/PREDICTIVE_LINE_INDEX.md",
+        "docs/HONEST_NEGATIVE_CATALOG.md"
+      ]
     }
   ],
   "open_decisions": [
@@ -537,19 +572,26 @@
     "done": [
       "UP-33",
       "UP-34",
-      "UP-36"
-    ],
-    "open": [
       "UP-35",
+      "UP-36",
       "UP-37"
     ],
+    "open": [],
     "note": "第五轮 5 个包，三波。门槛冻结于 2026-10-23T03:20+08:00，早于任何结果。",
     "wave_1_verdicts": {
       "UP-33": "PARTIAL",
       "UP-34": "FAIL"
     },
     "wave_2_verdicts": {
-      "UP-36": "PASS"
-    }
+      "UP-36": "PASS",
+      "UP-35": "FAIL"
+    },
+    "wave_3_verdicts": {
+      "UP-37": "PASS"
+    },
+    "closed_lines": [
+      "metal_out 金属级 EB（UP-34 kill）",
+      "LOMO 少样本适配（UP-35 kill，按 DP-12 永久关闭）"
+    ]
   }
 }

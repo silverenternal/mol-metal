@@ -1,0 +1,401 @@
+{
+  "artifact": "msrs_lomo_kcal",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 metal extrapolation with k measured rows (UP-35)",
+  "generated_utc": "2026-10-22T20:56:50+00:00",
+  "provenance": {
+    "trainer": "molmetal/scripts/train_metal_lomo_wasserstein.py",
+    "configs": [
+      "configs/msrs_lomo_kcal_k0.yaml",
+      "configs/msrs_lomo_kcal_k5.yaml",
+      "configs/msrs_lomo_kcal_k10.yaml",
+      "configs/msrs_lomo_kcal_k20.yaml",
+      "configs/msrs_lomo_kcal_k50.yaml"
+    ],
+    "script": "molmetal/scripts/msrs_lomo_kcal.py",
+    "git_commit": "c88cb4214fcd32cf5e53f3f54004989557b7fe9f",
+    "sweep_log": "molmetal/reports/up35_lomo_kcal/sweep.log"
+  },
+  "design": {
+    "cohort": "molmetal/data/metal_lomo.csv, default 24h snapshot, collapsed to one row per ligand within a metal",
+    "folds": [
+      "Ru",
+      "Ir"
+    ],
+    "why_these_folds": "the two folds with >= 200 unique compounds in the resolvability audit; Os/Rh/Re are below the resolution floor and their AUC is noise",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "k_grid": [
+      0,
+      5,
+      10,
+      20,
+      50
+    ],
+    "epochs": 30,
+    "learner": "D-MPNN multitask + Wasserstein (the published LOMO model)",
+    "support_selection": "uniform draw inside the splitter, seeded by the run seed, drawn after the ligand-leakage rule",
+    "gate_frozen_at": "2026-10-23T03:20+08:00",
+    "reopened_under": "DP-12 reopen_rule: different mechanism from DP-11 (rows, not loss or backbone); fresh gate"
+  },
+  "per_k": {
+    "0": {
+      "k": 0,
+      "per_fold": {
+        "Ru": {
+          "auc_per_seed": [
+            0.6201,
+            0.567,
+            0.6125,
+            0.579,
+            0.58
+          ],
+          "auc_mean": 0.5917,
+          "auc_sd": 0.0232,
+          "n_test": 3668,
+          "n_train": 1442,
+          "pos_rate_test": 0.2628,
+          "elapsed_seconds": 68.9
+        },
+        "Ir": {
+          "auc_per_seed": [
+            0.5902,
+            0.6287,
+            0.5963,
+            0.5969,
+            0.6036
+          ],
+          "auc_mean": 0.6032,
+          "auc_sd": 0.0151,
+          "n_test": 1242,
+          "n_train": 3626,
+          "pos_rate_test": 0.4485,
+          "elapsed_seconds": 104.5
+        }
+      },
+      "mean_auc": 0.5975,
+      "n_rows_moved": {
+        "Ru": 0,
+        "Ir": 0
+      }
+    },
+    "5": {
+      "k": 5,
+      "per_fold": {
+        "Ru": {
+          "auc_per_seed": [
+            0.5923,
+            0.5702,
+            0.5786,
+            0.5887,
+            0.5804
+          ],
+          "auc_mean": 0.582,
+          "auc_sd": 0.0087,
+          "n_test": 3663,
+          "n_train": 1447,
+          "pos_rate_test": 0.2629,
+          "elapsed_seconds": 55.2
+        },
+        "Ir": {
+          "auc_per_seed": [
+            0.6121,
+            0.5898,
+            0.6225,
+            0.5883,
+            0.6114
+          ],
+          "auc_mean": 0.6048,
+          "auc_sd": 0.0151,
+          "n_test": 1237,
+          "n_train": 3631,
+          "pos_rate_test": 0.4479,
+          "elapsed_seconds": 96.4
+        }
+      },
+      "mean_auc": 0.5934,
+      "n_rows_moved": {
+        "Ru": 5,
+        "Ir": 5
+      }
+    },
+    "10": {
+      "k": 10,
+      "per_fold": {
+        "Ru": {
+          "auc_per_seed": [
+            0.5931,
+            0.5814,
+            0.5733,
+            0.5676,
+            0.6153
+          ],
+          "auc_mean": 0.5861,
+          "auc_sd": 0.0189,
+          "n_test": 3658,
+          "n_train": 1452,
+          "pos_rate_test": 0.2627,
+          "elapsed_seconds": 65.8
+        },
+        "Ir": {
+          "auc_per_seed": [
+            0.6054,
+            0.5886,
+            0.5977,
+            0.5912,
+            0.5831
+          ],
+          "auc_mean": 0.5932,
+          "auc_sd": 0.0086,
+          "n_test": 1232,
+          "n_train": 3636,
+          "pos_rate_test": 0.4481,
+          "elapsed_seconds": 98.6
+        }
+      },
+      "mean_auc": 0.5897,
+      "n_rows_moved": {
+        "Ru": 10,
+        "Ir": 10
+      }
+    },
+    "20": {
+      "k": 20,
+      "per_fold": {
+        "Ru": {
+          "auc_per_seed": [
+            0.5811,
+            0.6036,
+            0.5606,
+            0.5797,
+            0.5954
+          ],
+          "auc_mean": 0.5841,
+          "auc_sd": 0.0165,
+          "n_test": 3648,
+          "n_train": 1462,
+          "pos_rate_test": 0.2623,
+          "elapsed_seconds": 65.3
+        },
+        "Ir": {
+          "auc_per_seed": [
+            0.573,
+            0.5933,
+            0.5549,
+            0.5648,
+            0.5976
+          ],
+          "auc_mean": 0.5767,
+          "auc_sd": 0.0183,
+          "n_test": 1222,
+          "n_train": 3646,
+          "pos_rate_test": 0.4484,
+          "elapsed_seconds": 99.7
+        }
+      },
+      "mean_auc": 0.5804,
+      "n_rows_moved": {
+        "Ru": 20,
+        "Ir": 20
+      }
+    },
+    "50": {
+      "k": 50,
+      "per_fold": {
+        "Ru": {
+          "auc_per_seed": [
+            0.6275,
+            0.6178,
+            0.6085,
+            0.5607,
+            0.6142
+          ],
+          "auc_mean": 0.6057,
+          "auc_sd": 0.0261,
+          "n_test": 3618,
+          "n_train": 1492,
+          "pos_rate_test": 0.2626,
+          "elapsed_seconds": 61.1
+        },
+        "Ir": {
+          "auc_per_seed": [
+            0.595,
+            0.6217,
+            0.6073,
+            0.5728,
+            0.6026
+          ],
+          "auc_mean": 0.5999,
+          "auc_sd": 0.018,
+          "n_test": 1192,
+          "n_train": 3676,
+          "pos_rate_test": 0.4497,
+          "elapsed_seconds": 104.5
+        }
+      },
+      "mean_auc": 0.6028,
+      "n_rows_moved": {
+        "Ru": 50,
+        "Ir": 50
+      }
+    }
+  },
+  "shift_arm": {
+    "Ru": {
+      "shift": 0.5,
+      "auc_before_mean": 0.5917,
+      "auc_after_mean": 0.5917,
+      "brier_before_mean": 0.3215,
+      "brier_after_mean": 0.411,
+      "per_seed": [
+        {
+          "seed": 0,
+          "auc_before": 0.620077,
+          "auc_after": 0.620078,
+          "abs_diff": 5.754499251553469e-07,
+          "brier_before": 0.316119,
+          "brier_after": 0.405691
+        },
+        {
+          "seed": 1,
+          "auc_before": 0.567009,
+          "auc_after": 0.567009,
+          "abs_diff": 0.0,
+          "brier_before": 0.310684,
+          "brier_after": 0.398928
+        },
+        {
+          "seed": 2,
+          "auc_before": 0.612523,
+          "auc_after": 0.612523,
+          "abs_diff": 0.0,
+          "brier_before": 0.319989,
+          "brier_after": 0.409794
+        },
+        {
+          "seed": 3,
+          "auc_before": 0.578957,
+          "auc_after": 0.578957,
+          "abs_diff": 0.0,
+          "brier_before": 0.327486,
+          "brier_after": 0.416963
+        },
+        {
+          "seed": 4,
+          "auc_before": 0.579985,
+          "auc_after": 0.579985,
+          "abs_diff": 0.0,
+          "brier_before": 0.333359,
+          "brier_after": 0.42386
+        }
+      ]
+    },
+    "Ir": {
+      "shift": 0.5,
+      "auc_before_mean": 0.6032,
+      "auc_after_mean": 0.6032,
+      "brier_before_mean": 0.3,
+      "brier_after_mean": 0.3553,
+      "per_seed": [
+        {
+          "seed": 0,
+          "auc_before": 0.590217,
+          "auc_after": 0.590217,
+          "abs_diff": 0.0,
+          "brier_before": 0.303615,
+          "brier_after": 0.359337
+        },
+        {
+          "seed": 1,
+          "auc_before": 0.628721,
+          "auc_after": 0.628721,
+          "abs_diff": 0.0,
+          "brier_before": 0.285182,
+          "brier_after": 0.338423
+        },
+        {
+          "seed": 2,
+          "auc_before": 0.596269,
+          "auc_after": 0.596269,
+          "abs_diff": 0.0,
+          "brier_before": 0.303258,
+          "brier_after": 0.359082
+        },
+        {
+          "seed": 3,
+          "auc_before": 0.596909,
+          "auc_after": 0.596909,
+          "abs_diff": 0.0,
+          "brier_before": 0.310642,
+          "brier_after": 0.367133
+        },
+        {
+          "seed": 4,
+          "auc_before": 0.603642,
+          "auc_after": 0.603642,
+          "abs_diff": 0.0,
+          "brier_before": 0.297332,
+          "brier_after": 0.352645
+        }
+      ]
+    },
+    "max_abs_auc_diff": 5.754499251553469e-07
+  },
+  "gate": {
+    "frozen_at": "2026-10-23T03:20+08:00",
+    "checks": {
+      "primary_auc_k10": {
+        "value": 0.5897,
+        "threshold": 0.65,
+        "pass": false
+      },
+      "reproduce_k0": {
+        "value": 0.5975,
+        "target": 0.5974,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "shift_theorem": {
+        "max_abs_auc_diff": 5.754499251553469e-07,
+        "tolerance": 1e-06,
+        "pass": true
+      },
+      "monotone": {
+        "curve": [
+          0.5975,
+          0.5934,
+          0.5897,
+          0.5804,
+          0.6028
+        ],
+        "steps": [
+          -0.0041,
+          -0.0037,
+          -0.0093,
+          0.0224
+        ],
+        "non_decreasing_steps": 1,
+        "required": 4,
+        "pass": false
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "finetune at k=10 < 0.62 closes the LOMO line for the third and last time",
+      "value": 0.5897,
+      "triggered": true
+    }
+  },
+  "caveats": [
+    "The k rows are a uniform draw, not a designed plate. A deployment that chooses which compounds to measure may do better.",
+    "The shift arm cannot move AUC by construction. It is included to prove the harness scores what it says it scores, and to show that a post-hoc correction is not an adaptation mechanism.",
+    "Only Ru and Ir are scored. The other three folds have fewer than 200 unique compounds and their AUC standard error is ~0.08-0.10, so a k-curve there would be noise.",
+    "CUDA is not bit-reproducible in this trainer, so k=0 is expected to sit within ~0.01 of the published 0.5974 rather than on it. The tolerance was frozen at that width before the run."
+  ]
+}

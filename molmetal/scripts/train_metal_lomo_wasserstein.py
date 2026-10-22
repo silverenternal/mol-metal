@@ -443,6 +443,46 @@ class WassersteinLOMOSplitter:
     # so the D-MPNN and the XGB probe see the same cohort.
     drop_leaked_ligands: bool = False
     n_leaked_dropped: int = 0
+    # UP-35: k rows of the held-out metal are moved from test into train.
+    # This models a plate that has already been run on the new metal: the
+    # first k compounds are measured, the rest are what the model is asked
+    # about.  0 keeps every historical run byte-identical.
+    support_k: int = 0
+
+    def _apply_support(
+        self,
+        train_idx: np.ndarray,
+        val_idx: np.ndarray,
+        test_idx: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Move k held-out rows into train, after the leakage rule.
+
+        Drawn after the leak drop on purpose: the k rows are the ones a
+        deployment would actually have measured, so they are allowed to carry
+        ligands the leak rule removed from the rest of the training pool.  At
+        least one test row is always kept, and the draw is seeded by the run
+        seed so a (metal, seed, k) triple is reproducible.
+        """
+        k = int(self.support_k)
+        if k <= 0 or len(test_idx) < 2:
+            return train_idx, val_idx, test_idx
+        k = min(k, len(test_idx) - 1)
+        rng = np.random.default_rng(int(self.seed) * 7919 + k)
+        pick = rng.choice(len(test_idx), size=k, replace=False)
+        moved = np.sort(test_idx[pick])
+        keep = np.ones(len(test_idx), dtype=bool)
+        keep[pick] = False
+        logger.info(
+            "support-k: held_out=%s moved %d test rows into train "
+            "(train %d -> %d, test %d -> %d)",
+            self.held_out_metal, k, len(train_idx),
+            len(train_idx) + k, len(test_idx), int(keep.sum()),
+        )
+        return (
+            np.sort(np.concatenate([train_idx, moved])),
+            val_idx,
+            np.sort(test_idx[keep]),
+        )
 
     def _label_array(self, dataset: MetalCytotoxDataset) -> Optional[np.ndarray]:
         """Binary activity label per row, or None if unavailable."""
@@ -571,9 +611,8 @@ class WassersteinLOMOSplitter:
                 # Every row of the target metal's real block is now accounted
                 # for by val or test; train keeps the whole non-Rh pool
                 # (including any synthetic Rh rows, which are the oversample).
-                return SplitResult(
-                    train_idx=train_pool, val_idx=val_idx, test_idx=test_idx
-                )
+                _tr, _va, _te = self._apply_support(train_pool, val_idx, test_idx)
+                return SplitResult(train_idx=_tr, val_idx=_va, test_idx=_te)
             # Degenerate: too few target rows to halve. Fall through to the
             # legacy path rather than emitting an empty val fold.
 
@@ -603,6 +642,8 @@ class WassersteinLOMOSplitter:
         else:
             train_idx = train_pool
             val_idx = np.array([], dtype=np.int64)
+        train_idx, val_idx, test_idx = self._apply_support(
+            train_idx, val_idx, test_idx)
         return SplitResult(train_idx=train_idx, val_idx=val_idx, test_idx=test_idx)
 
 
@@ -984,6 +1025,7 @@ class WassersteinLOMORunner:
         wasserstein_cadence: str = "per-epoch",
         rh_loso_validation: bool = False,
         drop_leaked_ligands: bool = False,
+        support_k: int = 0,
         per_metal_pic50_center: bool = False,
         metal_strip_mode: str = "retain",
         # Wf-R19 Fix 3 — LR schedule. Defaults match the CFM trainer's flag
@@ -1094,6 +1136,7 @@ class WassersteinLOMORunner:
             seed=self.seed,
             rh_loso_validation=bool(rh_loso_validation),
             drop_leaked_ligands=bool(drop_leaked_ligands),
+            support_k=int(support_k),
         )
         self.synthetic_rh_count = int(synthetic_rh_count)
         # Wf-127 P2 — grad-norm clip (mirrors D-MPNN multitask trainer).
@@ -2141,6 +2184,16 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to the 5-metal LOMO CSV.",
     )
     p.add_argument(
+        "--support-k",
+        type=int,
+        default=0,
+        help=(
+            "UP-35: move k rows of the held-out metal from test into train. "
+            "Models a plate already run on the new metal. 0 = historical "
+            "behaviour (zero-shot LOMO)."
+        ),
+    )
+    p.add_argument(
         "--dump-test-scores-dir",
         type=str,
         default=None,
@@ -2519,6 +2572,7 @@ def _run_one(
         model_select=str(getattr(args, "model_select", "last_epoch")),
         rh_loso_validation=bool(getattr(args, "rh_loso_validation", False)),
         drop_leaked_ligands=bool(getattr(args, "drop_leaked_ligands", False)),
+        support_k=int(getattr(args, "support_k", 0)),
         score_dump_dir=getattr(args, "dump_test_scores_dir", None),
         per_metal_pic50_center=bool(
             getattr(args, "per_metal_pic50_center", False)
