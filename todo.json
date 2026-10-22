@@ -1,189 +1,210 @@
 {
-  "schema": "molmetal-todo/v3",
-  "created": "2026-10-21",
+  "schema": "molmetal-todo-v4",
+  "created": "2026-10-22",
   "updated": "2026-10-22",
-  "rewritten": "2026-10-22T12:42+08:00",
-  "supersedes": "molmetal-todo/v2 (UP-1..UP-17，全部完成，条目已删除；结论见 closed_decisions)",
-  "purpose": "第三轮强化。第二轮把问题定位到「配对支持度」，第三轮把它升级为「可识别性」，并对六个弱指标各自换工具而不是换超参。",
+  "rewritten": "2026-10-22T15:45+08:00",
+  "supersedes": "molmetal-todo-v3（UP-18..UP-25 已全部完成并归档到 closed_decisions R10-R13；本轮删除其 work_packages）",
+  "purpose": "第四轮强化。前三轮证明了弱不在估计目标、也不在模型容量：第三轮把六个靶子全部换成了「正确的估计目标」，结果一个都没变强。第四轮换的是三件从未做过的事 —— 部署时用新论文自己的少量行估偏移、在分布漂移下做加权/在线 conformal、用预训练图模型与显式平局模型替换手工指纹与硬标签。",
   "how_to_read": [
-    "先读 north_star + current_position：为什么这轮不再调模型。",
-    "metric_gap_analysis 六行是本轮的全部靶子，每行给出 third_round_target。",
-    "work_packages 的 code_points 是落地位置，gate 是看到结果前写死的门槛。",
-    "closed_decisions 是 UP-1..UP-17 的压缩结论，不再单独维护条目。"
+    "north_star：为什么第四轮不再改估计目标，而改「部署协议 + 表示 + 似然」。",
+    "current_position.baseline_facts：本轮所有门槛的分母，全部有 artifact。",
+    "metric_gap_analysis：七个靶子，每行给 current（MEASURED）、target、lever、artifact。",
+    "work_packages：code_points 是落地位置，gate 在看到结果前写死，kill 触发即关闭该线。",
+    "closed_decisions：R1-R13 是前三轮的压缩结论，不再单独维护条目。"
   ],
   "rules": {
     "truth": "§5.2 每个数字必须能追到 metrics/by_metric/*.json 的路径；没有 artifact 的数字只能标 PROJECTED。",
-    "artifacts": "§5.5 一个包一个 artifact；脚本写 provenance.script + git_commit + source sha256。",
+    "artifacts": "§5.5 一个包一个 artifact；脚本写 provenance.script + git_commit。",
     "launch": "§5.11 训练/推理只从 YAML 启动；新 flag 必须先跑 50 步 CPU smoke（§5.7）。",
-    "paper": "§5.3 paper/* 冻结。本轮只产出 metrics 与 docs，不写正文。",
+    "paper": "§5.3 paper/* 冻结。本轮只产出 metrics 与 docs。",
     "git": "只允许 git commit -- <path>；禁止 reset/checkout --/stash/add -A。",
     "env": "单 venv .venv；CPU 任务 OMP_NUM_THREADS=1；GPU 只用 cuda:0；CUDA D-MPNN 需 --deterministic。",
     "language": "面向用户的输出用中文。",
-    "gate_freeze": "门槛在 work_packages 里写死，看到结果后不得改数值；只允许新增 amendment_note（时间 + 理由）。"
+    "gate_freeze": "门槛在 work_packages 里写死，看到结果后不得改数值；只允许新增 amendment_note（时间 + 理由）。",
+    "reopen_rule": "被 kill 的线只在「机制不同」时才允许重开一次，且必须新写门槛并说明为什么不是同一个杠杆在换参数。本轮仅 UP-29 走这条（DP-9）。",
+    "learner_match": "任何与历史数字比较的实验，必须先用同一代码路径复现历史基线，否则只报「同学习器配对差」，不得用绝对门槛做 kill（UP-24 的教训）。"
   },
   "north_star": {
-    "thesis": "六个弱指标里没有一个弱在模型容量上，全部弱在**估计目标与数据结构不匹配**。金属图是一棵 4 节点树（Ru 连 Os、Rh；Rh 连 Ir），树上任何 leave-one-metal-out 都会让留出节点失去全部边，所以**绝对金属水平的 metal_out R² 不可识别**——它一直是负的，不是因为模型差。第二轮的结论（交互不可跨对迁移）是同一件事的另一个切面。第三轮不再调模型：把不可识别的目标换掉，对可识别的目标换对的统计工具。",
-    "phase": "可识别性阶段（2026-10-22 起）",
+    "thesis": "前三轮的共同失败模式不是「靶子选错」也不是「模型太小」，而是**我们把一个部署问题当成了训练问题**。论文级偏移 sd 0.24 不可从论文描述预测（UP-21），但可以从该论文自己的 10 行里估出来 —— 这是部署时的信息，训练时被整篇留出扔掉了。覆盖在整篇留出下必然失守（UP-20），因为 conformal 的可交换性假设被论文漂移破坏 —— 正确工具是加权/在线 conformal，不是更复杂的分位数模型。排序与 LOMO 的瓶颈则是**似然与表示**：平局被当缺失（UP-23），指纹被当分子（DOI 线从未跑过主模型）。",
+    "phase": "部署协议阶段（2026-10-22 起）",
     "current_goal": [
-      "把「支持度」升级为图上的可识别性判据，给出每个指标的估计目标是否可识别。",
-      "对不可识别的目标（metal_out 绝对 R²）换成可识别的目标（去中心化 R² / 边级 Δ）。",
-      "对可识别但弱的四个指标各换一个专用工具：CQR、论文元特征偏移、配对 k-shot、层级 BT / pairwise loss。"
+      "把「新论文需要多少行才能校准」变成一个可测量的曲线，而不是一个不可预测的偏移模型。",
+      "把 conformal 的失效归因到可交换性被破坏，并用加权 conformal / ACI 在漂移下恢复覆盖。",
+      "把 DOI 线与 LOMO 线的主干换成 in-house D-MPNN，使绝对数字与主模型可比。",
+      "把平局当第三个结果（Davidson）而不是并成一类；把「完全同配体」放宽到「匹配分子对」。"
     ],
     "decision_rule": {
-      "identifiability_first": "UP-19 若判绝对水平不可识别，则 metal_out 主指标改为「可识别行上的金属内去中心化 R²」，绝对 R² 降为附录数字并注明不可识别。这不是放宽标准，是改正估计目标。",
-      "one_tool_per_metric": "每个弱指标只允许换一次工具；同一工具不许在多个指标上反复试。",
-      "kill_is_final": "每个包都有 kill 线；触发后该线关闭，本轮不再投入。",
-      "gates_frozen_at": "2026-10-22T12:42+08:00 — 写于 UP-18..UP-25 任何结果产生之前。",
-      "gate_author": "agent 预注册；用户目标仍是「把弱指标做强」，未参与设定数值。"
+      "one_lever_per_metric": "每个指标本轮只允许一个杠杆；杠杆必须是机制层面的（协议/表示/似然），不是超参。",
+      "kill_is_final_except_reopen": "kill 触发即关闭，除非走 reopen_rule 且机制不同。",
+      "learner_match": "绝对门槛只在同学习器复现历史基线后才可用于 kill；否则只报配对差。",
+      "gates_frozen_at": "2026-10-22T15:45+08:00 — 写于 UP-26..UP-32 任何结果产生之前。",
+      "gate_author": "agent 预注册；用户指令为「不接受现状、要更强」，未参与设定数值。"
     }
   },
   "current_position": {
-    "identifiability_facts": [
-      "金属图（potency，有配对组的三条边）：Ru–Os、Ir–Rh、Ru–Rh。节点 {Ru, Os, Ir, Rh}，边 3 条 ⇒ **树**（无环）。Ru 与 Rh 各度 2，Os 与 Ir 各度 1。删 Ru 或 Rh 会把图断开成两个分量；删 Ir 或 Os 仍连通。",
-      "按 t = |mean Δ| / (noise_sd/√n) 排序（独立同方差近似，未做 design-effect 校正）：Ru–Os 11.14（354 组）、Ru–Rh 9.54（15 组）、Ir–Rh **1.50**（170 组）。",
-      "⇒ **UP-10 的 n≥20 判据把信噪比最高的一条边（Ru–Rh）判为 UNSUPPORTED，把 t=1.50、均值与 0 不可区分的边（Ir–Rh）判为 OK。** 判据选错了维度：组数不是精度。按精度，有效边只有两条，Ir 在图上孤立。",
-      "GLS 精度份额（1/SE²）：Ru–Os 0.859、Ir–Rh 0.131、Ru–Rh 0.010。Ru–Os 一条边占 86% 的金属水平信息。"
+    "baseline_facts": [
+      "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811（5 seed）。这是要打的第一个靶。",
+      "论文级偏移：测试论文 offset sd 0.2400、平均 |offset| 0.2255；元特征 LOPO ridge R² −0.0259（UP-21）。偏移真实但不可由描述预测。",
+      "校准：global 覆盖 0.9004 / 中位宽 2.0052；CQR 0.9000 / 1.9871；difficulty 0.8767 / 1.8981；最差金属组 0.8716（UP-20）。宽度目标已按 DP-7 撤回。",
+      "排序：lambdarank balanced 0.5985 [0.5262, 0.6663]（360 对）；deadzone 标签把它降到 0.5612（UP-23）；无单一金属对 Wilson 下界 >0.5（UP-16）。",
+      "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538，D-MPNN+Wasserstein）；线性特征模型 BCE 0.5449 / pairwise_edge 0.5529（UP-24，学习器错配）。",
+      "metal_out：绝对 R² −0.0734 不可识别；可识别行仅 5.47%（1,151/21,045），其上 R²_abs 0.3299 / 去中心化 0.3806（UP-19）。",
+      "k-shot：行级采样 k=50、n_paired=3 时 3/5 金属 R²>0（Rh +0.0631 / Os +0.2830 / Re +0.1745），但 n_paired 0→3 不单调（UP-22）。",
+      "语料：21,045 行 potency / 5 金属 / 3 条观测金属边（树）；跨金属配体 3.64%；Re 不参与任何配对组。"
     ],
-    "support_facts": [
-      "配对覆盖：539 组 / 1,175 行 / 204 个配体，只覆盖 3 个金属对。跨 ≥2 金属的配体占 **3.64%**（217/5,965）。10 个金属对里 7 个零证据，Re 不参与任何配对组。",
-      "phototoxicity 0 组配对（479 配体无一跨金属）；cisplatin_ratio 169 组，金属对与 potency 相同。",
-      "**配对是论文内现象**：语料层面 5.47% 的行属于跨金属单元，但 DOI 留出下只有 **0.57%（120/21,045）** 的测试行在训练折里有配对证据，且只占 SSE 的 0.49%（UP-14）。",
-      "**交互不可跨对迁移**：201 个跨金属配体每一个都恰好跨 2 个金属，三个双金属组的配体集合两两不相交 ⇒ Δ 矩阵完整行 = 0，秩-1 分解不可识别；退化为配体不相交的跨对迁移后 R²_Δ 全负（−0.0952 / −0.2256），符号 CI 全含 0.5（UP-11）。",
-      "**交互在金属被观测到时是真实收益**：配体分组下自由交互 0.2519 vs 加性 0.2128（+0.0391）；同一自由模型在 metal_out 是 −0.097。支持受限的秩-1 交互 0.1954（−0.0174）（UP-12）。",
-      "**shape 里结构与论文批次各自都超过 50%**：配体×金属 0.8015 [0.7884, 0.8151]（结构优先）vs 论文×金属 0.5484 [0.5801, 0.6297]（批次优先），各自在自己优先的顺序下都 >0.5、在对方顺序下都归 0；细胞×金属两序皆 0（UP-17）。",
-      "**排序 100% 在支持组内是定义使然**：排序对就是同组两金属两行。逐对 Wilson CI 没有一对排除 0.5（Os–Ru 0.5807 [0.4990,0.6548] n=258；Ir–Rh 0.5600 [0.4799,0.6190] n=86；Rh–Ru 0.5000 n=16，1 个负例）（UP-16）。"
-    ],
-    "measured_facts": [
-      "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811。scaffold 0.4733 / year 0.3946。ligand 0.5596 是内插，不可当泛化报。",
-      "metal_out 绝对 R²：−0.0734（descriptors），4/5 金属为负（msrs_lomo_surface.json:/endpoints/potency/splits/metal_out/aggregate/descriptors）。**注意：去中心化 R² 目前没有任何 artifact 记录**——旧版 todo 里的「2/5 金属 >0.10」无法追溯，已删除；UP-19 是本项目第一次实测该量，因此它的门槛按 within_metal 的同模型水平（0.2128，msrs_two_stage.json:/within_metal/aggregate/additive）设定，而不是按一个不存在的基线。",
-      "失败位置：Murphy 分解 offset 0.045-0.100、scale 0.198-0.272、shape 0.653-0.757。shape = 排序，不是水平。",
-      "校准：DOI 留出 α=0.10 覆盖 0.9004、中位宽 2.0052 log10；metal-Mondrian 覆盖 0.9002（无效）；difficulty-normalized 覆盖 0.8789、宽 1.9195。多金属子群覆盖 0.8096。",
-      "LOMO：可解析子集 AUC 0.5974（Ru 1,311 / Ir 538），seed 集成 0.5946。",
-      "k-shot：k=50 时可用金属 1/5。",
-      "噪声地板 σ=0.2091 log10（msrs_variance_decomposition.json）；UP-17 用未去重表测得 σ²=0.0437、df=371。",
-      "金属图（UP-18）：观测子图 4 节点 3 边、是树、无环，Re 度数 0。配体簇校正后 t 为 Ru–Os 3.364、Ru–Rh 2.577、Ir–Rh 0.958；精度份额 Ru–Os 0.5903 / Ir–Rh 0.4044 / Ru–Rh 0.0054。「按效应」={Ru–Os, Ru–Rh} 与「按精度」={Ru–Os, Ir–Rh} 不是同一集合。GLS 水平 t 全 <1.8，树上 node-splitting 无定义（msrs_metal_graph.json）。",
-      "metal_out 的真实构成（UP-19）：可识别行（同 (配体, 细胞系) 在训练金属下有测量）只占 5.47%（1,151/21,045），其上 R²_abs=0.3299、去中心化 0.3806；其余 94.5% 上 R²=−0.0913。headline −0.0734 是这两块的加权，不是模型全面失效（msrs_identifiability.json）。去中心化用留出标签，是 oracle-offset 上界。",
-      "校准（UP-20，5 seed）：CQR 覆盖 0.9000 / 中位宽 1.9871 / 最差金属组 0.8716；metal-Mondrian 0.8999 / 1.9802 / 0.8961；global 0.9003 / 2.0073；difficulty 0.8767 / 1.8981。⇒ 覆盖可修、宽度不可修（msrs_cqr.json）。",
-      "论文偏移（UP-21，5 seed）：base DOI R² 0.3670 → ridge_design 0.3557；测试论文偏移 sd 0.2400、平均 |偏移| 0.2255；LOPO ridge R² −0.0259；泄漏臂 0.5405（msrs_paper_meta_offset.json）。",
-      "配对 k-shot（UP-22，5 seed，k=50）：n_paired=3 时 Rh +0.0631 / Os +0.2830 / Re +0.1745（3/5 > 0）；n_paired=0 时 Rh +0.0709 / Re +0.1734；Re 配对行 0；跨金属平均 R² 0.0407→0.0306 不单调（msrs_paired_kshot.json）。",
-      "deadzone（UP-23，5 seed）：τ = Ru–Os 0.2264 / Ir–Rh 0.4017 / Ru–Rh 0.4369；651 对保留 315、评分集 360 保留 315。lambdarank 0.5985 → 0.5612（保留子集 0.6050 → 0.5615）；279/1,586 组整组同 label。BT 臂 0.4631–0.5411（msrs_ranking_hierarchical.json）。",
-      "LOMO pairwise（UP-24，5 seed，2,010 行，折 Ru 1,311 / Ir 538）：BCE 0.5449、pairwise 0.5450、pairwise_edge 0.5529（Ru/Ir 均值）；五金属均值 BCE 0.6185 / edge 0.5352（msrs_lomo_pairwise.json）。",
-      "可识别性分层主表（UP-25）：43 个 headline 数字，IDENTIFIABLE yes 21 / partial 17 / no 5；不可识别的 5 个是 G.ligand.ecfp4 0.5596、UP14.metal_out_weighted_r2 −0.0734、UP19.pooled_all_r2_abs −0.0640、UP21.lopo_ridge_r2 −0.0259、UP11.complete_case_ligands 0（msrs_main_table.json）。"
+    "deployment_gap": [
+      "所有历史协议都在「整篇留出 + 零校准行」下评估。真实部署里，新论文至少有它的合成/初筛数据可以先测 —— 这个信息从未被用过。",
+      "conformal 的覆盖保证以可交换性为前提；论文漂移恰好破坏它。前三轮都在换条件分位数模型，没有换 conformal 本身。",
+      "DOI 线与 LOMO 线的主干一直是指纹树 / 线性模型，与主模型（in-house D-MPNN）不可比；UP-24 的门槛因此被误用。"
     ]
   },
   "metric_gap_analysis": {
-    "note": "六行。current 是 MEASURED（artifact 见各行）。third_round_target 是这轮要打的靶；estimand_change 说明估计目标是否被改正。",
+    "note": "七行。current 全部 MEASURED（artifact 见行内）。target 是本轮预注册门槛；estimand_change 说明是否换了估计目标。",
     "rows": [
       {
-        "metric": "metal_out 绝对 R²",
-        "current": -0.0734,
-        "target": "不可识别（树图）⇒ 换目标",
-        "third_round_target": "可识别行上的金属内去中心化 R² ≥0.20（参照 within_metal 加性 0.2128），且 ≥3/5 金属 >0.10；该量此前无 artifact，由 UP-19 首次实测",
-        "estimand_change": "是。绝对水平在树上不可识别，继续报它等于用一个测不出来的量当靶。绝对 R² 降为附录并标注 NOT_IDENTIFIABLE。",
-        "lever": "UP-18 图精度 + UP-19 可识别子空间与去中心化重报",
-        "artifact": "msrs_lomo_surface.json"
-      },
-      {
-        "metric": "DOI 留出 R²",
+        "metric": "DOI 留出 R²（n_cal 行自校准）",
         "current": 0.3767,
-        "target": "≥0.42",
-        "third_round_target": "≥0.42（5 seed 均值），且 leave-one-paper-out 的 offset MAE 相对无校正下降 ≥10%",
-        "estimand_change": "否。目标不变，换的是论文偏移的估计方式：不用 DOI identity，用论文级元特征。",
-        "lever": "UP-21 论文元特征偏移模型",
+        "target": "n_cal=10 时 ≥0.45；n_cal=0 复现 0.3670±0.005；7 个 n_cal 点里 ≥5 个单调不降",
+        "estimand_change": "是。从「预测新论文的偏移」改成「用新论文自己的少量行估偏移」——把不可预测量变成可估量。",
+        "lever": "UP-26 每篇论文的 EB 自校准",
         "artifact": "msrs_feature_expansion_5seed.json"
       },
       {
-        "metric": "排序平衡准确率",
+        "metric": "conformal 覆盖 / 宽度（漂移下）",
+        "current": "0.9004 / 2.0052（global）；0.9000 / 1.9871（CQR）",
+        "target": "覆盖 ≥0.90 且中位宽 ≤1.90，最差金属组 ≥0.90",
+        "estimand_change": "是。从「换分位数模型」改成「换 conformal 的可交换性假设」：加权分位 + 在线 α 更新。",
+        "lever": "UP-27 加权 conformal + ACI",
+        "artifact": "msrs_calibration.json"
+      },
+      {
+        "metric": "DOI 留出 R²（D-MPNN 主干）",
+        "current": 0.3811,
+        "target": "≥0.40（5 seed），且必须同时报同划分指纹树基线",
+        "estimand_change": "否。换的是表示：主模型从未在这条线上跑过。",
+        "lever": "UP-28 D-MPNN 作为 DOI 线主干",
+        "artifact": "msrs_feature_fusion.json"
+      },
+      {
+        "metric": "排序 balanced accuracy（平局建模）",
         "current": 0.5985,
-        "target": "≥0.58（已过）",
-        "third_round_target": "≥0.65，且 ≥2 个金属对的 Wilson 下界 >0.5（当前 0 个）",
-        "estimand_change": "否。换的是标签：|Δ| 小于噪声 SD 的对是噪声标签，不该当二分类硬标签。",
-        "lever": "UP-23 deadzone 标签 + 层级 Bradley-Terry",
+        "target": "≥0.62 且配体簇 bootstrap 下界 >0.5",
+        "estimand_change": "是。平局从「并成一类」改成「第三个结果」（Davidson δ），保留全部 651 对的梯度。",
+        "lever": "UP-29 Davidson 三项模型",
         "artifact": "msrs_listwise_ranker.json"
       },
       {
-        "metric": "LOMO AUC（可解析子集）",
+        "metric": "metal_out 可识别行占比 / Δ R²",
+        "current": "5.47% / 0.3299",
+        "target": "跨金属 MMP 对数 ≥3× 精确配体对数；留出 MMP 上 Δ R² ≥0.20",
+        "estimand_change": "是。匹配键从「完全相同配体」放宽到「差一个转化的匹配分子对」。",
+        "lever": "UP-30 跨金属 MMP",
+        "artifact": "msrs_identifiability.json"
+      },
+      {
+        "metric": "LOMO AUC（D-MPNN + pairwise 损失）",
         "current": 0.5974,
-        "target": "≥0.63",
-        "third_round_target": "≥0.63（5 seed 均值），Ru 与 Ir 两个子集都不低于 0.60",
-        "estimand_change": "否。换的是损失：AUC 是排序指标，BCE 不直接优化它。",
-        "lever": "UP-24 pairwise logistic + 边感知负采样",
+        "target": "Ru/Ir 均值 ≥0.63，且 BCE 在同代码路径上复现 0.5974±0.01",
+        "estimand_change": "否。修的是 UP-24 的学习器错配：同一主干，只换损失。",
+        "lever": "UP-31 D-MPNN 内 pairwise 损失",
         "artifact": "lomo_resolvability_audit.json"
       },
       {
-        "metric": "conformal 中位宽度 / 覆盖",
-        "current": "宽度 2.0183 / 最差子群覆盖 0.8956（边际覆盖 0.8996）",
-        "target": "≤1.80 / ≥0.90",
-        "third_round_target": "中位宽 ≤1.80、边际覆盖 ≥0.90、最差金属组覆盖 ≥0.87",
-        "estimand_change": "否。difficulty-normalized 已经把宽度降到 1.9195 但覆盖掉到 0.8789；CQR 直接建模条件分位数，不该有这种交换。",
-        "lever": "UP-20 CQR + 金属 Mondrian 校准",
-        "artifact": "msrs_calibration_shift.json:/gate/width, /variants/cohort_metal"
-      },
-      {
-        "metric": "k-shot 可用金属数（k=50）",
-        "current": "1/5",
-        "target": "≥3/5",
-        "third_round_target": "k=50、n_paired=3 时 ≥3/5 金属 R² >0",
-        "estimand_change": "是。原来的 k 个点全是无配对的点，只能估水平；改成显式控制「k 个点里有几个带配对」，把信息量当自变量。",
-        "lever": "UP-22 配对 k-shot 扫描",
-        "artifact": "msrs_meta_kshot.json"
+        "metric": "主表可识别性标注",
+        "current": "43 行：yes 21 / partial 17 / no 5",
+        "target": "新增 7 行全部带 ESTIMAND + IDENTIFIABLE；与索引机器校验逐个一致",
+        "estimand_change": "否。复核包。",
+        "lever": "UP-32 复核与主表重排",
+        "artifact": "msrs_main_table.json"
       }
     ],
     "gates": {
-      "frozen_at": "2026-10-22T12:42+08:00",
+      "frozen_at": "2026-10-22T15:45+08:00",
       "rule": "结果产生后不得改数值；只允许在结果产生前写 amendment_note（时间 + 理由）。"
     }
   },
   "literature": {
-    "note": "2026-10-22 检索。只列被本轮 work_package 直接使用的条目。id_verified=true 表示 arXiv ID 或卷页确定；false 表示结论来自检索摘要、引用前需补全。",
+    "note": "2026-10-22 检索。只列被本轮 work_package 直接使用的条目。id_verified=false 表示结论来自检索摘要、引用前需补全卷页。",
     "entries": [
       {
-        "id": "nma-graph",
-        "cite": "Rücker G. Network meta-analysis, electrical networks and graph theory. Res Synth Methods 2012;3(4):312-324.",
+        "id": "weighted-cp",
+        "cite": "Tibshirani RJ, Barber RF, Candès EJ, Ramdas A. Conformal Prediction Under Covariate Shift. NeurIPS 2019. arXiv:1904.06019",
         "id_verified": true,
-        "finding": "把多处理比较网络映射成电路：节点电位 = 处理效应，边电导 = 精度。只有连通分量内的对比可估；不连通则不可识别，与样本量无关。",
-        "used_by": "UP-18, UP-19",
-        "why": "这正是我们的情形：金属是处理、配对组是试验、论文是研究。它给出「不可识别」的严格判据，而不是「支持度低」这种模糊说法。"
+        "finding": "可交换性被破坏时，用似然比 w(x)=dP_test/dP_cal 加权校准分数，仍得到有限样本覆盖；权重只依赖 x，不需要 y。",
+        "used_by": "UP-27",
+        "why": "论文漂移正是协变量漂移。UP-21 证明元特征预测不了 y 的偏移，但这不妨碍它估计「这篇论文像不像校准集」——加权 conformal 只要后者。"
       },
       {
-        "id": "nma-indirect",
-        "cite": "Salanti G. Indirect and mixed-treatment comparison, network, or multiple-treatments meta-analysis. Res Synth Methods 2012;3(2):80-97.",
+        "id": "aci",
+        "cite": "Gibbs I, Candès EJ. Adaptive Conformal Inference Under Distribution Shift. NeurIPS 2021. arXiv:2106.00170",
         "id_verified": true,
-        "finding": "间接比较依赖传递性假设；在无环网络上间接估计唯一，在成环网络上可用 node-splitting 检验一致性。",
-        "used_by": "UP-18",
-        "why": "我们的图是树，没有环 ⇒ 没有间接路径，也没有一致性可检验。这个「没有」本身是结论。"
+        "finding": "在线更新 α_{t+1}=α_t+γ(α−err_t)，在任意（含对抗）分布漂移下长期覆盖频率收敛到 1−α；步长 γ 控制适应速度与方差。",
+        "used_by": "UP-27",
+        "why": "论文有年份，可以按年排序成一条流。整篇留出等价于每次遇到一个新分布，ACI 正是为这个设定设计的。"
+      },
+      {
+        "id": "davidson-ties",
+        "cite": "Davidson RR. On Extending the Bradley-Terry Model to Accommodate Ties in Paired Comparison Experiments. JASA 1970;65(329):317-328",
+        "id_verified": true,
+        "finding": "在 BT 上加一个平局参数 δ：P(tie)=δ√(πiπj)/(πi+πj+δ√(πiπj))，P(i≻j)=πi/(πi+πj+δ√(πiπj))。平局是第三个结果，不是缺失。",
+        "used_by": "UP-29",
+        "why": "UP-23 把 |Δ|<τ 的对并成一个 label，结果 17.6% 的组梯度归零、balanced 掉 0.037。Davidson 保留这些对并让它们只约束 δ。"
+      },
+      {
+        "id": "mmpa",
+        "cite": "Griffen E, Leach AG, Robb GR, Warner DJ. Matched Molecular Pairs as a Medicinal Chemistry Tool. J Med Chem 2011;54(22):7739-7750",
+        "id_verified": false,
+        "finding": "把分子按单切分成 (core, transform)，同 core 不同 transform 的两两构成 MMP；跨系列 MMP 是局部构效关系最稳的估计单位。",
+        "used_by": "UP-30",
+        "why": "metal_out 的可识别行只要求「完全相同配体」，把 5.47% 卡死。MMP 把匹配键放宽到「同 core」，可识别的 Δ 对数应成倍增加。"
+      },
+      {
+        "id": "rxrx1",
+        "cite": "Taylor J, et al. RxRx1: A Dataset for Evaluating Experimental Batch Correction Methods. arXiv:2301.05768",
+        "id_verified": true,
+        "finding": "以「未见实验批次」为留出单位的基准；批次校正方法在未见批次上普遍退化，且退化幅度与批次规模相关。",
+        "used_by": "UP-26, UP-27",
+        "why": "论文就是我们的实验批次。它给出「按批次留出 + 少量该批次样本校准」这个评估范式，正是 UP-26 要做的事。"
+      },
+      {
+        "id": "meta-catalysis",
+        "cite": "A meta-learning approach for selectivity prediction in asymmetric catalysis. Nat Commun 2025;16:3599. doi:10.1038/s41467-025-58854-8",
+        "id_verified": true,
+        "finding": "把「底物/配体/条件」切成任务，用元学习在少量新条件样本上快速适配，显著优于对条件 one-hot 的直接回归。",
+        "used_by": "UP-26",
+        "why": "与我们「新论文=新条件」同构；它说明少量样本适配是可行路线，而不是只能靠域泛化。"
+      },
+      {
+        "id": "metal-ml-frei",
+        "cite": "Using Machine Learning to Predict the Antibacterial Activity of Ruthenium Complexes. Angew Chem 2024. doi:10.1002/anie.202317901",
+        "id_verified": true,
+        "finding": "金属配合物活性预测的同期工作，规模小、单一金属、单一终点；未做跨金属留出。",
+        "used_by": "全文对照",
+        "why": "说明我们的 LOMO 难度来自协议而不是数据量；也说明 D-MPNN 主干是这条线的标准选择。"
       },
       {
         "id": "cqr",
         "cite": "Romano Y, Patterson E, Candès EJ. Conformalized Quantile Regression. NeurIPS 2019. arXiv:1905.03222",
         "id_verified": true,
-        "finding": "用分位数回归给上下界，再用 conformity score E=max(q_lo−y, y−q_hi) 的 (1−α) 分位做扩张，得到有限样本边际覆盖且宽度随 x 自适应。",
-        "used_by": "UP-20",
-        "why": "现有 difficulty-normalized 是手工的 σ̂ 代理，覆盖掉到 0.8789；CQR 把宽度自适应交给分位数模型，覆盖由 conformal 保证。"
-      },
-      {
-        "id": "thurstone",
-        "cite": "Mantiuk R, Tomaszewska A, Mantiuk R. Comparison of four subjective methods for image quality assessment. Computer Graphics Forum 2012;31(8):2478-2491.",
-        "id_verified": true,
-        "finding": "Thurstone 模型 V 可处理不完整、不平衡的成对比较，并给出每对比较次数的置信区间；平局（tie）需要显式建模。",
-        "used_by": "UP-23",
-        "why": "我们的 360 对是高度不平衡的（Os–Ru 258 / Ir–Rh 86 / Rh–Ru 16），且大量 |Δ| 落在噪声内相当于平局。逐对独立估计浪费了这种结构。"
+        "finding": "分位数回归 + conformal 扩张，宽度自适应、边际覆盖有限样本成立（前提仍是可交换）。",
+        "used_by": "UP-27（对照臂）",
+        "why": "UP-20 已证它在我们的漂移下拿不到宽度；本轮把它当对照，用来分离「分位数模型不够好」与「可交换性被破坏」。"
       },
       {
         "id": "wilds",
-        "cite": "Koh PW, Sagawa S, Marklund H, et al. WILDS: A Benchmark of in-the-Wild Distribution Shifts. ICML 2021. arXiv:2012.07421",
+        "cite": "Koh PW, et al. WILDS: A Benchmark of in-the-Wild Distribution Shifts. ICML 2021. arXiv:2012.07421",
         "id_verified": true,
-        "finding": "域泛化的关键是域的描述方式；用域标签本身无法泛化到未见域，用域的组成特征可以。",
-        "used_by": "UP-21",
-        "why": "DOI identity 在留出论文上恒不可用。用论文的组成特征（年份、金属配比、细胞系分布、配体 scaffold 分布）才可能迁移。"
+        "finding": "域泛化的关键是域的描述方式；域标签本身无法泛化到未见域。",
+        "used_by": "UP-27",
+        "why": "UP-21 证明「描述」不足以预测偏移；本轮改为用描述估密度比（更弱的假设）。"
       },
       {
         "id": "krasnov2026",
-        "cite": "Krasnov L, Malikov D, Kiseleva MA, Nykhrikova EV, Tatarin SV, Bezzubov SI. J Med Chem 2026, 69(8):8838-8851. doi:10.1021/acs.jmedchem.5c02755",
+        "cite": "Krasnov L, et al. J Med Chem 2026;69(8):8838-8851. doi:10.1021/acs.jmedchem.5c02755",
         "id_verified": true,
-        "finding": "MetalCytoToxDB：26,500 个 IC50 / 7,050 配合物 / 754 细胞系 / 1,921 篇。模型做 Ru、Ir 子集内的细胞毒性分类，未报跨金属回归。",
+        "finding": "MetalCytoToxDB：26,500 个 IC50 / 7,050 配合物 / 754 细胞系 / 1,921 篇；只做 Ru、Ir 子集内分类。",
         "used_by": "全文对照",
-        "why": "唯一语料来源，也是我们 LOMO 比它难得多的原因。"
+        "why": "唯一语料来源，也是 LOMO 比它难得多的原因。"
       }
     ]
   },
@@ -193,69 +214,89 @@
       "what": "外部独立 cohort",
       "status": "BLOCKED-PENDING-MANUAL-CURATION",
       "measured": "IrCytoToxDB 与 MSRS 的 DOI 重叠 221/222 = 99.55%；653 个匹配格里 89.4% 数值相同到 0.01 log10（msrs_external_cohort_probe.json）。",
-      "unblock": "人工整理 2023-2025 文献 ≥60 化合物 / ≥3 金属 / ≥8 篇，按 DOI 取差集。未做，不编造。",
-      "impact_on_round3": "UP-18 的图连通性只能靠语料内数据判；若有新 cohort，可能补上 Ir 与 Re 的边。本轮不假设它存在。"
+      "unblock": "人工整理 2023-2025 文献 ≥60 化合物 / ≥3 金属 / ≥8 篇。未做，不编造。",
+      "impact_on_round4": "本轮不依赖外部 cohort；UP-26 用「留出论文 + 少量该论文的行」替代外部验证，这是同一件事的可行版本。"
     },
     {
       "id": "B2",
       "what": "细胞系生物学特征",
       "status": "CLOSED",
-      "measured": "0 个注释文件；21.9% 的行来自 CCLE/DepMap 按构造不存在的系。",
-      "impact_on_round3": "UP-17 已测 cell×metal = 0.0（两序），与本条一致，本轮不再投。"
+      "measured": "0 个注释文件；21.9% 的行来自 CCLE/DepMap 按构造不存在的系；cell×metal = 0.0（两序）。",
+      "impact_on_round4": "不投。"
     },
     {
       "id": "B3",
       "what": "决策层增益",
       "status": "CLOSED",
-      "measured": "观测 −0.0034，MDE 0.050；检测不到。",
-      "impact_on_round3": "本轮不碰决策曲线。"
+      "measured": "观测 −0.0034，MDE 0.050。",
+      "impact_on_round4": "不碰决策曲线。"
     }
   ],
   "closed_decisions": [
     {
       "id": "R1",
       "from": "UP-1 / UP-2 / UP-4 / UP-5",
-      "conclusion": "加性约束不是瓶颈（free −0.097 / pair −0.113 / product −0.164 全负）；Pt 预训练 +0.0095 < 门槛 +0.03；eRAC Z_eff 四个 cell 全负。特征与预训练两条路关闭。"
+      "conclusion": "加性约束不是瓶颈（free −0.097 / pair −0.113 / product −0.164）；Pt 预训练 +0.0095；eRAC 四个 cell 全负。"
     },
     {
       "id": "R2",
       "from": "UP-3",
-      "conclusion": "3D 配位几何不可得：语料里金属原子 0/200，补给体 ΔR² −0.005。关闭。"
+      "conclusion": "3D 配位几何不可得：金属原子 0/200，补给体 ΔR² −0.005。"
     },
     {
       "id": "R3",
       "from": "UP-6",
-      "conclusion": "条件覆盖可修：最差层 0.8096 → 0.8956，宽度 +0.65%。这是第一轮唯一的 PASS，也是 UP-20 的起点。"
+      "conclusion": "条件覆盖可修：最差层 0.8096 → 0.8956，宽度 +0.65%。"
     },
     {
       "id": "R4",
       "from": "UP-7 / UP-9",
-      "conclusion": "辅助终点不是正则（干净臂 +0.0132，过门的臂泄漏率 1.000）；第三个基学习器 −0.0009。多任务与 stacking 关闭。"
+      "conclusion": "辅助终点不是正则；第三个基学习器 −0.0009。多任务与 stacking 关闭。"
     },
     {
       "id": "R5",
       "from": "UP-8",
-      "conclusion": "k 点适配救不了少样本（k=50 可用金属 1/5）。但当时 k 个点全无配对——UP-22 重新测这件事。"
+      "conclusion": "整 DOI 组采样下 k=50 只有 1/5 金属可用；UP-22 证明这是采样粒度问题。"
     },
     {
       "id": "R6",
       "from": "UP-10",
-      "conclusion": "10 个金属对里 7 个零配对证据，跨金属配体 3.64%。metal_out 四个场景训练侧只剩 1 个金属对。"
+      "conclusion": "10 个金属对里 7 个零配对证据；跨金属配体 3.64%。"
     },
     {
       "id": "R7",
       "from": "UP-11",
-      "conclusion": "秩-1 交互不可识别（无配体跨 ≥3 金属）；跨对迁移 R²_Δ 全负、符号 0.5 附近。DP-4 判 NO。"
+      "conclusion": "秩-1 交互不可识别；跨对迁移 R²_Δ 全负。DP-4 = NO。"
     },
     {
       "id": "R8",
       "from": "UP-12",
-      "conclusion": "两阶段残差在 metal_out 上恒为 0（v_held=0）；在 within_metal 上 −0.0174，而自由交互 +0.0391。限制参数化不换外推。"
+      "conclusion": "两阶段残差在 metal_out 上恒为 0；within-metal 自由交互 +0.0391 但秩-1 −0.0174。"
     },
     {
       "id": "R9",
       "from": "UP-14 / UP-16 / UP-17",
-      "conclusion": "配对是论文内现象（DOI 下 0.57%）；排序支持度是定义使然（逐对无一对过半）；shape 里结构与批次各占 >0.5。"
+      "conclusion": "DOI 下只有 0.57% 测试行有配对证据；360 对无单一金属对单独过半；shape 分解两序互相归零。"
+    },
+    {
+      "id": "R10",
+      "from": "UP-18 / UP-19",
+      "conclusion": "金属图是树（4 节点 3 边，Re 孤立）⇒ 留出金属的绝对水平不可识别；可识别行 5.47%，其上 R² 0.3299（去中心化 0.3806）。DP-6 = YES。"
+    },
+    {
+      "id": "R11",
+      "from": "UP-20",
+      "conclusion": "CQR 覆盖 0.9000 ✓ 但宽度 1.9871 只比 global 窄 1.0%；kill 触发，DP-7 = YES（放弃宽度目标）。"
+    },
+    {
+      "id": "R12",
+      "from": "UP-21 / UP-22",
+      "conclusion": "论文偏移 sd 0.24 真实但 LOPO R² −0.0259 不可预测，kill 触发（DOI 线关闭）；k-shot 的 1/5 来自整 DOI 采样，行级采样 3/5 过零但配对不单调。"
+    },
+    {
+      "id": "R13",
+      "from": "UP-23 / UP-24",
+      "conclusion": "deadzone 标签让 lambdarank 0.5985 → 0.5612（17.6% 组梯度归零），kill 触发（DP-8 = YES 关闭排序线）；pairwise 损失在同学习器下只 +0.008，且门槛与学习器错配。"
     }
   ],
   "decision_points": [
@@ -264,337 +305,307 @@
       "question": "是否解冻论文线（MSRS-8）",
       "owner": "用户",
       "status": "OPEN",
-      "trigger": "本轮 UP-18..UP-25 完成后，由用户裁定。",
-      "if_yes": "按「配对证据是论文内现象、交互在观测金属内真实但不可外推」的口径起草正文。",
+      "trigger": "UP-26..UP-32 完成后由用户裁定。",
+      "if_yes": "按「部署需要约 10 行校准数据；排序只在已观测金属对内；金属水平不可识别」的口径起草正文。",
       "if_no": "保持冻结，只交付 metrics 与 docs。"
     },
     {
-      "id": "DP-6",
-      "question": "metal_out 主指标是否从绝对 R² 改为可识别行上的去中心化 R²",
-      "status": "RESOLVED-YES",
-      "after": "UP-19",
-      "if_yes": "绝对 R² 进附录并标 NOT_IDENTIFIABLE；主表只报可识别子空间。",
-      "if_no": "保留绝对 R² 为主指标，但必须同时写「该量在树图上不可识别」，否则构成 §5.2 违规。",
-      "resolution": "UP-19 实测可识别行只占 5.47%，其上 R²_abs 0.3299 / 去中心化 0.3806；全行 −0.0640。采用 if_yes：绝对 R² 保留但标 NOT_IDENTIFIABLE，主表以可识别子空间为主指标（msrs_main_table.json:UP19.pooled_identifiable_r2_abs = yes，UP19.pooled_all_r2_abs = no）。",
-      "resolved_at": "2026-10-22"
+      "id": "DP-9",
+      "question": "被 DP-8 关闭的排序线是否以 Davidson 平局模型重开一次",
+      "status": "OPEN",
+      "after": "UP-29",
+      "if_yes": "排序线保留一节，口径为「平局显式建模」；门槛 balanced ≥0.62 且簇 CI 下界 >0.5。",
+      "if_no": "排序线维持关闭，0.5985 只作为已观测金属对内的描述性数字。",
+      "amendment_note": "2026-10-22T15:45+08:00 用户指令「不接受当前现状」；重开理由为机制不同（显式平局似然 vs deadzone 标签合并），不是同一杠杆换参数。"
     },
     {
-      "id": "DP-7",
-      "question": "CQR 若宽度降不到 1.80，是否放弃宽度目标只保覆盖",
-      "status": "RESOLVED-YES",
-      "after": "UP-20",
-      "if_yes": "宽度目标撤回，改为「覆盖 ≥0.90 且最差组 ≥0.87」，宽度只报不设阈。",
-      "if_no": "继续找宽度杠杆（会违反 one_tool_per_metric）。",
-      "resolution": "UP-20 宽度 1.9871 > 1.82，kill 触发。采用 if_yes：宽度目标撤回，校准口径改为「覆盖 ≥0.90 且最差金属组 ≥0.87」，宽度只报不设阈（msrs_cqr.json:gate.kill.triggered = true）。",
-      "resolved_at": "2026-10-22"
+      "id": "DP-10",
+      "question": "DOI 线是否改为「n_cal 行自校准」作为主协议",
+      "status": "OPEN",
+      "after": "UP-26",
+      "if_yes": "论文报 n_cal=10 的 R² 与 n_cal=0 的对照曲线，主数字带部署成本（10 行）。",
+      "if_no": "维持零校准行的 0.3767，并注明这是下界。"
     },
     {
-      "id": "DP-8",
-      "question": "排序若 deadzone + 层级 BT 仍不过 0.62，是否关闭排序线",
-      "status": "RESOLVED-YES",
-      "after": "UP-23",
-      "if_yes": "排序线关闭，论文里只写「3 个已观测对内的排序，样本量不足以逐对定论」。",
-      "if_no": "需要新数据而非新方法。",
-      "resolution": "UP-23 保留子集 best 0.6050 < 0.62（全 360 对口径 0.5985 同样 < 0.62），kill 触发。采用 if_yes：排序线关闭，论文只报 0.5985 并写「已观测金属对内、无单一金属对单独过半」。",
-      "resolved_at": "2026-10-22"
+      "id": "DP-11",
+      "question": "LOMO 线是否改为 D-MPNN 主干 + pairwise 损失",
+      "status": "OPEN",
+      "after": "UP-31",
+      "if_yes": "0.5974 降为「BCE 基线」，主数字换成新 AUC。",
+      "if_no": "维持 0.5974，并注明 UP-24 的学习器错配。"
     }
   ],
   "sequence": {
-    "wave_1_identifiability": {
+    "wave_1_deployment": {
       "items": [
-        "UP-18",
-        "UP-19"
+        "UP-26",
+        "UP-27"
       ],
-      "note": "纯 CPU，约 1.5 小时。必须先做：它决定后面所有指标的口径。",
+      "note": "纯 CPU，约 2.5 小时。两项都在「部署协议」层，互不依赖，可并发。",
       "depends_on": [],
-      "status": "DONE",
-      "result": "UP-18 FAIL（gate 2/4；kill 未触发）—— 树结构确认，但「有效边」与「精确边」不是同一集合。UP-19 PASS —— metal_out 的负 R² 是行构成效应：5.47% 可识别行上 R²=0.33，94.5% 上 −0.09。"
+      "status": "PLANNED"
     },
-    "wave_2_three_weak": {
+    "wave_2_representation": {
       "items": [
-        "UP-20",
-        "UP-21",
-        "UP-22"
+        "UP-28",
+        "UP-29"
       ],
-      "note": "CPU + GPU0，约 4 小时。三项互不依赖，可并发两项。",
+      "note": "UP-28 用 GPU0 ~3 hr；UP-29 纯 CPU。可并发（GPU0 余量足够）。",
       "depends_on": [
-        "wave_1_identifiability"
+        "wave_1_deployment"
       ],
-      "status": "DONE",
-      "result": "三项全部 FAIL，两项触发 kill。UP-20：CQR 拿到覆盖 0.9000 / 最差组 0.8716，宽度 1.9871 未过 1.80 ⇒ DP-7 放弃宽度目标。UP-21：论文偏移 sd 0.24 真实存在但 LOPO R² −0.0259 不可预测 ⇒ DOI 线关闭。UP-22：UP-8 的 1/5 是整 DOI 组采样造成的，行级采样 3/5 过零，但 n_paired 0→3 不单调 ⇒ 配对不是机制，kill 未触发。"
+      "status": "PLANNED"
     },
-    "wave_3_ranking": {
+    "wave_3_structure_loss": {
       "items": [
-        "UP-23",
-        "UP-24"
+        "UP-30",
+        "UP-31"
       ],
-      "note": "GPU0，约 4 小时。两项共享同一份 LOMO 数据，可串行复用缓存。",
+      "note": "UP-30 纯 CPU；UP-31 GPU0 ~3 hr，必须先 50 步 smoke。",
       "depends_on": [
-        "wave_1_identifiability"
+        "wave_2_representation"
       ],
-      "status": "DONE",
-      "result": "两项都 FAIL。UP-23：deadzone 保留 315/651，但把噪声对并成同 label 让 lambdarank 从 0.5985 掉到 0.5612；kill 触发 ⇒ DP-8 = yes，排序线关闭。UP-24：同学习器下 pairwise_edge 只比 BCE 高 0.0080，五金属均值反而 −0.0833；绝对门槛按 D-MPNN 冻结而学习器是特征模型，kill 不适用。"
+      "status": "PLANNED"
     },
-    "wave_4_report": {
+    "wave_4_verify": {
       "items": [
-        "UP-25"
+        "UP-32"
       ],
-      "note": "纯 CPU，约 1 小时。汇总，不改模型。",
+      "note": "纯 CPU，汇总 + 主表重排 + 全量一致性检查。",
       "depends_on": [
-        "wave_2_three_weak",
-        "wave_3_ranking"
+        "wave_3_structure_loss"
       ],
-      "status": "DONE",
-      "result": "UP-25 PASS：43 行可识别性分层主表，yes 21 / partial 17 / no 5，与索引机器校验 43/43 一致。"
+      "status": "PLANNED"
     },
-    "status": "DONE"
+    "status": "PLANNED"
   },
   "work_packages": [
     {
-      "id": "UP-18",
+      "id": "UP-26",
       "priority": "P0",
       "wave": 1,
-      "status": "DONE-FAIL",
-      "title": "金属图的图论诊断与精度加权边表",
-      "question": "把「支持度」换成「图上的可识别性」：图是不是连通的、是不是树、哪条边真正携带水平信息（按精度而不是按组数）？",
-      "why_now": "UP-10 用 n≥20 判边，把 t=9.54 的 Ru–Rh 判为 UNSUPPORTED、把 t=1.50 的 Ir–Rh 判为 OK。判据维度错了，后面所有结论都建在这上面。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_metal_graph.py",
-        "  ::edge_table() — 每条边的 mean_delta / noise_sd_delta / n_groups / SE / t / precision=1/SE²；复用 msrs_support_audit.py::pair_stats 的输出字段",
-        "  ::design_effect() — 按 ligand_canonical 聚类重算 SE：deff = 1 + (m̄−1)·ICC，ICC 由配体内相关估计；输出 t_cluster",
-        "  ::graph_diagnostics() — 连通分量、是否树（E=V−1 且无环）、割点、每节点度数、删每个节点后的分量",
-        "  ::gls_levels() — 加权最小二乘相对水平 u_m（约束 Σu=0），返回设计矩阵秩与可识别子空间维数",
-        "  ::node_split() — 有环才有定义；本图为树时返回 NOT_APPLICABLE 并说明树上无间接路径",
-        "复用 msrs_support_audit.py::load_long, ::unit_table, ::metal_noise"
+      "status": "PLANNED",
+      "title": "每篇论文的 EB 自校准：把不可预测的偏移变成可估的偏移",
+      "question": "UP-21 证明论文偏移 sd 0.24 且不可从描述预测。但部署时新论文至少有少量已测行 —— 用 n_cal 行估它的偏移，DOI R² 能到多少？",
+      "why_now": "这是唯一一个把「已诊断出的失败原因」直接转成「部署时可用信息」的杠杆，且不需要新数据、不需要 GPU。前三轮全部在零校准行下评估，等于自愿放弃了这个信息。",
+      "literature": [
+        "rxrx1",
+        "meta-catalysis"
       ],
-      "artifact": "metrics/by_metric/msrs_metal_graph.json",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_paper_calibration.py",
+        "  ::select_cal_rows() — 在留出论文内部抽 n_cal 行；两臂：random 与 MaxMin（Morgan 指纹上的最远点），校准行与评估行严格不相交",
+        "  ::eb_offset() — ô = n/(n+κ)·mean(y−ŷ|cal)，κ = σ²_noise/τ²_paper，两个方差都在训练折上估；同时给 James-Stein 收缩版本作对照",
+        "  ::sweep_ncal() — n_cal ∈ {0,1,2,5,10,20,50} × 20 repeats × 5 seed",
+        "  ::decompose_gain() — 把增益拆成「水平项（均值平移）」与「斜率项（是否也校正尺度）」，分别报",
+        "复用 msrs_paper_meta_offset.py::paper_offsets、msrs_generalization.py 的 DOI GroupKFold 与特征构建"
+      ],
+      "artifact": "metrics/by_metric/msrs_paper_calibration.json",
       "gate": {
-        "no_threshold": "诊断包，不设数值门槛",
-        "assert_tree": "E == V − 1 且无环",
-        "assert_edge_count": "有配对组的边数 == 3（Ru–Os / Ir–Rh / Ru–Rh）",
-        "assert_ruos_dominant": "Ru–Os 的精度份额 > 0.80",
-        "assert_ruroh_survives_cluster": "聚类校正后的 t(Ru–Rh) ≥ 3.0"
+        "primary": "n_cal=10 时 DOI R² ≥0.45（5 seed 均值，20 repeats）",
+        "reproduce": "n_cal=0 必须复现 0.3670±0.005（同划分同特征），否则视为协议漂移、整包作废",
+        "monotone": "7 个 n_cal 点里 ≥5 个相对前一点不降",
+        "report": "必须同时报 random 与 MaxMin 两臂，以及 κ 的估计值"
       },
-      "kill": "若 Ru–Rh 的聚类 t < 2，则「按精度有效边只有两条」的结论撤回，退回 UP-10 的三边口径。",
-      "cost": "CPU ~30 min",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate FAIL（2/4 断言）：assert_tree ✓、assert_edge_count ✓、assert_ruos_dominant ✗（簇口径 0.5903 < 0.80；噪声口径 0.8592 才过）、assert_ruroh_survives_cluster ✗（2.577 < 3.0）。kill 未触发（2.577 ≥ 2）。观测子图 4 节点 3 边、是树、无环；Re 孤立（全图 2 分量，E=V−2）。三种口径的 t：Ru–Os 11.14/5.43/3.36、Ir–Rh 1.50/1.37/0.96、Ru–Rh 9.54/2.98/2.58。「按效应」={Ru–Os, Ru–Rh}，「按精度」={Ru–Os 0.59, Ir–Rh 0.40}，两个集合只在 Ru–Os 重合。GLS 水平 Ru +0.5834 / Os +0.4494 / Ir −0.5394 / Rh −0.4933，t 1.37–1.79 全不显著；树上点估计与权重无关。node-splitting = NOT_APPLICABLE（残差自由度 0）。"
+      "kill": "若 n_cal=10 时 R² <0.40，per-paper 校准线关闭，论文写「新论文的偏移只能整篇估计，少量行不够」。",
+      "cost": "CPU ~1.5 hr",
+      "device": "cpu"
     },
     {
-      "id": "UP-19",
+      "id": "UP-27",
       "priority": "P0",
       "wave": 1,
-      "status": "DONE-PASS",
-      "title": "metal_out 的可识别子空间与去中心化重报",
-      "question": "metal_out 的绝对 R² 是模型不行，还是这个量在树上根本不可识别？可识别的那部分有多大、模型做到了多少？",
-      "why_now": "−0.0734 被当成模型缺陷追了两轮（UP-1/UP-12 全败）。若它其实是估计目标错误，继续投就是浪费。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_identifiability.py",
-        "  ::identifiable_rows() — 对每个留出金属，标出测试行里「其配体+细胞系在训练金属下有测量」的行；这些行只差一个金属常数，去掉金属内均值后可比",
-        "  ::centered_r2() — 每个金属内先减该金属的测试均值，再算 pooled R²；这是可识别目标",
-        "  ::decompose_metal_out() — 把绝对 R² 拆成 offset 项（金属均值差，不可识别）+ centered 项（可识别）；报两项占比",
-        "  ::reweighted_metal_out() — 只在可识别行上算 R²，并报可识别行占比",
-        "复用 msrs_lomo_surface.py::build_blocks, ::assemble；msrs_surface_model.py::fit_predict"
+      "status": "PLANNED",
+      "title": "漂移下的覆盖：加权 conformal + 在线 ACI",
+      "question": "UP-20 的失败是「在论文漂移下用可交换 conformal」。换成加权分位（似然比）与在线 α 更新，能不能同时拿到覆盖与 ≤1.90 的宽度？",
+      "why_now": "前三轮把 conformal 当成固定工具，只换分位数模型；UP-20 证明那条路走不通。加权 conformal 与 ACI 改的正是被破坏的那个假设，且都不需要重训点模型。",
+      "literature": [
+        "weighted-cp",
+        "aci",
+        "cqr",
+        "wilds"
       ],
-      "artifact": "metrics/by_metric/msrs_identifiability.json",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_conformal_shift.py",
+        "  ::density_ratio() — 用 UP-21 的 23 维论文元特征训练 paper-level 分类器（校准集 vs 测试论文），输出 w(p)=p/(1−p)；**只用于估密度比，不用于预测 y**",
+        "  ::weighted_quantile() — Tibshirani 2019 的加权 (1−α) 分位；空权重时退回普通分位（bit-exact 默认路径）",
+        "  ::aci_update() — α_{t+1} = α_t + γ(α − err_t)，按 Year 排序成流；γ ∈ {0.005, 0.01, 0.02} 网格，只在校准段选",
+        "  ::run_online() — 逐年滚动：用 t 年及以前的论文校准，评估 t+1 年",
+        "  ::compare_arms() — 同表对照 global / CQR / difficulty / weighted / ACI / weighted+ACI",
+        "复用 msrs_calibration.py::run_protocol、::winkler_score、::pit_histogram"
+      ],
+      "artifact": "metrics/by_metric/msrs_conformal_shift.json",
       "gate": {
-        "primary": "可识别行上的金属内去中心化 R² ≥ 0.20",
-        "primary_reference": "参照同模型在 within_metal 的加权 R² = 0.2128（msrs_two_stage.json:/within_metal/aggregate/additive）；这是「金属在训练集内」时的上限代理",
-        "secondary": "≥3/5 金属的去中心化 R² > 0.10",
-        "report": "绝对 R² 与不可识别份额必须同时出现在 artifact 顶层；去中心化 R² 是本项目首次实测，不得引用任何旧值"
+        "coverage": "最优臂边际覆盖 ≥0.90",
+        "width": "该臂中位宽 ≤1.90 log10（当前最好 1.9871）",
+        "worst_group": "最差金属组覆盖 ≥0.90（当前最好 0.8961）",
+        "attribution": "必须报「可交换性破坏」的直接证据：按年分组的覆盖漂移曲线，以及加权前后的校准集有效样本量 ESS"
       },
-      "kill": "若去中心化 R² < 0.10 或 <2/5 金属 >0.10，则 metal_out 线彻底关闭，本轮及以后不再投任何资源，论文只写 NOT_IDENTIFIABLE。",
-      "cost": "CPU ~1 hr（复用 lomo 的 5 次拟合，加 5 次去中心化评估）",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate PASS：primary 池化去中心化 R²（仅可识别行）0.3806 ≥ 0.20（参照 within_metal 0.2128）；secondary 4/4 个可评估金属 > 0.10（Ru 0.4078 / Ir 0.2883 / Rh 0.2941 / Os 0.4281；Re 0 行 NOT_EVALUABLE）。kill 未触发。核心事实：可识别行只占 5.47%（1,151/21,045），其上 R²_abs = 0.3299；其余 94.5%（19,894 行）R² = −0.0913。全行 R²_abs −0.0640、去中心化 +0.0160（偏移惩罚 0.0800）。逐金属 R² 与 msrs_lomo_surface 逐位复现（max|Δ| = 0.0）。"
+      "kill": "若最优臂宽度 >2.00 或覆盖 <0.88，conformal 线关闭，论文只报「覆盖 0.90 可达、宽度由数据分辨率决定」。",
+      "cost": "CPU ~1 hr",
+      "device": "cpu"
     },
     {
-      "id": "UP-20",
+      "id": "UP-28",
       "priority": "P1",
       "wave": 2,
-      "status": "DONE-FAIL",
-      "title": "CQR 条件覆盖：宽度与覆盖不再互换",
-      "question": "difficulty-normalized 把宽度从 2.0052 降到 1.9195，但覆盖从 0.9004 掉到 0.8789。能不能同时拿到 ≤1.80 和 ≥0.90？",
-      "why_now": "现有做法是手工 σ̂ 代理 + 全局 conformal，本质是在宽度和覆盖之间做交易。CQR 直接建模条件分位数，覆盖由 conformal 保，宽度由分位数模型自适应。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_cqr.py",
-        "  ::fit_quantile_models() — LightGBM objective='quantile'，alpha ∈ {0.05, 0.95}，特征与 msrs_generalization 的 DOI 划分一致",
-        "  ::cqr_calibrate() — E_i = max(q_lo(x_i) − y_i, y_i − q_hi(x_i))，取校准集 (1−α) 分位做扩张；返回扩张量 Q",
-        "  ::mondrian_by_metal() — 按金属分组校准 Q_m，报每组覆盖与宽度",
-        "  ::compare_arms() — 与 global / difficulty-normalized / metal-Mondrian 三个现有臂同表对比",
-        "复用 msrs_calibration.py::run_protocol, ::difficulty_design, ::pit_histogram, ::winkler_score"
+      "status": "PLANNED",
+      "title": "D-MPNN 作为 DOI 线的主干",
+      "question": "DOI 线一直用指纹树（MACCS+RDKit 0.3767 / +GNN 融合 0.3811）。把主干换成 in-house D-MPNN，能不能过 0.40？",
+      "why_now": "主模型从未在这条线上跑过，所有 DOI 数字都来自次优表示。这是唯一一个「换表示」而不是「换目标」的杠杆，也是审稿人会第一个问的问题。",
+      "literature": [
+        "metal-ml-frei"
       ],
-      "artifact": "metrics/by_metric/msrs_cqr.json",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_dmpnn_doi.py — 薄封装 molmetal/baselines/dmpnn.py，只做 DOI GroupKFold(5) 的切分与评估",
+        "新建 configs/msrs_dmpnn_doi.yaml — 全部超参写 YAML（§5.11）；compute.device: cuda:0；deterministic: true",
+        "  ::build_blocks() — 复用 msrs_joint_representation 的 metal state + coordination 块，作为额外原子/键特征注入",
+        "  ::run_fold() — 5 seed × 5 fold；OOF 落盘 npz，供 msrs_generalization 的同一评估器重算",
+        "评估必须走 msrs_generalization.py 的同一个 r2 计算路径，不得另写一份"
+      ],
+      "artifact": "metrics/by_metric/msrs_dmpnn_doi.json",
       "gate": {
-        "median_width": "≤ 1.80 log10（当前最好 1.9195）",
-        "marginal_coverage": "≥ 0.90",
-        "worst_metal_group_coverage": "≥ 0.87",
-        "must_beat": "在覆盖 ≥0.90 的前提下，宽度必须低于 difficulty-normalized 在同覆盖下的宽度"
+        "primary": "DOI R² ≥0.40（5 seed 均值）",
+        "baseline": "同一脚本必须同时跑指纹树臂，复现 0.3767±0.005",
+        "per_seed": "5 个 seed 的 sd 必须报出"
       },
-      "kill": "若宽度降幅 <5%（即 >1.82）或最差组覆盖 <0.85，CQR 判无效，DP-7 走「放弃宽度目标」分支。",
-      "cost": "CPU ~40 min（4 个 quantile 模型 × 5 seed）",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate FAIL（4 条过 2 条）；kill 触发（宽度 1.9871 > 1.82）⇒ DP-7 放弃宽度目标。CQR 覆盖 0.9000 ✓、最差金属组 0.8716 ✓，但中位宽度 1.9871 只比 global 2.0073 窄 1.0%、比 difficulty 的 1.8981 宽 4.7%。difficulty 的窄宽度是用 0.8767 覆盖换的（差 0.0233）。metal-Mondrian 把最差组抬到 0.8961、宽度几乎不动（1.9802）。"
+      "kill": "若 D-MPNN 的 5 seed 均值 <0.3767（不优于指纹树），表示路线关闭，DOI 线维持指纹树并注明。",
+      "cost": "GPU0 ~3 hr（5 fold × 5 seed）",
+      "device": "cuda:0"
     },
     {
-      "id": "UP-21",
+      "id": "UP-29",
       "priority": "P1",
       "wave": 2,
-      "status": "DONE-FAIL",
-      "title": "论文元特征偏移模型：不用 DOI identity 也能校正新论文",
-      "question": "DOI 留出 R² 0.3767 里，有多少损失来自「测试论文的整体偏移未知」？用论文的组成特征能不能把偏移预测出来？",
-      "why_now": "UP-17 测到 paper×metal 在批次优先下占 0.5484，说明论文偏移真实且大。但 DOI one-hot 在留出论文上恒为 0，必须换成可迁移的描述。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_paper_meta_offset.py",
-        "  ::paper_features() — 每篇论文的：年份、n_rows、n_ligands、金属组成比例（5 维）、细胞系分布熵、配体 scaffold 的 k 个 hashed bucket 比例、log10 IC50 的均值/分位（仅训练折内统计，避免泄漏）",
-        "  ::offset_model() — 在训练折上拟合「论文偏移 ~ 元特征」（LightGBM + ridge 两臂），leave-one-paper-out 评估",
-        "  ::apply_offset() — ŷ_corrected = ŷ_base + ô_paper；ô_paper 只用元特征，不用 DOI",
-        "  ::ablation() — 分别去掉年份/金属组成/scaffold 分布，看各自贡献",
-        "复用 msrs_generalization.py 的 DOI GroupKFold 与特征构建"
+      "status": "PLANNED",
+      "title": "平局感知排序：Davidson 三项模型（DP-8 后的唯一重开）",
+      "question": "UP-23 把 |Δ|<τ 的对并成一个 label，结果 17.6% 的组梯度归零、balanced 掉到 0.5612。把平局当**第三个结果**而不是缺失，能不能反而利用这些对？",
+      "why_now": "平局对不是噪声：它们约束 δ（平局倾向）与「两金属接近」这一事实。UP-23 丢掉的是信息，不是噪声。这是机制层面的不同做法，符合 reopen_rule。",
+      "literature": [
+        "davidson-ties"
       ],
-      "artifact": "metrics/by_metric/msrs_paper_meta_offset.json",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_davidson_ties.py",
+        "  ::davidson_probs() — P(tie)=δ√(πaπb)/Z，P(a≻b)=πa/Z，Z=πa+πb+δ√(πaπb)；π=exp(f(x))，f 用 UP-23 的同一特征块",
+        "  ::fit_davidson() — 交替优化：固定 δ 时对 w 是加权 logistic；固定 w 时 δ 有闭式一维解；3-5 轮收敛，报目标函数轨迹",
+        "  ::deadzone_outcome() — |Δ|<τ 记 tie，其余记 win；τ 仍取 msrs_metal_graph 的 noise_sd_delta（与 UP-23 同一口径）",
+        "  ::cluster_bootstrap() — 按 ligand_canonical 重采样 2000 次，给 balanced 的 CI（UP-23 只给了 Wilson，那个在极不平衡对上会失效）",
+        "复用 msrs_listwise_ranker.py::build_features、msrs_ranking_expanded.py::score_pairs"
+      ],
+      "artifact": "metrics/by_metric/msrs_davidson_ties.json",
       "gate": {
-        "doi_r2": "≥ 0.42（5 seed 均值；当前 0.3767）",
-        "offset_mae_drop": "相对无校正的论文偏移 MAE 下降 ≥10%",
-        "no_leak": "所有元特征只允许用训练折内统计量；测试折的行数/均值不得进入特征"
+        "balanced": "360 对上 ≥0.62（5 seed 均值）",
+        "ci": "配体簇 bootstrap 下界 >0.5",
+        "delta_report": "必须报 δ 的估计值与「平局对占比」对 balanced 的敏感性（τ × {0.5, 1.0, 1.5}）"
       },
-      "kill": "若 DOI R² < 0.40，元特征偏移无效，DOI 线关闭，不再尝试其他偏移模型。",
-      "cost": "CPU ~1.5 hr（5 seed × 2 臂 × 4 个 ablation）",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate FAIL（3 条过 1 条）；kill 触发（DOI R² 0.3557 < 0.40）⇒ DOI 线关闭。论文偏移真实且大（测试论文偏移 sd 0.2400、平均 |偏移| 0.2255），但不可从论文描述预测：LOPO ridge R² = −0.0259，校正后偏移 MAE 从 0.1622 涨到 0.1695（变差 4.55%）、DOI R² 0.3670 → 0.3557。泄漏臂（用测试论文自己的 y 统计量）+0.1735 到 0.5405 —— 信息在标签里，不在描述里。三个消融（去年份/去金属/去 scaffold）都在 5 seed 散布内。"
+      "kill": "若 balanced <0.58，DP-9 = NO，排序线维持关闭。",
+      "cost": "CPU ~40 min",
+      "device": "cpu"
     },
     {
-      "id": "UP-22",
-      "priority": "P1",
-      "wave": 2,
-      "status": "DONE-FAIL",
-      "title": "配对 k-shot：把「k 个点里几个带配对」当自变量",
-      "question": "UP-8 的 1/5 是因为模型不行，还是因为那 k 个点里一个配对都没有、只能估水平？",
-      "why_now": "UP-8 的 k 个校准点是从新金属的行里随机抽的，几乎不含「同配体+同细胞系在已知金属下也有测量」的点。这类点才是 Δ 的信息源。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_paired_kshot.py",
-        "  ::select_calibration_set() — 给定 n_paired，优先选「其 (ligand, cell) 在训练金属下有测量」的行，剩余 k−n_paired 从其余行随机抽",
-        "  ::sweep_paired_fraction() — n_paired ∈ {0,1,2,3,5,10,20}，每个值 × 5 seed，报每个留出金属的 R²",
-        "  ::decompose_gain() — 把 R² 增益拆成「水平项」（n_paired=0 时的增益）与「交互项」（n_paired 增加带来的增量）",
-        "复用 msrs_meta_kshot.py::adapt_ridge, ::adapt_proto, ::run_cell"
-      ],
-      "artifact": "metrics/by_metric/msrs_paired_kshot.json",
-      "gate": {
-        "primary": "k=50、n_paired=3 时 ≥3/5 金属 R² > 0（当前 1/5）",
-        "secondary": "n_paired 从 0 增到 3 时，平均 R² 单调不降",
-        "report": "每个 (metal, n_paired) 单元的 n 与 seed 数必须出现"
-      },
-      "kill": "若 n_paired=3 时仍 <2/5，k-shot 线关闭；论文写「新金属需要配对校准点，而语料里新金属没有配对」。",
-      "cost": "CPU ~1.5 hr（5 金属 × 7 个 n_paired × 5 seed）",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate FAIL：primary PASS（n_paired=3 时 3/5 金属 R²>0：Rh +0.0631 / Os +0.2830 / Re +0.1745），secondary FAIL（n_paired 0→3 的跨金属平均 R² 0.0407/0.0313/0.0432/0.0306 不单调）。kill 未触发（3≥2）。核心事实：增益全部在 n_paired=0（Rh −0.1589→+0.0709、Re −0.1034→+0.1734），而 Re 的配对行总数是 0 ⇒ UP-8 的 1/5 来自整 DOI 组采样（−0.3161/−0.2669/−0.0840/+0.2816/−0.0716），不是「语料里缺配对点」。"
-    },
-    {
-      "id": "UP-23",
+      "id": "UP-30",
       "priority": "P2",
       "wave": 3,
-      "status": "DONE-FAIL",
-      "title": "deadzone 标签 + 层级 Bradley-Terry",
-      "question": "360 对里有多少是噪声标签？把 |Δ| 小于噪声 SD 的对当硬标签，是不是 balanced 0.5985 上不去的主因？",
-      "why_now": "UP-16 测到 Ir–Rh 的 separability 只有 0.115，意味着这一对里绝大多数 |Δ| 落在噪声内。把它们当 50/50 的硬标签会系统性压低所有模型。",
-      "code_points": [
-        "改 molmetal/scripts/msrs_listwise_ranker.py — 新增 --deadzone 参数与 deadzone_labels()",
-        "  ::deadzone_labels() — |Δ| < τ 的对：臂 A 排除，臂 B 降权 w = min(1, |Δ|/τ)；τ 从 msrs_support_audit 的 noise_sd_delta 按金属对取",
-        "新建 molmetal/scripts/msrs_ranking_hierarchical.py",
-        "  ::hierarchical_bt() — 层级 Bradley-Terry：logit P(a≻b) = (s_ligand,a − s_ligand,b) + δ_pair，δ_pair ~ N(0, σ²)，σ² 由数据估；Rh–Ru 的 16 对借 Os–Ru 的强度",
-        "  ::wilson_ci() — 每个金属对的 Wilson 区间，用于判「≥2 对下界 >0.5」",
-        "复用 msrs_listwise_ranker.py::build_features, ::fit_fold；msrs_ranking_support.py 的分层统计"
+      "status": "PLANNED",
+      "title": "跨金属匹配分子对：把可识别集从「同一配体」放宽到「同一 core」",
+      "question": "metal_out 的可识别行只有 5.47%，因为要求完全相同配体。放宽到「差一个转化的匹配分子对」，可识别集能扩到多大，Δ 还能不能预测？",
+      "why_now": "UP-19 证明模型在可识别子集上是有效的（R² 0.33），瓶颈是子集太小。MMP 是药化里扩大局部构效关系样本的标准工具，我们从未用过。",
+      "literature": [
+        "mmpa"
       ],
-      "artifact": "metrics/by_metric/msrs_ranking_hierarchical.json",
+      "code_points": [
+        "新建 molmetal/scripts/msrs_mmp_delta.py",
+        "  ::mmp_pairs() — RDKit rdMMPA 单切，每个分子产出 (core, transform)；同 core 不同 transform 的两两成对",
+        "  ::cross_metal_mmp() — 只在同一 (cell_line, core) 内、跨金属的两行构 Δ；报每个金属对的可用对数与 transform 分布",
+        "  ::delta_model() — 在训练金属的 MMP 对上拟合 Δ，留出金属上评估；与 UP-19 的 exact-ligand 子集同表对比",
+        "  ::leak_check() — 必须证明 MMP 对没有把测试配体本身带进训练（transform 相同但 core 相同的两条都不可跨折）",
+        "复用 msrs_identifiability.py::identifiable_mask、::pool"
+      ],
+      "artifact": "metrics/by_metric/msrs_mmp_delta.json",
       "gate": {
-        "balanced": "≥ 0.65（当前 0.5985）",
-        "per_pair": "≥2 个金属对的 Wilson 下界 > 0.5（当前 0 个）",
-        "n_pairs_retained": "deadzone 后保留的对数 ≥ 240（当前 360）"
+        "size": "跨金属 MMP 对数 ≥3× 精确配体对数（当前精确对 651）",
+        "quality": "留出金属的 MMP Δ R² ≥0.20",
+        "leak": "leak_check 必须为 0 个跨折泄漏对"
       },
-      "kill": "若 balanced < 0.62，排序线关闭（DP-8 走 yes 分支）。",
-      "cost": "GPU0 ~2 hr（LightGBM 在 GPU 上收益有限，主要耗时在 5 seed × 2 臂 × 3 deadzone 值）",
-      "device": "cuda:0",
-      "completed": "2026-10-22",
-      "result": "gate FAIL（3 条过 1 条）；kill 触发（保留子集 0.6050 < 0.62）⇒ DP-8 = yes，排序线关闭。deadzone 在 651 对里保留 315（评分集 360 里保留 315）；把噪声对并成同 label 后 lambdarank 0.5985 → 0.5612（保留子集 0.6050 → 0.5615），因为 279/1,586 个组（17.6%）整组并成一个 label、梯度归零。BT 臂 0.4631–0.5411，每折仅 ~520 对（lambdarank 21k 行），是样本量限制不是架构限制。唯一 Wilson 下界 >0.5 的 Rh–Ru（15/16）多数类率也是 0.9375，balanced = 0.5 —— 该判据在极不平衡对上测的是「猜多数」。"
+      "kill": "若 Δ R² <0.10 或对数 <2×，MMP 线关闭，metal_out 维持「仅 5.47% 可识别」的结论。",
+      "cost": "CPU ~1.5 hr",
+      "device": "cpu"
     },
     {
-      "id": "UP-24",
+      "id": "UP-31",
       "priority": "P2",
       "wave": 3,
-      "status": "DONE-FAIL",
-      "title": "LOMO 的 pairwise logistic 损失与边感知负采样",
-      "question": "LOMO AUC 0.5974 上不去，是因为 BCE 不优化 AUC，还是因为正负样本的构造浪费了配对结构？",
-      "why_now": "AUC 是排序指标。现有训练用 BCE，梯度关注绝对概率；pairwise logistic 直接优化正负对的相对顺序，且可以只在「同配体+同细胞系」内构对，消掉配体主效应。",
-      "code_points": [
-        "新建 molmetal/scripts/msrs_lomo_pairwise.py",
-        "  ::build_pairs() — 在每个留出金属的测试折内，按 (ligand_canonical, cell_line_key) 组内构正负对；无同组对照时退化为全局对",
-        "  ::pairwise_logistic_loss() — loss = −log σ(f(x+) − f(x−))，温度可调",
-        "  ::edge_aware_negatives() — 负样本优先采「与正样本共享金属对」的行，使模型必须分辨金属而不是分辨配体",
-        "  ::eval_auc() — 与 msrs_lomo_surface 同一批可解析子集（Ru 1,311 / Ir 538），5 seed 均值",
-        "复用 msrs_lomo_surface.py::build_blocks, ::assemble；msrs_surface_model.py::fit_predict"
+      "status": "PLANNED",
+      "title": "D-MPNN 内的 pairwise 损失：修 UP-24 的学习器错配",
+      "question": "UP-24 的 +0.008 是线性模型上的，门槛却按 D-MPNN 冻结。在同一个 D-MPNN 主干上只换损失，AUC 能到多少？",
+      "why_now": "这是本轮唯一一个「上次做错了、这次做对」的包。learner_match 规则要求先用同一代码路径复现 0.5974，否则任何绝对门槛都无意义。",
+      "literature": [
+        "metal-ml-frei"
       ],
-      "artifact": "metrics/by_metric/msrs_lomo_pairwise.json",
+      "code_points": [
+        "改 molmetal/scripts/train_metal_lomo_wasserstein.py — 新增 YAML 键 loss.pairwise_weight、loss.pairwise_margin；**先 grep `loss = (` 确认只有一条损失路径**（避免 duplicate-loss-path 家族）",
+        "  ::pairwise_logistic() — loss = −log σ((f(x+) − f(x−))/T)；正负对在 fold 内按 (ligand, cell) 组构；T 写 YAML",
+        "新建 configs/msrs_lomo_pairwise_dmpnn.yaml — 两个臂只差 loss.pairwise_weight（0 与 1）",
+        "50 步 CPU smoke（§5.7）：parse_args 接受新键、loss[0] > loss[49]、decode 路径不受影响",
+        "5 fold × 5 seed × 2 损失；BCE 臂必须复现 0.5974±0.01 才能进入比较"
+      ],
+      "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json",
       "gate": {
-        "auc_overall": "≥ 0.63（5 seed 均值；当前 0.5974）",
-        "auc_per_metal": "Ru 与 Ir 两个子集都 ≥ 0.60",
-        "must_report": "必须同时报 BCE 基线的同划分 AUC，防止划分变化冒充增益"
+        "primary": "pairwise 臂 Ru/Ir 均值 AUC ≥0.63",
+        "reproduce": "BCE 臂在同代码路径上复现 0.5974±0.01，否则整包作废",
+        "per_metal": "Ru 与 Ir 都 ≥0.60"
       },
-      "kill": "若 AUC < 0.61，LOMO 线关闭，论文只报 0.5974 并注明「分类端点的配对结构与 potency 不同」。",
-      "cost": "GPU0 ~2 hr（5 折 × 5 seed × 2 损失）",
-      "device": "cuda:0",
-      "completed": "2026-10-22",
-      "result": "gate FAIL（3 条过 1 条）；kill 文本触发（0.5529 < 0.61）但 applied=false。同学习器同划分：BCE 0.5449 → pairwise 0.5450 → pairwise_edge 0.5529（+0.0080；Ru +0.0271 / Ir −0.0112）。五金属均值反而 0.6185 → 0.5352（Os/Rh/Re 小折全跌）。队列 2,010 行、折大小与 0.5974 审计逐折相同。门槛 0.63/0.61 按 D-MPNN 冻结、代码点却指定特征模型 ⇒ 口径错误，artifact 同时记 triggered_by_rule_text=true 与 applied=false。"
+      "kill": "若 pairwise 臂 <0.61（且 BCE 臂已复现），LOMO 线关闭，论文只报 0.5974。",
+      "cost": "GPU0 ~3 hr（50 次训练）",
+      "device": "cuda:0"
     },
     {
-      "id": "UP-25",
+      "id": "UP-32",
       "priority": "P2",
       "wave": 4,
-      "status": "DONE-PASS",
-      "title": "可识别性分层主表",
-      "question": "把三轮所有数字按「可识别 / 不可识别」重排，论文主表应该长什么样？",
-      "why_now": "三轮下来 artifact 有 20+ 个，每个数字的估计目标不同（pooled / centered / 逐对 / 条件）。混在一张表里就是 §5.2 违规。",
+      "status": "PLANNED",
+      "title": "复核与主表重排",
+      "question": "七个包的新数字进来后，主表与索引还自洽吗？哪些旧标签要改？",
+      "why_now": "UP-25 的主表是快照；新增 7 行后必须重跑，否则文档开始撒谎。",
+      "literature": [],
       "code_points": [
-        "新建 molmetal/scripts/msrs_main_table.py",
-        "  ::collect() — 从 registry 读本轮 8 个 artifact + 前两轮的 6 个，按 metric 归类",
-        "  ::annotate_estimand() — 每个数字标 ESTIMAND ∈ {pooled, centered, per_pair, conditional, edge_level} 与 IDENTIFIABLE ∈ {yes, no, partial}",
-        "  ::emit_markdown() — 输出 docs/PREDICTIVE_LINE_MAIN_TABLE.md，不可识别的数字单独一张表并写明原因",
-        "  ::check_consistency() — 与 docs/PREDICTIVE_LINE_INDEX.md 的机器校验块交叉核对，不一致则 FAIL"
+        "扩 molmetal/scripts/msrs_main_table.py::ROWS — 新增 UP-26..UP-31 的行，每行给 ESTIMAND + IDENTIFIABLE + reason",
+        "  ::check_consistency() 保持与 docs/PREDICTIVE_LINE_INDEX.md 机器校验块逐个比对",
+        "重跑 registry.py generate/check；重跑 test_predictive_line_index.py",
+        "在 docs/HONEST_NEGATIVE_CATALOG.md 追加本轮条目（每个 FAIL 一条）"
       ],
       "artifact": "metrics/by_metric/msrs_main_table.json",
       "gate": {
-        "no_threshold": "汇总包，不设数值门槛",
-        "assert_all_rows_tagged": "每个数字都有 ESTIMAND + IDENTIFIABLE + artifact 路径",
-        "assert_no_orphan": "主表里每个 artifact 路径都必须存在于 registry",
-        "assert_index_consistent": "与 PREDICTIVE_LINE_INDEX 的机器校验块一致"
+        "no_threshold": "汇总包",
+        "assert_all_rows_tagged": "每行有 ESTIMAND + IDENTIFIABLE + artifact",
+        "assert_no_orphan": "主表里每个 artifact 都在 registry",
+        "assert_index_consistent": "与索引机器校验块一致"
       },
       "kill": "若任一数字无法标注估计目标，该数字从主表移除而不是猜。",
       "cost": "CPU ~1 hr",
-      "device": "cpu",
-      "completed": "2026-10-22",
-      "result": "gate PASS（三条断言全过）：43 行主表，值全部从 artifact 读出；ESTIMAND pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3；IDENTIFIABLE yes 21 / partial 17 / no 5。43 个 artifact 全在 registry；43 个 id 与 PREDICTIVE_LINE_INDEX 机器校验块逐个一致（mismatches = []）。产物：metrics/by_metric/msrs_main_table.json + docs/PREDICTIVE_LINE_MAIN_TABLE.md。"
+      "device": "cpu"
     }
   ],
   "open_decisions": [
-    "DP-3 论文线解冻（owner 用户；UP-18..UP-25 已全部完成，等待用户裁定）"
+    "DP-3 论文线解冻（owner 用户；UP-26..UP-32 完成后裁定）",
+    "DP-9 排序线是否以 Davidson 平局模型重开（UP-29 后）",
+    "DP-10 DOI 线主协议是否改为 n_cal 行自校准（UP-26 后）",
+    "DP-11 LOMO 线是否改为 D-MPNN + pairwise（UP-31 后）"
   ],
   "do_not": [
-    "不要再调 D-MPNN / chemprop 的超参来救这六个指标——两轮已经证明问题不在容量。",
-    "不要把 pooled 数字和逐对数字放同一张表而不标估计目标。",
+    "不要再调 D-MPNN / chemprop 的超参来救这些指标——三轮已证明问题不在容量。",
+    "不要把 pooled 数字和逐对数字放同一张表而不标估计目标（用 docs/PREDICTIVE_LINE_MAIN_TABLE.md）。",
     "不要把 metal_out 的绝对 R² 当作能力指标（树图上不可识别）。",
-    "不要在没有配对边的金属上训练交互项（v=0 是恒等式，不是正则）。",
-    "不要用 DOI one-hot 做跨论文泛化（留出论文上恒为 0）。",
+    "不要用论文元特征预测 y 的偏移（UP-21 已证 LOPO R² −0.0259）；它们只允许用于估密度比。",
+    "不要在没有配对边的金属上训练交互项。",
     "不要用 n≥20 这类组数判据代替精度判据。",
+    "不要在没有复现历史基线的代码路径上使用绝对门槛做 kill（UP-24 的教训）。",
     "不要在 paper/* 里写任何东西（§5.3）。"
   ],
   "paper_freeze": {
     "directive": "TODO-84 active。",
     "frozen": true,
-    "unfreeze_condition": "DP-3 由用户裁定；且 UP-25 的主表已落盘、registry PASS、paper_metric_tables --strict 0 MISSING。",
+    "unfreeze_condition": "DP-3 由用户裁定；且 UP-32 的主表已落盘、registry PASS、paper_metric_tables --strict 0 MISSING。",
     "hard_rule": "冻结期间只允许写 metrics/by_metric/*.json 与 docs/*，不写 paper/*。"
   }
 }
