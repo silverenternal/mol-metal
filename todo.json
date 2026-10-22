@@ -2,7 +2,7 @@
   "schema": "molmetal-todo-v5",
   "created": "2026-10-22",
   "updated": "2026-10-23",
-  "rewritten": "2026-10-23T03:20+08:00",
+  "rewritten": "2026-10-23T04:35+08:00",
   "supersedes": "molmetal-todo-v4。第四轮 UP-26..UP-32 全部关闭（5 FAIL / 2 PASS），已完成的包从本文件删除，结论压进 closed_decisions R14-R21 与 current_position。",
   "purpose": "第五轮强化。第四轮证明了这个项目里唯一被验证能改变绝对性能的算子是「用目标域自己的少量标签做经验贝叶斯校准」（UP-26：0.3674 → 0.6839，达上界 93%）。其余五个包（表示、损失、平局似然、配对宽度、reweight）全部失败，失败机制各自被测量排除。第五轮不再找新模型，只把这一个算子推到它还没去过的三个地方 —— 区间宽度、金属水平、少样本适配 —— 并给已经成为 headline 的主数字补一个抽样下界。",
   "how_to_read": [
@@ -348,7 +348,7 @@
       "id": "UP-33",
       "priority": "P1",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "校准后的 conformal：宽度从 1.99 掉到多少",
       "question": "UP-20/27 的四种 conformal 变体都在未校准的点预测上做，宽度锁在 1.99。EB 校准把 R² 从 0.3674 抬到 0.6839，残差 sd 只剩原来的 71%，而 split-conformal 的宽度正比于残差尺度。把校准放在 conformal 之前，90% 区间能窄到多少？",
       "why_now": "宽度 1.9871 离 1.90 只差 4%，但 UP-27 证明换分位数模型只能挪 −0.0022 —— 分母是点预测的残差尺度，不是分位数模型。校准是唯一被验证能改这个尺度的算子，却从未用在区间上。",
@@ -373,15 +373,20 @@
         "paired": "同协议下比 uncalibrated 窄 ≥20%",
         "reproduce": "uncalibrated 臂复现 1.9871±0.02"
       },
-      "kill": "median_width >1.90 ⇒ 校准对区间宽度无效，区间线关闭。",
+      "kill": false,
       "cost": "CPU ~40 min",
-      "device": "cpu"
+      "device": "cpu",
+      "verdict": "PARTIAL",
+      "headline": "split_cal 1.4478 @ 0.9007 (uncalibrated 2.0073), 窄 27.87%；oracle 1.3717；最差金属 Os 0.8088 < 0.87 ⇒ 组覆盖检查 FAIL；Mondrian 变体 1.4390 @ 0.9011，最差 Os 0.8888",
+      "gate_pass": false,
+      "reproduced": "split_uncal 2.0073 与 cqr_uncal 1.9871 均逐位复现",
+      "note": "5 项检查 4 项通过；唯一失败项是 Os 组覆盖。改后的 worst-group 统计量是『按金属平均后再取最小』，不是『每次抽样取最小再平均』（后者有偏，会把 0.889 报成 0.833）。"
     },
     {
       "id": "UP-34",
       "priority": "P1",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "金属水平的 EB：新金属给 k 行",
       "question": "metal_out 的 −0.0734 是「零校准行」下的判定（UP-19/30）。部署时新金属至少有 k 行已测。金属水平能不能像论文水平一样被估出来？",
       "why_now": "UP-19 证明 94.5% 的行没有配对伙伴，金属水平不能从配体相似性推；UP-30 证明放宽配对也学不到。但「直接测 k 行、减掉水平」不需要配对 —— 它是 UP-26 在金属轴上的同一算子，从未试过。",
@@ -399,14 +404,26 @@
       ],
       "artifact": "metrics/by_metric/msrs_metal_calibration.json",
       "gate": {
-        "primary": "k=10 时 metal_out 加权 R² ≥0.30",
-        "reproduce": "k=0 复现 −0.0734±0.01",
-        "contrast": "paper_only 在 k=10 时 ≤0.15（金属项必须有独立贡献）",
-        "monotone": "5 个 k 点里 ≥4 个不降"
+        "primary": "k=10 时恢复 ≥70% 的 oracle 缺口：(R2_k10 − R2_base)/(R2_oracle − R2_base) ≥0.70",
+        "reproduce": "baseline 臂复现 −0.0734±0.01（msrs_lomo_surface.json metal_out aggregate.descriptors.weighted_r2）",
+        "contrast": "paper_only 臂恢复 <30% 的缺口（金属项必须有独立贡献）",
+        "monotone": "5 个 k 点（0/5/10/20/50）里 ≥4 个不降",
+        "report": "整条 k 曲线 + 每金属的 ô + k 行覆盖的论文数分布"
       },
-      "kill": "k=10 <0.10 ⇒ 金属水平仍不可识别，metal_out 线彻底关闭。",
+      "kill": true,
       "cost": "CPU ~1 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "gate_original_frozen": {
+        "text": "k=10 时 metal_out 加权 R² ≥0.30；k=0 复现 −0.0734±0.01；paper_only 在 k=10 时 ≤0.15；5 个 k 点里 ≥4 个不降",
+        "kill": "k=10 <0.10 ⇒ 金属水平仍不可识别，metal_out 线彻底关闭",
+        "problem": "算术上不可达：任何逐金属常数偏移的上限是 weighted r2_centred = 0.0092（metrics/by_metric/msrs_identifiability.json，per_metal[*].representations.descriptors.all_rows.r2_centred，按 n 加权），基线 −0.0734，可恢复缺口只有 0.083。0.30 是上限的 33 倍，0.10 的 kill 会把『可估但很小』误判成『不可识别』。"
+      },
+      "gate_amended_at": "2026-10-23T03:55+08:00",
+      "gate_amended_reason": "原门槛在写的时候把『metal_out R²』当成了可恢复量。用已有 artifact 算出的 oracle 上限是 0.0092，说明这个量本身只有 0.083 的空间。改后的门槛按 oracle 缺口归一化，仍然可证伪，且 kill 不再混淆『估得小』与『估不出』。改动发生在任何 k 曲线结果产生之前。",
+      "verdict": "FAIL",
+      "headline": "baseline −0.0734 复现，oracle 0.0092，缺口 0.0826；primary k=10 = −0.1250（恢复 −0.62）⇒ gate FAIL、kill 触发；metal_only_raw k=10 −0.0651（恢复 0.10）、k=50 −0.0171（恢复 0.68）",
+      "gate_pass": false,
+      "note": "paper_only −0.1306 比基线更差：论文偏移被训练金属的水平污染，跨金属不迁移。κ_metal 在 4 个已观测金属上被估成 ∞（tau2 触底），因为被留出的金属按构造就在该方差之外。kill 的解释字段写明：k 行里有水平信息，但要 ~50 行才读得出，不是 10 行。"
     },
     {
       "id": "UP-35",
@@ -442,7 +459,7 @@
       "id": "UP-36",
       "priority": "P2",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "0.6839 的抽样分布：论文能不能引一个下界",
       "question": "主数字 0.6839 是 20 次 10 行抽样的平均。换 10 行，R² 会掉到多少？论文要引的是点估计还是下界？",
       "why_now": "DP-10 把 n_cal=10 设成主协议后，0.6839 成了全项目的 headline。但 artifact 只存了 seed 间的 min/max，没有存抽样间的分布。没有下界的主数字在部署里不可用。",
@@ -460,9 +477,13 @@
         "reproduce": "n0/n10/n50 逐位不变",
         "selection": "报 maxmin 的 5% 分位，并说明部署该选哪种抽样策略"
       },
-      "kill": "5% 分位 <0.45 ⇒ 0.6839 只能作为均值报，不得写成部署保证。",
+      "kill": false,
       "cost": "CPU ~10 min",
-      "device": "cpu"
+      "device": "cpu",
+      "verdict": "PASS",
+      "headline": "n_cal=10 的 5% 分位 0.676，中位 0.6838，最小 0.673；maxmin 臂 5% 分位 0.6765",
+      "gate_pass": true,
+      "note": "n0/n10/n50 = 0.3674/0.6839/0.7243 逐位不变。0.6839 可以带 0.676 的下界引用。"
     },
     {
       "id": "UP-37",
@@ -513,14 +534,22 @@
     "hard_rule": "冻结期间只允许写 metrics/by_metric/*.json 与 docs/*，不写 paper/*。"
   },
   "round5_progress": {
-    "done": [],
-    "open": [
+    "done": [
       "UP-33",
       "UP-34",
+      "UP-36"
+    ],
+    "open": [
       "UP-35",
-      "UP-36",
       "UP-37"
     ],
-    "note": "第五轮 5 个包，三波。门槛冻结于 2026-10-23T03:20+08:00，早于任何结果。"
+    "note": "第五轮 5 个包，三波。门槛冻结于 2026-10-23T03:20+08:00，早于任何结果。",
+    "wave_1_verdicts": {
+      "UP-33": "PARTIAL",
+      "UP-34": "FAIL"
+    },
+    "wave_2_verdicts": {
+      "UP-36": "PASS"
+    }
   }
 }
