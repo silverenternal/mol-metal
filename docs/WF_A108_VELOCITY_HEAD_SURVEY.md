@@ -103,7 +103,11 @@ The order matters: one factor at a time, each with its own gate, because §6.166
   This is GVP's scalar gating (Jing 2021) with SemlaFlow's per-channel radial
   injection (Irwin 2025, Eq. 4/10-13), at `O(E·C)` rather than Semla's `O(E·C²)`.
 * After aggregation: shared channel mixing `V ← V + V W` (`W` zero-init) and a
-  per-atom RMS normalisation with a learnable per-channel gain (MiDi's `_CoordNorm`).
+  per-channel **unit** normalisation with a learnable per-channel gain. This started
+  as MiDi's per-atom joint RMS (`_CoordNorm`) and was changed because a joint RMS
+  divides every channel by the same statistic: channel 0 (`x - centroid`, norm ~ the
+  cloud radius) then crushed channels 1..C-1, and the tangential test stalled at the
+  radial ceiling (0.194 vs 0.213). Per-channel unit norms fixed it (0.034).
 * Output: `u_i = Σ_c w_c(h_i) · V_i^c` with `w(h)` zero-init, so the field starts at
   zero velocity exactly like `vel_head` does today.
 
@@ -123,6 +127,18 @@ in the gate is attributable to the architecture.
 
 Why separate: if 108a already fixes the fit, 108b is a refinement; if 108b is what
 fixes it, we learn that the head was adequate and the target scale was not.
+
+**Correction (2026-10-22, written before implementing it).** As specified above this
+is *not* a change of parameterisation. With `x̂₁ = x_t + (1-t)·u`, the loss residual is
+`x̂₁ - x₁ = (1-t)(u - v)`, so the objective is exactly `(1-t)²·w(t)·‖u - v‖²` — the same
+velocity regression, reweighted in `t`. The predicted quantity is still `u`. A genuine
+x₁ parameterisation needs the head to emit an absolute position with free magnitude;
+the unit-normalised channels bound each `V_c` to unit length, so `Σ w_c V_c` can only
+reach 5 Å by growing `w_c`, and at init the head is exactly zero (5 Å from the data).
+Doing it properly therefore means a scale head — a bigger change than "loss + sampler
+only", and one that should be gated on the same capacity test. Until then the honest
+description of the cheap version is **time weighting**, not re-parameterisation, and
+its expected effect is gradient balance across `t`, not reachability.
 
 ### Wf-A108c — metal-centred channels
 
