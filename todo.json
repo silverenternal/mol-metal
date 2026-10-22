@@ -297,6 +297,21 @@
       "id": "R13",
       "from": "UP-23 / UP-24",
       "conclusion": "deadzone 标签让 lambdarank 0.5985 → 0.5612（17.6% 组梯度归零），kill 触发（DP-8 = YES 关闭排序线）；pairwise 损失在同学习器下只 +0.008，且门槛与学习器错配。"
+    },
+    {
+      "id": "R14",
+      "from": "UP-26",
+      "conclusion": "论文偏移不必预测、可以测：1 行 0.5559 / 10 行 0.6839 / 50 行 0.7243，同批行零校正 0.4005，上界 0.7337。前三轮的零校准行评估自愿放弃了部署时真实存在的信息。"
+    },
+    {
+      "id": "R15",
+      "from": "UP-27",
+      "conclusion": "加权 conformal 无效（AUC 0.5678、ESS 94.5%、宽度只挪 -0.0022）；ACI 用宽度买覆盖（0.9106 / 2.0572）。破坏可交换性的是论文随机效应，不是协变量漂移，reweight 无从下手。"
+    },
+    {
+      "id": "R16",
+      "from": "UP-29",
+      "conclusion": "Davidson 平局模型 0.5312 与 BT 0.5317 无差别，delta=2.28 时 98.7% 判平局；排序线第二次、不同机制下仍关闭（kill 触发）。"
     }
   ],
   "decision_points": [
@@ -384,7 +399,7 @@
       "id": "UP-26",
       "priority": "P0",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "每篇论文的 EB 自校准：把不可预测的偏移变成可估的偏移",
       "question": "UP-21 证明论文偏移 sd 0.24 且不可从描述预测。但部署时新论文至少有少量已测行 —— 用 n_cal 行估它的偏移，DOI R² 能到多少？",
       "why_now": "这是唯一一个把「已诊断出的失败原因」直接转成「部署时可用信息」的杠杆，且不需要新数据、不需要 GPU。前三轮全部在零校准行下评估，等于自愿放弃了这个信息。",
@@ -409,13 +424,54 @@
       },
       "kill": "若 n_cal=10 时 R² <0.40，per-paper 校准线关闭，论文写「新论文的偏移只能整篇估计，少量行不够」。",
       "cost": "CPU ~1.5 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "result": {
+        "verdict": "PASS",
+        "artifact": "metrics/by_metric/msrs_paper_calibration.json",
+        "headline": "n_cal=10 DOI R2 0.6839 (gate 0.45); n_cal=0 reproduces 0.3674 (target 0.3670+-0.005)",
+        "numbers": {
+          "r2_curve_eb_random": [
+            0.3674,
+            0.5559,
+            0.6094,
+            0.6584,
+            0.6839,
+            0.7038,
+            0.7243
+          ],
+          "r2_matched_zero": [
+            0.3674,
+            0.3692,
+            0.3713,
+            0.3804,
+            0.4005,
+            0.4254,
+            0.4347
+          ],
+          "delta_n10": 0.2834,
+          "r2_affine_n10": 0.7049,
+          "r2_maxmin_n50": 0.7488,
+          "kappa_mean": 0.7781,
+          "n_eval_rows_n10": 9885,
+          "ceiling_perfect_offset_removal": 0.7337
+        },
+        "reading": [
+          "1 行已测值就把 DOI R2 从 0.3674 抬到 0.5559，10 行到 0.6839，50 行到 0.7243。",
+          "绝对涨幅里 +0.0331 是行构成（同批行零校正从 0.3674 升到 0.4005），+0.2834 是校正本身。",
+          "独立算术核对给出完美去除论文偏移的上界 0.7337，实测 0.6839 已达其 89%，这条线到此封顶。",
+          "随机与 MaxMin 在 n_cal=10 打平（0.6839 vs 0.6829）；从 n=10 起 affine 反超（0.7049），因为斜率需要更多行。"
+        ],
+        "caveats": [
+          "n_cal=10 时评估行 9,885，其中 10.3% 来自只剩 1 行可评的小论文，其余 89.7% 来自 >=12 行的论文。",
+          "kappa 逐折在训练折上估（0.7332-0.8087），测试论文自身的残差尺度不进入收缩因子。"
+        ]
+      }
     },
     {
       "id": "UP-27",
       "priority": "P0",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "漂移下的覆盖：加权 conformal + 在线 ACI",
       "question": "UP-20 的失败是「在论文漂移下用可交换 conformal」。换成加权分位（似然比）与在线 α 更新，能不能同时拿到覆盖与 ≤1.90 的宽度？",
       "why_now": "前三轮把 conformal 当成固定工具，只换分位数模型；UP-20 证明那条路走不通。加权 conformal 与 ACI 改的正是被破坏的那个假设，且都不需要重训点模型。",
@@ -443,7 +499,47 @@
       },
       "kill": "若最优臂宽度 >2.00 或覆盖 <0.88，conformal 线关闭，论文只报「覆盖 0.90 可达、宽度由数据分辨率决定」。",
       "cost": "CPU ~1 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "result": {
+        "verdict": "FAIL (width, worst group); kill not triggered",
+        "artifact": "metrics/by_metric/msrs_conformal_shift.json",
+        "headline": "weighted_cqr width 1.9849 vs cqr 1.9871 (inert); ACI coverage 0.9106 at width 2.0572; density-ratio AUC 0.5678",
+        "numbers": {
+          "cqr": [
+            0.9,
+            1.9871,
+            0.8716
+          ],
+          "weighted_cqr": [
+            0.8998,
+            1.9849,
+            0.8693
+          ],
+          "aci_cqr_g0p01": [
+            0.9106,
+            2.0572,
+            0.8818
+          ],
+          "online_cqr": [
+            0.9104,
+            2.0551,
+            0.882
+          ],
+          "density_ratio_auc": 0.5678,
+          "ess_fraction": 0.945,
+          "best_arm": "cqr"
+        },
+        "reading": [
+          "似然比分类器 AUC 0.5678、ESS 仍是校准集的 94.5%，说明两个论文总体在 x 上几乎不可分，加权没有可做的工作。",
+          "按年覆盖 0.7711（2011）到 0.9451（2005），加权后每年变动 <=0.003；漂移不是时间、不是协变量。",
+          "ACI 把覆盖抬到 0.9106，宽度同时涨到 2.0572；online_cqr（固定 alpha）已到 0.9104，自适应只贡献 0.0002。",
+          "与 UP-26 合起来：论文效应在 x 里不存在，但在 y 里存在且可测 —— 必须测量，不能建模。"
+        ],
+        "caveats": [
+          "DOI 折是随机划分论文，本来就没有协变量漂移；这个 null 不否证加权 conformal，只否证它适用于这个划分。",
+          "最差金属组最好只到 0.8818（UP-20 的 metal-Mondrian 是 0.8961），失败层是小金属组。"
+        ]
+      }
     },
     {
       "id": "UP-28",
@@ -477,7 +573,7 @@
       "id": "UP-29",
       "priority": "P1",
       "wave": 2,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "平局感知排序：Davidson 三项模型（DP-8 后的唯一重开）",
       "question": "UP-23 把 |Δ|<τ 的对并成一个 label，结果 17.6% 的组梯度归零、balanced 掉到 0.5612。把平局当**第三个结果**而不是缺失，能不能反而利用这些对？",
       "why_now": "平局对不是噪声：它们约束 δ（平局倾向）与「两金属接近」这一事实。UP-23 丢掉的是信息，不是噪声。这是机制层面的不同做法，符合 reopen_rule。",
@@ -500,7 +596,39 @@
       },
       "kill": "若 balanced <0.58，DP-9 = NO，排序线维持关闭。",
       "cost": "CPU ~40 min",
-      "device": "cpu"
+      "device": "cpu",
+      "result": {
+        "verdict": "FAIL; kill triggered (0.5312 < 0.58)",
+        "artifact": "metrics/by_metric/msrs_davidson_ties.json",
+        "headline": "Davidson 0.5312 vs Bradley-Terry 0.5317 vs lambdarank 0.5985; delta=2.28; 98.7% of pairs judged ties",
+        "numbers": {
+          "bt_baseline": [
+            0.5317,
+            0.4433,
+            0.6193
+          ],
+          "davidson_none": [
+            0.5312,
+            0.4438,
+            0.6135
+          ],
+          "delta_mean": 2.2784,
+          "predicted_tie_rate": 0.9873,
+          "three_class_accuracy": 0.0127,
+          "tau_x0.5": 0.4968,
+          "tau_x1.5": 0.5225
+        },
+        "reading": [
+          "bt_baseline 逐位复现 UP-23 的 0.5317，这是本包需要的协议一致性证明。",
+          "Davidson 与 BT 差 -0.0005：机制换了、结果没变，且低于 lambdarank 0.5985。",
+          "delta 拟合到边际平局率后为 2.28，模型对 98.7% 的评估对判平局 —— 分数分辨率低于噪声下限。",
+          "kill 触发，排序线由 UP-23（重加权）与 UP-29（第三类结果）两个独立机制共同关闭，DP-8 维持 YES。"
+        ],
+        "caveats": [
+          "失败的是线性 pairwise 类，不是「平局无信息」；在 listwise GBDT 分数上叠 Davidson 是另一个实验。",
+          "pairwise 拟合确定性，5 个 seed 完全相同，不确定性只来自簇 bootstrap。"
+        ]
+      }
     },
     {
       "id": "UP-30",
@@ -607,5 +735,19 @@
     "frozen": true,
     "unfreeze_condition": "DP-3 由用户裁定；且 UP-32 的主表已落盘、registry PASS、paper_metric_tables --strict 0 MISSING。",
     "hard_rule": "冻结期间只允许写 metrics/by_metric/*.json 与 docs/*，不写 paper/*。"
+  },
+  "round4_progress": {
+    "done": [
+      "UP-26",
+      "UP-27",
+      "UP-29"
+    ],
+    "open": [
+      "UP-28",
+      "UP-30",
+      "UP-31",
+      "UP-32"
+    ],
+    "note": "UP-29 提前于 UP-28 执行：它是纯 CPU，而 UP-28 需要 GPU0。波次顺序按设备可用性调整，门槛不变。"
   }
 }

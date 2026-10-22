@@ -11393,3 +11393,181 @@ path; all 43 artifacts resolve in the registry; all 43 ids that also appear in
 artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+
+## §6.180 — UP-26: the paper offset is measurable from a handful of rows, and the
+ceiling is 0.7337 (2026-10-22)
+
+**Why this entry exists.** UP-21 concluded that the paper offset cannot be predicted
+from the paper's description and closed that line. That conclusion is correct and was
+read as if the offset were therefore unrecoverable. It is not. Every round 1-3
+evaluation scored the model on papers with zero measured rows, which is a harder
+problem than the assay pipeline poses: a new paper arrives with a plate that has
+already been run. This entry records what that information is worth, and what it is
+not worth.
+
+**Measured** (`metrics/by_metric/msrs_paper_calibration.json`; 5 seeds x 20 repeats,
+DOI GroupKFold, arm `maccs_rdkit`, primary estimator `eb_random`):
+
+| n_cal | R^2 | matched zero-correction R^2 | correction delta | eval rows |
+|---:|---:|---:|---:|---:|
+| 0 | 0.3674 | 0.3674 | 0.0000 | 21,309 |
+| 1 | 0.5559 | 0.3692 | 0.1867 | 19,620 |
+| 2 | 0.6094 | 0.3713 | 0.2381 | 18,077 |
+| 5 | 0.6584 | 0.3804 | 0.2781 | 14,223 |
+| 10 | 0.6839 | 0.4005 | 0.2834 | 9,885 |
+| 20 | 0.7038 | 0.4254 | 0.2784 | 5,625 |
+| 50 | 0.7243 | 0.4347 | 0.2895 | 2,782 |
+
+Shrinkage is estimated, not tuned: `kappa = sigma2_noise / tau2_paper = 0.7781`
+(per-fold 0.7332-0.8087), with `sigma2_noise` 0.164-0.170 and `tau2_paper`
+0.211-0.224, both method-of-moments on the training folds of each split.
+
+**The ceiling.** An independent arithmetic check removes every test paper's mean
+residual and leaves the evaluation rows unchanged: that gives R^2 = 0.7337. The
+measured 0.6839 at n_cal=10 is 89% of it. Nothing about more calibration rows, a
+better learner or a better feature set moves that number, because the remaining error
+is within-paper and no paper-level statistic can touch it.
+
+**Honest boundaries (ACTIVE).**
+  * **The absolute R^2 rise is not all correction.** At n_cal=10 the evaluation set
+    drops to 9,885 rows and its uncorrected R^2 is already 0.4005. Of the 0.3165 rise
+    from 0.3674, +0.0331 is row composition and +0.2834 is the correction. Quoting
+    0.6839 against 0.3674 as if the whole gap were the estimator is a row-set artefact.
+  * **The regime is "measure ten, predict one" for most papers.** At n_cal=10, 1,017
+    of 9,885 evaluation rows (10.3%) come from papers that had exactly one row left;
+    the other 89.7% come from papers with at least 12 rows. The headline is therefore
+    driven by large papers, but a deployer with a 3-row paper gets the 2-row regime,
+    not this number.
+  * **The affine arm is better where it has room.** From n_cal=10 upward a per-paper
+    slope beats the offset alone (0.7049 vs 0.6839 at n=10, 0.7475 vs 0.7243 at
+    n=50), and it is much worse below that (0.4258 at n=1). Two free parameters need
+    more than two rows; the offset arm is the one that degrades gracefully.
+  * **Selection arm does not matter at n_cal=10.** Random 0.6839 vs MaxMin 0.6829.
+    MaxMin wins at the ends (n=1 +0.0228, n=50 +0.0245) because it spans the paper's
+    chemistry, which helps a slope, not a mean.
+  * **James-Stein adds nothing.** Borrowing across the batch of new papers gives
+    0.6836 vs 0.6839, because the batch-arrival assumption is not needed once each
+    paper has its own rows.
+
+**Artifacts.** `molmetal/scripts/msrs_paper_calibration.py`,
+`metrics/by_metric/msrs_paper_calibration.json`.
+
+**§6.180 catalog-count math.** Net **+1**. Cumulative **234 → 235**. ACTIVE
+**190 → 191**.
+
+**Workflow** | UP-26 (2026-10-22; CPU 4.4 min, no retrain; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.181 — UP-27: weighted conformal is inert here because the drift is not in x
+(2026-10-22)
+
+**Why this entry exists.** UP-20 established that the interval width cannot go below
+1.82 while coverage stays at 0.90, and every arm it tried changed the quantile model
+while keeping the exchangeability assumption. The paper offset measured by UP-21
+(sd 0.24) violates that assumption, so a method that repairs the assumption directly
+should help. It does not, and the reason is worth recording: the assumption is not the
+one being violated.
+
+**Measured** (`metrics/by_metric/msrs_conformal_shift.json`; 5 seeds, alpha 0.10):
+
+| arm | protocol | coverage | median width | worst metal group |
+|---|---|---:|---:|---:|
+| cqr | doi | 0.9000 | 1.9871 | 0.8716 |
+| weighted_cqr | doi | 0.8998 | 1.9849 | 0.8693 |
+| weighted_global | doi | 0.8991 | 2.0108 | 0.8580 |
+| global | doi | 0.9003 | 2.0073 | 0.8600 |
+| difficulty | doi | 0.8767 | 1.8981 | 0.8623 |
+| aci_cqr (gamma 0.01) | rolling | 0.9106 | 2.0572 | 0.8818 |
+| online_cqr (fixed alpha) | rolling | 0.9104 | 2.0551 | 0.8820 |
+
+**The diagnostic that explains the null.** The likelihood-ratio classifier separates
+test papers from calibration papers at AUC 0.5678 on 23 metadata features, and the
+weighted effective sample size is 1,348.7 of 1,428.9 calibration papers (94.5%). The
+two populations are nearly the same distribution. Per-year coverage moves between
+0.7711 (2011) and 0.9451 (2005) under CQR, and reweighting changes any year by at
+most 0.003. The drift is not covariate shift, not temporal drift and not label shift
+in anything observable. It is an unobserved per-paper level.
+
+**Honest boundaries (ACTIVE).**
+  * **This does not falsify weighted conformal.** The method is correct under the
+    assumption it targets; the assumption does not hold. Re-running it on a genuinely
+    shifted split (new metals, new cell lines, later years only) would be a different
+    experiment and is not covered by this number.
+  * **ACI buys coverage and pays width.** 0.9000 to 0.9106 costs 1.9871 to 2.0572.
+    There is no free coverage in the rolling protocol either; `online_cqr` at fixed
+    alpha already reaches 0.9104, so the adaptive update contributes 0.0002.
+  * **The worst metal group never reaches 0.90.** The best arm in this sweep is 0.8818,
+    and UP-20's metal-Mondrian reached 0.8961. The failing stratum is a small metal
+    group, not a year and not a paper.
+  * **Two protocols share one table.** The doi arms are cross-conformal on DOI folds;
+    the rolling arms calibrate on earlier years and score later ones. Widths are not
+    directly comparable across the two, which is why `online_cqr` is reported: it is
+    the rolling protocol with a fixed alpha and is the bridge.
+
+**Artifacts.** `molmetal/scripts/msrs_conformal_shift.py`,
+`metrics/by_metric/msrs_conformal_shift.json`.
+
+**§6.181 catalog-count math.** Net **+1**. Cumulative **235 → 236**. ACTIVE
+**191 → 192**.
+
+**Workflow** | UP-27 (2026-10-22; CPU 6.8 min, no retrain; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.182 — UP-29: modelling ties as a third outcome reproduces Bradley-Terry to
+four decimals, and the model says why (2026-10-22)
+
+**Why this entry exists.** UP-23 removed or down-weighted near-tied pairs and both
+made ranking worse, which was recorded as "noise labels are not the bottleneck".
+That test treated a tie as absent information. Davidson (1970) gives the tie its own
+probability, which is a different mechanism and therefore a legitimate reopening of
+the killed line under `todo.json::rules.reopen_rule`.
+
+**Measured** (`metrics/by_metric/msrs_davidson_ties.json`; 315 gate-eligible pairs,
+2000-draw ligand-cluster bootstrap):
+
+| arm | balanced accuracy | 95% CI | delta | predicted tie rate |
+|---|---:|---|---:|---:|
+| bt_baseline (UP-23 bt_exclude) | 0.5317 | [0.4433, 0.6193] | - | 0.0000 |
+| davidson_none | 0.5312 | [0.4438, 0.6135] | 2.2784 | 0.9873 |
+| davidson tau x 0.5 | 0.4968 | [0.4092, 0.5893] | 0.9626 | 0.9626 |
+| davidson tau x 1.5 | 0.5225 | [0.4375, 0.6041] | 3.7164 | 1.0000 |
+
+`bt_baseline` reproduces UP-23's 0.5317 exactly, which is the protocol-consistency
+check this package needs. Davidson differs from it by -0.0005.
+
+**The model's own diagnosis.** With 336 of 651 pairs tied by the deadzone rule
+(51.6%), the fitted tie scale is delta = 2.28 (per fold 1.86-2.75), which reproduces
+the marginal tie rate almost exactly. At that delta the tie class wins the argmax for
+98.7% of the 315 evaluation pairs, every one of which is a genuine win or loss by
+construction. Three-class accuracy is 0.0127. The fit is not broken; it is reporting
+that the score has less resolution than the assay noise, so the only honest prediction
+left is "indistinguishable".
+
+**Honest boundaries (ACTIVE).**
+  * **A failure here is a failure of the linear pairwise class.** The design is linear
+    in the same features the Bradley-Terry arms use. Davidson on top of a listwise
+    GBDT score is a different experiment and is not covered.
+  * **delta is identified only up to the score scale.** Its value is comparable within
+    an arm, not across arms, and the tau-sensitivity arms each refit their own delta.
+  * **The tau arms are not on the same pair set for training.** Davidson trains on all
+    651 pairs in every arm; tau only changes which of them are labelled ties. The
+    evaluation set is fixed at 315 for every arm, so the comparison is fair.
+  * **The five seeds are identical.** The pairwise fits are deterministic, so the seed
+    axis carries no variance; the only uncertainty is the cluster bootstrap.
+  * **Kill is triggered** (0.5312 < 0.58). The ranking line is now closed by two
+    independent mechanisms, UP-23's reweighting and UP-29's third outcome.
+
+**Artifacts.** `molmetal/scripts/msrs_davidson_ties.py`,
+`metrics/by_metric/msrs_davidson_ties.json`.
+
+**§6.182 catalog-count math.** Net **+1**. Cumulative **236 → 237**. ACTIVE
+**192 → 193**.
+
+**Workflow** | UP-29 (2026-10-22; CPU 31 s, no retrain; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

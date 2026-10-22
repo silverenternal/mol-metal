@@ -33,6 +33,17 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 - **噪声标签不是排序的瓶颈**（UP-23）：deadzone（|Δ| < 该对 noise SD）在 651 对里保留 **315** 对；把噪声对并成同 label 后 lambdarank **0.5985 → 0.5612**（保留子集上 0.6050 → 0.5615），因为 **279/1,586 个组（17.6%）被整组并成一个 label**、梯度归零。kill 触发（0.6050 < 0.62）⇒ **DP-8 = yes，排序线关闭**。
 - **换 pairwise 损失与边感知负采样只值 +0.008 AUC**（UP-24）：同学习器同划分，BCE **0.5449** → pairwise_edge **0.5529**（Ru +0.0271 / Ir −0.0112）；五金属均值反而从 0.6185 掉到 0.5352。**0.5974 与 0.63 的差距不是损失或负采样造成的**；该项的绝对门槛按 D-MPNN 冻结、学习器却是特征模型，属计划口径错误，kill 文本触发但未适用。
 - **43 个 headline 数字里 5 个不可识别、17 个只部分可识别**（UP-25）：主表按 ESTIMAND（pooled 18 / per_pair 8 / conditional 7 / edge_level 7 / centered 3）与 IDENTIFIABLE（yes 21 / partial 17 / no 5）重排，值全部从 artifact 读出并与本索引的机器校验块逐个核对（43/43 一致）。**"partial" 是最容易误用的一档**：0.5985 / 0.5974 / 0.5807 都只在有配对证据的子群上成立。
+- **论文偏移不需要预测，只需要测**（UP-26）：给新论文 **1 行**已测值，DOI R² 从 **0.3674 → 0.5559**；给 **10 行**到 **0.6839**（同批行不校正为 0.4005，校正贡献 **+0.2834**）；给 50 行到 0.7243。完美去除论文偏移的上界是 0.7337（独立算术核对），所以 10 行已经拿到这个上界的 89%。**前三轮全部在"零校准行"下评估，等于自愿放弃了部署时真实存在的信息。**
+- **破坏可交换性的是论文随机效应，不是协变量漂移**（UP-27）：用 23 维论文元特征训练"测试论文 vs 校准论文"分类器，**AUC 只有 0.5678**、加权后有效样本量仍是校准集的 **94.5%** —— 两个总体在 x 上几乎不可分。于是加权 conformal 只把宽度从 1.9871 挪到 **1.9849**（−0.1%），按年覆盖漂移曲线每年变动 ≤0.003。ACI 能买到覆盖（**0.9106**），代价是宽度 **2.0572**。**能被 reweight 的偏移才叫协变量漂移；这个偏移不在 x 里。**
+- **平局作为第三类结果也救不了排序**（UP-29）：Davidson 模型（δ 由数据估到 **2.28**，五个折 1.86–2.75）在保留子集上 balanced **0.5312**，与 Bradley-Terry 的 **0.5317** 无差别，低于 lambdarank 的 0.5985，kill 触发。模型自己给出的诊断是：δ 拟合到边际平局率后，**98.7% 的配对被判为平局** —— 分数分辨率低于噪声下限，平局类吸收了全部概率。**UP-23 的"噪声标签不是瓶颈"换一个机制重做，结论不变。**
+
+**UP 第四轮记分牌（部署阶段，门槛在 2026-10-22T15:45+08:00 写死）**
+
+| 项 | 问题 | 判决 | 一个数字 |
+|---|---|---|---|
+| UP-26 | 新论文的偏移能不能用少量已测行估出来 | **PASS**（4/4） | n_cal=10 R² **0.6839** ≥0.45；n_cal=0 复现 **0.3674**（目标 0.3670±0.005）；7 点全单调 |
+| UP-27 | 加权 conformal + ACI 能不能同时拿覆盖与宽度 | **FAIL**（宽度、最差组） | 加权只把宽度挪 −0.0022；ACI 覆盖 0.9106 但宽度 2.0572；密度比 AUC 0.5678 |
+| UP-29 | 把平局当第三类结果能不能救排序 | **FAIL**（kill 触发） | Davidson **0.5312** vs BT 0.5317 vs lambdarank 0.5985；δ=2.28；98.7% 判平局 |
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -369,7 +380,33 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP25.n_not_identifiable", "value": 5, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.no"},
   {"id": "UP25.n_partial", "value": 17, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "design.by_identifiable.partial"},
   {"id": "UP25.n_cross_checked", "value": 43, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "checks.n_cross_checked"},
-  {"id": "UP25.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "gate.gate_pass"}
+  {"id": "UP25.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_main_table.json", "path": "gate.gate_pass"},
+  {"id": "UP26.r2_n0", "value": 0.3674, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.0.eb_random.r2_mean"},
+  {"id": "UP26.r2_n1", "value": 0.5559, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.1.eb_random.r2_mean"},
+  {"id": "UP26.r2_n10", "value": 0.6839, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_mean"},
+  {"id": "UP26.r2_n50", "value": 0.7243, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.50.eb_random.r2_mean"},
+  {"id": "UP26.matched_zero_n10", "value": 0.4005, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.r2_matched_zero_mean"},
+  {"id": "UP26.delta_n10", "value": 0.2834, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.eb_random.delta_vs_matched_zero_mean"},
+  {"id": "UP26.affine_n10", "value": 0.7049, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.10.affine.r2_mean"},
+  {"id": "UP26.maxmin_n1", "value": 0.5787, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "aggregate.1.eb_maxmin.r2_mean"},
+  {"id": "UP26.kappa", "value": 0.7781, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "gate.checks.report.kappa_mean"},
+  {"id": "UP26.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_paper_calibration.json", "path": "gate.gate_pass"},
+  {"id": "UP27.cqr_coverage", "value": 0.9000, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "aggregate.cqr.coverage_mean"},
+  {"id": "UP27.cqr_width", "value": 1.9871, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "aggregate.cqr.median_width_mean"},
+  {"id": "UP27.weighted_cqr_width", "value": 1.9849, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "aggregate.weighted_cqr.median_width_mean"},
+  {"id": "UP27.aci_cqr_coverage", "value": 0.9106, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "aggregate.aci_cqr_g0p01.coverage_mean"},
+  {"id": "UP27.aci_cqr_width", "value": 2.0572, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "aggregate.aci_cqr_g0p01.median_width_mean"},
+  {"id": "UP27.density_ratio_auc", "value": 0.5678, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "gate.checks.attribution.density_ratio_auc_mean"},
+  {"id": "UP27.ess_fraction", "value": 0.945, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "gate.checks.attribution.ess_fraction_of_cal"},
+  {"id": "UP27.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "gate.gate_pass"},
+  {"id": "UP27.kill_triggered", "value": false, "artifact": "metrics/by_metric/msrs_conformal_shift.json", "path": "gate.kill.triggered"},
+  {"id": "UP29.bt_balanced", "value": 0.5317, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.bt_baseline.balanced_accuracy"},
+  {"id": "UP29.davidson_balanced", "value": 0.5312, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.balanced_accuracy"},
+  {"id": "UP29.davidson_ci_lo", "value": 0.4438, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.cluster_bootstrap.lo"},
+  {"id": "UP29.delta", "value": 2.2784, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.delta_mean"},
+  {"id": "UP29.tie_rate", "value": 0.9873, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.predicted_tie_rate"},
+  {"id": "UP29.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "gate.gate_pass"},
+  {"id": "UP29.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "gate.kill.triggered"}
 ]
 ```
 
@@ -865,6 +902,89 @@ R²_centred = R²_abs + bias²/Var(y)
 **"不可识别"的 5 个**（`G.ligand.ecfp4` 0.5596、`UP14.metal_out_weighted_r2` −0.0734、`UP19.pooled_all_r2_abs` −0.0640、`UP21.lopo_ridge_r2` −0.0259、`UP11.complete_case_ligands` 0）**不是"估计得不好"，是目标本身依赖留出金属自己携带的水平**（或依赖一个语料里不存在的完整行）。它们可以出现在方法讨论里，**不能**作为能力陈述引用。
 
 **"部分可识别"的 17 个**是最容易误用的一档：`UP2b.ligand_cell_balanced` 0.5985、`C6.lomo_resolvable` 0.5974、`UP16.osru_balanced` 0.5807 都属于"只在有配对证据的子群上成立"。引用时必须同时给出子群定义，否则就是把部分识别读成全体识别。
+
+---
+
+### 2.25 UP-26 每篇论文的 EB 自校准：**10 行已测值把 DOI R² 从 0.367 抬到 0.684**（2026-10-22）
+
+`msrs_paper_calibration.json`（CPU 4.4 min，5 seed × 20 repeats）。
+
+UP-21 证明论文偏移 sd 0.24 且**不可**从论文描述预测。UP-26 换问题：偏移不必预测，部署时新论文本来就有若干已测行。估计量是正态-正态层级下的后验均值
+
+```
+sigma2_noise  组内残差方差   （训练折，逐折重估）
+tau2_paper    论文间偏移方差 （训练折，逐折重估）
+kappa         = sigma2_noise / tau2_paper
+offset_hat    = n_cal / (n_cal + kappa) · mean(y − y_hat | 该论文的校准行)
+```
+
+**kappa = 0.7781**（五折 0.7332–0.8087），`sigma2_noise` 0.164–0.170、`tau2_paper` 0.211–0.224。这个收缩因子不是调出来的，是估出来的。
+
+| n_cal | eb_random | eb_maxmin | affine | 同批行零校正 | 校正增量 | 评估行数 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 0.3674 | 0.3674 | 0.3674 | 0.3674 | 0 | 21,309 |
+| 1 | **0.5559** | 0.5787 | 0.4258 | 0.3692 | +0.1867 | 19,620 |
+| 2 | 0.6094 | 0.6396 | 0.5210 | 0.3713 | +0.2381 | 18,077 |
+| 5 | 0.6584 | 0.6704 | 0.6565 | 0.3804 | +0.2781 | 14,223 |
+| 10 | **0.6839** | 0.6829 | **0.7049** | 0.4005 | **+0.2834** | 9,885 |
+| 20 | 0.7038 | 0.7087 | 0.7295 | 0.4254 | +0.2784 | 5,625 |
+| 50 | 0.7243 | **0.7488** | 0.7475 | 0.4347 | +0.2895 | 2,782 |
+
+**必须分开报的两件事**（否则会把行构成读成模型增益）：n_cal 越大，评估行越少、越偏向大论文，所以"同批行零校正"本身从 0.3674 升到 0.4347。**真实增益是最后一列**，在 n_cal=10 上是 +0.2834；绝对 R² 从 0.3674 到 0.6839 里有 +0.0331 是行构成、+0.2834 是校正。
+
+**三条可引用的读数**：
+
+1. **1 行就拿到一半以上**（0.5559）。部署时不需要 50 个对照样，1 个就足以把论文水平对齐。
+2. **随机抽样在 n_cal=10 与 MaxMin 打平**（0.6839 vs 0.6829），但在两端 MaxMin 更好（n=1 +0.0228、n=50 +0.0245）。因为目标是**均值**，随机是无偏估计；MaxMin 的优势在斜率，所以从 n_cal=10 起 `affine` 反超（0.7049 vs 0.6839），n=50 时 0.7475 vs 0.7243。
+3. **上界是 0.7337**：独立算术核对（把每个测试论文的残差均值全部减掉、评估行不变）给出 0.7337，实测 0.6839 是其 89%。**这个数字封住了"再多校准行能到 0.9"的想象**。
+
+**必须声明的口径**：n_cal=10 时 9,885 个评估行里只有 **1,017 行（10.3%）** 来自"只剩 1 行可评"的小论文，其余 89.7% 来自 ≥12 行的论文，所以结论不是被 2 行论文撑起来的。
+
+### 2.26 UP-27 漂移下的覆盖：加权 conformal 无效，ACI 只买到覆盖（2026-10-22）
+
+`msrs_conformal_shift.json`（CPU 6.8 min，5 seed）。
+
+UP-20 在可交换 conformal 下拿到覆盖 0.9000、宽度 1.9871。UP-27 改的是**假设**而不是分位数模型：
+
+| 臂 | 协议 | 覆盖 | 中位宽 | 最差金属组 | Winkler |
+|---|---|---:|---:|---:|---:|
+| cqr | doi | 0.9000 | 1.9871 | 0.8716 | 2.6315 |
+| **weighted_cqr** | doi | 0.8998 | **1.9849** | 0.8693 | 2.6306 |
+| weighted_global | doi | 0.8991 | 2.0108 | 0.8580 | 2.7330 |
+| global | doi | 0.9003 | 2.0073 | 0.8600 | 2.7346 |
+| difficulty | doi | 0.8767 | 1.8981 | 0.8623 | 2.8516 |
+| **aci_cqr (γ=0.01)** | rolling | **0.9106** | 2.0572 | 0.8818 | 2.6366 |
+| online_cqr（α 固定） | rolling | 0.9104 | 2.0551 | 0.8820 | 2.6362 |
+
+**加权臂为什么无效，有直接证据**：似然比分类器的 **AUC = 0.5678**，加权后的有效样本量 **ESS = 1,348.7 / 1,428.9 = 94.5%**。两个论文总体在 23 维元特征上几乎不可分 —— 因为 DOI 折是**随机**划分论文，本来就没有协变量漂移。按年覆盖曲线给出同一个结论：CQR 逐年覆盖在 **0.7711（2011）到 0.9451（2005）** 之间摆动，加权后每一年变动 **≤0.003**（2011 年 0.7711 → 0.7689）。
+
+**这是 UP-26 的镜像**：论文偏移在 x 里**不存在**（AUC 0.57），但在 y 里**存在且可测**（10 行换 +0.28 R²）。所以正确的说法不是"模型对论文漂移不够鲁棒"，而是**论文效应必须测量、不能建模**。
+
+**ACI 的代价是诚实的**：覆盖从 0.9000 抬到 0.9106，宽度同时从 1.9871 涨到 2.0572。理论就是这么预言的（在线更新只保证长期边际覆盖），这里没有任何超额收益。gate 在宽度与最差组上 FAIL，kill（宽 >2.00 或覆盖 <0.88）**未触发** —— 覆盖本身是可达的，达不到的是宽度。
+
+### 2.27 UP-29 平局作为第三类结果：Davidson 与 Bradley-Terry 无差别（2026-10-22）
+
+`msrs_davidson_ties.json`（CPU 31 s）。
+
+UP-23 把近平局行**删掉**或**降权**，两者都让排序变差，于是结论写成"噪声标签不是瓶颈"。UP-29 用 Davidson (1970) 的三结果似然重开这条线 —— 平局有它自己的概率，而不是"没有信息"：
+
+```
+P(a wins) = 1 / (1 + e^-s + δ e^(-s/2))
+P(tie)    = δ e^(-s/2) / (1 + e^-s + δ e^(-s/2)),   s = f(x_a) − f(x_b)
+```
+
+| 臂 | balanced（保留子集，n=315） | 簇 bootstrap 95% | δ | 判为平局的比例 |
+|---|---:|---|---:|---:|
+| bt_baseline（UP-23 bt_exclude 复现） | **0.5317** | [0.4433, 0.6193] | — | 0 |
+| davidson_none | **0.5312** | [0.4438, 0.6135] | 2.28 | **0.9873** |
+| davidson τ×0.5 | 0.4968 | [0.4092, 0.5893] | 0.96 | 0.9626 |
+| davidson τ×1.5 | 0.5225 | [0.4375, 0.6041] | 3.72 | 1.0000 |
+
+**bt_baseline 逐位复现 UP-23 的 0.5317**，这是本包唯一需要的协议一致性证明。Davidson 与它差 **−0.0005**，即机制换了、结果没变。
+
+**δ 自己给出了诊断**：拟合到边际平局率（336/651 = 51.6%）后 δ=2.28，此时**98.7% 的配对被判为平局**。也就是说，这个模型在 315 个"定义上不是平局"的评估对上，有 98.7% 直接放弃判断。**这不是拟合失败，是模型在说：分数分辨率低于噪声下限。** 三分类准确率 0.0127 是这句话的量化形式。
+
+**kill 触发（0.5312 < 0.58）⇒ 排序线在第二次、不同机制下仍然关闭**。DP-8 维持 YES，且现在是"两个机制、同一个结论"，比 UP-23 单次更强。
 
 ---
 

@@ -1,0 +1,278 @@
+{
+  "artifact": "msrs_davidson_ties",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 ranking with a tie outcome (UP-29)",
+  "generated_utc": "2026-10-22T08:09:30+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "metal_graph": "metrics/by_metric/msrs_metal_graph.json",
+    "script": "molmetal/scripts/msrs_davidson_ties.py",
+    "git_commit": "f58d8558f0893f207c0e36e3357c92d16c260054",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "device": "cpu",
+    "n_rows": 21404,
+    "n_pairs": 651,
+    "pair_key": [
+      "ligand_canonical",
+      "cell_line_key"
+    ],
+    "n_exact_ties": 17,
+    "n_deadzone_ties": 336,
+    "n_retained": 315,
+    "n_gate_eligible": 315,
+    "gate_threshold": 0.2091,
+    "split": "GroupKFold(5) on DOI; a pair trains only if both rows are in training folds",
+    "model": "P(a wins)=1/(1+e^-s+delta e^(-s/2)), s = w.(x_a - x_b); alternating L-BFGS on w and bisection on delta",
+    "seeds": [
+      20261022,
+      20261023,
+      20261024,
+      20261025,
+      20261026
+    ],
+    "bootstrap": "2000 draws over ligand clusters",
+    "gate_frozen_at": "2026-10-22T15:45+08:00"
+  },
+  "results": {
+    "bt_baseline": {
+      "balanced_accuracy": 0.5317,
+      "n_pairs": 315,
+      "cluster_bootstrap": {
+        "mean": 0.5304,
+        "lo": 0.4433,
+        "hi": 0.6193,
+        "p_gt_half": 0.734,
+        "n_draws": 2000
+      },
+      "three_class_accuracy": null,
+      "predicted_tie_rate": 0.0,
+      "delta_mean": null,
+      "delta_values": [],
+      "tau_scale": 1.0
+    },
+    "davidson_none": {
+      "balanced_accuracy": 0.5312,
+      "n_pairs": 315,
+      "cluster_bootstrap": {
+        "mean": 0.5298,
+        "lo": 0.4438,
+        "hi": 0.6135,
+        "p_gt_half": 0.744,
+        "n_draws": 2000
+      },
+      "three_class_accuracy": 0.0127,
+      "predicted_tie_rate": 0.9873,
+      "delta_mean": 2.2784,
+      "delta_values": [
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112
+      ],
+      "tau_scale": 1.0
+    }
+  },
+  "sensitivity": {
+    "tau_x0.5": {
+      "balanced_accuracy": 0.4968,
+      "n_pairs": 315,
+      "cluster_bootstrap": {
+        "mean": 0.496,
+        "lo": 0.4092,
+        "hi": 0.5844,
+        "p_gt_half": 0.47,
+        "n_draws": 2000
+      },
+      "three_class_accuracy": 0.4349,
+      "predicted_tie_rate": 0.3111,
+      "delta_mean": 0.9626,
+      "delta_values": [
+        1.1062,
+        1.0367,
+        0.7945,
+        0.954,
+        0.9216,
+        1.1062,
+        1.0367,
+        0.7945,
+        0.954,
+        0.9216,
+        1.1062,
+        1.0367,
+        0.7945,
+        0.954,
+        0.9216,
+        1.1062,
+        1.0367,
+        0.7945,
+        0.954,
+        0.9216,
+        1.1062,
+        1.0367,
+        0.7945,
+        0.954,
+        0.9216
+      ],
+      "tau_scale": 0.5
+    },
+    "tau_x1": {
+      "balanced_accuracy": 0.5312,
+      "n_pairs": 315,
+      "cluster_bootstrap": {
+        "mean": 0.5298,
+        "lo": 0.4438,
+        "hi": 0.6135,
+        "p_gt_half": 0.744,
+        "n_draws": 2000
+      },
+      "three_class_accuracy": 0.0127,
+      "predicted_tie_rate": 0.9873,
+      "delta_mean": 2.2784,
+      "delta_values": [
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112,
+        2.7476,
+        2.4184,
+        1.8615,
+        2.1535,
+        2.2112
+      ],
+      "tau_scale": 1.0
+    },
+    "tau_x1.5": {
+      "balanced_accuracy": 0.5225,
+      "n_pairs": 315,
+      "cluster_bootstrap": {
+        "mean": 0.5212,
+        "lo": 0.4375,
+        "hi": 0.6046,
+        "p_gt_half": 0.693,
+        "n_draws": 2000
+      },
+      "three_class_accuracy": 0.2444,
+      "predicted_tie_rate": 1.0,
+      "delta_mean": 3.7164,
+      "delta_values": [
+        4.758,
+        3.629,
+        3.0032,
+        3.6154,
+        3.5762,
+        4.758,
+        3.629,
+        3.0032,
+        3.6154,
+        3.5762,
+        4.758,
+        3.629,
+        3.0032,
+        3.6154,
+        3.5762,
+        4.758,
+        3.629,
+        3.0032,
+        3.6154,
+        3.5762,
+        4.758,
+        3.629,
+        3.0032,
+        3.6154,
+        3.5762
+      ],
+      "tau_scale": 1.5
+    }
+  },
+  "best_arm": "davidson_none",
+  "gate": {
+    "frozen_at": "2026-10-22T15:45+08:00",
+    "checks": {
+      "balanced_ge_0.62": {
+        "arm": "davidson_none",
+        "value": 0.5312,
+        "threshold": 0.62,
+        "lambdarank_baseline": 0.5985,
+        "pass": false
+      },
+      "ci_lower_gt_0.50": {
+        "arm": "davidson_none",
+        "value": 0.4438,
+        "threshold": 0.5,
+        "pass": false
+      },
+      "sensitivity_reported": {
+        "delta_mean": 2.2784,
+        "tau_scales": [
+          0.5,
+          1.0,
+          1.5
+        ],
+        "arms": [
+          "tau_x0.5",
+          "tau_x1",
+          "tau_x1.5"
+        ],
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "balanced < 0.58 on the retained subset closes the ranking line (DP-8 = YES)",
+      "value": 0.5312,
+      "triggered": true
+    }
+  },
+  "caveats": [
+    "The gate metric is binary sign accuracy on |delta| >= 0.2091, the same convention as UP-2b and UP-23. Davidson's native metric is the 3-class accuracy, which is reported but is not the gate.",
+    "The design is linear in the same features the Bradley-Terry arms use. A failure here is a failure of the linear pairwise class, not evidence that ties carry no information; the 3-class accuracy is the diagnostic that separates those two readings.",
+    "delta is identified only up to the model's score scale, so its absolute value is interpretable within an arm and not across arms.",
+    "The ligand-cluster bootstrap resamples ligands with replacement but keeps every pair of a resampled ligand, so within-ligand correlation is preserved and the interval is wider than a row-level bootstrap would be.",
+    "tau is the metal pair's noise_sd_delta from msrs_metal_graph; a metal pair with no estimated edge falls back to tau=0, i.e. no deadzone, which is why the tau-sensitivity arms are not all on the same pair set.",
+    "The pairwise fits are deterministic (ridge logistic, no sampling), so the five seeds produce identical scores and the seed axis carries no variance. The uncertainty quoted here is the ligand-cluster bootstrap, not a seed spread.",
+    "On the gate-eligible pairs every outcome is a win or a loss by construction (|delta| >= 0.2091 >= tau), so the tie class is never the truth there. A model that predicts a tie on such a pair is wrong; the 3-class accuracy is reported to show how often Davidson does that, not as a competing headline."
+  ]
+}
