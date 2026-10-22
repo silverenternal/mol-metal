@@ -44,6 +44,8 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 | UP-26 | 新论文的偏移能不能用少量已测行估出来 | **PASS**（4/4） | n_cal=10 R² **0.6839** ≥0.45；n_cal=0 复现 **0.3674**（目标 0.3670±0.005）；7 点全单调 |
 | UP-27 | 加权 conformal + ACI 能不能同时拿覆盖与宽度 | **FAIL**（宽度、最差组） | 加权只把宽度挪 −0.0022；ACI 覆盖 0.9106 但宽度 2.0572；密度比 AUC 0.5678 |
 | UP-29 | 把平局当第三类结果能不能救排序 | **FAIL**（kill 触发） | Davidson **0.5312** vs BT 0.5317 vs lambdarank 0.5985；δ=2.28；98.7% 判平局 |
+| UP-30 | 把可识别集从「同一配体」放宽到「同一 core」能不能救 Δ | **FAIL**（质量、kill 触发） | 对数 651→**61,539**（94.5×，size PASS）；但留出金属 Δ R² 最好 **−0.1457**，常数基线 −0.0163 |
+| UP-31 | 在同一个 D-MPNN 上只换损失，pairwise 能不能到 0.63 | **FAIL**（主指标、per_metal、kill） | pairwise **0.5928** vs BCE **0.5924**（Δ+0.0003）；Ru 0.6191↑ / Ir 0.5665↓；BCE 复现 0.5924（目标 0.5974±0.01） |
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
@@ -406,7 +408,23 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP29.delta", "value": 2.2784, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.delta_mean"},
   {"id": "UP29.tie_rate", "value": 0.9873, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "results.davidson_none.predicted_tie_rate"},
   {"id": "UP29.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "gate.gate_pass"},
-  {"id": "UP29.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "gate.kill.triggered"}
+  {"id": "UP29.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_davidson_ties.json", "path": "gate.kill.triggered"},
+  {"id": "UP30.n_pairs_clean", "value": 61539, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.checks.size.n_pairs"},
+  {"id": "UP30.size_multiple", "value": 94.53, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.checks.size.multiple"},
+  {"id": "UP30.r2_ligand_only", "value": -0.1457, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.checks.quality.pooled_r2_ligand_only"},
+  {"id": "UP30.r2_constant", "value": -0.0163, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.checks.quality.pooled_r2_constant_baseline"},
+  {"id": "UP30.leak_before_filter", "value": 10670, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.checks.leak.n_violations_before_filter"},
+  {"id": "UP30.strict_pairs_clean", "value": 643, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "arms.strict.n_pairs_clean"},
+  {"id": "UP30.redundancy", "value": 9.02, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "arms.loose.availability.redundancy"},
+  {"id": "UP30.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.gate_pass"},
+  {"id": "UP30.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_mmp_delta.json", "path": "gate.kill.triggered"},
+  {"id": "UP31.pairwise_auc", "value": 0.5928, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.primary.value"},
+  {"id": "UP31.bce_auc", "value": 0.5924, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.reproduce.value"},
+  {"id": "UP31.delta", "value": 0.0003, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "delta_pairwise_minus_bce"},
+  {"id": "UP31.ru_auc", "value": 0.6191, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.per_metal.pairwise.Ru"},
+  {"id": "UP31.ir_auc", "value": 0.5665, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.checks.per_metal.pairwise.Ir"},
+  {"id": "UP31.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.gate_pass"},
+  {"id": "UP31.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json", "path": "gate.kill.triggered"}
 ]
 ```
 
@@ -985,6 +1003,55 @@ P(tie)    = δ e^(-s/2) / (1 + e^-s + δ e^(-s/2)),   s = f(x_a) − f(x_b)
 **δ 自己给出了诊断**：拟合到边际平局率（336/651 = 51.6%）后 δ=2.28，此时**98.7% 的配对被判为平局**。也就是说，这个模型在 315 个"定义上不是平局"的评估对上，有 98.7% 直接放弃判断。**这不是拟合失败，是模型在说：分数分辨率低于噪声下限。** 三分类准确率 0.0127 是这句话的量化形式。
 
 **kill 触发（0.5312 < 0.58）⇒ 排序线在第二次、不同机制下仍然关闭**。DP-8 维持 YES，且现在是"两个机制、同一个结论"，比 UP-23 单次更强。
+
+---
+
+### 2.28 UP-30 匹配分子对：对数放大 94 倍，Δ 仍然不可预测（2026-10-22）
+
+`msrs_mmp_delta.json`（CPU 113 s）。
+
+UP-19 把 metal_out 的低可识别率归到配对定义上：只有**完全相同的配体**在另一个金属下被测过才算可识别，这样的行只占 5.47%。UP-30 用药物化学的标准放宽 —— 匹配分子对（matched molecular pair，MMP），两条分子共享一个 core、只差一个转化（Griffen et al., J Med Chem 2011;54(22):7739-7750，RDKit `rdMMPA` 单切）。
+
+| 臂 | 配对键 | 原始对数 | 泄漏过滤后 | 留出金属 Δ R²（全特征 / 仅配体） | 常数基线 |
+|---|---|---:|---:|---|---:|
+| loose（主） | (cell, core) | 70,952 | **61,539** | −0.6935 / **−0.1457** | −0.0163 |
+| strict | (cell, paper, duration, core) | 1,493 | 643 | −0.2698 / −0.3637 | −0.2051 |
+
+**size 过了，quality 没过。** 对数从 651 涨到 61,539（**94.5×**，门槛 3×），所以"可识别集太小"**不是配对定义造成的**。但放宽之后 Δ 在留出金属上仍然不可预测：最好的特征块（只给 core 与 transform 差、不给金属）拿到 **−0.1457**，连"直接预测训练均值"的 **−0.0163** 都跑不过。全特征块更差（−0.6935），因为金属描述符在留出金属上是外推。
+
+**这两个数必须一起读。** 单看 −0.1457 会以为是模型没调好；同行的常数基线 −0.0163 说明这批 Δ 里根本没有超出均值的信息，模型越努力越差。这也是为什么 gate 读的是"两个特征块取更好"，而不是某一次调参的结果。
+
+**泄漏规则与它的代价**：留出金属的预测分子只要在训练金属下测过，这一对就剔除 —— 否则测的是记忆不是替换。主臂剔除 10,670 对（70,952 → 61,539），strict 臂剔除 1,256/1,493（84%），strict 臂因此只剩 643 对，比精确配对的 651 还少。**"同一 core"在严格的论文内口径下几乎没有额外样本**，这本身就是一条结论。
+
+**冗余度 9.02**：70,952 对只有 7,867 个不同签名（core, transform_a, transform_b, 金属对），269 个不同 core。对数被少数几篇论文反复计数，所以 94.5× 这个倍数**不能读成 94.5 倍的信息量**。
+
+**kill 触发（−0.1457 < 0.10）⇒ MMP 线关闭，metal_out 维持 UP-19 的结论。** 但结论要改写一句：不是"只有 5.47% 可识别所以做不了"，而是**无论配对画多宽，金属替换响应本身在这些特征下都学不到**。
+
+---
+
+### 2.29 UP-31 同一个 D-MPNN 只换损失：pairwise 把 Ru 抬上去、把 Ir 压下来，均值不动（2026-10-22）
+
+`msrs_lomo_pairwise_dmpnn.json`（GPU0，20 次训练，两次臂各 2 金属 × 5 seed × 30 epoch）。
+
+UP-24 量到 pairwise 值 +0.0080 AUC 却被 kill —— 因为门槛 0.63 是按 D-MPNN 冻结的，而 UP-24 的学习器是线性 ECFP4。这是学习器错配，不是关于损失的结论。UP-31 把比较搬到 D-MPNN 本身上：同一脚本、同一队列、同一折、同一 seed 列表、同一 30 epoch 预算，**只差 `protocol.pairwise_weight`（0.0 / 1.0）**。
+
+```
+loss_pairwise = −log σ((f(x+) − f(x−) − margin) / T),  f = 活性类 logit
+```
+
+| 臂 | Ru | Ir | Ru/Ir 均值 | seed sd |
+|---|---:|---:|---:|---:|
+| BCE（对照） | 0.5952 | 0.5897 | **0.5924** | 0.0197 |
+| pairwise（w=1.0） | **0.6191** | 0.5665 | **0.5928** | 0.0363 |
+| 差 | +0.0239 | −0.0232 | **+0.0003** | — |
+
+**均值差 +0.0003。** 这个损失不是在提升，而是在**重新分配**：Ru 抬 0.024，Ir 压 0.023，方差从 0.020 涨到 0.036。这正是"没有净效应、只有更大的折间波动"的样子。
+
+**reproduce 通过**：BCE 臂 0.5924 对 `lomo_resolvability_audit` 的 0.5974，差 0.0050，在冻结的 ±0.01 内。所以后续比较是允许的 —— 这是 UP-24 缺的那一步。
+
+**一个必须记录的 bug**：第一版把整个 `(B, 2)` logit 向量喂进 pairwise 项，得到 **0.4377**（低于随机）。原因是把两个类别分数同时推开会与分类器对抗。修成取第 1 列后回到 0.5928。这个 0.4377 留在 artifact 的 caveats 里，不删。
+
+**kill 触发（0.5928 < 0.61 且 BCE 已复现）⇒ LOMO 线关闭，论文只报 0.5974。** 至此"损失不对"这个解释也被排除：UP-24 的线性实验、UP-31 的 D-MPNN 实验，两次都是 +0.000 到 +0.008 量级。
 
 ---
 

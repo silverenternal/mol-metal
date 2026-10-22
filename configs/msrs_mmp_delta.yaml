@@ -1,0 +1,23 @@
+# configs/msrs_mmp_delta.yaml — UP-30, matched molecular pairs on the MSRS cohort.
+#
+# Invoke with: .venv/bin/python molmetal/scripts/msrs_mmp_delta.py \
+#                  --config configs/msrs_mmp_delta.yaml
+#
+# CPU only: the work is RDKit fragmentation plus a ridge fit per held-out
+# metal. No GPU device key on purpose.
+
+entry:
+  script: molmetal/scripts/msrs_mmp_delta.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/msrs_mmp_delta.py --config {yaml_path}"
+
+data:
+  long: data/msrs/measurements.parquet
+  metal_desc: molmetal/data/metal_chemistry_5.csv
+  limit: 0
+
+model:
+  # Fixed, never tuned on a held-out metal.
+  alpha: 1.0
+
+output:
+  out: metrics/by_metric/msrs_mmp_delta.json

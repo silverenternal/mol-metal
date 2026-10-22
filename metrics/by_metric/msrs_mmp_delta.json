@@ -1,0 +1,828 @@
+{
+  "artifact": "msrs_mmp_delta",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L2 identifiability (UP-30)",
+  "generated_utc": "2026-10-22T10:08:59+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_mmp_delta.py",
+    "config": "configs/msrs_mmp_delta.yaml",
+    "git_commit": "729b881e496479dc4f6b634c38d57c57e31a5123",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python",
+      "--config",
+      "configs/msrs_mmp_delta.yaml"
+    ]
+  },
+  "design": {
+    "cohort": "msrs_listwise_ranker.build_features (21,404 rows)",
+    "estimand": "delta = [f_metal(b) - f_metal(a)] + [t(transform_b) - t(transform_a)]; the exact-ligand pair has only the first term, so the two lines are not numerically comparable without this sentence",
+    "pair_key_primary": [
+      "cell_line_key",
+      "core"
+    ],
+    "pair_key_secondary": [
+      "cell_line_key",
+      "doi",
+      "time_h",
+      "core"
+    ],
+    "mmp_cut": "rdMMPA single cut, pattern '!@' between heavy atoms, larger half = core, smaller half = transform",
+    "alpha": 1.0,
+    "gate_threshold": 0.2091,
+    "gate_frozen_at": "2026-10-22T15:45+08:00"
+  },
+  "exact_ligand_reference": {
+    "n_pairs": 651,
+    "n_pairs_above_gate": 360,
+    "reference_quoted_in_todo": 651
+  },
+  "arms": {
+    "loose": {
+      "pair_key": [
+        "core",
+        "cell_line_key"
+      ],
+      "availability": {
+        "n_pairs": 70952,
+        "n_unique_cores": 269,
+        "n_unique_signatures": 7867,
+        "redundancy": 9.02,
+        "by_metal_pair": {
+          "Ir-Os": {
+            "n_pairs": 924,
+            "n_unique_cores": 26,
+            "n_unique_transforms": 69,
+            "share_above_gate": 0.7532
+          },
+          "Ir-Re": {
+            "n_pairs": 2082,
+            "n_unique_cores": 18,
+            "n_unique_transforms": 102,
+            "share_above_gate": 0.805
+          },
+          "Ir-Rh": {
+            "n_pairs": 8505,
+            "n_unique_cores": 41,
+            "n_unique_transforms": 156,
+            "share_above_gate": 0.8016
+          },
+          "Ir-Ru": {
+            "n_pairs": 40058,
+            "n_unique_cores": 170,
+            "n_unique_transforms": 498,
+            "share_above_gate": 0.787
+          },
+          "Os-Re": {
+            "n_pairs": 708,
+            "n_unique_cores": 4,
+            "n_unique_transforms": 17,
+            "share_above_gate": 0.8446
+          },
+          "Os-Rh": {
+            "n_pairs": 170,
+            "n_unique_cores": 17,
+            "n_unique_transforms": 35,
+            "share_above_gate": 0.8824
+          },
+          "Os-Ru": {
+            "n_pairs": 2972,
+            "n_unique_cores": 88,
+            "n_unique_transforms": 209,
+            "share_above_gate": 0.8193
+          },
+          "Re-Rh": {
+            "n_pairs": 113,
+            "n_unique_cores": 7,
+            "n_unique_transforms": 30,
+            "share_above_gate": 0.9204
+          },
+          "Re-Ru": {
+            "n_pairs": 12539,
+            "n_unique_cores": 22,
+            "n_unique_transforms": 219,
+            "share_above_gate": 0.7777
+          },
+          "Rh-Ru": {
+            "n_pairs": 2881,
+            "n_unique_cores": 72,
+            "n_unique_transforms": 292,
+            "share_above_gate": 0.8785
+          }
+        },
+        "transform_size_median_atoms": 7
+      },
+      "leak": {
+        "violations_by_held_metal": {
+          "Ru": 2145,
+          "Ir": 1349,
+          "Rh": 4451,
+          "Os": 2725,
+          "Re": 0
+        },
+        "n_violations": 10670,
+        "n_pairs_before": 70952,
+        "n_pairs_after": 61539
+      },
+      "n_pairs_clean": 61539,
+      "delta_model": {
+        "alpha_grid": [
+          0.1,
+          1.0,
+          10.0,
+          100.0,
+          1000.0
+        ],
+        "blocks": {
+          "full": {
+            "n_features": 360,
+            "per_metal": {
+              "Ru": {
+                "status": "OK",
+                "n_train": 7199,
+                "n_test": 54340,
+                "r2": -1.2519,
+                "r2_constant_baseline": -0.0339,
+                "sse_constant": 38558.69410122975,
+                "alpha": 1000.0,
+                "inner_cv_r2": 0.2839,
+                "mae": 1.0442,
+                "pred_sd": 0.8532,
+                "obs_sd": 0.8285,
+                "sse": 83987.48058036828,
+                "sst": 37295.565557075795
+              },
+              "Ir": {
+                "status": "OK",
+                "n_train": 16047,
+                "n_test": 45492,
+                "r2": -0.4609,
+                "r2_constant_baseline": -0.0,
+                "sse_constant": 30318.428608115784,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.1438,
+                "mae": 0.787,
+                "pred_sd": 0.5846,
+                "obs_sd": 0.8164,
+                "sse": 44291.416514411634,
+                "sst": 30317.528271629555
+              },
+              "Rh": {
+                "status": "OK",
+                "n_train": 54773,
+                "n_test": 6766,
+                "r2": 0.1813,
+                "r2_constant_baseline": -0.0016,
+                "sse_constant": 7735.304692948999,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.0513,
+                "mae": 0.7941,
+                "pred_sd": 0.4796,
+                "obs_sd": 1.0684,
+                "sse": 6322.750708476309,
+                "sst": 7723.224292573861
+              },
+              "Os": {
+                "status": "OK",
+                "n_train": 59746,
+                "n_test": 1793,
+                "r2": -0.0496,
+                "r2_constant_baseline": -0.0083,
+                "sse_constant": 2041.3095062917596,
+                "alpha": 1000.0,
+                "inner_cv_r2": 0.0339,
+                "mae": 0.8619,
+                "pred_sd": 0.5097,
+                "obs_sd": 1.0626,
+                "sse": 2124.7777756116902,
+                "sst": 2024.432157294732
+              },
+              "Re": {
+                "status": "OK",
+                "n_train": 46852,
+                "n_test": 14687,
+                "r2": -0.1625,
+                "r2_constant_baseline": -0.0134,
+                "sse_constant": 10908.206780124177,
+                "alpha": 1000.0,
+                "inner_cv_r2": 0.0283,
+                "mae": 0.7187,
+                "pred_sd": 0.5059,
+                "obs_sd": 0.8561,
+                "sse": 12512.931683853334,
+                "sst": 10764.120974154584
+              }
+            },
+            "pooled": {
+              "n_metals": 5,
+              "r2": -0.6935,
+              "r2_constant_baseline": -0.0163,
+              "n_test": 123078
+            }
+          },
+          "ligand_only": {
+            "n_features": 334,
+            "per_metal": {
+              "Ru": {
+                "status": "OK",
+                "n_train": 7199,
+                "n_test": 54340,
+                "r2": -0.1855,
+                "r2_constant_baseline": -0.0339,
+                "sse_constant": 38558.69410122975,
+                "alpha": 1000.0,
+                "inner_cv_r2": 0.166,
+                "mae": 0.7136,
+                "pred_sd": 0.6333,
+                "obs_sd": 0.8285,
+                "sse": 44213.10212238805,
+                "sst": 37295.565557075795
+              },
+              "Ir": {
+                "status": "OK",
+                "n_train": 16047,
+                "n_test": 45492,
+                "r2": -0.2356,
+                "r2_constant_baseline": -0.0,
+                "sse_constant": 30318.428608115784,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.2111,
+                "mae": 0.7144,
+                "pred_sd": 0.5018,
+                "obs_sd": 0.8164,
+                "sse": 37459.47323046323,
+                "sst": 30317.528271629555
+              },
+              "Rh": {
+                "status": "OK",
+                "n_train": 54773,
+                "n_test": 6766,
+                "r2": 0.1515,
+                "r2_constant_baseline": -0.0016,
+                "sse_constant": 7735.304692948999,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.0913,
+                "mae": 0.8155,
+                "pred_sd": 0.3992,
+                "obs_sd": 1.0684,
+                "sse": 6553.330456798066,
+                "sst": 7723.224292573861
+              },
+              "Os": {
+                "status": "OK",
+                "n_train": 59746,
+                "n_test": 1793,
+                "r2": -0.0516,
+                "r2_constant_baseline": -0.0083,
+                "sse_constant": 2041.3095062917596,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.019,
+                "mae": 0.8586,
+                "pred_sd": 0.4641,
+                "obs_sd": 1.0626,
+                "sse": 2128.796069986176,
+                "sst": 2024.432157294732
+              },
+              "Re": {
+                "status": "OK",
+                "n_train": 46852,
+                "n_test": 14687,
+                "r2": 0.014,
+                "r2_constant_baseline": -0.0134,
+                "sse_constant": 10908.206780124177,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.0087,
+                "mae": 0.6571,
+                "pred_sd": 0.3763,
+                "obs_sd": 0.8561,
+                "sse": 10613.756067313876,
+                "sst": 10764.120974154584
+              }
+            },
+            "pooled": {
+              "n_metals": 5,
+              "r2": -0.1457,
+              "r2_constant_baseline": -0.0163,
+              "n_test": 123078
+            }
+          }
+        }
+      }
+    },
+    "strict": {
+      "pair_key": [
+        "core",
+        "cell_line_key",
+        "doi",
+        "time_h"
+      ],
+      "availability": {
+        "n_pairs": 1493,
+        "n_unique_cores": 62,
+        "n_unique_signatures": 340,
+        "redundancy": 4.39,
+        "by_metal_pair": {
+          "Ir-Os": {
+            "n_pairs": 12,
+            "n_unique_cores": 1,
+            "n_unique_transforms": 2,
+            "share_above_gate": 0.8333
+          },
+          "Ir-Rh": {
+            "n_pairs": 133,
+            "n_unique_cores": 10,
+            "n_unique_transforms": 25,
+            "share_above_gate": 0.7218
+          },
+          "Ir-Ru": {
+            "n_pairs": 704,
+            "n_unique_cores": 32,
+            "n_unique_transforms": 62,
+            "share_above_gate": 0.5483
+          },
+          "Os-Rh": {
+            "n_pairs": 13,
+            "n_unique_cores": 2,
+            "n_unique_transforms": 4,
+            "share_above_gate": 0.7692
+          },
+          "Os-Ru": {
+            "n_pairs": 431,
+            "n_unique_cores": 20,
+            "n_unique_transforms": 39,
+            "share_above_gate": 0.7958
+          },
+          "Rh-Ru": {
+            "n_pairs": 200,
+            "n_unique_cores": 12,
+            "n_unique_transforms": 30,
+            "share_above_gate": 0.6
+          }
+        },
+        "transform_size_median_atoms": 6
+      },
+      "leak": {
+        "violations_by_held_metal": {
+          "Ru": 500,
+          "Ir": 148,
+          "Rh": 171,
+          "Os": 437,
+          "Re": 0
+        },
+        "n_violations": 1256,
+        "n_pairs_before": 1493,
+        "n_pairs_after": 643
+      },
+      "n_pairs_clean": 643,
+      "delta_model": {
+        "alpha_grid": [
+          0.1,
+          1.0,
+          10.0,
+          100.0,
+          1000.0
+        ],
+        "blocks": {
+          "full": {
+            "n_features": 360,
+            "per_metal": {
+              "Ru": {
+                "status": "OK",
+                "n_train": 54,
+                "n_test": 589,
+                "r2": -0.4467,
+                "r2_constant_baseline": -0.3424,
+                "sse_constant": 317.3584801808447,
+                "alpha": 1000.0,
+                "inner_cv_r2": -1.7293,
+                "mae": 0.687,
+                "pred_sd": 0.0399,
+                "obs_sd": 0.6335,
+                "sse": 342.005283571822,
+                "sst": 236.40863142376446
+              },
+              "Ir": {
+                "status": "OK",
+                "n_train": 128,
+                "n_test": 515,
+                "r2": -0.0605,
+                "r2_constant_baseline": -0.0858,
+                "sse_constant": 209.60005063788032,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.0134,
+                "mae": 0.4712,
+                "pred_sd": 0.1469,
+                "obs_sd": 0.6122,
+                "sse": 204.7072733455458,
+                "sst": 193.02895187602172
+              },
+              "Rh": {
+                "status": "OK",
+                "n_train": 480,
+                "n_test": 163,
+                "r2": -0.239,
+                "r2_constant_baseline": -0.0002,
+                "sse_constant": 46.205553259402265,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.5676,
+                "mae": 0.4904,
+                "pred_sd": 0.2299,
+                "obs_sd": 0.5324,
+                "sse": 57.23660678659442,
+                "sst": 46.19432153807893
+              },
+              "Os": {
+                "status": "INSUFFICIENT",
+                "n_train": 624,
+                "n_test": 19
+              },
+              "Re": {
+                "status": "INSUFFICIENT",
+                "n_train": 643,
+                "n_test": 0
+              }
+            },
+            "pooled": {
+              "n_metals": 3,
+              "r2": -0.2698,
+              "r2_constant_baseline": -0.2051,
+              "n_test": 1267
+            }
+          },
+          "ligand_only": {
+            "n_features": 334,
+            "per_metal": {
+              "Ru": {
+                "status": "OK",
+                "n_train": 54,
+                "n_test": 589,
+                "r2": -0.496,
+                "r2_constant_baseline": -0.3424,
+                "sse_constant": 317.3584801808447,
+                "alpha": 1000.0,
+                "inner_cv_r2": -1.614,
+                "mae": 0.7014,
+                "pred_sd": 0.0413,
+                "obs_sd": 0.6335,
+                "sse": 353.6676580805399,
+                "sst": 236.40863142376446
+              },
+              "Ir": {
+                "status": "OK",
+                "n_train": 128,
+                "n_test": 515,
+                "r2": -0.2402,
+                "r2_constant_baseline": -0.0858,
+                "sse_constant": 209.60005063788032,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.046,
+                "mae": 0.5075,
+                "pred_sd": 0.1616,
+                "obs_sd": 0.6122,
+                "sse": 239.38972620313024,
+                "sst": 193.02895187602172
+              },
+              "Rh": {
+                "status": "OK",
+                "n_train": 480,
+                "n_test": 163,
+                "r2": -0.2029,
+                "r2_constant_baseline": -0.0002,
+                "sse_constant": 46.205553259402265,
+                "alpha": 1000.0,
+                "inner_cv_r2": -0.5378,
+                "mae": 0.4702,
+                "pred_sd": 0.2079,
+                "obs_sd": 0.5324,
+                "sse": 55.56923161453733,
+                "sst": 46.19432153807893
+              },
+              "Os": {
+                "status": "INSUFFICIENT",
+                "n_train": 624,
+                "n_test": 19
+              },
+              "Re": {
+                "status": "INSUFFICIENT",
+                "n_train": 643,
+                "n_test": 0
+              }
+            },
+            "pooled": {
+              "n_metals": 3,
+              "r2": -0.3637,
+              "r2_constant_baseline": -0.2051,
+              "n_test": 1267
+            }
+          }
+        }
+      }
+    }
+  },
+  "availability_primary": {
+    "n_pairs": 70952,
+    "n_unique_cores": 269,
+    "n_unique_signatures": 7867,
+    "redundancy": 9.02,
+    "by_metal_pair": {
+      "Ir-Os": {
+        "n_pairs": 924,
+        "n_unique_cores": 26,
+        "n_unique_transforms": 69,
+        "share_above_gate": 0.7532
+      },
+      "Ir-Re": {
+        "n_pairs": 2082,
+        "n_unique_cores": 18,
+        "n_unique_transforms": 102,
+        "share_above_gate": 0.805
+      },
+      "Ir-Rh": {
+        "n_pairs": 8505,
+        "n_unique_cores": 41,
+        "n_unique_transforms": 156,
+        "share_above_gate": 0.8016
+      },
+      "Ir-Ru": {
+        "n_pairs": 40058,
+        "n_unique_cores": 170,
+        "n_unique_transforms": 498,
+        "share_above_gate": 0.787
+      },
+      "Os-Re": {
+        "n_pairs": 708,
+        "n_unique_cores": 4,
+        "n_unique_transforms": 17,
+        "share_above_gate": 0.8446
+      },
+      "Os-Rh": {
+        "n_pairs": 170,
+        "n_unique_cores": 17,
+        "n_unique_transforms": 35,
+        "share_above_gate": 0.8824
+      },
+      "Os-Ru": {
+        "n_pairs": 2972,
+        "n_unique_cores": 88,
+        "n_unique_transforms": 209,
+        "share_above_gate": 0.8193
+      },
+      "Re-Rh": {
+        "n_pairs": 113,
+        "n_unique_cores": 7,
+        "n_unique_transforms": 30,
+        "share_above_gate": 0.9204
+      },
+      "Re-Ru": {
+        "n_pairs": 12539,
+        "n_unique_cores": 22,
+        "n_unique_transforms": 219,
+        "share_above_gate": 0.7777
+      },
+      "Rh-Ru": {
+        "n_pairs": 2881,
+        "n_unique_cores": 72,
+        "n_unique_transforms": 292,
+        "share_above_gate": 0.8785
+      }
+    },
+    "transform_size_median_atoms": 7
+  },
+  "leak_primary": {
+    "violations_by_held_metal": {
+      "Ru": 2145,
+      "Ir": 1349,
+      "Rh": 4451,
+      "Os": 2725,
+      "Re": 0
+    },
+    "n_violations": 10670,
+    "n_pairs_before": 70952,
+    "n_pairs_after": 61539
+  },
+  "delta_model_primary": {
+    "alpha_grid": [
+      0.1,
+      1.0,
+      10.0,
+      100.0,
+      1000.0
+    ],
+    "blocks": {
+      "full": {
+        "n_features": 360,
+        "per_metal": {
+          "Ru": {
+            "status": "OK",
+            "n_train": 7199,
+            "n_test": 54340,
+            "r2": -1.2519,
+            "r2_constant_baseline": -0.0339,
+            "sse_constant": 38558.69410122975,
+            "alpha": 1000.0,
+            "inner_cv_r2": 0.2839,
+            "mae": 1.0442,
+            "pred_sd": 0.8532,
+            "obs_sd": 0.8285,
+            "sse": 83987.48058036828,
+            "sst": 37295.565557075795
+          },
+          "Ir": {
+            "status": "OK",
+            "n_train": 16047,
+            "n_test": 45492,
+            "r2": -0.4609,
+            "r2_constant_baseline": -0.0,
+            "sse_constant": 30318.428608115784,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.1438,
+            "mae": 0.787,
+            "pred_sd": 0.5846,
+            "obs_sd": 0.8164,
+            "sse": 44291.416514411634,
+            "sst": 30317.528271629555
+          },
+          "Rh": {
+            "status": "OK",
+            "n_train": 54773,
+            "n_test": 6766,
+            "r2": 0.1813,
+            "r2_constant_baseline": -0.0016,
+            "sse_constant": 7735.304692948999,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.0513,
+            "mae": 0.7941,
+            "pred_sd": 0.4796,
+            "obs_sd": 1.0684,
+            "sse": 6322.750708476309,
+            "sst": 7723.224292573861
+          },
+          "Os": {
+            "status": "OK",
+            "n_train": 59746,
+            "n_test": 1793,
+            "r2": -0.0496,
+            "r2_constant_baseline": -0.0083,
+            "sse_constant": 2041.3095062917596,
+            "alpha": 1000.0,
+            "inner_cv_r2": 0.0339,
+            "mae": 0.8619,
+            "pred_sd": 0.5097,
+            "obs_sd": 1.0626,
+            "sse": 2124.7777756116902,
+            "sst": 2024.432157294732
+          },
+          "Re": {
+            "status": "OK",
+            "n_train": 46852,
+            "n_test": 14687,
+            "r2": -0.1625,
+            "r2_constant_baseline": -0.0134,
+            "sse_constant": 10908.206780124177,
+            "alpha": 1000.0,
+            "inner_cv_r2": 0.0283,
+            "mae": 0.7187,
+            "pred_sd": 0.5059,
+            "obs_sd": 0.8561,
+            "sse": 12512.931683853334,
+            "sst": 10764.120974154584
+          }
+        },
+        "pooled": {
+          "n_metals": 5,
+          "r2": -0.6935,
+          "r2_constant_baseline": -0.0163,
+          "n_test": 123078
+        }
+      },
+      "ligand_only": {
+        "n_features": 334,
+        "per_metal": {
+          "Ru": {
+            "status": "OK",
+            "n_train": 7199,
+            "n_test": 54340,
+            "r2": -0.1855,
+            "r2_constant_baseline": -0.0339,
+            "sse_constant": 38558.69410122975,
+            "alpha": 1000.0,
+            "inner_cv_r2": 0.166,
+            "mae": 0.7136,
+            "pred_sd": 0.6333,
+            "obs_sd": 0.8285,
+            "sse": 44213.10212238805,
+            "sst": 37295.565557075795
+          },
+          "Ir": {
+            "status": "OK",
+            "n_train": 16047,
+            "n_test": 45492,
+            "r2": -0.2356,
+            "r2_constant_baseline": -0.0,
+            "sse_constant": 30318.428608115784,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.2111,
+            "mae": 0.7144,
+            "pred_sd": 0.5018,
+            "obs_sd": 0.8164,
+            "sse": 37459.47323046323,
+            "sst": 30317.528271629555
+          },
+          "Rh": {
+            "status": "OK",
+            "n_train": 54773,
+            "n_test": 6766,
+            "r2": 0.1515,
+            "r2_constant_baseline": -0.0016,
+            "sse_constant": 7735.304692948999,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.0913,
+            "mae": 0.8155,
+            "pred_sd": 0.3992,
+            "obs_sd": 1.0684,
+            "sse": 6553.330456798066,
+            "sst": 7723.224292573861
+          },
+          "Os": {
+            "status": "OK",
+            "n_train": 59746,
+            "n_test": 1793,
+            "r2": -0.0516,
+            "r2_constant_baseline": -0.0083,
+            "sse_constant": 2041.3095062917596,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.019,
+            "mae": 0.8586,
+            "pred_sd": 0.4641,
+            "obs_sd": 1.0626,
+            "sse": 2128.796069986176,
+            "sst": 2024.432157294732
+          },
+          "Re": {
+            "status": "OK",
+            "n_train": 46852,
+            "n_test": 14687,
+            "r2": 0.014,
+            "r2_constant_baseline": -0.0134,
+            "sse_constant": 10908.206780124177,
+            "alpha": 1000.0,
+            "inner_cv_r2": -0.0087,
+            "mae": 0.6571,
+            "pred_sd": 0.3763,
+            "obs_sd": 0.8561,
+            "sse": 10613.756067313876,
+            "sst": 10764.120974154584
+          }
+        },
+        "pooled": {
+          "n_metals": 5,
+          "r2": -0.1457,
+          "r2_constant_baseline": -0.0163,
+          "n_test": 123078
+        }
+      }
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-22T15:45+08:00",
+    "checks": {
+      "size": {
+        "n_pairs": 61539,
+        "exact_reference": 651,
+        "multiple": 94.53,
+        "target": 1953.0,
+        "pass": true
+      },
+      "quality": {
+        "pooled_r2_best_block": -0.1457,
+        "pooled_r2_full": -0.6935,
+        "pooled_r2_ligand_only": -0.1457,
+        "pooled_r2_constant_baseline": -0.0163,
+        "target": 0.2,
+        "pass": false
+      },
+      "leak": {
+        "n_violations_after_filter": 0,
+        "n_violations_before_filter": 10670,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "delta R^2 < 0.10 or pair count < 2x exact closes the MMP line",
+      "r2": -0.1457,
+      "multiple": 94.53,
+      "triggered": true
+    }
+  },
+  "elapsed_seconds": 112.7,
+  "caveats": [
+    "The MMP delta changes the metal and the transformation at once. The model carries a transform-difference block, but the estimand is not the pure metal substitution response of the exact-ligand line.",
+    "Pairs are built inside one (cell, paper, duration) so a paper offset cannot enter the observed delta; the cost is that pairs spanning two papers are not counted even when the core matches.",
+    "The leak rule only excludes pairs whose predicted molecule was measured under a training metal. A shared core is the whole point of MMP and is deliberately not excluded.",
+    "Ridge alpha is fixed at 1.0 and never tuned on the held-out metal; the feature block is standardised implicitly by the scale of MACCS bits, so alpha is not scale-free across feature sets.",
+    "Only one cut is taken. Two-cut MMP pairs exist and would widen the set further; they are not built here because the transform-difference block would no longer be a single local edit."
+  ]
+}

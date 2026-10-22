@@ -634,7 +634,7 @@
       "id": "UP-30",
       "priority": "P2",
       "wave": 3,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "跨金属匹配分子对：把可识别集从「同一配体」放宽到「同一 core」",
       "question": "metal_out 的可识别行只有 5.47%，因为要求完全相同配体。放宽到「差一个转化的匹配分子对」，可识别集能扩到多大，Δ 还能不能预测？",
       "why_now": "UP-19 证明模型在可识别子集上是有效的（R² 0.33），瓶颈是子集太小。MMP 是药化里扩大局部构效关系样本的标准工具，我们从未用过。",
@@ -657,13 +657,35 @@
       },
       "kill": "若 Δ R² <0.10 或对数 <2×，MMP 线关闭，metal_out 维持「仅 5.47% 可识别」的结论。",
       "cost": "CPU ~1.5 hr",
-      "device": "cpu"
+      "device": "cpu",
+      "result": {
+        "verdict": "FAIL",
+        "headline": "对数放大 94.5×（651→61,539），但留出金属 Δ R² 最好 −0.1457，低于常数基线 −0.0163；kill 触发",
+        "numbers": {
+          "n_pairs_clean_loose": 61539,
+          "size_multiple_vs_exact": 94.53,
+          "n_pairs_clean_strict": 643,
+          "r2_full_loose": -0.6935,
+          "r2_ligand_only_loose": -0.1457,
+          "r2_constant_baseline_loose": -0.0163,
+          "leak_violations_before_filter": 10670,
+          "redundancy": 9.02,
+          "n_unique_cores": 269
+        },
+        "reading": "配对定义不是瓶颈：放宽到同一 core 后对数涨 94.5×，Δ 仍不可预测。metal_out 的结论从「可识别行太少」改写为「金属替换响应在这些特征下学不到」。",
+        "caveats": [
+          "MMP 对同时改变金属与转化，估计目标与精确配对不同，不能与 0.5317 直接比。",
+          "只做单切；两切 MMP 会更大但转化差不再是单一局部编辑。",
+          "冗余度 9.02：94.5× 是行数不是独立观测数。"
+        ],
+        "artifact": "metrics/by_metric/msrs_mmp_delta.json"
+      }
     },
     {
       "id": "UP-31",
       "priority": "P2",
       "wave": 3,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "D-MPNN 内的 pairwise 损失：修 UP-24 的学习器错配",
       "question": "UP-24 的 +0.008 是线性模型上的，门槛却按 D-MPNN 冻结。在同一个 D-MPNN 主干上只换损失，AUC 能到多少？",
       "why_now": "这是本轮唯一一个「上次做错了、这次做对」的包。learner_match 规则要求先用同一代码路径复现 0.5974，否则任何绝对门槛都无意义。",
@@ -685,7 +707,28 @@
       },
       "kill": "若 pairwise 臂 <0.61（且 BCE 臂已复现），LOMO 线关闭，论文只报 0.5974。",
       "cost": "GPU0 ~3 hr（50 次训练）",
-      "device": "cuda:0"
+      "device": "cuda:0",
+      "result": {
+        "verdict": "FAIL",
+        "headline": "同一 D-MPNN 只换损失：pairwise 0.5928 vs BCE 0.5924（Δ+0.0003），Ru +0.024 / Ir −0.023 相互抵消；kill 触发",
+        "numbers": {
+          "pairwise_auc": 0.5928,
+          "bce_auc": 0.5924,
+          "delta": 0.0003,
+          "ru_pairwise": 0.6191,
+          "ir_pairwise": 0.5665,
+          "ru_bce": 0.5952,
+          "ir_bce": 0.5897,
+          "reproduce_gap_vs_0p5974": -0.005
+        },
+        "reading": "损失不是瓶颈。pairwise 只是在折间重新分配：Ru 抬 0.024、Ir 压 0.023，均值不动、方差翻倍（0.020→0.036）。UP-24 的线性实验与本包 D-MPNN 实验从两个方向给同一结论。",
+        "caveats": [
+          "只跑 Ru/Ir 两个可解析折。",
+          "margin=0、T=1 单点，未扫。",
+          "第一版把 (B,2) logit 整体喂进 pairwise 项得 0.4377（低于随机），取第 1 列后回到 0.5928；该 bug 保留在 artifact caveats。"
+        ],
+        "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json"
+      }
     },
     {
       "id": "UP-32",
@@ -740,14 +783,14 @@
     "done": [
       "UP-26",
       "UP-27",
-      "UP-29"
+      "UP-29",
+      "UP-30",
+      "UP-31"
     ],
     "open": [
       "UP-28",
-      "UP-30",
-      "UP-31",
       "UP-32"
     ],
-    "note": "UP-29 提前于 UP-28 执行：它是纯 CPU，而 UP-28 需要 GPU0。波次顺序按设备可用性调整，门槛不变。"
+    "note": "UP-31 完成；仅剩 UP-28（GPU 运行中）与 UP-32（汇总，等 UP-28）。"
   }
 }

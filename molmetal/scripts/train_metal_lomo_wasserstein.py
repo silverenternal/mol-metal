@@ -924,6 +924,32 @@ class WassersteinLOMOResult:
     val_auc_history: Optional[List[float]] = None
 
 
+def pairwise_logistic(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    margin: float = 0.0,
+    temperature: float = 1.0,
+) -> torch.Tensor:
+    """UP-31 — ``-log sigmoid((f(x+) - f(x-) - margin) / T)`` over all pairs.
+
+    Every active row in the batch is paired with every inactive one, so the
+    term needs no grouping bookkeeping and cannot drift out of sync with the
+    tensors.  Returns a zero tensor (with grad) when the batch is single-class,
+    which keeps the loss graph well-formed for the backward pass.
+    """
+    # The activity head emits (B, 2) logits; column 1 is the active class.
+    # Using the whole 2-vector would push both class scores apart and fight
+    # the classifier (measured: AUC 0.4377, worse than chance).
+    if logits.dim() == 2:
+        logits = logits[:, -1]
+    pos = logits[labels > 0]
+    neg = logits[labels <= 0]
+    if pos.numel() == 0 or neg.numel() == 0:
+        return logits.sum() * 0.0
+    s = pos.unsqueeze(1) - neg.unsqueeze(0)
+    return torch.nn.functional.softplus(-(s - margin) / max(temperature, 1e-6)).mean()
+
+
 class WassersteinLOMORunner:
     """Single-fold runner that wires the W₂ regulariser into DMPNN-MT."""
 
@@ -975,9 +1001,17 @@ class WassersteinLOMORunner:
         # parameter.  Needed because seed-ensembling needs the rows, and the
         # artifact only ever stored the AUC.
         score_dump_dir: Optional[str] = None,
+        # UP-31 — pairwise logistic term on the activity logits.  weight 0.0
+        # reproduces the pre-UP-31 path bit-for-bit.
+        pairwise_weight: float = 0.0,
+        pairwise_margin: float = 0.0,
+        pairwise_temperature: float = 1.0,
     ) -> None:
         self.ds = ds
         self.held_out_metal = held_out_metal
+        self.pairwise_weight = float(pairwise_weight)
+        self.pairwise_margin = float(pairwise_margin)
+        self.pairwise_temperature = float(pairwise_temperature)
         self.wasserstein_weight = float(wasserstein_weight)
         # Wf-E1 — ``--wasserstein-real`` opts into a genuine W₂ gradient.
         # Default False: the term stays a detached constant (the Wf-C3
@@ -1427,6 +1461,17 @@ class WassersteinLOMORunner:
                 loss, lc, lr_ = criterion(
                     pic50_pred, active_logits, y_pic50_t, y_active_t
                 )
+                # UP-31 — pairwise logistic term.  Pairs are all (active,
+                # inactive) combinations inside this batch, so no grouping
+                # bookkeeping can drift out of sync with the tensors.
+                # weight 0.0 skips the term entirely (bit-exact default).
+                if self.pairwise_weight > 0.0:
+                    loss = loss + self.pairwise_weight * pairwise_logistic(
+                        active_logits,
+                        y_active_t,
+                        margin=self.pairwise_margin,
+                        temperature=self.pairwise_temperature,
+                    )
                 # Wf-E1 (2026-10-05) replaces the Wf-C3 no-op injection.
                 #
                 # Wf-C3 ABLATION (measured, on disk): the old site did
@@ -1912,6 +1957,29 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "within seed noise). A non-zero value WITHOUT --wasserstein-real is "
         "accepted for config back-compat, emits a DeprecationWarning, and "
         "is otherwise ignored — see molmetal/reports/wf_round2_w2_{on,off}/.",
+    )
+    p.add_argument(
+        "--pairwise-weight",
+        dest="pairwise_weight",
+        type=float,
+        default=0.0,
+        help="UP-31: weight of the pairwise logistic term on the activity "
+        "logits. DEFAULT 0.0 reproduces the pre-UP-31 loss bit-for-bit.",
+    )
+    p.add_argument(
+        "--pairwise-margin",
+        dest="pairwise_margin",
+        type=float,
+        default=0.0,
+        help="UP-31: margin subtracted from the positive-minus-negative logit "
+        "difference before the sigmoid.",
+    )
+    p.add_argument(
+        "--pairwise-temperature",
+        dest="pairwise_temperature",
+        type=float,
+        default=1.0,
+        help="UP-31: temperature T in -log sigmoid((s - margin) / T).",
     )
     p.add_argument(
         "--wasserstein-cadence",
@@ -2418,6 +2486,9 @@ def _run_one(
         ds=ds,
         held_out_metal=metal,
         wasserstein_weight=args.wasserstein_weight,
+        pairwise_weight=float(getattr(args, "pairwise_weight", 0.0)),
+        pairwise_margin=float(getattr(args, "pairwise_margin", 0.0)),
+        pairwise_temperature=float(getattr(args, "pairwise_temperature", 1.0)),
         wasserstein_real=bool(getattr(args, "wasserstein_real", False)),
         wasserstein_cadence=str(
             getattr(args, "wasserstein_cadence", "per-epoch")

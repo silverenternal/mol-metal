@@ -1,0 +1,67 @@
+# configs/msrs_lomo_pairwise_dmpnn.yaml — UP-31 arm A (pairwise logistic ON).
+#
+# The BCE control is configs/msrs_lomo_pairwise_bce.yaml.  The two files are
+# identical except for protocol.pairwise_weight (1.0 here, 0.0 there), which is
+# the single variable this package is testing.
+#
+# Everything else copies the published LOMO headline
+# (metrics/by_metric/metal_lomo_auc_wasserstein.json: 5 metals x 5 seeds,
+# 30 epochs, wasserstein_weight 0.05, rh_oversample 0, hidden 128 / depth 3 /
+# alpha 0.5, model_select last_epoch).  The scope is narrowed to Ru and Ir
+# because those are the two folds the resolvability audit calls resolvable and
+# their mean (0.5974) is the number the reproduce gate names.
+#
+# Invoke with: .venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py \
+#                  --config configs/msrs_lomo_pairwise_dmpnn.yaml
+
+data:
+  metals:
+    - Ru
+    - Ir
+  rh_oversample: 0
+  time_threshold: 24
+
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+  pairwise_weight: 1.0
+  pairwise_margin: 0.0
+  pairwise_temperature: 1.0
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/up31_lomo_pairwise
+  out_dir: molmetal/reports/up31_lomo_pairwise
+  log_master: molmetal/reports/up31_lomo_pairwise/master.log
+  training_summary: molmetal/reports/up31_lomo_pairwise/training_summary.json
+  out_metric: molmetal/reports/up31_lomo_pairwise/metrics.json
+
+directives:
+  kill_then_adapt: true
+  time_budget: 2h
+  user_ok_required: false
+  per_wave_user_ok_required: false
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}"
+
+honest_framing:
+  purpose: UP-31 — does a pairwise logistic term fix the learner mismatch UP-24 was killed on?
+  note: Only the loss differs between the two arms. Any AUC gap is attributable to the term, not to the backbone, the split, or the budget.

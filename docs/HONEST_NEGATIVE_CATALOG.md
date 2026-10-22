@@ -11571,3 +11571,137 @@ left is "indistinguishable".
 artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+
+## §6.183 — UP-30: widening the identifiable set 94x does not make the metal
+substitution response predictable
+
+**Claim tested.** UP-19 closed `metal_out` with a definitional argument: only 5.47%
+of test rows are *identifiable*, because identifiability required the *same*
+`(ligand, cell)` under another metal. If that definition were the binding
+constraint, relaxing it to "same core, one transformation apart" — a matched
+molecular pair (MMP), Griffen et al., J Med Chem 2011;54(22):7739-7750 — should
+widen the usable set and let the delta be learned.
+
+**What was measured** (`msrs_mmp_delta.json`, CPU 113 s, 21,404 rows, 5,861
+ligands, 269 distinct cores, RDKit `rdMMPA` single cut):
+
+| arm | pair key | raw pairs | after leak filter | held-out-metal delta R2 (full / ligand-only) | constant baseline |
+|---|---|---:|---:|---|---:|
+| loose (primary) | (cell, core) | 70,952 | **61,539** | -0.6935 / **-0.1457** | -0.0163 |
+| strict | (cell, paper, duration, core) | 1,493 | 643 | -0.2698 / -0.3637 | -0.2051 |
+
+**The size gate passes and the quality gate fails.** 61,539 clean pairs is 94.5x
+the 651 exact-ligand pairs, so the pair definition was *not* what limited the
+identifiable set. But the widened delta is still unpredictable on a held-out
+metal: the better of the two feature blocks reaches **-0.1457**, which does not
+beat the training-mean baseline of **-0.0163**. The full block is worse
+(-0.6935) because the metal descriptors extrapolate off the training metals.
+
+**The two numbers belong in one sentence.** Read alone, -0.1457 looks like an
+under-tuned model. Read next to -0.0163 it says the widened deltas carry no
+information beyond their mean, and that a model which tries harder scores worse.
+The gate therefore reads the better of the two blocks rather than the output of
+one tuning run.
+
+**Leak rule and what it costs.** A held-out-metal pair is dropped when the
+molecule whose response is being predicted was measured under a training metal;
+otherwise the pair tests memorisation. The primary arm drops 10,670 pairs
+(70,952 -> 61,539). The strict arm drops 1,256 of 1,493 (84%) and ends at 643,
+*below* the 651 exact-ligand pairs: inside one paper, sharing a core adds
+essentially nothing.
+
+**Redundancy 9.02.** The 70,952 loose pairs collapse to 7,867 distinct
+(core, transform_a, transform_b, metal-pair) signatures across 269 cores. The
+94.5x multiple is a count of rows, not a count of independent observations, and
+must not be read as 94.5x the information.
+
+**Honest boundaries (ACTIVE).**
+  * **The estimand changes.** An exact-ligand pair changes only the metal; an MMP
+    pair changes the metal and the transformation. The model carries a
+    transform-difference block, but the two lines are not numerically comparable
+    without that sentence.
+  * **Only one cut is taken.** Two-cut MMP pairs would widen the set further and
+    are not built here, because the transform-difference block would no longer
+    be a single local edit.
+  * **Ridge alpha is chosen by a DOI-grouped inner CV inside the training
+    metals**, never on the held-out metal. Every held-out fold chose the largest
+    grid value (1000), which is itself a signal that the signal is weak.
+  * **Cross-paper pairs carry a paper offset** in the loose arm; the strict arm
+    removes it at the cost of 60x fewer pairs.
+  * **Kill is triggered** (-0.1457 < 0.10). The MMP line is closed. The metal_out
+    conclusion is restated, not merely repeated: it is not that too few rows are
+    identifiable, it is that the metal substitution response is not learnable
+    from these features however the pairs are drawn.
+
+**Artifacts.** `molmetal/scripts/msrs_mmp_delta.py`,
+`configs/msrs_mmp_delta.yaml`, `metrics/by_metric/msrs_mmp_delta.json`.
+
+**§6.183 catalog-count math.** Net **+1**. Cumulative **237 → 238**. ACTIVE
+**193 → 194**.
+
+**Workflow** | UP-30 (2026-10-22; CPU 113 s, no retrain; §5.2 every number is an
+artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.184 — UP-31: on the D-MPNN itself, the pairwise loss redistributes AUC between
+folds and does not raise the mean
+
+**Claim tested.** UP-24 measured +0.0080 AUC for a pairwise loss and was killed
+against a 0.63 gate that had been frozen for the D-MPNN while UP-24's learner was
+a linear ECFP4 model. That is a learner mismatch, so the kill did not settle
+whether the loss helps. UP-31 reruns the comparison on the D-MPNN, holding
+cohort, folds, seeds, epochs and the Wasserstein setting fixed and changing one
+YAML key.
+
+**What was measured** (`msrs_lomo_pairwise_dmpnn.json`; 2 metals x 5 seeds x 30
+epochs per arm, GPU0):
+
+| arm | Ru | Ir | mean | seed sd |
+|---|---:|---:|---:|---:|
+| BCE control | 0.5952 | 0.5897 | **0.5924** | 0.0197 |
+| pairwise, weight 1.0 | **0.6191** | 0.5665 | **0.5928** | 0.0363 |
+| difference | +0.0239 | -0.0232 | **+0.0003** | — |
+
+**The mean does not move; the variance doubles.** Ru gains 0.024 and Ir loses
+0.023. A term that helps one fold and hurts another by the same amount is not a
+lever, and the seed SD going from 0.020 to 0.036 is the quantitative form of
+that statement.
+
+**The reproduce step passes, which is what makes the comparison admissible.**
+The BCE arm lands at 0.5924 against the 0.5974 the resolvability audit reports —
+0.0050 apart, inside the frozen +/-0.01. UP-24 never established this, so its
+delta could not be attributed to the loss.
+
+**A bug that had to be fixed before the number meant anything.** The first
+pairwise run fed the whole (B, 2) logit vector into the term and scored
+**0.4377**, below chance. Pushing both class scores apart fights the classifier.
+The shipped term takes column 1 (the active class). The 0.4377 run is recorded
+here and in the artifact caveats rather than deleted, because a number that
+wrong is evidence about the implementation, not about the hypothesis.
+
+**Honest boundaries (ACTIVE).**
+  * **Two metals.** Ru and Ir are the folds the resolvability audit calls
+    resolvable; the other three are below MIN_UNIQUE_FOR_GATE and are not run.
+  * **One point in (margin, temperature).** Both are neutral (0.0 / 1.0). No
+    sweep, so this is not a best case for the term.
+  * **Pairing rule differs from UP-24.** Every (active, inactive) pair in a batch
+    here, versus within-(ligand, cell) groups there. The two deltas are not
+    directly comparable.
+  * **Kill is triggered** (0.5928 < 0.61 with the BCE arm reproduced). The LOMO
+    line is closed and the paper reports 0.5974 only. Two learners now agree
+    that the loss is worth +0.000 to +0.008, which is the same conclusion from
+    two directions.
+
+**Artifacts.** `molmetal/scripts/msrs_lomo_pairwise_dmpnn.py`,
+`configs/msrs_lomo_pairwise_dmpnn.yaml`, `configs/msrs_lomo_pairwise_bce.yaml`,
+`metrics/by_metric/msrs_lomo_pairwise_dmpnn.json`.
+
+**§6.184 catalog-count math.** Net **+1**. Cumulative **238 → 239**. ACTIVE
+**194 → 195**.
+
+**Workflow** | UP-31 (2026-10-22; GPU0 ~11 min for both arms; §5.2 every number
+is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
