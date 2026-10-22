@@ -1,0 +1,590 @@
+{
+  "artifact": "msrs_metal_calibration",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 metal extrapolation with measured rows (UP-34)",
+  "generated_utc": "2026-10-22T20:10:18+00:00",
+  "provenance": {
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_metal_calibration.py",
+    "git_commit": "bf27c3df4f3c888ad6fbe831fb87e1df650ae428",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency, censored dropped",
+    "n_rows": 21045,
+    "split": "leave-one-metal-out, all ligands kept",
+    "representation": "descriptors",
+    "learner": "the additive LightGBM used by msrs_lomo_surface",
+    "seed": 20261018,
+    "k_grid": [
+      0,
+      5,
+      10,
+      20,
+      50
+    ],
+    "repeats": 20,
+    "primary_arm": "paper_metal",
+    "estimator": "offset = n/(n+kappa_metal) * mean(resid - paper_offset | k rows)",
+    "kappa_definition": "sigma2_noise / tau2, method-of-moments on the training metals' cross-fitted residuals",
+    "oracle": "each metal's mean residual over all of its rows; not deployable",
+    "oracle_ceiling_source": "msrs_identifiability.json per-metal r2_centred, n-weighted: 0.0092",
+    "gate_frozen_at": "2026-10-23T03:20+08:00",
+    "gate_amended_at": "2026-10-23T03:55+08:00",
+    "amendment": "the frozen primary asked for R^2 >= 0.30 at k=10, which is 33x the 0.0092 ceiling of any per-metal constant offset; it was rewritten as a fraction of the oracle gap before any k-curve was produced"
+  },
+  "per_metal": {
+    "Ru": {
+      "status": "OK",
+      "n_train": 6260,
+      "n_test": 14785,
+      "share_test_rows_with_paper_in_train": 0.0634,
+      "kappa_paper": 0.665,
+      "kappa_metal": 247.162,
+      "tau2_paper": 0.302734,
+      "tau2_metal": 0.001895,
+      "sigma2_noise": 0.468412,
+      "arms": {
+        "baseline": {
+          "r2": -0.0777
+        },
+        "paper_only": {
+          "r2": -0.1241
+        },
+        "oracle": {
+          "r2": -0.0031
+        }
+      },
+      "k_curve": {
+        "0": {
+          "r2_mean": -0.1241,
+          "r2_min": -0.1241,
+          "r2_max": -0.1241,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 0,
+          "metal_only_eb_r2_mean": -0.0777,
+          "metal_only_raw_r2_mean": -0.0777
+        },
+        "5": {
+          "r2_mean": -0.1228,
+          "r2_min": -0.1328,
+          "r2_max": -0.1153,
+          "offset_mean": 0.002,
+          "offset_sd": 0.0064,
+          "n_rows_sampled": 5,
+          "metal_only_eb_r2_mean": -0.0763,
+          "metal_only_raw_r2_mean": -0.1867
+        },
+        "10": {
+          "r2_mean": -0.1179,
+          "r2_min": -0.1263,
+          "r2_max": -0.1082,
+          "offset_mean": 0.009,
+          "offset_sd": 0.0081,
+          "n_rows_sampled": 10,
+          "metal_only_eb_r2_mean": -0.0715,
+          "metal_only_raw_r2_mean": -0.0662
+        },
+        "20": {
+          "r2_mean": -0.1111,
+          "r2_min": -0.1372,
+          "r2_max": -0.0976,
+          "offset_mean": 0.0193,
+          "offset_sd": 0.0154,
+          "n_rows_sampled": 20,
+          "metal_only_eb_r2_mean": -0.0649,
+          "metal_only_raw_r2_mean": -0.0771
+        },
+        "50": {
+          "r2_mean": -0.0968,
+          "r2_min": -0.1367,
+          "r2_max": -0.0715,
+          "offset_mean": 0.0431,
+          "offset_sd": 0.022,
+          "n_rows_sampled": 50,
+          "metal_only_eb_r2_mean": -0.051,
+          "metal_only_raw_r2_mean": -0.0361
+        }
+      },
+      "n_papers_in_k_rows": {
+        "0": 0.0,
+        "5": 5.0,
+        "10": 10.0,
+        "20": 19.6,
+        "50": 47.95
+      },
+      "share_k_rows_with_paper_in_train": {
+        "0": null,
+        "5": 0.04,
+        "10": 0.06,
+        "20": 0.08,
+        "50": 0.064
+      },
+      "elapsed_seconds": 28.4
+    },
+    "Ir": {
+      "status": "OK",
+      "n_train": 17379,
+      "n_test": 3666,
+      "share_test_rows_with_paper_in_train": 0.1751,
+      "kappa_paper": 0.6957,
+      "kappa_metal": 496810.7073,
+      "tau2_paper": 0.297347,
+      "tau2_metal": 1e-06,
+      "sigma2_noise": 0.496811,
+      "arms": {
+        "baseline": {
+          "r2": -0.1283
+        },
+        "paper_only": {
+          "r2": -0.2408
+        },
+        "oracle": {
+          "r2": -0.0513
+        }
+      },
+      "k_curve": {
+        "0": {
+          "r2_mean": -0.2408,
+          "r2_min": -0.2408,
+          "r2_max": -0.2408,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 0,
+          "metal_only_eb_r2_mean": -0.1283,
+          "metal_only_raw_r2_mean": -0.1283
+        },
+        "5": {
+          "r2_mean": -0.2408,
+          "r2_min": -0.2408,
+          "r2_max": -0.2407,
+          "offset_mean": -0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 5,
+          "metal_only_eb_r2_mean": -0.1283,
+          "metal_only_raw_r2_mean": -0.2546
+        },
+        "10": {
+          "r2_mean": -0.2408,
+          "r2_min": -0.2408,
+          "r2_max": -0.2407,
+          "offset_mean": -0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 10,
+          "metal_only_eb_r2_mean": -0.1283,
+          "metal_only_raw_r2_mean": -0.1732
+        },
+        "20": {
+          "r2_mean": -0.2407,
+          "r2_min": -0.2408,
+          "r2_max": -0.2407,
+          "offset_mean": -0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 20,
+          "metal_only_eb_r2_mean": -0.1283,
+          "metal_only_raw_r2_mean": -0.0982
+        },
+        "50": {
+          "r2_mean": -0.2407,
+          "r2_min": -0.2408,
+          "r2_max": -0.2407,
+          "offset_mean": -0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 50,
+          "metal_only_eb_r2_mean": -0.1283,
+          "metal_only_raw_r2_mean": -0.0617
+        }
+      },
+      "n_papers_in_k_rows": {
+        "0": 0.0,
+        "5": 5.0,
+        "10": 9.8,
+        "20": 19.45,
+        "50": 44.05
+      },
+      "share_k_rows_with_paper_in_train": {
+        "0": null,
+        "5": 0.13,
+        "10": 0.18,
+        "20": 0.175,
+        "50": 0.172
+      },
+      "elapsed_seconds": 44.2
+    },
+    "Rh": {
+      "status": "OK",
+      "n_train": 20086,
+      "n_test": 959,
+      "share_test_rows_with_paper_in_train": 0.2607,
+      "kappa_paper": 0.7138,
+      "kappa_metal": 202.1085,
+      "tau2_paper": 0.282482,
+      "tau2_metal": 0.002295,
+      "sigma2_noise": 0.463885,
+      "arms": {
+        "baseline": {
+          "r2": -0.1589
+        },
+        "paper_only": {
+          "r2": -0.1906
+        },
+        "oracle": {
+          "r2": 0.0565
+        }
+      },
+      "k_curve": {
+        "0": {
+          "r2_mean": -0.1906,
+          "r2_min": -0.1906,
+          "r2_max": -0.1906,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 0,
+          "metal_only_eb_r2_mean": -0.1589,
+          "metal_only_raw_r2_mean": -0.1589
+        },
+        "5": {
+          "r2_mean": -0.1768,
+          "r2_min": -0.191,
+          "r2_max": -0.1527,
+          "offset_mean": -0.0098,
+          "offset_sd": 0.0069,
+          "n_rows_sampled": 5,
+          "metal_only_eb_r2_mean": -0.1466,
+          "metal_only_raw_r2_mean": -0.081
+        },
+        "10": {
+          "r2_mean": -0.164,
+          "r2_min": -0.1895,
+          "r2_max": -0.1344,
+          "offset_mean": -0.0192,
+          "offset_sd": 0.0095,
+          "n_rows_sampled": 10,
+          "metal_only_eb_r2_mean": -0.1352,
+          "metal_only_raw_r2_mean": -0.0145
+        },
+        "20": {
+          "r2_mean": -0.148,
+          "r2_min": -0.1895,
+          "r2_max": -0.1084,
+          "offset_mean": -0.0313,
+          "offset_sd": 0.0143,
+          "n_rows_sampled": 20,
+          "metal_only_eb_r2_mean": -0.121,
+          "metal_only_raw_r2_mean": 0.0031
+        },
+        "50": {
+          "r2_mean": -0.0996,
+          "r2_min": -0.1329,
+          "r2_max": -0.0662,
+          "offset_mean": -0.0703,
+          "offset_sd": 0.0142,
+          "n_rows_sampled": 50,
+          "metal_only_eb_r2_mean": -0.0785,
+          "metal_only_raw_r2_mean": 0.0449
+        }
+      },
+      "n_papers_in_k_rows": {
+        "0": 0.0,
+        "5": 4.85,
+        "10": 9.05,
+        "20": 17.05,
+        "50": 35.2
+      },
+      "share_k_rows_with_paper_in_train": {
+        "0": null,
+        "5": 0.24,
+        "10": 0.23,
+        "20": 0.2525,
+        "50": 0.25
+      },
+      "elapsed_seconds": 48.2
+    },
+    "Os": {
+      "status": "OK",
+      "n_train": 20166,
+      "n_test": 879,
+      "share_test_rows_with_paper_in_train": 0.3948,
+      "kappa_paper": 0.6487,
+      "kappa_metal": 2003.0918,
+      "tau2_paper": 0.302207,
+      "tau2_metal": 0.00024,
+      "sigma2_noise": 0.480742,
+      "arms": {
+        "baseline": {
+          "r2": 0.3479
+        },
+        "paper_only": {
+          "r2": 0.256
+        },
+        "oracle": {
+          "r2": 0.352
+        }
+      },
+      "k_curve": {
+        "0": {
+          "r2_mean": 0.256,
+          "r2_min": 0.256,
+          "r2_max": 0.256,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 0,
+          "metal_only_eb_r2_mean": 0.3479,
+          "metal_only_raw_r2_mean": 0.3479
+        },
+        "5": {
+          "r2_mean": 0.256,
+          "r2_min": 0.2553,
+          "r2_max": 0.2569,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0011,
+          "n_rows_sampled": 5,
+          "metal_only_eb_r2_mean": 0.3479,
+          "metal_only_raw_r2_mean": 0.1221
+        },
+        "10": {
+          "r2_mean": 0.2562,
+          "r2_min": 0.2554,
+          "r2_max": 0.2569,
+          "offset_mean": 0.0005,
+          "offset_sd": 0.0012,
+          "n_rows_sampled": 10,
+          "metal_only_eb_r2_mean": 0.348,
+          "metal_only_raw_r2_mean": 0.2766
+        },
+        "20": {
+          "r2_mean": 0.2563,
+          "r2_min": 0.2554,
+          "r2_max": 0.257,
+          "offset_mean": 0.001,
+          "offset_sd": 0.0014,
+          "n_rows_sampled": 20,
+          "metal_only_eb_r2_mean": 0.348,
+          "metal_only_raw_r2_mean": 0.323
+        },
+        "50": {
+          "r2_mean": 0.2568,
+          "r2_min": 0.2553,
+          "r2_max": 0.2577,
+          "offset_mean": 0.0025,
+          "offset_sd": 0.0022,
+          "n_rows_sampled": 50,
+          "metal_only_eb_r2_mean": 0.3482,
+          "metal_only_raw_r2_mean": 0.3415
+        }
+      },
+      "n_papers_in_k_rows": {
+        "0": 0.0,
+        "5": 4.75,
+        "10": 8.7,
+        "20": 16.45,
+        "50": 30.45
+      },
+      "share_k_rows_with_paper_in_train": {
+        "0": null,
+        "5": 0.33,
+        "10": 0.36,
+        "20": 0.42,
+        "50": 0.386
+      },
+      "elapsed_seconds": 42.1
+    },
+    "Re": {
+      "status": "OK",
+      "n_train": 20289,
+      "n_test": 756,
+      "share_test_rows_with_paper_in_train": 0.0146,
+      "kappa_paper": 0.671,
+      "kappa_metal": 483413.657,
+      "tau2_paper": 0.296758,
+      "tau2_metal": 1e-06,
+      "sigma2_noise": 0.483414,
+      "arms": {
+        "baseline": {
+          "r2": -0.1034
+        },
+        "paper_only": {
+          "r2": -0.0971
+        },
+        "oracle": {
+          "r2": 0.0855
+        }
+      },
+      "k_curve": {
+        "0": {
+          "r2_mean": -0.0971,
+          "r2_min": -0.0971,
+          "r2_max": -0.0971,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 0,
+          "metal_only_eb_r2_mean": -0.1034,
+          "metal_only_raw_r2_mean": -0.1034
+        },
+        "5": {
+          "r2_mean": -0.0971,
+          "r2_min": -0.0971,
+          "r2_max": -0.0971,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 5,
+          "metal_only_eb_r2_mean": -0.1034,
+          "metal_only_raw_r2_mean": -0.0534
+        },
+        "10": {
+          "r2_mean": -0.0971,
+          "r2_min": -0.0971,
+          "r2_max": -0.0971,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 10,
+          "metal_only_eb_r2_mean": -0.1034,
+          "metal_only_raw_r2_mean": 0.0193
+        },
+        "20": {
+          "r2_mean": -0.0971,
+          "r2_min": -0.0971,
+          "r2_max": -0.0971,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 20,
+          "metal_only_eb_r2_mean": -0.1034,
+          "metal_only_raw_r2_mean": 0.0334
+        },
+        "50": {
+          "r2_mean": -0.0971,
+          "r2_min": -0.0971,
+          "r2_max": -0.097,
+          "offset_mean": 0.0,
+          "offset_sd": 0.0,
+          "n_rows_sampled": 50,
+          "metal_only_eb_r2_mean": -0.1034,
+          "metal_only_raw_r2_mean": 0.0749
+        }
+      },
+      "n_papers_in_k_rows": {
+        "0": 0.0,
+        "5": 4.9,
+        "10": 8.3,
+        "20": 14.05,
+        "50": 27.8
+      },
+      "share_k_rows_with_paper_in_train": {
+        "0": null,
+        "5": 0.02,
+        "10": 0.015,
+        "20": 0.0125,
+        "50": 0.017
+      },
+      "elapsed_seconds": 48.2
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "weighted_r2": -0.0734
+    },
+    "paper_only": {
+      "weighted_r2": -0.1306
+    },
+    "oracle": {
+      "weighted_r2": 0.0092
+    },
+    "k_curve": {
+      "0": {
+        "primary": -0.1306,
+        "metal_only_eb": -0.0734,
+        "metal_only_raw": -0.0734
+      },
+      "5": {
+        "primary": -0.1291,
+        "metal_only_eb": -0.0718,
+        "metal_only_raw": -0.176
+      },
+      "10": {
+        "primary": -0.125,
+        "metal_only_eb": -0.0679,
+        "metal_only_raw": -0.0651
+      },
+      "20": {
+        "primary": -0.1195,
+        "metal_only_eb": -0.0626,
+        "metal_only_raw": -0.0564
+      },
+      "50": {
+        "primary": -0.1072,
+        "metal_only_eb": -0.0509,
+        "metal_only_raw": -0.0171
+      }
+    },
+    "oracle_gap": 0.0826,
+    "diagnostics": {
+      "metal_only_raw_recovery_k10": 0.1005,
+      "metal_only_raw_recovery_k50": 0.6816,
+      "metal_only_eb_recovery_k10": 0.0666,
+      "paper_only_recovery": -0.6925
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-23T03:20+08:00",
+    "amended_at": "2026-10-23T03:55+08:00",
+    "checks": {
+      "primary_recovery_k10": {
+        "value": -0.6247,
+        "r2": -0.125,
+        "threshold": 0.7,
+        "pass": false
+      },
+      "reproduce_baseline": {
+        "value": -0.0734,
+        "target": -0.0734,
+        "tolerance": 0.01,
+        "pass": true
+      },
+      "contrast_paper_only": {
+        "value": -0.6925,
+        "r2": -0.1306,
+        "max": 0.3,
+        "pass": true
+      },
+      "monotone": {
+        "curve": [
+          -0.1306,
+          -0.1291,
+          -0.125,
+          -0.1195,
+          -0.1072
+        ],
+        "steps": [
+          0.0015,
+          0.0041,
+          0.0055,
+          0.0123
+        ],
+        "non_decreasing_steps": 4,
+        "required": 4,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "k=10 recovering < 30% of the oracle gap closes the metal_out line",
+      "value": -0.6247,
+      "triggered": true,
+      "interpretation": "The pre-registered arm fires. The unshrunk mean of the same k rows recovers 0.10 of the gap at k=10 and 0.68 at k=50, so the level is in the rows but ten of them are not enough to read it: the sampling error of a 10-row mean is the same size as the bias it is meant to remove. Two separate defects make the pre-registered estimator worse than the baseline at every k: the paper term is confounded with the training metal's level and does not transfer, and kappa_metal estimated on the observed metals is effectively infinite because the held-out metal sits outside their between-metal variance. Closing the line at k=10 is correct for the deployment story as written; a k~50 protocol would need its own pre-registration."
+    }
+  },
+  "caveats": [
+    "The k rows are drawn uniformly from the held-out metal's cohort, not from a designed plate. A deployment that can choose which compounds to measure may do better; that is a different experiment.",
+    "The plan specified a two-level decomposition with the metal term identified from within-paper cross-metal residual differences. That estimator is not implemented here because the data cannot identify it: only a small share of k rows belong to papers that also appear in a training metal, and when they do their training rows span several metals, so the difference does not isolate the held-out metal. The share is reported per metal and per k instead of assuming it away.",
+    "The paper offset is estimated from the paper's rows in the training metals. Those rows also carry their own metal's level, so the estimate is confounded with a metal effect and does not transfer to the held-out metal; the paper_only arm measures that failure rather than hiding it.",
+    "kappa_metal is estimated on the four observed metals. The held-out metal is by construction the one whose level the model gets wrong, so it sits outside that variance and the shrinkage becomes near-total. This is a property of leave-one-metal-out, not of empirical Bayes.",
+    "The oracle uses every row of the held-out metal, including the rows a real method would spend on calibration. It is a ceiling, not a model.",
+    "Weighted R^2 is the n-weighted mean of per-metal R^2, matching msrs_lomo_surface. It is not a pooled R^2 and the two differ by construction."
+  ]
+}
