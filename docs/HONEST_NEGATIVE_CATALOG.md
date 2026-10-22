@@ -11395,7 +11395,7 @@ artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 ---
 
 ## §6.180 — UP-26: the paper offset is measurable from a handful of rows, and the
-ceiling is 0.7337 (2026-10-22)
+ceiling is 0.7353 (2026-10-22)
 
 **Why this entry exists.** UP-21 concluded that the paper offset cannot be predicted
 from the paper's description and closed that line. That conclusion is correct and was
@@ -11422,9 +11422,10 @@ Shrinkage is estimated, not tuned: `kappa = sigma2_noise / tau2_paper = 0.7781`
 (per-fold 0.7332-0.8087), with `sigma2_noise` 0.164-0.170 and `tau2_paper`
 0.211-0.224, both method-of-moments on the training folds of each split.
 
-**The ceiling.** An independent arithmetic check removes every test paper's mean
-residual and leaves the evaluation rows unchanged: that gives R^2 = 0.7337. The
-measured 0.6839 at n_cal=10 is 89% of it. Nothing about more calibration rows, a
+**The ceiling.** Removing every test paper's mean residual and leaving the
+evaluation rows unchanged gives R^2 = **0.7353** (five seeds 0.7342-0.7364, now an
+artifact field at `aggregate.oracle_bound`). The measured 0.6839 at n_cal=10 is
+**93%** of it. Nothing about more calibration rows, a
 better learner or a better feature set moves that number, because the remaining error
 is within-paper and no paper-level statistic can touch it.
 

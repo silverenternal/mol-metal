@@ -3,12 +3,12 @@
   "version": "1.0",
   "framework": "MSRS \u2014 Metal Substitution Response Surface",
   "level": "L1 deployment calibration (UP-26)",
-  "generated_utc": "2026-10-22T07:52:54+00:00",
+  "generated_utc": "2026-10-22T19:05:44+00:00",
   "provenance": {
     "long_parquet": "data/msrs/measurements.parquet",
     "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
     "script": "molmetal/scripts/msrs_paper_calibration.py",
-    "git_commit": "f58d8558f0893f207c0e36e3357c92d16c260054",
+    "git_commit": "bd80d5f5d50c2825205795a75f730d9c21321460",
     "argv": [
       "/home/hugo/codes/mol-metal/.venv/bin/python"
     ]
@@ -41,6 +41,7 @@
       "eb_random": "uniform, nested permutation",
       "eb_maxmin": "greedy Tanimoto farthest-point, nested order"
     },
+    "oracle_bound": "per-paper mean residual removed with no sampling and no shrinkage, scored on the n_cal=0 row set: the ceiling for any estimator that only shifts a paper by a constant",
     "gate_frozen_at": "2026-10-22T15:45+08:00"
   },
   "kappa_by_fold_seed0": {
@@ -89,6 +90,11 @@
     "20261022": {
       "base_r2_all_rows": 0.3642,
       "kappa_mean": 0.7778,
+      "oracle_bound": {
+        "r2": 0.7342,
+        "n_eval_rows": 21309,
+        "n_eval_papers": 1689
+      },
       "ncal": {
         "0": {
           "eb_random": {
@@ -329,11 +335,16 @@
           }
         }
       },
-      "elapsed_seconds": 43.4
+      "elapsed_seconds": 43.1
     },
     "20261023": {
       "base_r2_all_rows": 0.3651,
       "kappa_mean": 0.7692,
+      "oracle_bound": {
+        "r2": 0.7364,
+        "n_eval_rows": 21309,
+        "n_eval_papers": 1689
+      },
       "ncal": {
         "0": {
           "eb_random": {
@@ -574,11 +585,16 @@
           }
         }
       },
-      "elapsed_seconds": 48.0
+      "elapsed_seconds": 45.8
     },
     "20261024": {
       "base_r2_all_rows": 0.3682,
       "kappa_mean": 0.7831,
+      "oracle_bound": {
+        "r2": 0.7352,
+        "n_eval_rows": 21309,
+        "n_eval_papers": 1689
+      },
       "ncal": {
         "0": {
           "eb_random": {
@@ -819,11 +835,16 @@
           }
         }
       },
-      "elapsed_seconds": 41.4
+      "elapsed_seconds": 44.8
     },
     "20261025": {
       "base_r2_all_rows": 0.3699,
       "kappa_mean": 0.7836,
+      "oracle_bound": {
+        "r2": 0.7354,
+        "n_eval_rows": 21309,
+        "n_eval_papers": 1689
+      },
       "ncal": {
         "0": {
           "eb_random": {
@@ -1064,11 +1085,16 @@
           }
         }
       },
-      "elapsed_seconds": 40.9
+      "elapsed_seconds": 43.7
     },
     "20261026": {
       "base_r2_all_rows": 0.3674,
       "kappa_mean": 0.7768,
+      "oracle_bound": {
+        "r2": 0.7353,
+        "n_eval_rows": 21309,
+        "n_eval_papers": 1689
+      },
       "ncal": {
         "0": {
           "eb_random": {
@@ -1309,7 +1335,7 @@
           }
         }
       },
-      "elapsed_seconds": 41.1
+      "elapsed_seconds": 44.6
     }
   },
   "aggregate": {
@@ -1578,6 +1604,13 @@
         "delta_vs_matched_zero_mean": 0.3128,
         "n_eval_rows_mean": 2782
       }
+    },
+    "oracle_bound": {
+      "r2_mean": 0.7353,
+      "r2_min": 0.7342,
+      "r2_max": 0.7364,
+      "n_eval_rows": 21309,
+      "definition": "subtract each test paper's own mean residual over all its rows; same evaluation rows as n_cal=0; no sampling, no kappa"
     }
   },
   "gate": {
@@ -1640,6 +1673,7 @@
     "kappa is estimated on the training folds of each outer split, so a test paper's own residual scale never enters its shrinkage factor.",
     "The affine arm has two free parameters from n_cal rows; at n_cal<=2 it degenerates to the offset arm and is reported for the decomposition only.",
     "James-Stein borrows strength across the other held-out papers in the same fold, which is a batch-arrival assumption no single-paper deployment satisfies.",
-    "Papers with one row cannot be both calibrated and evaluated, so they leave the n_cal>0 row sets entirely; n_eval_rows records how much of the cohort is lost."
+    "Papers with one row cannot be both calibrated and evaluated, so they leave the n_cal>0 row sets entirely; n_eval_rows records how much of the cohort is lost.",
+    "The oracle bound is not deployable: it removes each test paper's mean residual using every one of that paper's evaluation rows. It is the ceiling for any estimator that only shifts a paper by a constant, quoted to bound the curve."
   ]
 }

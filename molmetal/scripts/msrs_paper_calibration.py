@@ -247,6 +247,20 @@ def sweep_ncal(
     papers = [p for p in test_papers if len(rows_by_paper[p]) >= 2]
     resid = y - pred
 
+    # Oracle: subtract each test paper's own mean residual over all of its rows
+    # and score on the same rows the n_cal=0 arm uses. No sampling, no kappa, no
+    # RNG -- this is the ceiling any per-paper offset estimator can reach.
+    y_or = np.concatenate([y[rows_by_paper[p]] for p in papers])
+    p_or = np.concatenate([
+        pred[rows_by_paper[p]] + float(resid[rows_by_paper[p]].mean())
+        for p in papers
+    ])
+    oracle = {
+        "r2": _r2(y_or, p_or),
+        "n_eval_rows": int(len(y_or)),
+        "n_eval_papers": int(len(papers)),
+    }
+
     # Nested orders are drawn once per (repeat, paper) and reused for every
     # n_cal, so the sweep changes sample size only.
     orders: Dict[Tuple[int, int], Tuple[np.ndarray, np.ndarray]] = {}
@@ -332,6 +346,7 @@ def sweep_ncal(
                 "n_eval_papers": int(len(papers)),
             }
         out[str(n_cal)] = ncal_out
+    out["oracle_bound"] = oracle
     return out
 
 
@@ -422,7 +437,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         per_seed[str(seed)] = {
             "base_r2_all_rows": base_r2,
             "kappa_mean": round(float(np.mean(list(kappa_by_fold.values()))), 4),
-            "ncal": sweep,
+            "oracle_bound": sweep.get("oracle_bound"),
+            "ncal": {k: v for k, v in sweep.items() if k != "oracle_bound"},
             "elapsed_seconds": round(time.time() - ts, 1),
         }
         line = " ".join(
@@ -456,6 +472,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     n0 = agg["0"][PRIMARY_ARM]["r2_mean"]
     n10 = agg["10"][PRIMARY_ARM]["r2_mean"]
+    oracle_vals = [per_seed[s]["oracle_bound"]["r2"] for s in per_seed
+                   if per_seed[s].get("oracle_bound")]
+    agg["oracle_bound"] = {
+        "r2_mean": round(float(np.mean(oracle_vals)), 4),
+        "r2_min": round(float(np.min(oracle_vals)), 4),
+        "r2_max": round(float(np.max(oracle_vals)), 4),
+        "n_eval_rows": int(per_seed[list(per_seed)[0]]["oracle_bound"]["n_eval_rows"]),
+        "definition": "subtract each test paper's own mean residual over all its rows; "
+                      "same evaluation rows as n_cal=0; no sampling, no kappa",
+    }
     curve = [agg[str(c)][PRIMARY_ARM]["r2_mean"] for c in N_CAL_GRID]
     steps = [curve[i + 1] - curve[i] for i in range(len(curve) - 1)]
     n_nondec = int(sum(1 for d in steps if d >= 0))
@@ -519,6 +545,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "kappa_definition": "sigma2_noise / tau2_paper, both method-of-moments on training folds",
             "selection": {"eb_random": "uniform, nested permutation",
                           "eb_maxmin": "greedy Tanimoto farthest-point, nested order"},
+            "oracle_bound": "per-paper mean residual removed with no sampling and no "
+                            "shrinkage, scored on the n_cal=0 row set: the ceiling for "
+                            "any estimator that only shifts a paper by a constant",
             "gate_frozen_at": GATE_FROZEN_AT,
         },
         "kappa_by_fold_seed0": kappa_log,
@@ -538,6 +567,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "which is a batch-arrival assumption no single-paper deployment satisfies.",
             "Papers with one row cannot be both calibrated and evaluated, so they leave the "
             "n_cal>0 row sets entirely; n_eval_rows records how much of the cohort is lost.",
+            "The oracle bound is not deployable: it removes each test paper's mean residual "
+            "using every one of that paper's evaluation rows. It is the ceiling for any "
+            "estimator that only shifts a paper by a constant, quoted to bound the curve.",
         ],
     }
     atomic_write_file(args.out, json.dumps(out, indent=2) + "\n")
