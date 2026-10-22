@@ -64,6 +64,17 @@ monotone       >= 5 of the 6 transitions in {0,1,2,5,10,20,50} non-decreasing
 report         both selection arms and the estimated kappa
 kill           R^2 at n_cal=10 < 0.40 closes the per-paper calibration line
 
+=====================================================================
+UP-36: the spread behind the headline
+=====================================================================
+The 0.6839 at n_cal=10 is a mean over 20 draws of 10 rows.  A mean is
+not a guarantee: a deployment gets one draw.  Every arm therefore also
+records the R^2 of each individual draw and its 5/25/50/75/95
+percentiles, and the round-5 gate asks for the 5th percentile at
+n_cal=10 to be at least 0.55.  The pooled R^2 above is unchanged by
+this -- the draws are concatenated in the same order -- and the gate
+checks that 0.3674 / 0.6839 / 0.7243 come back bit-identical.
+
 Usage
 =====
     .venv/bin/python molmetal/scripts/msrs_paper_calibration.py
@@ -275,13 +286,20 @@ def sweep_ncal(
 
     out: Dict[str, object] = {}
     for n_cal in N_CAL_GRID:
-        buf: Dict[str, List[np.ndarray]] = {
+        # One entry per repeat, not one flat buffer: the R^2 across repeats is
+        # the headline, but the spread across repeats is what a deployment has
+        # to plan for.  Concatenating in the same order keeps the pooled R^2
+        # bit-identical to the previous version.
+        per_rep: Dict[str, List[np.ndarray]] = {
             a: [] for a in ("eb_random", "eb_maxmin", "js_batch", "affine")
         }
-        ybuf: List[np.ndarray] = []
-        p0buf: List[np.ndarray] = []
+        per_rep_y: List[np.ndarray] = []
+        per_rep_p0: List[np.ndarray] = []
 
         for rep in range(repeats):
+            cur: Dict[str, List[np.ndarray]] = {a: [] for a in per_rep}
+            ybuf: List[np.ndarray] = []
+            p0buf: List[np.ndarray] = []
             means: Dict[int, Tuple[float, int, int]] = {}
             for p in papers:
                 rows = rows_by_paper[p]
@@ -295,8 +313,8 @@ def sweep_ncal(
 
                 ybuf.append(y[rows][ev])
                 p0buf.append(pred[rows][ev])
-                buf["eb_random"].append(pred[rows][ev] + eb_offset(r[perm[:c]], kap))
-                buf["eb_maxmin"].append(pred[rows][ev] + eb_offset(r[mm[:c]], kap))
+                cur["eb_random"].append(pred[rows][ev] + eb_offset(r[perm[:c]], kap))
+                cur["eb_maxmin"].append(pred[rows][ev] + eb_offset(r[mm[:c]], kap))
 
                 # affine: level and slope, both from the same calibration rows.
                 # The slope is clipped because two points with near-identical
@@ -311,7 +329,7 @@ def sweep_ncal(
                     a, b = float(np.mean(yc - pc)), 1.0
                 else:
                     a, b = 0.0, 1.0
-                buf["affine"].append(a + b * pred[rows][ev])
+                cur["affine"].append(a + b * pred[rows][ev])
 
                 means[p] = (float(np.mean(r[perm[:c]])) if c else 0.0, c, k)
 
@@ -330,13 +348,22 @@ def sweep_ncal(
                 c = min(n_cal, len(rows) - 1)
                 ev = np.ones(len(rows), dtype=bool)
                 ev[perm[:c]] = False
-                buf["js_batch"].append(pred[rows][ev] + mapping[p])
+                cur["js_batch"].append(pred[rows][ev] + mapping[p])
 
-        yy = np.concatenate(ybuf)
-        pp0 = np.concatenate(p0buf)
+            # Close the repeat: every arm gets one array covering the same rows
+            # in the same order, so a per-repeat R^2 is a like-for-like score.
+            for a in per_rep:
+                per_rep[a].append(np.concatenate(cur[a]))
+            per_rep_y.append(np.concatenate(ybuf))
+            per_rep_p0.append(np.concatenate(p0buf))
+
+        yy = np.concatenate(per_rep_y)
+        pp0 = np.concatenate(per_rep_p0)
         ncal_out: Dict[str, object] = {}
-        for arm, chunks in buf.items():
+        for arm, chunks in per_rep.items():
             pp = np.concatenate(chunks)
+            r2_reps = np.array([_r2(a, b) for a, b in zip(per_rep_y, chunks)])
+            q = np.percentile(r2_reps, [5, 25, 50, 75, 95])
             ncal_out[arm] = {
                 "r2": _r2(yy, pp),
                 "mae": round(float(np.mean(np.abs(yy - pp))), 4),
@@ -344,10 +371,52 @@ def sweep_ncal(
                 "delta_vs_matched_zero": round(_r2(yy, pp) - _r2(yy, pp0), 4),
                 "n_eval_rows_per_repeat": int(len(yy) // repeats),
                 "n_eval_papers": int(len(papers)),
+                # Spread over the offset draws. The pooled "r2" above is what a
+                # single draw delivers on average, not what any one draw gives.
+                "r2_by_repeat": {
+                    "mean": round(float(np.mean(r2_reps)), 4),
+                    "sd": round(float(np.std(r2_reps, ddof=1)), 4)
+                          if len(r2_reps) > 1 else 0.0,
+                    "min": round(float(np.min(r2_reps)), 4),
+                    "max": round(float(np.max(r2_reps)), 4),
+                    "p05": round(float(q[0]), 4),
+                    "p25": round(float(q[1]), 4),
+                    "p50": round(float(q[2]), 4),
+                    "p75": round(float(q[3]), 4),
+                    "p95": round(float(q[4]), 4),
+                    "n_repeats": int(len(r2_reps)),
+                    # Raw values, so the quantiles can be re-derived or pooled
+                    # across seeds without rerunning the sweep.
+                    "values": [round(float(x), 4) for x in r2_reps],
+                },
             }
         out[str(n_cal)] = ncal_out
     out["oracle_bound"] = oracle
     return out
+
+
+def _pool_repeats(vals: List[Dict[str, object]]) -> Dict[str, object]:
+    """Pool every seed's per-repeat R^2 and re-derive the quantiles.
+
+    Averaging per-seed percentiles would understate the tails; pooling the raw
+    draws keeps the 5th percentile a 5th percentile of 100 draws rather than a
+    mean of five 5th percentiles.
+    """
+    raw = [float(x) for v in vals for x in v["r2_by_repeat"]["values"]]
+    arr = np.asarray(raw, dtype=float)
+    q = np.percentile(arr, [5, 25, 50, 75, 95])
+    return {
+        "mean": round(float(arr.mean()), 4),
+        "sd": round(float(arr.std(ddof=1)), 4) if len(arr) > 1 else 0.0,
+        "min": round(float(arr.min()), 4),
+        "max": round(float(arr.max()), 4),
+        "p05": round(float(q[0]), 4),
+        "p25": round(float(q[1]), 4),
+        "p50": round(float(q[2]), 4),
+        "p75": round(float(q[3]), 4),
+        "p95": round(float(q[4]), 4),
+        "n_repeats": int(len(arr)),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -468,6 +537,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_vs_matched_zero_mean": round(
                     float(np.mean([v["delta_vs_matched_zero"] for v in vals])), 4),
                 "n_eval_rows_mean": int(np.mean([v["n_eval_rows_per_repeat"] for v in vals])),
+                "r2_by_repeat": _pool_repeats(vals),
             }
 
     n0 = agg["0"][PRIMARY_ARM]["r2_mean"]
@@ -520,6 +590,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     }
     gate_pass = all(v["pass"] for v in checks.values())
 
+    # ------------------------------------------------------------------
+    # UP-36 (round 5): the sampling floor behind the 0.6839 headline.
+    # Kept separate from the UP-26 checks so that regenerating this artifact
+    # does not retroactively change the round-4 verdict.
+    # ------------------------------------------------------------------
+    r10 = agg["10"]["eb_random"]["r2_by_repeat"]
+    rmax = agg["10"]["eb_maxmin"]["r2_by_repeat"]
+    prev = {"0": 0.3674, "10": 0.6839, "50": 0.7243}
+    unchanged = {
+        k: {
+            "value": agg[k]["eb_random"]["r2_mean"],
+            "previous": prev[k],
+            "pass": bool(abs(agg[k]["eb_random"]["r2_mean"] - prev[k]) < 5e-5),
+        }
+        for k in prev
+    }
+    round5_checks = {
+        "floor_p05_n10": {
+            "value": r10["p05"],
+            "threshold": 0.55,
+            "pass": bool(r10["p05"] >= 0.55),
+        },
+        "reproduce_bitwise": {
+            "n0": unchanged["0"], "n10": unchanged["10"], "n50": unchanged["50"],
+            "pass": bool(all(v["pass"] for v in unchanged.values())),
+        },
+        "selection": {
+            "eb_random_p05": r10["p05"],
+            "eb_maxmin_p05": rmax["p05"],
+            "eb_random_p50": r10["p50"],
+            "eb_maxmin_p50": rmax["p50"],
+            "advice": "random" if r10["p05"] >= rmax["p05"] else "maxmin",
+            "pass": True,
+        },
+    }
+    round5_pass = all(v["pass"] for v in round5_checks.values())
+    round5_kill = {
+        "rule": "5th percentile at n_cal=10 < 0.45 means 0.6839 may only be quoted "
+                "as a mean, never as a deployment guarantee",
+        "value": r10["p05"],
+        "triggered": bool(r10["p05"] < 0.45),
+    }
+
     out = {
         "artifact": "msrs_paper_calibration",
         "version": "1.0",
@@ -554,7 +667,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "per_seed": per_seed,
         "aggregate": agg,
         "gate": {"frozen_at": GATE_FROZEN_AT, "checks": checks,
-                 "gate_pass": bool(gate_pass), "kill": kill},
+                 "gate_pass": bool(gate_pass), "kill": kill,
+                 "round5": {
+                     "frozen_at": "2026-10-23T03:20+08:00",
+                     "purpose": "sampling floor behind the n_cal=10 headline",
+                     "checks": round5_checks,
+                     "gate_pass": bool(round5_pass),
+                     "kill": round5_kill,
+                 }},
         "caveats": [
             "The calibration rows are drawn from the same paper as the evaluation rows. "
             "That is the deployment regime being modelled, not a leak: the correction uses "
@@ -580,6 +700,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"{a}={row[a]['r2_mean']}" for a in arms if a in row))
     print(f"[UP-26] gate_pass={gate_pass} kill={kill['triggered']} "
           f"elapsed={round(time.time()-t0,1)}s")
+    print(f"[UP-36] n10 p05={r10['p05']} p50={r10['p50']} min={r10['min']} "
+          f"maxmin_p05={rmax['p05']} round5_pass={round5_pass} "
+          f"kill={round5_kill['triggered']}")
     print(f"json: {args.out}")
     print("PASS" if gate_pass else "FAIL")
     return 0
