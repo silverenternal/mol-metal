@@ -91,6 +91,12 @@
       "source": "tmQM (d-block subset)",
       "evidence": "Header is csd_code, smiles, metal_center, formal_charge, spin, coord_number, n_atoms, mw, logp, qed_score, sa_score, ... — there is no energy or activity column, so nothing here is a label."
     },
+    "tmQM/tmqm_parsed.csv": {
+      "labels": "NOT_APPLICABLE",
+      "label_type": "geometry corpus (coordinates + Wiberg bond orders + NBO charges)",
+      "source": "tmQM (CSD organometallic database), six-metal subset",
+      "evidence": "Columns are csd_code, stoichiometry, metal, charge, spin, coord_number, metal_bo_total, metal_bo_sum, bo_n_neighbors, Electronic_E, Dispersion_E, Dipole_M, Metal_q, HL_Gap, HOMO_Energy, LUMO_Energy, Polarizability, CSD_years, smiles — every one is structure or computed electronic structure, and the three geometry/bond/charge shards beside it are the training TARGET, not a label. metrics/by_metric/tmqm_cfm_data_audit.json records that all 33,429 six-metal complexes carry all three shards."
+    },
     "platinai_pt_all_cells_with_smiles.jsonl": {
       "labels": "REAL",
       "label_type": "experimental IC50",

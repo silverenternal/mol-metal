@@ -11,7 +11,7 @@
 # Update via: .venv/bin/python molmetal/scripts/registry.py generate
 #
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-21T12:39:50+00:00'
+generated_at: '2026-10-22T02:27:29+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -457,6 +457,37 @@ datasets:
     label_evidence: 'docs/DATA_PROVENANCE.json: CrossDocked2020 (100-complex subset)
       — Header is pocket_id, receptor_path, ligand_path, ref_path, metal_atoms, n_atoms,
       n_residues, source — paths and counts, no activity column.'
+  tmQM/tmqm_parsed.csv:
+    path: .data/molmetal/tmQM/tmqm_parsed.csv
+    md5: a875d6f30571c41f9aae4e97d7776c58
+    sha256: 94176581313ffa9abbb212a5423033650989426cd8cff914c5eda8d795b5eaf8
+    n_lines: 108542
+    why: 'The metadata half of the tmQM corpus the CFM trainer streams. Every cloud
+      needs three shards that live beside it: tmQM_X{1,2,3}.xyz.gz (geometry), tmQM_X{1,2,3}.BO.gz
+      (Wiberg bond truth) and tmQM_X.q (NBO charges). Pinning this file pins the metal
+      column and the SMILES the scaffold split is computed from; a re-prep moves every
+      split boundary. Shard coverage is measured rather than assumed: see metrics/by_metric/tmqm_cfm_data_audit.json,
+      where all 33,429 six-metal complexes carry all three shards.'
+    source: metrics/by_metric/tmqm_cfm_data_audit.json
+    role: generative_train
+    labels: NOT_APPLICABLE
+    label_evidence: 'docs/DATA_PROVENANCE.json: tmQM (CSD organometallic database),
+      six-metal subset — Columns are csd_code, stoichiometry, metal, charge, spin,
+      coord_number, metal_bo_total, metal_bo_sum, bo_n_neighbors, Electronic_E, Dispersion_E,
+      Dipole_M, Metal_q, HL_Gap, HOMO_Energy, LUMO_Energy, Polarizability, CSD_years,
+      smiles — every one is structure or computed electronic structure, and the three
+      geometry/bond/charge shards beside it are the training TARGET, not a label.
+      metrics/by_metric/tmqm_cfm_data_audit.json records that all 33,429 six-metal
+      complexes carry all three shards.'
+    lifecycle_status: ACTIVE
+    lifecycle_source: metrics/by_metric/tmqm_cfm_data_audit.json
+    lifecycle_note: Six-metal subset (Pt Ru Ir Rh Os Re) = 33,429 of 108,541 complexes,
+      no coordination-number filter. Scaffold split gives 29,307/2,061/2,061 complexes
+      (87.7/6.2/6.2 %) with 0 scaffolds spanning splits.
+    preserved_from: previous registry/datasets.yaml
+    preserved_reason: no generator source (configs/data_checksums.json, configs/locks/protocol_lock.yaml
+      or docs/DATA_INVENTORY.json) declares this row; generate() must not delete what
+      it cannot re-derive
   rusanov_2025_s5_ece.json:
     path: .data/molmetal/rusanov_2025/parsed/s5_ece.json
     md5: 301b6062c468f37c74fb679598a41c47

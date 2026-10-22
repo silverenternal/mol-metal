@@ -1,0 +1,175 @@
+{
+ "metric": "tmqm_cfm_data_audit",
+ "description": "Completeness and split composition of the tmQM six-metal corpus the CFM trainer streams, measured from the raw shards before any reservoir sampling.",
+ "unit": "complexes (one tmQM CSD code = one geometry = one cloud)",
+ "scope": "data_protocol_audit",
+ "source": "molmetal/scripts/wf_a63_tmqm_cfm_data_audit.py over .data/molmetal/tmQM (tmqm_parsed.csv + tmQM_X*.xyz.gz + tmQM_X*.BO.gz + tmQM_X.q), calling the production loader load_tmqm_clouds for the val-cohort measurement",
+ "cohort": {
+  "tmqm_dir": ".data/molmetal/tmQM",
+  "metadata_rows": 108541,
+  "metals": [
+   "Pt",
+   "Ru",
+   "Ir",
+   "Rh",
+   "Os",
+   "Re"
+  ],
+  "coord_number_filter": null,
+  "cohort_size": 33429,
+  "corpus_metal_share": {
+   "Pt": 0.2475,
+   "Ru": 0.2932,
+   "Ir": 0.1565,
+   "Rh": 0.1388,
+   "Os": 0.0392,
+   "Re": 0.1248
+  }
+ },
+ "raw_files": {
+  "xyz_shards": [
+   "tmQM_X1.xyz.gz",
+   "tmQM_X2.xyz.gz",
+   "tmQM_X3.xyz.gz"
+  ],
+  "xyz_blocks_total": 108541,
+  "cohort_blocks": 33429,
+  "cohort_unique_codes": 33429,
+  "duplicate_codes": 0,
+  "missing_xyz": 0,
+  "nonfinite_coordinate_blocks": 0,
+  "metal_atoms_per_complex": {
+   "1": 33429
+  },
+  "metal_label_disagrees_with_atom": 0,
+  "metal_label_examples": [],
+  "bo_coverage": [
+   33429,
+   33429
+  ],
+  "bo_missing": 0,
+  "bo_index_out_of_range": 0,
+  "q_blocks_total": 108541,
+  "q_coverage": [
+   33429,
+   33429
+  ],
+  "q_missing": 0,
+  "q_length_mismatch": 0
+ },
+ "smiles_column": {
+  "empty": 2277,
+  "empty_fraction": 0.0681,
+  "unparseable": 2,
+  "multi_fragment": 127,
+  "heavy_atom_mismatch": 0,
+  "metal_absent_from_smiles": 0,
+  "examples": [
+   {
+    "csd_code": "QEJLOI",
+    "smiles": "CC(C)P(C(C)C)(C(C)C)->[RuH2]1234(<-c5(C)c->1(C)c->2(C)[c-]->",
+    "why": "unparseable"
+   },
+   {
+    "csd_code": "JOFZAF",
+    "smiles": "CP(C)(c1ccccc1)->[Pt-2]1234(<-[BH+][BH-]([BH+]->1)[BH-]([BH+",
+    "why": "unparseable"
+   }
+  ]
+ },
+ "scaffold_split": {
+  "unique_scaffolds": 20612,
+  "largest_scaffold_rows": 592,
+  "rows": {
+   "train": 29307,
+   "val": 2061,
+   "test": 2061
+  },
+  "row_fraction": {
+   "train": 0.8767,
+   "val": 0.0617,
+   "test": 0.0617
+  },
+  "per_metal": {
+   "train": {
+    "Ir": 4611,
+    "Os": 1147,
+    "Pt": 7468,
+    "Re": 3671,
+    "Rh": 3912,
+    "Ru": 8498
+   },
+   "val": {
+    "Ir": 317,
+    "Os": 81,
+    "Pt": 414,
+    "Re": 251,
+    "Rh": 355,
+    "Ru": 643
+   },
+   "test": {
+    "Ir": 304,
+    "Os": 82,
+    "Pt": 393,
+    "Re": 250,
+    "Rh": 373,
+    "Ru": 659
+   }
+  },
+  "scaffolds_spanning_splits": 0,
+  "val_frac_is_ignored_on_this_branch": true
+ },
+ "val_cohort_at_n192": {
+  "config_defaults": {
+   "n_val": 192,
+   "tmqm_min_per_metal": 0,
+   "note": "configs/c7_*.yaml set neither key, so the argparse defaults are what run"
+  },
+  "corpus_metal_share": {
+   "Pt": 0.2475,
+   "Ru": 0.2932,
+   "Ir": 0.1565,
+   "Rh": 0.1388,
+   "Os": 0.0392,
+   "Re": 0.1248
+  },
+  "cohort_metal_share": {
+   "Ir": 0.099,
+   "Os": 0.0521,
+   "Pt": 0.099,
+   "Re": 0.2083,
+   "Rh": 0.0573,
+   "Ru": 0.4844
+  },
+  "runs": {
+   "min_per_metal_0": {
+    "n_clouds": 192,
+    "per_metal": {
+     "Ir": 19,
+     "Os": 10,
+     "Pt": 19,
+     "Re": 40,
+     "Rh": 11,
+     "Ru": 93
+    },
+    "full_pool_scan": false
+   },
+   "min_per_metal_20": {
+    "n_clouds": 192,
+    "per_metal": {
+     "Ir": 30,
+     "Os": 19,
+     "Pt": 46,
+     "Re": 19,
+     "Rh": 26,
+     "Ru": 52
+    },
+    "full_pool_scan": true
+   }
+  }
+ },
+ "verdict": "No data-side hole in the corpus: all 33,429 six-metal complexes carry geometry, Wiberg bond truth and NBO charges, with one metal atom each and a metal column that agrees with it everywhere. The split is scaffold-disjoint (0 spanning scaffolds) but allocates 87.7/6.2/6.2 % of rows, because the fractions are budgeted in scaffold counts; tmqm_val_frac is ignored on that branch. The 192-cloud val cohort every generation metric is averaged over is Pt 19 / Ru 93 at seed 0, against a corpus that is Pt 24.8 % / Ru 29.3 %: Pt is present but 2.5x under-weighted. Raising tmqm_min_per_metal to 20 balances it (Pt 46 / Ru 52) and forces a full 2,061-candidate scan instead of a 960-candidate window.",
+ "status": "MEASURED",
+ "generated_by": "molmetal/scripts/wf_a63_tmqm_cfm_data_audit.py",
+ "content_sha256": "2f5871e7904e58c2"
+}
