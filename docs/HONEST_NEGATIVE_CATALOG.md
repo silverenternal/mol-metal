@@ -11941,6 +11941,12 @@ head, which changes what the low-`t` target is rather than asking a velocity hea
 represent a sign reversal. The caveat recorded in §6.173 still holds: `x1_hat = x_t + (1-t)u`
 is a time weight, not a re-parameterisation, so the head must emit a position.
 
+**And the frontier weight cannot be copied verbatim.** FlowMol3 (arXiv:2508.12629) trains on
+`w(t) ||x1_hat - x1||^2` with `w(t) = min(max(0.005, t/(1-t)), 1.5)`; with
+`x1_hat = x_t + (1-t)u` the effective velocity weight is `t(1-t)`, which downweights
+`t -> 0` — the end this wave measured as broken. Any x1 arm must state its `w(t)` and be
+read on the per-`t` table, not on an epoch mean.
+
 **Honest boundaries (ACTIVE).**
   * **GPU run-to-run nondeterminism is not zero.** The identical single-cohort 125-step
     command returned 7.120 in one process and 7.957 in another (gap 0.332 vs 0.253), so

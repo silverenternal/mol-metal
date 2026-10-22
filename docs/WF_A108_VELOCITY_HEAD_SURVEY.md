@@ -334,6 +334,14 @@ the same velocity head to represent a sign reversal. The earlier caveat stands a
 load-bearing: `x1_hat = x_t + (1-t)u` is only a time weight, so the head has to emit a
 position, not a displacement.
 
+**And FlowMol3's weight cannot be copied.** FlowMol3 (arXiv:2508.12629) trains on
+`w(t) ||x1_hat - x1||^2` with `w(t) = min(max(0.005, t/(1-t)), 1.5)`. With
+`x1_hat = x_t + (1-t)u` that loss is `(1-t)^2 w(t) ||u - v||^2`, so the effective velocity
+weight is `t(1-t)` — it **downweights** both ends of the path, and `t -> 0` is the end this
+wave measured as broken. Copying the weight as written would suppress the one gradient the
+field needs. Any x1 arm therefore has to state its `w(t)` explicitly and be read on the
+per-`t` table above, not on an epoch mean.
+
 Artifacts: `metrics/by_metric/wfa108d_regime_gate.json` (all arms),
 `metrics/by_metric/wfa108d_t_sensitivity*.json` (three fields),
 `results/wfa108d_fields/*.pt` (the trained fields the probes read).
