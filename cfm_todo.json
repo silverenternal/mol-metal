@@ -1137,5 +1137,64 @@
     "round6 code_health 5 items (3 still owed housekeeping; see HONEST_NEGATIVE_CATALOG.md)",
     "OPT-1..5 detailed prose (compressed; statuses in tasks_roi_ordered or honest_negatives)",
     "Whole Paper A: cross-metal pIC50 / Krasnov-2026 / m1 m19 m21 / Chemprop / Bemis-Murcko (OUT OF SCOPE: DeepSeek line)"
-  ]
+  ],
+  "data_audit_handoff_2026_10_22": {
+    "why_this_block": "User asked for the remaining data-line items to be recorded in one place (2026-10-22). Items 2 and 3 are generative-line and belong in this file. Items 1 and 4 are predictive-line / external-eval items, recorded here as handoff pointers only; they do not change the scope boundary above.",
+    "source": {
+      "artifacts": [
+        "metrics/by_metric/tmqm_cfm_data_audit.json",
+        "metrics/by_metric/nci60_split_coverage_audit.json",
+        "metrics/by_metric/split_coverage_4cell.json"
+      ],
+      "docs": [
+        "docs/DATA_INVENTORY.md",
+        "docs/DATA_LEAKAGE_AUDIT.md"
+      ],
+      "data_docs_commit": "dc9ba599",
+      "split_default_flip_commit": "26598016"
+    },
+    "confirmed_clean": [
+      "tmQM six-metal corpus: 33,429 complexes; geometry, Wiberg bond orders and NBO charges present on 33,429/33,429. No duplicate CSD codes, no non-finite coordinates, one metal atom per complex, metal column agrees with that atom on 33,429/33,429.",
+      "CFM CSV cohorts v3 / v4 / v5: 0 shared scaffolds and 0 shared canonical SMILES across every train/val/test pair.",
+      "NCI-60 and Pt 4-cell: 0 scaffolds span two splits under either protocol."
+    ],
+    "items": [
+      {
+        "id": "DATA_NCI60_COVERAGE_RETRAIN",
+        "scope": "predictive line -- pointer only, not a CFM task",
+        "state": "OPEN",
+        "what": "The m21 default split moved on 2026-10-21 from scaffold_70_10_10 to scaffold_coverage_70_10_20, and no model has been retrained on it. 0.7294 (9-cell, 5 seeds) and 0.6683 (m3 real) are legacy-protocol numbers; they reproduce only through the configs that pin the legacy split.",
+        "evidence": "metrics/by_metric/nci60_split_coverage_audit.json: coverage 5,371/920/1,532 rows against legacy 7,320/160/343. Legacy leaves 5 of 9 cells under 30 test rows and SKOV3 with 0 val rows; coverage leaves 0. Legacy pins: configs/training/nci60_9cell_5seed_50ep_v1.yaml, nci60_9cell_probe_seed0_cap512_d4.yaml, nci60_9cell_probe_seed12_cap512_d4.yaml, configs/train_cisplatin_resistance_real_v1.yaml, configs/train_cisplatin_resistance_v1.yaml.",
+        "action": "Run configs/training/nci60_9cell_coverage_5seed_50ep_v1.yaml on GPU0. Do not compare the result with 0.7294: the two test sets differ about 4.5x in size (1,532 vs 343 rows).",
+        "cost": "~5.4 GPU-h; nothing else blocks it."
+      },
+      {
+        "id": "CFM_V3_V4_SCAFFOLD_ID_IS_WHOLE_COMPLEX",
+        "scope": "generative",
+        "state": "OPEN (decision)",
+        "what": "The in-file scaffold_id in cfm_5metal_v3/v4 covers the whole complex, counterions and solvent included, and is stereo-aware. On a desalted stereo-blind ligand scaffold, 222 scaffolds are shared between train and test (73.71% of test rows) and 131 between train and val (79.63% of val rows). cfm_5metal_v5 has a real desalted split (17,138/2,448/4,897, 0 shared) but no config reads it.",
+        "evidence": "docs/DATA_LEAKAGE_AUDIT.md section 2; molmetal/reports/wf_a51_leakage_audit/leakage_audit.json",
+        "action": "Choose one. (a) Move training to cfm_5metal_v5: the cohort and the split both change, so every existing checkpoint becomes incomparable with anything trained afterwards. (b) Keep v3/v4 and state in every generation-metric table that the split is not a ligand-scaffold OOD split.",
+        "cost": "0 to decide; a v5 retrain is a full run."
+      },
+      {
+        "id": "TMQM_VAL_COHORT_NOT_METAL_BALANCED",
+        "scope": "generative",
+        "state": "OPEN (decision)",
+        "what": "n_val defaults to 192 and tmqm_min_per_metal to 0, so the cohort every generation metric is averaged over is a 192-of-960 reservoir window. At seed 0 it is Pt 19 / Ru 93 against a corpus that is Pt 24.75% / Ru 29.32%.",
+        "evidence": "metrics/by_metric/tmqm_cfm_data_audit.json::val_cohort_at_n192",
+        "action": "Set tmqm_min_per_metal: 20 in the CFM configs. The cohort becomes Pt 46 / Ru 52 and the loader scans all 2,061 candidates instead of a 960-candidate window. One YAML key, but it changes the val cohort, so metrics measured before and after are not comparable.",
+        "cost": "0 to change; the next run reports on a different cohort."
+      },
+      {
+        "id": "PT_BIODATA_ALL_IS_A_POOL",
+        "scope": "external evaluation -- pointer only, not a CFM task",
+        "state": "OPEN",
+        "what": "17,735 Pt rows with no split column: 3,668 duplicate (compound_code, cell_line) rows, 987 exact duplicate measurements, and 296 of 3,555 unique SMILES fail RDKit parsing.",
+        "evidence": "docs/DATA_INVENTORY.md section 1.3; docs/DATA_LEAKAGE_AUDIT.md section 3",
+        "action": "De-duplicate before using it as an external evaluation set. The 4-cell cohort (platinai_4cell_real_trainer.csv) already filters and median-collapses these.",
+        "cost": "0; CPU only."
+      }
+    ]
+  }
 }
