@@ -12,8 +12,9 @@ obvious explanation is "5 epochs is too few".  This script tests the other
 explanation: that the field CANNOT represent the target, in which case no
 budget fixes it.
 
-The test is an overfit test on ONE batch: 200 AdamW steps at lr 1e-3 on a
-single 8-cloud val batch, same interpolant the trainer uses
+The test is an overfit test on ONE batch: ``--steps`` AdamW steps (default 200,
+Wf-A108 uses 400/800) at lr 1e-3 on a single 8-cloud val batch, same
+interpolant the trainer uses
 (``x_t = 0.5 x0 + 0.5 x1``, ``target = x1 - x0``).  If the field can fit one
 batch, the loss must fall well below the ``v = 0`` baseline.  If it cannot,
 the reported ``fm_term`` is the zero-prediction floor and the sampler is a
@@ -96,7 +97,36 @@ def main() -> int:
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--t", type=float, default=0.5)
+    # Init seed.  Without it the fresh-field arms are not reproducible:
+    # three 400-step runs of the SAME config reached 0.548 / 1.060 / 1.352
+    # purely from the unseeded model build, which is wider than the effect
+    # any one of them was supposed to measure.
+    ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cpu")
+    ap.add_argument(
+        "--velocity-head",
+        choices=("radial", "vector_channels"),
+        default=None,
+        help=(
+            "Wf-A108a: override the coordinate head.  When this differs from "
+            "the checkpoint's head the backbone weights cannot be loaded (the "
+            "parameter sets differ), so a FRESH field is built from the "
+            "checkpoint's architecture args and the run is reported as such."
+        ),
+    )
+    ap.add_argument("--vector-channels", type=int, default=8)
+    ap.add_argument(
+        "--metal-frame-channels", action="store_true", default=False
+    )
+    ap.add_argument(
+        "--radial-centroid-masked", action="store_true", default=False
+    )
+    ap.add_argument(
+        "--fresh",
+        action="store_true",
+        default=False,
+        help="Build a fresh field instead of loading the checkpoint weights.",
+    )
     ap.add_argument("--out", default="metrics/by_metric/wfa107h_velocity_capacity.json")
     args = ap.parse_args()
 
@@ -110,10 +140,26 @@ def main() -> int:
     ck_args = ck["args"]
     import argparse as _ap
 
+    torch.manual_seed(int(args.seed))
     ns = _ap.Namespace(**ck_args)
     dev = torch.device(args.device)
+    ckpt_head = str(getattr(ns, "velocity_head", "radial"))
+    head = str(args.velocity_head or ckpt_head)
+    fresh = bool(args.fresh) or head != ckpt_head
+    if head == "vector_channels":
+        ns.velocity_head = "vector_channels"
+        ns.vector_channels = int(args.vector_channels)
+        ns.metal_frame_channels = bool(args.metal_frame_channels)
+    else:
+        ns.velocity_head = "radial"
+        ns.radial_centroid_masked = bool(args.radial_centroid_masked)
     model = build_joint_model(ns).to(dev)
-    model.load_state_dict(ck["model_state_dict"])
+    if fresh:
+        print(
+            f"[wfa107h] FRESH field (head={head}); checkpoint weights not loaded"
+        )
+    else:
+        model.load_state_dict(ck["model_state_dict"])
 
     clouds = build_csv_cohort(
         args.csv, split="val", n_clouds=int(args.n_clouds),
@@ -162,19 +208,30 @@ def main() -> int:
         "tag": "MEASURED",
         "date": "2026-10-22",
         "what": (
-            "Overfit test of the FM velocity field on ONE 8-cloud batch: 200 "
+            f"Overfit test of the FM velocity field on ONE 8-cloud batch: {int(args.steps)} "
             "AdamW steps at lr 1e-3, fixed t.  Compares the reachable loss "
             "with the v=0 baseline and with the best radial-only field, which "
             "is the form EGNNVelocityField's dominant term can express."
         ),
         "checkpoint": str(args.ckpt),
         "ckpt_epoch": ck.get("epoch"),
+        "velocity_head": head,
+        "vector_channels": (
+            int(args.vector_channels) if head == "vector_channels" else 0
+        ),
+        "metal_frame_channels": bool(args.metal_frame_channels),
+        "radial_centroid_masked": bool(args.radial_centroid_masked),
+        "fresh_field": fresh,
+        "vel_field_params": int(
+            sum(p.numel() for p in model.vel_field.parameters())
+        ),
         "noise_sigma": sigma,
         "t": t,
         "n_clouds": len(clouds),
         "n_atoms": int(x1.shape[0]),
         "steps": int(args.steps),
         "lr": float(args.lr),
+        "seed": int(args.seed),
         "device": str(dev),
         "zero_baseline_mse": zero_baseline,
         "radial_ceiling_mse": radial_ceiling,

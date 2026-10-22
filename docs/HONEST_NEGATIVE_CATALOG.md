@@ -10754,6 +10754,15 @@ sets. The honest reading is "assembly amplifies a dense graph", not "assembly am
     an architecture change with its own gate; this wave only establishes that the current one
     cannot.
 
+**PARTIALLY RETRACTED by §6.173 (2026-10-22).** Two claims above do not survive Wf-A108.
+(1) The last boundary is closed: a non-radial per-atom head now exists and passes its own gate.
+(2) More importantly, "not an under-training artefact" is withdrawn as a statement about the
+*problem*. It is still true that the radial head fails at 10x lr on one batch — that is a
+statement about that head. But the same 8-cloud target IS fitted to 10% of the radial ceiling by
+400 steps at lr 1e-3 once the head can point anywhere, so the Wf-A107g A/B (120 steps at lr 1e-4)
+was under-budget, not architecture-limited. The ceiling numbers, the `vel_scale -> -0.005`
+collapse and the "sampler returns the prior" mechanism all stand unchanged.
+
 **Artifacts.** `configs/wfa107g_fm_sigma_{control,edge_ring_w1}.yaml`,
 `molmetal/scripts/wfa107h_velocity_capacity.py`,
 `molmetal/scripts/wfa107c_head_swap_probe.py` (now reports `x0_reference`),
@@ -10908,3 +10917,104 @@ while the within-metal ordering is positive.
 
 **Workflow** | UP-19 (2026-10-22; CPU, 1 min 47 s for 15 LightGBM fits; §5.2 every number
 is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.173 — Wf-A108: the coordinate head was one of two defects, and five epochs is under-budget for either head (2026-10-22)
+
+**What this wave was for.** §6.170 closed with "no budget — c7 or otherwise — can turn
+generation metrics into chemistry", because the radial velocity head could not fit one
+8-cloud batch. That conclusion is conditional on the head, so this wave replaced it:
+`velocity_head: vector_channels` keeps `C = 8` independent 3-vectors per atom, gates them
+per edge with a scalar (GVP, arXiv:2009.03092), injects a per-channel radial message
+(SemlaFlow, arXiv:2406.07266 Eq. 4/10-13), normalises each channel to a unit direction and
+emits a learned per-atom projection of them (FlowMol3, arXiv:2508.12629 Eq. 18). Survey and
+design rationale: `docs/WF_A108_VELOCITY_HEAD_SURVEY.md`.
+
+**Finding 1 — the architecture gate passes, decisively.** Overfit ONE 8-cloud val batch,
+400 AdamW steps at lr 1e-3, t = 0.5, seed 0:
+
+| arm | MSE | % of `v = 0` baseline (10.652) | \|v\| vs target 5.159 | cosine |
+|---|---:|---:|---:|---:|
+| radial (trained ckpt) | 10.529 | **98.8 %** | 0.288 | 0.130 |
+| vector channels, no metal frames | 1.157 | **10.9 %** | 4.797 | 0.944 |
+| vector channels + metal frames | 1.065 | **10.0 %** | 4.879 | 0.949 |
+
+At 800 steps the same seed gives 0.092 (0.9 %) and 3.034 (28.5 %). The architecture moved
+the reachable loss from "cannot fit" to "fits". The metal-frame channels are **not**
+established: at 400 steps they differ by 0.09 MSE, at 800 by 2.9, on one seed — that is
+init variance, not an effect. They stay opt-in and off.
+
+**Finding 2 — the radial head was also being fed a corrupted centroid.** `fm_velocity`
+pads every cloud in an FM batch to the **batch maximum** atom count
+(`train_cfm_yuelbond_wasserstein.py:2370`), and the radial term is
+`x - x.mean(dim=1)` over the padded tensor. MEASURED on the 199-cloud train cohort at
+B = 8 (2,000 draws): the centroid is scaled by `s / n_max` with **mean 0.528, median
+0.481, p05 0.148**, and 52 % of samples below 0.5. For half the batch the "radial" term
+is radial about a point halfway to the origin, with a shrink factor that changes per
+batch. The new head masks padded atoms out of its centroid; the radial path keeps the
+legacy behaviour behind `--radial-centroid-masked` (default off, so the default forward
+is bit-exact), and `configs/wfa108_radial_masked_centroid.yaml` exists as the confound
+control.
+
+**Finding 3 — five epochs still returns the prior, for BOTH heads.** Same protocol as
+Wf-A107g (200 train / 64 val clouds, seed 0, 5 epochs, `fm_noise_sigma` 2.485,
+per-module clip, ring prior off):
+
+| metric (last epoch) | control (radial) | vector channels |
+|---|---:|---:|
+| `fm_term` (epoch mean) | 12.2478 | 12.2771 |
+| `gen_ring_3_share` | 0.8774 | 0.8879 |
+| `gen_rings_per_mol` | 1.1042 | 1.1146 |
+| `bond_pr_auc` (existence) | 0.5628 | 0.5628 |
+| `bond_best_f1_at_threshold` | 0.7177 | 0.7177 |
+| generated mean pair distance | 5.67 Å | 5.67 Å |
+| generated pairs-in-cutoff | 0.197 | 0.197 |
+
+The prior sits at 5.59 Å / 0.203 and the truth at 5.00 Å / 0.412. `fm_term` is flat
+across all five epochs in both arms (12.11 → 12.25 control, 12.17 → 12.28 treatment), and
+the head's effect on every decoded metric is **exactly 0.0000** — the two samplers differ
+by 0.25 Å per coordinate, which does not survive assembly. The bond head is bit-identical
+between arms (`head_max_abs_delta` 0.0), so that axis is clean.
+
+**Why 3 does not contradict 1.** The capacity gate needed 400 steps at lr 1e-3 on ONE
+batch. The training run gets 24 steps per epoch at lr 1e-4 — **120 steps total**, 3.3× fewer
+than the gate's first checkpoint and at a tenth of the learning rate. Finding 1 says the
+head can express the target; finding 3 says 120 steps is not enough to learn it. Those are
+different claims, and only the first is settled.
+
+**Consequence — §6.170's "no budget can help" is RETRACTED for the current head.** That
+sentence was measured against a head whose reachable loss was 98.8 % of the `v = 0`
+baseline; a longer run could not have helped because the target was outside the function
+class. With the vector-channel head the target is inside the class (10.0 % of baseline on
+the same batch), so budget is now a plausible lever. What remains unmeasured is whether
+the c7 corpus is enough of it.
+
+**Honest boundaries (ACTIVE).**
+  * **One seed, five epochs, one batch for the capacity gate, one t (0.5).** Every delta
+    here is direction, not effect size.
+  * **The confound control is prepared, not run.** `configs/wfa108_radial_masked_centroid.yaml`
+    isolates the centroid defect from the architecture. At 5 epochs both arms are flat, so
+    running it would not separate them; it is left for the budget run.
+  * **The metal-frame channels failed their first test** (Finding 1) and are not enabled in
+    the shipped config's recommendation. `is_metal_edge` is separate and always on for this
+    head, so metal topology is visible either way.
+  * **`learnable_vel_scale` is inert under the new head** — there is no `vel_scale`
+    parameter. The trainer's guard only rejects `false`, so the flag is silently unused.
+  * **The 27× assembler claim from §6.162 is still conditional on graph density** (§6.170);
+    nothing here changes that.
+
+**Artifacts.** `molmetal/adapters/flow_matching_lipman/vector_channels.py`,
+`EGNNVelocityField(velocity_head=..., vector_channels=..., metal_frame_channels=...,
+radial_centroid_masked=...)`, `configs/wfa108_vector_channels.yaml`,
+`configs/wfa108_radial_masked_centroid.yaml`,
+`metrics/by_metric/wfa108h_{radial,vector_channels_metal,vector_channels_nometal}_capacity*.json`,
+`metrics/by_metric/wfa108_ab.json`, `metrics/by_metric/wfa108_head_swap_probe_gen0.json`,
+`molmetal/tests/test_wfa108_vector_channels.py` (12 tests),
+`docs/WF_A108_VELOCITY_HEAD_SURVEY.md`.
+
+**§6.173 catalog-count math.** Net **+1**. Cumulative **227 → 228**. ACTIVE **183 → 184**.
+
+**Workflow** | Wf-A108a/c (2026-10-22; GPU0: 2 arms x 5 epochs = 970 s for the treatment,
+control already on disk; 6 capacity runs; §5.2 every number is an artifact field;
+§5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

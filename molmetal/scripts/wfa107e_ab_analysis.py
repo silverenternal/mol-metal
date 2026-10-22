@@ -156,20 +156,39 @@ def main() -> int:
         wa, wb = _weights(str(ck_a)), _weights(str(ck_b))
         vel = [k for k in wa if k.startswith("vel_field")]
         head = [k for k in wa if k.startswith("head")]
+        # Wf-A108 — the arms may have DIFFERENT parameter sets (a radial head
+        # has ``vel_scale``, a vector-channel head has ``vc_*`` and no
+        # ``vel_scale``).  Comparing by key name then raises KeyError, which is
+        # exactly the case this tool exists to analyse.  Compare the shared
+        # keys and report the asymmetry instead of crashing on it.
+        vel_shared = [k for k in vel if k in wb]
+        head_shared = [k for k in head if k in wb]
         weights = {
             "checked": True,
             "vel_field_max_abs_delta": max(
-                (float((wa[k] - wb[k]).abs().max()) for k in vel), default=0.0
+                (float((wa[k] - wb[k]).abs().max()) for k in vel_shared),
+                default=0.0,
             ),
             "head_max_abs_delta": max(
-                (float((wa[k] - wb[k]).abs().max()) for k in head), default=0.0
+                (float((wa[k] - wb[k]).abs().max()) for k in head_shared),
+                default=0.0,
             ),
             "n_vel_tensors": len(vel),
             "n_head_tensors": len(head),
+            "n_vel_tensors_shared": len(vel_shared),
+            "n_head_tensors_shared": len(head_shared),
+            "vel_field_keys_only_in_control": sorted(set(vel) - set(wb)),
+            "vel_field_keys_only_in_treatment": sorted(
+                k for k in wb if k.startswith("vel_field") and k not in wa
+            ),
             "reading": (
-                "vel_field must be 0.0: the ring term touches only the head and "
-                "per-module clipping keeps its clip factor independent.  A "
-                "non-zero value means the A/B is confounded again."
+                "For a one-factor A/B on the SAME architecture, vel_field must "
+                "be 0.0 (the ring term touches only the head, and per-module "
+                "clipping keeps its clip factor independent); a non-zero value "
+                "means the A/B is confounded again.  When the architectures "
+                "differ, the max is over the SHARED tensors only and the "
+                "*_only_in_* lists carry the difference — the number is not a "
+                "confound check in that case."
             ),
         }
 

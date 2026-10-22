@@ -1863,6 +1863,19 @@ class CFMJointModel(nn.Module):
         # so a fresh opt-in init contributes identically zero until
         # trained.
         pocket_inject_per_layer: bool = False,
+        # Wf-A108a (2026-10-22) — coordinate-head architecture.  ``"radial"``
+        # (default) is the pre-Wf-A108 head, bit-exact.  ``"vector_channels"``
+        # replaces the scalar-times-centroid-ray term with ``C`` independent
+        # 3-vectors per atom; see docs/WF_A108_VELOCITY_HEAD_SURVEY.md.
+        velocity_head: str = "radial",
+        vector_channels: int = 8,
+        # Wf-A108c — metal-relative channels (only read by the
+        # ``vector_channels`` head).  Off by default because it changes the
+        # channel count's meaning and therefore ``state_dict`` shape.
+        metal_frame_channels: bool = False,
+        # Wf-A108 — mask padded atoms out of the RADIAL head's centroid.
+        # Default False keeps the pre-Wf-A108 forward bit-exact.
+        radial_centroid_masked: bool = False,
         # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
         # head now has two interchangeable implementations: 'yuelbond'
         # (default, atom-centered message passing — the historical head every
@@ -2258,6 +2271,11 @@ class CFMJointModel(nn.Module):
                 # a zero-init ``PerLayerPocketInjector`` whose fresh
                 # contribution is identically zero until trained.
                 pocket_inject_per_layer=bool(pocket_inject_per_layer),
+                # Wf-A108a/c — coordinate-head architecture + metal channels.
+                velocity_head=str(velocity_head),
+                vector_channels=int(vector_channels),
+                metal_frame_channels=bool(metal_frame_channels),
+                radial_centroid_masked=bool(radial_centroid_masked),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -11475,6 +11493,54 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--velocity-head",
+        dest="velocity_head",
+        choices=("radial", "vector_channels"),
+        default="radial",
+        help=(
+            "Wf-A108a: coordinate-head architecture.  'radial' (default) is "
+            "the pre-Wf-A108 head "
+            "`tanh(vel_head(h)) * vel_scale * (x - centroid) + last_v`, "
+            "which Wf-A107h measured cannot fit one 8-cloud batch.  "
+            "'vector_channels' keeps C independent 3-vectors per atom and "
+            "emits a learned projection of them.  See "
+            "docs/WF_A108_VELOCITY_HEAD_SURVEY.md."
+        ),
+    )
+    p.add_argument(
+        "--vector-channels",
+        dest="vector_channels",
+        type=int,
+        default=8,
+        help=(
+            "Wf-A108a: number of 3-vectors per atom under "
+            "--velocity-head vector_channels.  Ignored by the radial head."
+        ),
+    )
+    p.add_argument(
+        "--radial-centroid-masked",
+        dest="radial_centroid_masked",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A108: mask padded atoms out of the RADIAL head's centroid. "
+            "The trainer pads every cloud in an FM batch to the batch max, "
+            "so the legacy centroid is scaled by s/n_max (median 0.481 on "
+            "the 199-cloud cohort).  Default False = pre-Wf-A108 forward."
+        ),
+    )
+    p.add_argument(
+        "--metal-frame-channels",
+        dest="metal_frame_channels",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A108c: seed channel 1 with (x - x_metal) and channel 2 with "
+            "(x - donor_centroid), and add an is_metal_edge scalar to the "
+            "edge MLP.  Only read by --velocity-head vector_channels."
+        ),
+    )
+    p.add_argument(
         "--natural-charge-mse-weight",
         dest="natural_charge_mse_weight",
         type=float,
@@ -12461,6 +12527,14 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         # Wf-A32 (2026-10-14) step-1 — per-layer pocket injection opt-in.
         pocket_inject_per_layer=bool(
             getattr(args, "pocket_inject_per_layer", False)
+        ),
+        # Wf-A108a/c — coordinate head.  ``getattr`` defaults keep every
+        # pre-Wf-A108 checkpoint rebuilding exactly as before.
+        velocity_head=str(getattr(args, "velocity_head", "radial")),
+        vector_channels=int(getattr(args, "vector_channels", 8)),
+        metal_frame_channels=bool(getattr(args, "metal_frame_channels", False)),
+        radial_centroid_masked=bool(
+            getattr(args, "radial_centroid_masked", False)
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
@@ -16409,6 +16483,18 @@ def main() -> int:
                 dict(_FM_PRIOR_SCALE) if _FM_PRIOR_SCALE else None
             ),
             "fm_noise_sigma": float(getattr(args, "fm_noise_sigma", 1.0)),
+            # Wf-A108a/c — which coordinate head this run actually built.
+            # A reader must not have to infer it from the parameter count.
+            "velocity_head": str(
+                getattr(args, "velocity_head", "radial")
+            ),
+            "vector_channels": int(getattr(args, "vector_channels", 0)),
+            "metal_frame_channels": bool(
+                getattr(args, "metal_frame_channels", False)
+            ),
+            "radial_centroid_masked": bool(
+                getattr(args, "radial_centroid_masked", False)
+            ),
         },
         # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #

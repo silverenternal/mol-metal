@@ -1541,6 +1541,31 @@ class EGNNVelocityField(nn.Module):
         # ``pocket_per_layer`` (which gates the *temporal* per-layer
         # addend) so the two opt-in axes compose independently.
         pocket_inject_per_layer: bool = False,
+        # Wf-A108a (2026-10-22) — coordinate-head architecture.
+        #
+        # ``"radial"`` (default) is the pre-Wf-A108 head:
+        #     vel = tanh(vel_head(h)) * vel_scale * (x - centroid) + last_v
+        # which Wf-A107h MEASURED cannot fit one 8-cloud batch (MSE 10.529
+        # against a 10.652 ``v = 0`` baseline and a 5.783 radial-only
+        # ceiling).  ``"vector_channels"`` replaces it with ``C``
+        # independent 3-vectors per atom (see
+        # :mod:`molmetal.adapters.flow_matching_lipman.vector_channels`
+        # for the GVP / MiDi / SemlaFlow / FlowMol3 lineage).
+        #
+        # Default ``"radial"`` adds zero parameters and zero branches on
+        # the live path, so every existing checkpoint still loads with
+        # ``strict=True`` and the forward is bit-exact.
+        velocity_head: str = "radial",
+        vector_channels: int = 8,
+        # Wf-A108c (2026-10-22) — metal-centred channels.  Only consulted
+        # when ``velocity_head="vector_channels"``.  Off by default: the
+        # extra channels change ``state_dict`` shape, so it is a separate
+        # opt-in from the architecture itself.
+        metal_frame_channels: bool = False,
+        # Wf-A108 — mask padded atoms out of the radial head's centroid.
+        # Off by default: the legacy centroid includes the trainer's zero
+        # padding, and changing that changes every existing run's forward.
+        radial_centroid_masked: bool = False,
     ) -> None:
         """Construct the velocity field.
 
@@ -1628,18 +1653,59 @@ class EGNNVelocityField(nn.Module):
             out_dim=hidden_dim,
         )
         self.atom_embed = nn.Embedding(max_atomic_number, hidden_dim)
-        self.layers = nn.ModuleList(
-            [
-                EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=edge_mlp_hidden)
-                for _ in range(n_layers)
-            ]
-        )
+        # Wf-A108a — the two coordinate heads are mutually exclusive.  The
+        # default builds exactly the modules the pre-Wf-A108 code built, so
+        # ``state_dict`` keys are unchanged.
+        _velocity_head = str(velocity_head).lower()
+        if _velocity_head not in {"radial", "vector_channels"}:
+            raise ValueError(
+                "velocity_head must be 'radial' or 'vector_channels', "
+                f"got {velocity_head!r}"
+            )
+        self.velocity_head = _velocity_head
+        self.vector_channels = int(vector_channels)
+        self.metal_frame_channels = bool(metal_frame_channels)
+        self.radial_centroid_masked = bool(radial_centroid_masked)
+        if self.velocity_head == "vector_channels":
+            from molmetal.adapters.flow_matching_lipman.vector_channels import (
+                VectorChannelHead,
+                VectorChannelLayer,
+            )
+
+            self.layers = nn.ModuleList([])
+            self.vc_layers = nn.ModuleList(
+                [
+                    VectorChannelLayer(
+                        hidden_dim=hidden_dim,
+                        n_channels=self.vector_channels,
+                        edge_hidden=edge_mlp_hidden,
+                    )
+                    for _ in range(n_layers)
+                ]
+            )
+            self.vc_head = VectorChannelHead(
+                hidden_dim=hidden_dim, n_channels=self.vector_channels
+            )
+            # ``vel_head`` / ``vel_scale`` are NOT constructed on this path:
+            # a dead parameter is a knob nobody audits (§5.11 rationale).
+            self.vel_head = None  # type: ignore[assignment]
+            self.vel_scale = None  # type: ignore[assignment]
+        else:
+            self.vc_layers = nn.ModuleList([])
+            self.vc_head = None  # type: ignore[assignment]
+            self.layers = nn.ModuleList(
+                [
+                    EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=edge_mlp_hidden)
+                    for _ in range(n_layers)
+                ]
+            )
         # Zero-init: start the velocity at zero so initial samples are
         # just noise.  This is the standard FM trick.
         # v2: an invariant scalar can only scale an equivariant vector
         # basis; a linear H -> 3 projection is not a spatial vector.
-        self.vel_head = nn.Linear(hidden_dim, 1, bias=False)
-        nn.init.zeros_(self.vel_head.weight)
+        if self.velocity_head == "radial":
+            self.vel_head = nn.Linear(hidden_dim, 1, bias=False)
+            nn.init.zeros_(self.vel_head.weight)
         # WF-CFM-Phase-2.2 — drop the tanh saturation gate.
         # The previous ``vel = tanh(vel_head(h)) * (x_t - centroid) + last_v``
         # placed a hard magnitude cap at 1.0 on the scalar gate, which
@@ -1660,14 +1726,16 @@ class EGNNVelocityField(nn.Module):
         # numerically safe (no NaN from extreme scaling early in
         # training) but the optimiser retains a fully unconstrained
         # gradient path to the post-update scale.
-        self.vel_scale = nn.Parameter(torch.tensor(1.0))
+        if self.velocity_head == "radial":
+            self.vel_scale = nn.Parameter(torch.tensor(1.0))
         # The equivariant vector message is added directly to vel_head below.
         # Its last projection must also start at zero, otherwise the claimed
         # zero initial velocity is bypassed by random distance-amplified flow.
-        nn.init.zeros_(self.layers[-1].msg_vector_head.weight)
-        nn.init.zeros_(self.layers[-1].msg_vector_head.bias)
-        for layer in self.layers:
-            layer.bounded_coordinate_messages = True
+        if self.velocity_head == "radial":
+            nn.init.zeros_(self.layers[-1].msg_vector_head.weight)
+            nn.init.zeros_(self.layers[-1].msg_vector_head.bias)
+            for layer in self.layers:
+                layer.bounded_coordinate_messages = True
         # Atom-type head: per-atom logits over atomic_number ∈ [0, max_atomic_number).
         # Initialised to zero so that the categorical distribution at t=0 is uniform
         # — which matches the "no information yet" prior.  Training sharpens it.
@@ -2058,6 +2126,29 @@ class EGNNVelocityField(nn.Module):
                 + _input_addend
             )
         last_v = torch.zeros_like(x_t)
+        if self.velocity_head == "vector_channels":
+            # Wf-A108a — the channel stack replaces ``last_v`` as the
+            # coordinate carrier.  Channel 0 is ``x - centroid`` so the head
+            # can recover the legacy radial basis; Wf-A108c adds the
+            # metal-relative channels.
+            from molmetal.adapters.flow_matching_lipman.vector_channels import (
+                build_metal_mask,
+                initial_vector_channels,
+            )
+
+            metal_mask = build_metal_mask(atom_types)
+            vec = initial_vector_channels(
+                x_t,
+                self.vector_channels,
+                metal_mask=metal_mask,
+                metal_frame_channels=self.metal_frame_channels,
+                # Padded atoms carry z = 0 (the trainer's pad value); real
+                # atomic numbers start at 1.
+                node_mask=atom_types > 0,
+            )
+        else:
+            metal_mask = None
+            vec = None
         for layer in self.layers:
             # Pass t_per_atom as cond_per_node so the EGNNLayer's
             # update_mlp (which expects 3H+1 with cond) gets the
@@ -2094,6 +2185,27 @@ class EGNNVelocityField(nn.Module):
                 cond_per_node=_layer_cond,
                 edge_mask=edge_mask,
             )
+        if self.velocity_head == "vector_channels":
+            # Same three-way conditioning gate as the radial loop above, so
+            # the pocket / sinusoidal-t opt-ins compose identically on both
+            # heads.  The vector-channel layer's update_mlp expects the same
+            # 3H+1 input width, hence the same ``cond_per_node`` contract.
+            for layer in self.vc_layers:
+                if self.pocket_per_layer and t_per_layer_addend is not None:
+                    _layer_cond = t_per_atom + t_per_layer_addend
+                elif _pocket_per_layer_addend is not None:
+                    _layer_cond = t_per_atom + _pocket_per_layer_addend
+                else:
+                    _layer_cond = t_per_atom
+                h, vec = layer(
+                    h,
+                    x_t,
+                    vec,
+                    edge_index,
+                    cond_per_node=_layer_cond,
+                    edge_mask=edge_mask,
+                    metal_mask=metal_mask,
+                )
         # WF-CFM-Phase-2 (P1.3) — cross-attention pocket conditioning.
         # When ``pocket_atom_embed`` and ``pocket_atom_mask`` are
         # supplied, project per-pocket-atom one-hot atomic numbers
@@ -2139,7 +2251,6 @@ class EGNNVelocityField(nn.Module):
         # WF-CFM-Phase-2.2: vel_head scalar multiplied by learnable
         # vel_scale (init=1.0) — replaces the previous tanh saturation
         # gate (Lipman 2023 Thm 2 + Albergo 2023 stochastic interpolant).
-        relative_to_centroid = x_t - x_t.mean(dim=1, keepdim=True)
         # Wf-A91 (2026-10-19) — the per-atom gate is BOUNDED; the global
         # scale stays learnable.
         #
@@ -2161,7 +2272,33 @@ class EGNNVelocityField(nn.Module):
         # With `bounded_coordinate_messages=True` on every layer, last_v is
         # a degree-normalised mean of tanh-gated displacement vectors, so
         # |vel| <= |vel_scale| * centroid_radius + mean_pair_distance.
-        vel = torch.tanh(self.vel_head(h)) * self.vel_scale * relative_to_centroid + last_v
+        if self.velocity_head == "vector_channels":
+            # Wf-A108a — the velocity is a learned projection of the channel
+            # stack, not a scalar gate on the centroid ray.  ``vec`` is
+            # RMS-normalised per atom, so ``vc_head``'s gate carries the
+            # magnitude and the channels carry the direction.
+            vel = self.vc_head(h, vec)
+        else:
+            if self.radial_centroid_masked:
+                # Wf-A108 — the trainer pads every cloud in an FM batch to
+                # the BATCH MAX atom count (``fm_velocity``), so a plain
+                # ``mean(dim=1)`` divides the real coordinate sum by the
+                # padded length.  MEASURED on the 199-cloud train cohort at
+                # B=8: the resulting centroid is scaled by s/n_max with
+                # median 0.481, p05 0.148, and 52% of samples below 0.5 —
+                # i.e. for half the batch the "radial" term is radial about a
+                # point halfway to the origin.  Opt-in because fixing it
+                # changes the default forward.
+                _m = (atom_types > 0).to(x_t.dtype).unsqueeze(-1)
+                _n = _m.sum(dim=1, keepdim=True).clamp_min(1.0)
+                _centroid = (x_t * _m).sum(dim=1, keepdim=True) / _n
+            else:
+                _centroid = x_t.mean(dim=1, keepdim=True)
+            relative_to_centroid = x_t - _centroid
+            vel = (
+                torch.tanh(self.vel_head(h)) * self.vel_scale * relative_to_centroid
+                + last_v
+            )
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
         # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard.  R17 BF16
         # regression: untrained Blackwell kernels overflowed
