@@ -247,9 +247,9 @@ protocol:
   # comparison is one-factor again.
   grad_clip_scope: per_module
 output:
-  base_dir: results/wfa107g_fm_sigma_control
-  log_master: results/wfa107g_fm_sigma_control/master.log
-  ckpt_dir: results/wfa107g_fm_sigma_control/checkpoints
+  base_dir: results/wfa108_radial_masked_centroid
+  log_master: results/wfa108_radial_masked_centroid/master.log
+  ckpt_dir: results/wfa108_radial_masked_centroid/checkpoints
   events_jsonl: true
   resume_from: none
   resume_from_path: null

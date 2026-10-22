@@ -1,0 +1,132 @@
+{
+ "metric": "wfa108b_budget_arms",
+ "tag": "MEASURED",
+ "date": "2026-10-22",
+ "what": "Wf-A108b budget arms: (B1) the vector-channel head trained 5 epochs at lr 1e-3 instead of 1e-4, and (L) a 32-cloud liveness probe that asks whether the velocity field moves at all under the trainer's full objective.",
+ "arms": {
+  "B1_lr1e3": {
+   "config": "configs/wfa108b_lr1e3_vector_channels.yaml",
+   "run_dir": "results/wfa108b_lr1e3_vector_channels",
+   "lr": 0.001,
+   "epochs": 5,
+   "optimizer_steps": 125,
+   "seed": 0,
+   "wall_time_s": 986.98,
+   "epoch_curve": [
+    {
+     "epoch": 0,
+     "fm_term": 12.160810012817382,
+     "bond_ce": 0.9988301348686218,
+     "gen_ring_3_share": 0.0,
+     "gen_rings_per_mol": 0.0,
+     "gen_largest_fragment_frac": 0.0582244463101923,
+     "gen_validity": 1.0,
+     "lr": 0.001
+    },
+    {
+     "epoch": 1,
+     "fm_term": 12.128851776123048,
+     "bond_ce": 0.8464099764823914,
+     "gen_ring_3_share": 0.8918918918918919,
+     "gen_rings_per_mol": 1.15625,
+     "gen_largest_fragment_frac": 0.7198250773966167,
+     "gen_validity": 1.0,
+     "lr": 0.001
+    },
+    {
+     "epoch": 2,
+     "fm_term": 12.366604461669922,
+     "bond_ce": 0.5984104871749878,
+     "gen_ring_3_share": 0.8646616541353384,
+     "gen_rings_per_mol": 1.3854166666666667,
+     "gen_largest_fragment_frac": 0.7098218574483597,
+     "gen_validity": 1.0,
+     "lr": 0.001
+    },
+    {
+     "epoch": 3,
+     "fm_term": 12.166162452697755,
+     "bond_ce": 0.4338470220565796,
+     "gen_ring_3_share": 0.7232142857142857,
+     "gen_rings_per_mol": 2.3333333333333335,
+     "gen_largest_fragment_frac": 0.7158330799243765,
+     "gen_validity": 1.0,
+     "lr": 0.001
+    },
+    {
+     "epoch": 4,
+     "fm_term": 12.119992561340332,
+     "bond_ce": 0.3642103552818298,
+     "gen_ring_3_share": 0.6423841059602649,
+     "gen_rings_per_mol": 1.5729166666666667,
+     "gen_largest_fragment_frac": 0.6326049102017703,
+     "gen_validity": 1.0,
+     "lr": 0.001
+    }
+   ],
+   "final": {
+    "fm_term": 12.119992561340332,
+    "bond_ce": 0.3642103552818298
+   },
+   "control_lr1e4": {
+    "fm_term": 12.2478,
+    "bond_ce": 0.7177,
+    "source": "metrics/by_metric/wfa108_ab.json"
+   }
+  },
+  "liveness_probe": {
+   "configs": [
+    "configs/wfa108b_liveness_probe.yaml",
+    "configs/wfa108b_liveness_probe_e1.yaml"
+   ],
+   "n_train": 32,
+   "n_val": 16,
+   "lr": 0.001,
+   "epoch_curve_4ep": [
+    {
+     "epoch": 0,
+     "fm_term": 11.215806245803833,
+     "bond_ce": 1.0621640980243683
+    },
+    {
+     "epoch": 1,
+     "fm_term": 10.172287344932556,
+     "bond_ce": 0.9263521283864975
+    },
+    {
+     "epoch": 2,
+     "fm_term": 10.532769441604614,
+     "bond_ce": 0.823380634188652
+    },
+    {
+     "epoch": 3,
+     "fm_term": 10.887470006942749,
+     "bond_ce": 0.6678523868322372
+    }
+   ],
+   "vel_field_params": 525576,
+   "vel_field_rms_weight": 0.04521587626017784,
+   "vel_field_rms_delta_1ep_to_4ep": 0.0015937716801026536,
+   "vel_field_max_abs_delta_1ep_to_4ep": 0.006106764078140259,
+   "head_max_abs_delta_1ep_to_4ep": 0.006387841887772083,
+   "adam_max_displacement_75_steps": 0.075
+  }
+ },
+ "findings": {
+  "field_is_live": "RMS |delta| 1.6e-3 over 3 epochs = 75 steps at lr 1e-3, i.e. 2.1% of the 75*lr = 0.075 upper bound on coherent Adam displacement. The field is in the gradient path (not inert), but its update is close to sign-noise.",
+  "lr_is_not_the_lever": "At 10x the tuned lr the FM term moves 12.1608 -> 12.1200 over 5 epochs (0.34%), while bond_ce falls 0.9988 -> 0.3642.",
+  "batch_snr_is_the_suspect": "200 clouds at batch 8 = 25 steps/epoch; the capacity gate fit ONE fixed 8-cloud batch at ONE t, which is the opposite regime. The remaining untested lever is corpus/batch size (c7: 26,715 clouds, batch 64), not lr and not epochs."
+ },
+ "honest_limits": [
+  "One seed per arm. The epoch-to-epoch spread of fm_term (12.12-12.37) is larger than the 5-epoch drift (0.04), so B1 cannot exclude a slow trend.",
+  "fm_term is an epoch MEAN over ~25 batches with t ~ U(0,1) per cloud; it is not comparable in absolute value to the capacity gate's single-batch t=0.5 MSE.",
+  "The liveness probe ran on 32 clouds, not 200, so its per-step gradient SNR is not the training run's.",
+  "B2 (20 epochs at lr 1e-4) was authored (configs/wfa108b_budget20_vector_channels.yaml) and NOT run: B1 at 10x the lr is already flat, and lr x steps says B2 closes only 1/8 of the gate's gap."
+ ],
+ "source_files": [
+  "results/wfa108b_lr1e3_vector_channels/events.jsonl",
+  "/tmp/wfa108b_liveness/events.jsonl",
+  "/tmp/wfa108b_liveness_e1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "/tmp/wfa108b_liveness/checkpoints/cfm_yuelbond_wasserstein_seed0.pt"
+ ]
+}

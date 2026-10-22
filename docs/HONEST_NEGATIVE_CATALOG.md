@@ -11774,3 +11774,77 @@ an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
 
+## §6.186 — Wf-A108b: the budget arm says the lever is the signal, not the learning rate and not the epoch count (2026-10-22)
+
+**What this wave was for.** §6.173 withdrew "no budget can help" and closed on "budget is
+now a plausible lever; whether the c7 corpus is enough of it is unmeasured". The cheapest
+test of that sentence is to spend budget on the two knobs a budget actually turns — the
+learning rate and the epoch count — before paying for the corpus.
+
+**Finding 1 — 10x the learning rate does not move the flow-matching term.** B1 is
+`configs/wfa108b_lr1e3_vector_channels.yaml`: byte-identical to the Wf-A108 control except
+`protocol.lr` 1e-4 -> 1e-3, 5 epochs, 125 optimizer steps, seed 0.
+
+| epoch | `fm_term` | `bond_ce` | `gen_ring_3_share` | `gen_rings_per_mol` |
+|---:|---:|---:|---:|---:|
+| 0 | 12.1608 | 0.9988 | 0.0000 | 0.000 |
+| 1 | 12.1289 | 0.8464 | 0.8919 | 1.156 |
+| 2 | 12.3666 | 0.5984 | 0.8647 | 1.385 |
+| 3 | 12.1662 | 0.4338 | 0.7232 | 2.333 |
+| 4 | **12.1200** | **0.3642** | 0.6424 | 1.573 |
+
+The FM term moves 0.34% over five epochs while the bond head's CE falls 0.999 -> 0.364.
+The epoch-to-epoch spread (12.12-12.37) is larger than the five-epoch drift (0.04), so the
+honest reading is "no detectable movement", not "slow movement".
+
+**Finding 2 — the field is live; it is not another inert term.** A 32-cloud probe was run
+twice from the same seed, once for 1 epoch and once for 4, so the weight difference is pure
+training. `vel_field` has 525,576 parameters, RMS weight 0.0452, and the 1-epoch to 4-epoch
+difference is **RMS |delta| 1.594e-3, max 6.107e-3**. Over 75 steps at lr 1e-3 the coherent
+Adam upper bound is 75 x 1e-3 = 0.075, so the field realised **2.1%** of it. The bond head
+moved by the same order (max 6.388e-3), so this is not a property of the field alone: the
+updates are close to sign noise, which is what a low signal-to-noise gradient looks like.
+
+**Finding 3 — the capacity gate and the training run are different regimes, and §6.173 did
+not say so loudly enough.** The gate fit ONE fixed 8-cloud batch at ONE t (0.5) for 400
+steps at lr 1e-3. The trainer sees 25 DIFFERENT batches per epoch at t ~ U(0,1). Memorising
+a batch is not learning a conditional expectation. §6.173's Finding 1 is a statement about
+the function class ("the target is inside it") and it stands unchanged; what does not follow
+from it is a step-count claim about training.
+
+**Consequence — §6.173's "this licenses a budget run" is narrowed.** A budget run at the
+same corpus and batch is **not** licensed: B1 spends 10x the lr and is flat. What is left
+untested is a change of regime rather than of step count — c7 is 26,715 clouds at batch 64,
+i.e. 8x the batch and 100x the data, and that is the only remaining arm that raises the
+signal-to-noise of the FM gradient instead of just taking more steps along it.
+
+**Honest boundaries (ACTIVE).**
+  * **One seed per arm.** The 5-epoch drift is smaller than the epoch-to-epoch spread, so a
+    slow trend is not excluded; what is excluded is a 10x-lr effect of the size the capacity
+    gate would predict.
+  * **The liveness probe is 32 clouds, not 200**, so its per-step gradient SNR is not the
+    training run's. It answers "is the field in the gradient path", not "how fast does it
+    learn at 200 clouds".
+  * **B2 (20 epochs at lr 1e-4) is authored and unrun** — `configs/wfa108b_budget20_vector_channels.yaml`.
+    At 10x the lr the arm is already flat, and lr x steps says B2 closes 1/8 of the gate's
+    gap, so it was not spent.
+  * **The c7 arm is BLOCKED on VRAM, not on intent.** It needs roughly 40-90 GB (its eval
+    pool peaked at 91.7 GB before Wf-A107 was cut to 768 candidates); GPU0 had ~25 GB free
+    with three co-tenant processes during this wave.
+  * **`fm_term` is an epoch mean over ~25 batches with t ~ U(0,1)**, so it is not comparable
+    in absolute value to the capacity gate's single-batch t=0.5 MSE (10.652). Only the trend
+    is comparable, and the trend is flat.
+
+**Artifacts.** `configs/wfa108b_lr1e3_vector_channels.yaml`,
+`configs/wfa108b_budget20_vector_channels.yaml` (unrun), `configs/wfa108b_liveness_probe.yaml`,
+`configs/wfa108b_liveness_probe_e1.yaml`, `metrics/by_metric/wfa108b_budget_arms.json`,
+`results/wfa108b_lr1e3_vector_channels/events.jsonl`.
+
+**§6.186 catalog-count math.** Net **+1**. Cumulative **240 → 241**. ACTIVE
+**196 → 197**.
+
+**Workflow** | Wf-A108b (2026-10-22; GPU0: B1 987 s + 4-epoch probe 413 s + 1-epoch probe
+103 s; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+

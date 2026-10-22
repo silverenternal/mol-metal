@@ -236,9 +236,12 @@ bit-exact). The confound control is
    for the vector head, against the prior's 5.59 Å and the truth's 5.00 Å; pairs-in-cutoff
    0.197 vs 0.203 vs 0.412. The two samplers differ by 0.25 Å per coordinate and the
    head's effect on every decoded metric is exactly 0.0000. `fm_term` is flat across the
-   five epochs in both arms. **Reason: 120 optimizer steps at lr 1e-4, against the 400
-   steps at lr 1e-3 the capacity gate needed.** The head is no longer the binding
-   constraint; the budget is.
+   five epochs in both arms. **First reading (superseded): 120 optimizer steps at lr 1e-4
+   against the 400 steps at lr 1e-3 the capacity gate needed, so the budget is binding.**
+   The budget arm (Wf-A108b, §6.186) tested that reading and did not confirm it: 10x the lr
+   at the same step count is equally flat, and the field moves 2.1% of its coherent-Adam
+   bound. What differs between the gate and the trainer is the regime — one fixed batch at
+   one `t` versus 25 batches per epoch at `t ~ U(0,1)`. See §5.4.
 5. **No regression on the default path**: 50-step CPU smoke exit 0 (§5.7) with the new
    head; pre-flight 115 PASS / 0 FAIL / 10 SKIP.
 
@@ -247,11 +250,24 @@ more epochs.
 
 ### 5.4 What this licenses, and what it does not
 
+**Amended 2026-10-22 by the budget arm (Wf-A108b, §6.186).** The paragraph below was
+written when the only evidence was the capacity gate; the budget arm narrows it.
+
 It licenses a **budget run**: the target is now inside the head's function class, so more
 optimizer steps can in principle reduce the loss. It does **not** license a claim that the
 c7 corpus is enough — that is exactly what the budget run measures. It also does not
 establish the metal-frame channels (neutral on one seed) or the confound control
 (prepared, unrun; at 5 epochs both arms are flat so it could not separate anything).
+
+**What the budget arm then measured.** `configs/wfa108b_lr1e3_vector_channels.yaml` spends
+10x the lr at the same 125 steps: `fm_term` 12.1608 -> 12.1200 over five epochs (0.34%,
+inside the 12.12-12.37 epoch-to-epoch spread) while `bond_ce` falls 0.9988 -> 0.3642. A
+1-epoch vs 4-epoch replay of the same 32-cloud probe shows the field **is** live but moves
+RMS 1.594e-3 of parameters whose RMS is 0.0452 — 2.1% of the coherent-Adam bound of
+`75 x lr`. So the lever is neither lr nor epochs at this corpus size: the capacity gate fit
+one fixed batch at one `t`, and the trainer draws 25 different batches per epoch at
+`t ~ U(0,1)`. The remaining untested change is a **regime** change (c7: 8x the batch, 100x
+the data), and it is blocked on VRAM, not on intent.
 
 ## 6. References
 
