@@ -56,7 +56,18 @@
       "所有历史协议都在「整篇留出 + 零校准行」下评估。真实部署里，新论文至少有它的合成/初筛数据可以先测 —— 这个信息从未被用过。",
       "conformal 的覆盖保证以可交换性为前提；论文漂移恰好破坏它。前三轮都在换条件分位数模型，没有换 conformal 本身。",
       "DOI 线与 LOMO 线的主干一直是指纹树 / 线性模型，与主模型（in-house D-MPNN）不可比；UP-24 的门槛因此被误用。"
-    ]
+    ],
+    "post_round4": {
+      "headline_changes": [
+        "DOI 线：0.3767 仍是零校准行的下界；n_cal=10 时 0.6839（UP-26，上界 0.7337）。主协议待 DP-10 裁定。",
+        "DOI 表示：D-MPNN 主干 0.3282 < 指纹树 0.3767，表示路线关闭（UP-28，预算对照 10/40/120 = 0.2415/0.2686/0.2554）。",
+        "排序线：Davidson 0.5312 与 BT 0.5317 无差别，维持关闭（UP-29 → DP-9 = NO）。",
+        "metal_out：MMP 放宽到 61,539 对后 Δ R² 仍 −0.1457 < 常数基线 −0.0163，替换响应不可学（UP-30）。",
+        "LOMO：pairwise 0.5928 vs BCE 0.5924，主数字维持 0.5974（UP-31 → DP-11 = NO）。",
+        "校准：加权 conformal 无效、ACI 以宽度买覆盖，宽度目标不成立（UP-27）。"
+      ],
+      "next_layer": "剩余动作全部是裁定：DP-3（是否解冻论文线）与 DP-10（是否把 n_cal=10 自校准设为主协议）。两者都改变论文口径，需用户裁定。"
+    }
   },
   "metric_gap_analysis": {
     "note": "七行。current 全部 MEASURED（artifact 见行内）。target 是本轮预注册门槛；estimand_change 说明是否换了估计目标。",
@@ -312,6 +323,16 @@
       "id": "R16",
       "from": "UP-29",
       "conclusion": "Davidson 平局模型 0.5312 与 BT 0.5317 无差别，delta=2.28 时 98.7% 判平局；排序线第二次、不同机制下仍关闭（kill 触发）。"
+    },
+    {
+      "id": "R17",
+      "from": "DP-9 / UP-29",
+      "conclusion": "排序线不重开：Davidson balanced 0.5312 < 0.62、簇 CI 下界 0.4438 < 0.5，且低于同折 BT 0.5317；98.7% 判平局。"
+    },
+    {
+      "id": "R18",
+      "from": "DP-11 / UP-31",
+      "conclusion": "LOMO 线不换主干：pairwise 0.5928 vs BCE 0.5924（Δ+0.0003），均低于 0.5974；BCE 在同代码路径复现 0.5924 使比较可归因。主数字维持 0.5974。"
     }
   ],
   "decision_points": [
@@ -327,11 +348,27 @@
     {
       "id": "DP-9",
       "question": "被 DP-8 关闭的排序线是否以 Davidson 平局模型重开一次",
-      "status": "OPEN",
+      "status": "CLOSED",
       "after": "UP-29",
       "if_yes": "排序线保留一节，口径为「平局显式建模」；门槛 balanced ≥0.62 且簇 CI 下界 >0.5。",
       "if_no": "排序线维持关闭，0.5985 只作为已观测金属对内的描述性数字。",
-      "amendment_note": "2026-10-22T15:45+08:00 用户指令「不接受当前现状」；重开理由为机制不同（显式平局似然 vs deadzone 标签合并），不是同一杠杆换参数。"
+      "amendment_note": "2026-10-22T15:45+08:00 用户指令「不接受当前现状」；重开理由为机制不同（显式平局似然 vs deadzone 标签合并），不是同一杠杆换参数。",
+      "resolution": "NO — 排序线维持关闭",
+      "resolved_at": "2026-10-22",
+      "evidence": {
+        "artifact": "metrics/by_metric/msrs_davidson_ties.json",
+        "balanced_accuracy": 0.5312,
+        "threshold": 0.62,
+        "cluster_ci": [
+          0.4438,
+          0.6135
+        ],
+        "ci_lower_threshold": 0.5,
+        "lambdarank_baseline": 0.5985,
+        "bt_baseline": 0.5317,
+        "predicted_tie_rate": 0.9873
+      },
+      "why": "if_yes 的两个条件都没满足：balanced 0.5312 < 0.62，簇 bootstrap CI 下界 0.4438 < 0.5。而且 0.5312 还低于同折 Bradley-Terry 的 0.5317 —— 显式平局似然没有带来任何提升，delta 拟合到 2.28 时 98.7% 的配对被判平局，分数分辨率低于噪声下限。"
     },
     {
       "id": "DP-10",
@@ -344,10 +381,22 @@
     {
       "id": "DP-11",
       "question": "LOMO 线是否改为 D-MPNN 主干 + pairwise 损失",
-      "status": "OPEN",
+      "status": "CLOSED",
       "after": "UP-31",
       "if_yes": "0.5974 降为「BCE 基线」，主数字换成新 AUC。",
-      "if_no": "维持 0.5974，并注明 UP-24 的学习器错配。"
+      "if_no": "维持 0.5974，并注明 UP-24 的学习器错配。",
+      "resolution": "NO — LOMO 维持 0.5974，并注明 UP-24 的学习器错配",
+      "resolved_at": "2026-10-22",
+      "evidence": {
+        "artifact": "metrics/by_metric/msrs_lomo_pairwise_dmpnn.json",
+        "pairwise_auc": 0.5928,
+        "bce_auc_same_code_path": 0.5924,
+        "historical_baseline": 0.5974,
+        "delta_vs_bce": 0.0003,
+        "ru": 0.6191,
+        "ir": 0.5665
+      },
+      "why": "if_yes 要求新 AUC 超过 0.5974，实测 pairwise 0.5928、BCE 对照 0.5924，两者都在 0.5974 之下，kill（<0.61）触发。同代码路径复现 BCE 0.5924 使这次比较可归因：损失不是瓶颈，pairwise 只是把 Ru 抬 0.024、Ir 压 0.023。"
     }
   ],
   "sequence": {
@@ -358,7 +407,11 @@
       ],
       "note": "纯 CPU，约 2.5 小时。两项都在「部署协议」层，互不依赖，可并发。",
       "depends_on": [],
-      "status": "PLANNED"
+      "status": "DONE",
+      "verdicts": {
+        "UP-26": "PASS",
+        "UP-27": "FAIL (width, worst group); kill not triggered"
+      }
     },
     "wave_2_representation": {
       "items": [
@@ -369,7 +422,11 @@
       "depends_on": [
         "wave_1_deployment"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "verdicts": {
+        "UP-28": "FAIL",
+        "UP-29": "FAIL; kill triggered (0.5312 < 0.58)"
+      }
     },
     "wave_3_structure_loss": {
       "items": [
@@ -380,7 +437,11 @@
       "depends_on": [
         "wave_2_representation"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "verdicts": {
+        "UP-30": "FAIL",
+        "UP-31": "FAIL"
+      }
     },
     "wave_4_verify": {
       "items": [
@@ -390,9 +451,12 @@
       "depends_on": [
         "wave_3_structure_loss"
       ],
-      "status": "PLANNED"
+      "status": "DONE",
+      "verdicts": {
+        "UP-32": "PASS"
+      }
     },
-    "status": "PLANNED"
+    "status": "DONE"
   },
   "work_packages": [
     {
@@ -825,9 +889,7 @@
   ],
   "open_decisions": [
     "DP-3 论文线解冻（owner 用户；UP-26..UP-32 完成后裁定）",
-    "DP-9 排序线是否以 Davidson 平局模型重开（UP-29 后）",
-    "DP-10 DOI 线主协议是否改为 n_cal 行自校准（UP-26 后）",
-    "DP-11 LOMO 线是否改为 D-MPNN + pairwise（UP-31 后）"
+    "DP-10 DOI 线主协议是否改为 n_cal 行自校准（UP-26 后）"
   ],
   "do_not": [
     "不要再调 D-MPNN / chemprop 的超参来救这些指标——三轮已证明问题不在容量。",
@@ -856,6 +918,6 @@
       "UP-32"
     ],
     "open": [],
-    "note": "第四轮 7 个包全部完成：5 个 FAIL（UP-27 / UP-28 / UP-29 / UP-30 / UP-31），2 个 PASS（UP-26 / UP-32）。"
+    "note": "第四轮 7 个包全部完成：5 个 FAIL（UP-27 / UP-28 / UP-29 / UP-30 / UP-31），2 个 PASS（UP-26 / UP-32）。决策点已按预注册条件裁定：DP-9 = NO（排序线维持关闭）、DP-11 = NO（LOMO 维持 0.5974）。仍 OPEN：DP-3（论文线解冻，owner 用户）、DP-10（DOI 主协议改为 n_cal=10）。"
   }
 }
