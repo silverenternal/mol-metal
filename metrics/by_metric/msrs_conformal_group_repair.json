@@ -1,0 +1,2138 @@
+{
+  "artifact": "msrs_conformal_group_repair",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L1 deployment interval (UP-33 arms) + group-conditional repair (UP-41)",
+  "generated_utc": "2026-10-23T05:34:17+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_conformal_calibrated.py",
+    "git_commit": "d83f28f077fb176e87667e2bfc1883e278e8a664",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python",
+      "--out",
+      "metrics/by_metric/msrs_conformal_group_repair.json"
+    ]
+  },
+  "design": {
+    "cohort": "msrs_conformal_shift selection: potency, uncensored, ligand fragment and oxidation state present",
+    "n_rows": 21404,
+    "arm": "ligand + state + coordination (the UP-27 arm, so the uncalibrated widths are numerically comparable to that artifact)",
+    "split": "scheme_folds('doi'), 5 GroupKFold folds on DOI",
+    "seeds": [
+      20261022,
+      20261023,
+      20261024,
+      20261025,
+      20261026
+    ],
+    "alpha": 0.1,
+    "n_cal": 10,
+    "repeats": 20,
+    "primary_arm": "split_cal",
+    "estimator": "offset = n/(n+kappa) * mean(y - y_hat | n_cal rows of the paper); conformal half-width from |y - (y_hat + offset)|",
+    "kappa_definition": "sigma2_noise / tau2_paper, method-of-moments on the outer fold's training rows",
+    "disjointness": "offset rows are removed from the scoring rows on both sides of the split (calibration papers and test papers)",
+    "oracle_bound": "per test paper, the alpha-quantile of |resid - mean_p| over all of its rows: the floor for any constant shift",
+    "gate_frozen_at": "2026-10-23T03:20+08:00",
+    "gate_amended_at": "2026-10-23T03:40+08:00",
+    "amendment": "the frozen reproduce target named 1.9871, the CQR arm's value, while the frozen arm list is split-conformal; both families are now reproduced"
+  },
+  "per_seed": {
+    "20261022": {
+      "point_r2": 0.3365,
+      "kappa_mean": 0.7752,
+      "n_eval_rows_calibrated": 9980,
+      "n_eval_rows_uncalibrated": 21404,
+      "arms": {
+        "split_uncal": {
+          "n": 21404,
+          "coverage": 0.9007,
+          "mean_width": 2.0155,
+          "median_width": 2.0061,
+          "width_p10": 2.0014,
+          "width_p90": 2.0395,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9195,
+              "mean_width": 2.0168
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.86,
+              "mean_width": 2.0189
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9448,
+              "mean_width": 2.0176
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.879,
+              "mean_width": 2.013
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8976,
+              "mean_width": 2.015
+            }
+          },
+          "worst_group_coverage": 0.86
+        },
+        "split_uncal_matched": {
+          "n": 9980,
+          "coverage": 0.9053,
+          "mean_width": 2.0155,
+          "median_width": 2.0061,
+          "width_p10": 2.0014,
+          "width_p90": 2.0395,
+          "by_group": {
+            "Ir": {
+              "n": 1650,
+              "coverage": 0.9291,
+              "mean_width": 2.0166
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.868,
+              "mean_width": 2.0206
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.967,
+              "mean_width": 2.0204
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.8897,
+              "mean_width": 2.0123
+            },
+            "Ru": {
+              "n": 7046,
+              "coverage": 0.9001,
+              "mean_width": 2.0148
+            }
+          },
+          "worst_group_coverage": 0.868
+        },
+        "split_cal": {
+          "n": 9980,
+          "coverage": 0.9005,
+          "mean_width": 1.447,
+          "median_width": 1.4417,
+          "width_p10": 1.4042,
+          "width_p90": 1.4855,
+          "by_group": {
+            "Ir": {
+              "n": 1650,
+              "coverage": 0.9073,
+              "mean_width": 1.4432
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.8495,
+              "mean_width": 1.4372
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9203,
+              "mean_width": 1.4399
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.8943,
+              "mean_width": 1.4486
+            },
+            "Ru": {
+              "n": 7046,
+              "coverage": 0.9018,
+              "mean_width": 1.4489
+            }
+          },
+          "worst_group_coverage": 0.8495
+        },
+        "split_cal_metal": {
+          "n": 9980,
+          "coverage": 0.9001,
+          "mean_width": 1.4552,
+          "median_width": 1.4186,
+          "width_p10": 1.3612,
+          "width_p90": 1.4749,
+          "by_group": {
+            "Ir": {
+              "n": 1650,
+              "coverage": 0.8945,
+              "mean_width": 1.3745
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.9155,
+              "mean_width": 1.9151
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9148,
+              "mean_width": 1.3572
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.9172,
+              "mean_width": 1.6414
+            },
+            "Ru": {
+              "n": 7046,
+              "coverage": 0.8985,
+              "mean_width": 1.4361
+            }
+          },
+          "worst_group_coverage": 0.8945
+        },
+        "split_oracle": {
+          "n": 9980,
+          "coverage": 0.9572,
+          "mean_width": 1.4579,
+          "median_width": 1.3827,
+          "width_p10": 0.7408,
+          "width_p90": 2.3966,
+          "by_group": {
+            "Ir": {
+              "n": 1650,
+              "coverage": 0.9642,
+              "mean_width": 1.3935
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.9588,
+              "mean_width": 1.806
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9478,
+              "mean_width": 1.3882
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.9517,
+              "mean_width": 1.5256
+            },
+            "Ru": {
+              "n": 7046,
+              "coverage": 0.9563,
+              "mean_width": 1.4484
+            }
+          },
+          "worst_group_coverage": 0.9478
+        },
+        "cqr_uncal": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.0106,
+          "median_width": 1.9902,
+          "width_p10": 1.5987,
+          "width_p90": 2.4424,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9165,
+              "mean_width": 1.9527
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8578,
+              "mean_width": 2.1301
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9317,
+              "mean_width": 1.9889
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8997,
+              "mean_width": 2.0775
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8972,
+              "mean_width": 2.0146
+            }
+          },
+          "winkler": 2.6295,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8578,
+            "mean_width": 2.1301
+          },
+          "worst_group_coverage": 0.8578
+        },
+        "cqr_cal": {
+          "n": 9980,
+          "coverage": 0.9025,
+          "mean_width": 1.5846,
+          "median_width": 1.562,
+          "width_p10": 1.1807,
+          "width_p90": 2.0178,
+          "by_group": {
+            "Ir": {
+              "n": 1650,
+              "coverage": 0.903,
+              "mean_width": 1.5087
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.8639,
+              "mean_width": 1.7035
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9258,
+              "mean_width": 1.5334
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.9034,
+              "mean_width": 1.5921
+            },
+            "Ru": {
+              "n": 7046,
+              "coverage": 0.9038,
+              "mean_width": 1.5964
+            }
+          },
+          "winkler": 2.0593,
+          "worst_group": {
+            "group": "Os",
+            "n": 485,
+            "coverage": 0.8639,
+            "mean_width": 1.7035
+          },
+          "worst_group_coverage": 0.8639
+        }
+      },
+      "primary": {
+        "arm": "split_cal",
+        "coverage_mean": 0.9008,
+        "median_width_mean": 1.4482,
+        "worst_metal_coverage": 0.8075,
+        "worst_metal_coverage_per_draw_mean": 0.7887,
+        "worst_metal_coverage_per_draw_min": 0.6477,
+        "n_repeats": 20,
+        "definition": "mean over the offset draws; the arms table above is a single draw (repeat 0) and exists for the group tables",
+        "by_metal_coverage_mean": {
+          "Ir": 0.9155,
+          "Os": 0.8075,
+          "Re": 0.912,
+          "Rh": 0.8822,
+          "Ru": 0.9022
+        }
+      },
+      "mondrian": {
+        "arm": "split_cal_metal",
+        "coverage_mean": 0.9009,
+        "median_width_mean": 1.4377,
+        "worst_metal_coverage": 0.8883,
+        "worst_metal_coverage_per_draw_mean": 0.8325,
+        "worst_metal_coverage_per_draw_min": 0.7241,
+        "n_repeats": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.8992,
+          "Os": 0.8883,
+          "Re": 0.8978,
+          "Rh": 0.9009,
+          "Ru": 0.9001
+        }
+      },
+      "repair": {
+        "mondrian_floor": {
+          "coverage_mean": 0.9057,
+          "median_width_mean": 1.4492,
+          "worst_metal_coverage": 0.8883,
+          "worst_metal_coverage_per_draw_mean": 0.8444,
+          "worst_metal_coverage_per_draw_min": 0.7681,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9155,
+            "Os": 0.8883,
+            "Re": 0.9132,
+            "Rh": 0.902,
+            "Ru": 0.9024
+          }
+        },
+        "mondrian_bonferroni": {
+          "coverage_mean": 0.9799,
+          "median_width_mean": 2.3336,
+          "worst_metal_coverage": 0.9786,
+          "worst_metal_coverage_per_draw_mean": 0.9581,
+          "worst_metal_coverage_per_draw_min": 0.9286,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9814,
+            "Os": 0.9828,
+            "Re": 0.9798,
+            "Rh": 0.9817,
+            "Ru": 0.9786
+          }
+        },
+        "mondrian_shrunk": {
+          "coverage_mean": 0.9008,
+          "median_width_mean": 1.4377,
+          "worst_metal_coverage": 0.8844,
+          "worst_metal_coverage_per_draw_mean": 0.8321,
+          "worst_metal_coverage_per_draw_min": 0.7586,
+          "by_metal_coverage_mean": {
+            "Ir": 0.8997,
+            "Os": 0.8844,
+            "Re": 0.9,
+            "Rh": 0.8992,
+            "Ru": 0.9001
+          }
+        }
+      },
+      "repeat_diagnostics": {
+        "coverage_mean": 0.9008,
+        "coverage_min": 0.8665,
+        "coverage_max": 0.9269,
+        "median_width_mean": 1.4482,
+        "median_width_min": 1.3978,
+        "median_width_max": 1.509,
+        "worst_metal_coverage_mean": 0.7887,
+        "worst_metal_coverage_min": 0.6477,
+        "repeats": 20
+      },
+      "elapsed_seconds": 80.7
+    },
+    "20261023": {
+      "point_r2": 0.3314,
+      "kappa_mean": 0.7713,
+      "n_eval_rows_calibrated": 9980,
+      "n_eval_rows_uncalibrated": 21404,
+      "arms": {
+        "split_uncal": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.01,
+          "median_width": 2.0067,
+          "width_p10": 1.9929,
+          "width_p90": 2.0347,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9184,
+              "mean_width": 2.0117
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8544,
+              "mean_width": 2.0138
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9435,
+              "mean_width": 2.0119
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8749,
+              "mean_width": 2.0079
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8979,
+              "mean_width": 2.0094
+            }
+          },
+          "worst_group_coverage": 0.8544
+        },
+        "split_uncal_matched": {
+          "n": 9980,
+          "coverage": 0.9058,
+          "mean_width": 2.0099,
+          "median_width": 2.0067,
+          "width_p10": 1.9929,
+          "width_p90": 2.0347,
+          "by_group": {
+            "Ir": {
+              "n": 1643,
+              "coverage": 0.9276,
+              "mean_width": 2.0118
+            },
+            "Os": {
+              "n": 498,
+              "coverage": 0.8554,
+              "mean_width": 2.0154
+            },
+            "Re": {
+              "n": 366,
+              "coverage": 0.9672,
+              "mean_width": 2.0147
+            },
+            "Rh": {
+              "n": 437,
+              "coverage": 0.9108,
+              "mean_width": 2.0068
+            },
+            "Ru": {
+              "n": 7036,
+              "coverage": 0.9008,
+              "mean_width": 2.0091
+            }
+          },
+          "worst_group_coverage": 0.8554
+        },
+        "split_cal": {
+          "n": 9980,
+          "coverage": 0.9001,
+          "mean_width": 1.4337,
+          "median_width": 1.4298,
+          "width_p10": 1.4045,
+          "width_p90": 1.458,
+          "by_group": {
+            "Ir": {
+              "n": 1643,
+              "coverage": 0.9166,
+              "mean_width": 1.4327
+            },
+            "Os": {
+              "n": 498,
+              "coverage": 0.8253,
+              "mean_width": 1.4318
+            },
+            "Re": {
+              "n": 366,
+              "coverage": 0.9262,
+              "mean_width": 1.4266
+            },
+            "Rh": {
+              "n": 437,
+              "coverage": 0.8947,
+              "mean_width": 1.4342
+            },
+            "Ru": {
+              "n": 7036,
+              "coverage": 0.9005,
+              "mean_width": 1.4344
+            }
+          },
+          "worst_group_coverage": 0.8253
+        },
+        "split_cal_metal": {
+          "n": 9980,
+          "coverage": 0.8996,
+          "mean_width": 1.4402,
+          "median_width": 1.4258,
+          "width_p10": 1.3801,
+          "width_p90": 1.4611,
+          "by_group": {
+            "Ir": {
+              "n": 1643,
+              "coverage": 0.902,
+              "mean_width": 1.3589
+            },
+            "Os": {
+              "n": 498,
+              "coverage": 0.8976,
+              "mean_width": 1.8637
+            },
+            "Re": {
+              "n": 366,
+              "coverage": 0.9235,
+              "mean_width": 1.3929
+            },
+            "Rh": {
+              "n": 437,
+              "coverage": 0.9062,
+              "mean_width": 1.6096
+            },
+            "Ru": {
+              "n": 7036,
+              "coverage": 0.8975,
+              "mean_width": 1.4211
+            }
+          },
+          "worst_group_coverage": 0.8975
+        },
+        "split_oracle": {
+          "n": 9980,
+          "coverage": 0.9582,
+          "mean_width": 1.4474,
+          "median_width": 1.3526,
+          "width_p10": 0.7314,
+          "width_p90": 2.3537,
+          "by_group": {
+            "Ir": {
+              "n": 1643,
+              "coverage": 0.961,
+              "mean_width": 1.3915
+            },
+            "Os": {
+              "n": 498,
+              "coverage": 0.9518,
+              "mean_width": 1.784
+            },
+            "Re": {
+              "n": 366,
+              "coverage": 0.9481,
+              "mean_width": 1.3422
+            },
+            "Rh": {
+              "n": 437,
+              "coverage": 0.9588,
+              "mean_width": 1.48
+            },
+            "Ru": {
+              "n": 7036,
+              "coverage": 0.9585,
+              "mean_width": 1.4401
+            }
+          },
+          "worst_group_coverage": 0.9481
+        },
+        "cqr_uncal": {
+          "n": 21404,
+          "coverage": 0.8995,
+          "mean_width": 2.0052,
+          "median_width": 1.9895,
+          "width_p10": 1.5719,
+          "width_p90": 2.4383,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9128,
+              "mean_width": 1.9331
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8678,
+              "mean_width": 2.1437
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9369,
+              "mean_width": 2.0067
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9038,
+              "mean_width": 2.0928
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8959,
+              "mean_width": 2.0091
+            }
+          },
+          "winkler": 2.6296,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8678,
+            "mean_width": 2.1437
+          },
+          "worst_group_coverage": 0.8678
+        },
+        "cqr_cal": {
+          "n": 9980,
+          "coverage": 0.8975,
+          "mean_width": 1.5716,
+          "median_width": 1.5558,
+          "width_p10": 1.148,
+          "width_p90": 2.0077,
+          "by_group": {
+            "Ir": {
+              "n": 1643,
+              "coverage": 0.9069,
+              "mean_width": 1.487
+            },
+            "Os": {
+              "n": 498,
+              "coverage": 0.8594,
+              "mean_width": 1.7244
+            },
+            "Re": {
+              "n": 366,
+              "coverage": 0.9426,
+              "mean_width": 1.5428
+            },
+            "Rh": {
+              "n": 437,
+              "coverage": 0.9153,
+              "mean_width": 1.5936
+            },
+            "Ru": {
+              "n": 7036,
+              "coverage": 0.8945,
+              "mean_width": 1.5806
+            }
+          },
+          "winkler": 2.0392,
+          "worst_group": {
+            "group": "Os",
+            "n": 498,
+            "coverage": 0.8594,
+            "mean_width": 1.7244
+          },
+          "worst_group_coverage": 0.8594
+        }
+      },
+      "primary": {
+        "arm": "split_cal",
+        "coverage_mean": 0.9011,
+        "median_width_mean": 1.4428,
+        "worst_metal_coverage": 0.8042,
+        "worst_metal_coverage_per_draw_mean": 0.7809,
+        "worst_metal_coverage_per_draw_min": 0.663,
+        "n_repeats": 20,
+        "definition": "mean over the offset draws; the arms table above is a single draw (repeat 0) and exists for the group tables",
+        "by_metal_coverage_mean": {
+          "Ir": 0.915,
+          "Os": 0.8042,
+          "Re": 0.9153,
+          "Rh": 0.8692,
+          "Ru": 0.9032
+        }
+      },
+      "mondrian": {
+        "arm": "split_cal_metal",
+        "coverage_mean": 0.9015,
+        "median_width_mean": 1.4302,
+        "worst_metal_coverage": 0.8875,
+        "worst_metal_coverage_per_draw_mean": 0.8315,
+        "worst_metal_coverage_per_draw_min": 0.7241,
+        "n_repeats": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9012,
+          "Os": 0.8875,
+          "Re": 0.895,
+          "Rh": 0.894,
+          "Ru": 0.9005
+        }
+      },
+      "repair": {
+        "mondrian_floor": {
+          "coverage_mean": 0.9063,
+          "median_width_mean": 1.444,
+          "worst_metal_coverage": 0.8875,
+          "worst_metal_coverage_per_draw_mean": 0.8407,
+          "worst_metal_coverage_per_draw_min": 0.7463,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9151,
+            "Os": 0.8875,
+            "Re": 0.9156,
+            "Rh": 0.894,
+            "Ru": 0.9033
+          }
+        },
+        "mondrian_bonferroni": {
+          "coverage_mean": 0.9807,
+          "median_width_mean": 2.3316,
+          "worst_metal_coverage": 0.9795,
+          "worst_metal_coverage_per_draw_mean": 0.9598,
+          "worst_metal_coverage_per_draw_min": 0.9206,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9819,
+            "Os": 0.9804,
+            "Re": 0.9837,
+            "Rh": 0.9816,
+            "Ru": 0.9795
+          }
+        },
+        "mondrian_shrunk": {
+          "coverage_mean": 0.9013,
+          "median_width_mean": 1.4302,
+          "worst_metal_coverage": 0.8832,
+          "worst_metal_coverage_per_draw_mean": 0.8301,
+          "worst_metal_coverage_per_draw_min": 0.7391,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9016,
+            "Os": 0.8832,
+            "Re": 0.8966,
+            "Rh": 0.8926,
+            "Ru": 0.9006
+          }
+        }
+      },
+      "repeat_diagnostics": {
+        "coverage_mean": 0.9011,
+        "coverage_min": 0.864,
+        "coverage_max": 0.9334,
+        "median_width_mean": 1.4428,
+        "median_width_min": 1.3747,
+        "median_width_max": 1.5225,
+        "worst_metal_coverage_mean": 0.7809,
+        "worst_metal_coverage_min": 0.663,
+        "repeats": 20
+      },
+      "elapsed_seconds": 81.6
+    },
+    "20261024": {
+      "point_r2": 0.3331,
+      "kappa_mean": 0.773,
+      "n_eval_rows_calibrated": 9980,
+      "n_eval_rows_uncalibrated": 21404,
+      "arms": {
+        "split_uncal": {
+          "n": 21404,
+          "coverage": 0.8998,
+          "mean_width": 2.0125,
+          "median_width": 2.0111,
+          "width_p10": 1.9925,
+          "width_p90": 2.0334,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9165,
+              "mean_width": 2.0143
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8644,
+              "mean_width": 2.016
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9356,
+              "mean_width": 2.0146
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8811,
+              "mean_width": 2.0105
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8972,
+              "mean_width": 2.0119
+            }
+          },
+          "worst_group_coverage": 0.8644
+        },
+        "split_uncal_matched": {
+          "n": 9980,
+          "coverage": 0.9032,
+          "mean_width": 2.0125,
+          "median_width": 2.0111,
+          "width_p10": 1.9925,
+          "width_p90": 2.0334,
+          "by_group": {
+            "Ir": {
+              "n": 1648,
+              "coverage": 0.9296,
+              "mean_width": 2.0146
+            },
+            "Os": {
+              "n": 495,
+              "coverage": 0.8707,
+              "mean_width": 2.0174
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.956,
+              "mean_width": 2.0171
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.8943,
+              "mean_width": 2.0092
+            },
+            "Ru": {
+              "n": 7038,
+              "coverage": 0.8971,
+              "mean_width": 2.0116
+            }
+          },
+          "worst_group_coverage": 0.8707
+        },
+        "split_cal": {
+          "n": 9980,
+          "coverage": 0.9009,
+          "mean_width": 1.4575,
+          "median_width": 1.4578,
+          "width_p10": 1.4335,
+          "width_p90": 1.4849,
+          "by_group": {
+            "Ir": {
+              "n": 1648,
+              "coverage": 0.9266,
+              "mean_width": 1.4557
+            },
+            "Os": {
+              "n": 495,
+              "coverage": 0.8101,
+              "mean_width": 1.4543
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9313,
+              "mean_width": 1.4571
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.8874,
+              "mean_width": 1.4558
+            },
+            "Ru": {
+              "n": 7038,
+              "coverage": 0.9005,
+              "mean_width": 1.4583
+            }
+          },
+          "worst_group_coverage": 0.8101
+        },
+        "split_cal_metal": {
+          "n": 9980,
+          "coverage": 0.9003,
+          "mean_width": 1.4593,
+          "median_width": 1.4393,
+          "width_p10": 1.3078,
+          "width_p90": 1.5002,
+          "by_group": {
+            "Ir": {
+              "n": 1648,
+              "coverage": 0.9023,
+              "mean_width": 1.3459
+            },
+            "Os": {
+              "n": 495,
+              "coverage": 0.9131,
+              "mean_width": 1.9423
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9231,
+              "mean_width": 1.4006
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.8989,
+              "mean_width": 1.5377
+            },
+            "Ru": {
+              "n": 7038,
+              "coverage": 0.8978,
+              "mean_width": 1.45
+            }
+          },
+          "worst_group_coverage": 0.8978
+        },
+        "split_oracle": {
+          "n": 9980,
+          "coverage": 0.9571,
+          "mean_width": 1.4548,
+          "median_width": 1.3687,
+          "width_p10": 0.7581,
+          "width_p90": 2.3841,
+          "by_group": {
+            "Ir": {
+              "n": 1648,
+              "coverage": 0.963,
+              "mean_width": 1.3936
+            },
+            "Os": {
+              "n": 495,
+              "coverage": 0.9434,
+              "mean_width": 1.74
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9396,
+              "mean_width": 1.3608
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.9563,
+              "mean_width": 1.4676
+            },
+            "Ru": {
+              "n": 7038,
+              "coverage": 0.9577,
+              "mean_width": 1.4532
+            }
+          },
+          "worst_group_coverage": 0.9396
+        },
+        "cqr_uncal": {
+          "n": 21404,
+          "coverage": 0.9002,
+          "mean_width": 2.0134,
+          "median_width": 1.996,
+          "width_p10": 1.5945,
+          "width_p90": 2.444,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9149,
+              "mean_width": 1.9424
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8756,
+              "mean_width": 2.1739
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9422,
+              "mean_width": 2.0189
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.0806
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8958,
+              "mean_width": 2.0168
+            }
+          },
+          "winkler": 2.6401,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8756,
+            "mean_width": 2.1739
+          },
+          "worst_group_coverage": 0.8756
+        },
+        "cqr_cal": {
+          "n": 9980,
+          "coverage": 0.8925,
+          "mean_width": 1.556,
+          "median_width": 1.5345,
+          "width_p10": 1.1441,
+          "width_p90": 1.9901,
+          "by_group": {
+            "Ir": {
+              "n": 1648,
+              "coverage": 0.8987,
+              "mean_width": 1.4688
+            },
+            "Os": {
+              "n": 495,
+              "coverage": 0.8646,
+              "mean_width": 1.7277
+            },
+            "Re": {
+              "n": 364,
+              "coverage": 0.9478,
+              "mean_width": 1.5368
+            },
+            "Rh": {
+              "n": 435,
+              "coverage": 0.9149,
+              "mean_width": 1.5455
+            },
+            "Ru": {
+              "n": 7038,
+              "coverage": 0.8887,
+              "mean_width": 1.566
+            }
+          },
+          "winkler": 2.0691,
+          "worst_group": {
+            "group": "Os",
+            "n": 495,
+            "coverage": 0.8646,
+            "mean_width": 1.7277
+          },
+          "worst_group_coverage": 0.8646
+        }
+      },
+      "primary": {
+        "arm": "split_cal",
+        "coverage_mean": 0.8994,
+        "median_width_mean": 1.4487,
+        "worst_metal_coverage": 0.8048,
+        "worst_metal_coverage_per_draw_mean": 0.7807,
+        "worst_metal_coverage_per_draw_min": 0.6613,
+        "n_repeats": 20,
+        "definition": "mean over the offset draws; the arms table above is a single draw (repeat 0) and exists for the group tables",
+        "by_metal_coverage_mean": {
+          "Ir": 0.919,
+          "Os": 0.8048,
+          "Re": 0.9097,
+          "Rh": 0.8727,
+          "Ru": 0.9005
+        }
+      },
+      "mondrian": {
+        "arm": "split_cal_metal",
+        "coverage_mean": 0.9003,
+        "median_width_mean": 1.4413,
+        "worst_metal_coverage": 0.8885,
+        "worst_metal_coverage_per_draw_mean": 0.8298,
+        "worst_metal_coverage_per_draw_min": 0.7586,
+        "n_repeats": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9011,
+          "Os": 0.8885,
+          "Re": 0.897,
+          "Rh": 0.8981,
+          "Ru": 0.899
+        }
+      },
+      "repair": {
+        "mondrian_floor": {
+          "coverage_mean": 0.9049,
+          "median_width_mean": 1.4504,
+          "worst_metal_coverage": 0.8885,
+          "worst_metal_coverage_per_draw_mean": 0.8388,
+          "worst_metal_coverage_per_draw_min": 0.7612,
+          "by_metal_coverage_mean": {
+            "Ir": 0.919,
+            "Os": 0.8885,
+            "Re": 0.9109,
+            "Rh": 0.8981,
+            "Ru": 0.9008
+          }
+        },
+        "mondrian_bonferroni": {
+          "coverage_mean": 0.9805,
+          "median_width_mean": 2.3335,
+          "worst_metal_coverage": 0.9794,
+          "worst_metal_coverage_per_draw_mean": 0.959,
+          "worst_metal_coverage_per_draw_min": 0.9111,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9823,
+            "Os": 0.9802,
+            "Re": 0.9815,
+            "Rh": 0.9797,
+            "Ru": 0.9794
+          }
+        },
+        "mondrian_shrunk": {
+          "coverage_mean": 0.9001,
+          "median_width_mean": 1.4414,
+          "worst_metal_coverage": 0.8835,
+          "worst_metal_coverage_per_draw_mean": 0.8282,
+          "worst_metal_coverage_per_draw_min": 0.7586,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9014,
+            "Os": 0.8835,
+            "Re": 0.8992,
+            "Rh": 0.8963,
+            "Ru": 0.899
+          }
+        }
+      },
+      "repeat_diagnostics": {
+        "coverage_mean": 0.8994,
+        "coverage_min": 0.8655,
+        "coverage_max": 0.9269,
+        "median_width_mean": 1.4487,
+        "median_width_min": 1.4043,
+        "median_width_max": 1.5064,
+        "worst_metal_coverage_mean": 0.7807,
+        "worst_metal_coverage_min": 0.6613,
+        "repeats": 20
+      },
+      "elapsed_seconds": 82.4
+    },
+    "20261025": {
+      "point_r2": 0.3342,
+      "kappa_mean": 0.7722,
+      "n_eval_rows_calibrated": 9980,
+      "n_eval_rows_uncalibrated": 21404,
+      "arms": {
+        "split_uncal": {
+          "n": 21404,
+          "coverage": 0.9005,
+          "mean_width": 2.0164,
+          "median_width": 2.005,
+          "width_p10": 2.0036,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9189,
+              "mean_width": 2.0177
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8656,
+              "mean_width": 2.02
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9422,
+              "mean_width": 2.0189
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8759,
+              "mean_width": 2.0134
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8975,
+              "mean_width": 2.0159
+            }
+          },
+          "worst_group_coverage": 0.8656
+        },
+        "split_uncal_matched": {
+          "n": 9980,
+          "coverage": 0.9059,
+          "mean_width": 2.0164,
+          "median_width": 2.005,
+          "width_p10": 2.0036,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 1645,
+              "coverage": 0.9307,
+              "mean_width": 2.0176
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.868,
+              "mean_width": 2.0216
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9591,
+              "mean_width": 2.0214
+            },
+            "Rh": {
+              "n": 433,
+              "coverage": 0.8799,
+              "mean_width": 2.0125
+            },
+            "Ru": {
+              "n": 7050,
+              "coverage": 0.9016,
+              "mean_width": 2.0157
+            }
+          },
+          "worst_group_coverage": 0.868
+        },
+        "split_cal": {
+          "n": 9980,
+          "coverage": 0.902,
+          "mean_width": 1.4495,
+          "median_width": 1.4582,
+          "width_p10": 1.4324,
+          "width_p90": 1.4592,
+          "by_group": {
+            "Ir": {
+              "n": 1645,
+              "coverage": 0.9191,
+              "mean_width": 1.4485
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.8289,
+              "mean_width": 1.4481
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9292,
+              "mean_width": 1.4482
+            },
+            "Rh": {
+              "n": 433,
+              "coverage": 0.8868,
+              "mean_width": 1.4478
+            },
+            "Ru": {
+              "n": 7050,
+              "coverage": 0.9026,
+              "mean_width": 1.45
+            }
+          },
+          "worst_group_coverage": 0.8289
+        },
+        "split_cal_metal": {
+          "n": 9980,
+          "coverage": 0.9014,
+          "mean_width": 1.454,
+          "median_width": 1.4331,
+          "width_p10": 1.3576,
+          "width_p90": 1.4654,
+          "by_group": {
+            "Ir": {
+              "n": 1645,
+              "coverage": 0.9015,
+              "mean_width": 1.3766
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.8969,
+              "mean_width": 1.8305
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9183,
+              "mean_width": 1.3695
+            },
+            "Rh": {
+              "n": 433,
+              "coverage": 0.9053,
+              "mean_width": 1.6528
+            },
+            "Ru": {
+              "n": 7050,
+              "coverage": 0.9006,
+              "mean_width": 1.4384
+            }
+          },
+          "worst_group_coverage": 0.8969
+        },
+        "split_oracle": {
+          "n": 9980,
+          "coverage": 0.9552,
+          "mean_width": 1.4543,
+          "median_width": 1.3763,
+          "width_p10": 0.7487,
+          "width_p90": 2.3942,
+          "by_group": {
+            "Ir": {
+              "n": 1645,
+              "coverage": 0.9666,
+              "mean_width": 1.4002
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.9464,
+              "mean_width": 1.7896
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9591,
+              "mean_width": 1.324
+            },
+            "Rh": {
+              "n": 433,
+              "coverage": 0.9538,
+              "mean_width": 1.4854
+            },
+            "Ru": {
+              "n": 7050,
+              "coverage": 0.953,
+              "mean_width": 1.4487
+            }
+          },
+          "worst_group_coverage": 0.9464
+        },
+        "cqr_uncal": {
+          "n": 21404,
+          "coverage": 0.9001,
+          "mean_width": 1.9932,
+          "median_width": 1.9695,
+          "width_p10": 1.576,
+          "width_p90": 2.4347,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9144,
+              "mean_width": 1.9315
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8822,
+              "mean_width": 2.1376
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9382,
+              "mean_width": 1.9644
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9018,
+              "mean_width": 2.045
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8956,
+              "mean_width": 1.998
+            }
+          },
+          "winkler": 2.6309,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8822,
+            "mean_width": 2.1376
+          },
+          "worst_group_coverage": 0.8822
+        },
+        "cqr_cal": {
+          "n": 9980,
+          "coverage": 0.8997,
+          "mean_width": 1.5806,
+          "median_width": 1.5522,
+          "width_p10": 1.1682,
+          "width_p90": 2.0226,
+          "by_group": {
+            "Ir": {
+              "n": 1645,
+              "coverage": 0.9064,
+              "mean_width": 1.5071
+            },
+            "Os": {
+              "n": 485,
+              "coverage": 0.8474,
+              "mean_width": 1.7274
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9428,
+              "mean_width": 1.5395
+            },
+            "Rh": {
+              "n": 433,
+              "coverage": 0.8938,
+              "mean_width": 1.561
+            },
+            "Ru": {
+              "n": 7050,
+              "coverage": 0.8999,
+              "mean_width": 1.591
+            }
+          },
+          "winkler": 2.0728,
+          "worst_group": {
+            "group": "Os",
+            "n": 485,
+            "coverage": 0.8474,
+            "mean_width": 1.7274
+          },
+          "worst_group_coverage": 0.8474
+        }
+      },
+      "primary": {
+        "arm": "split_cal",
+        "coverage_mean": 0.9013,
+        "median_width_mean": 1.4519,
+        "worst_metal_coverage": 0.8167,
+        "worst_metal_coverage_per_draw_mean": 0.7905,
+        "worst_metal_coverage_per_draw_min": 0.6484,
+        "n_repeats": 20,
+        "definition": "mean over the offset draws; the arms table above is a single draw (repeat 0) and exists for the group tables",
+        "by_metal_coverage_mean": {
+          "Ir": 0.9158,
+          "Os": 0.8167,
+          "Re": 0.9131,
+          "Rh": 0.8749,
+          "Ru": 0.9022
+        }
+      },
+      "mondrian": {
+        "arm": "split_cal_metal",
+        "coverage_mean": 0.9019,
+        "median_width_mean": 1.4461,
+        "worst_metal_coverage": 0.8897,
+        "worst_metal_coverage_per_draw_mean": 0.8344,
+        "worst_metal_coverage_per_draw_min": 0.7414,
+        "n_repeats": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9002,
+          "Os": 0.8897,
+          "Re": 0.899,
+          "Rh": 0.8983,
+          "Ru": 0.901
+        }
+      },
+      "repair": {
+        "mondrian_floor": {
+          "coverage_mean": 0.906,
+          "median_width_mean": 1.4536,
+          "worst_metal_coverage": 0.8897,
+          "worst_metal_coverage_per_draw_mean": 0.8432,
+          "worst_metal_coverage_per_draw_min": 0.7647,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9158,
+            "Os": 0.8897,
+            "Re": 0.9148,
+            "Rh": 0.8988,
+            "Ru": 0.9025
+          }
+        },
+        "mondrian_bonferroni": {
+          "coverage_mean": 0.9807,
+          "median_width_mean": 2.3453,
+          "worst_metal_coverage": 0.9799,
+          "worst_metal_coverage_per_draw_mean": 0.9562,
+          "worst_metal_coverage_per_draw_min": 0.8793,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9816,
+            "Os": 0.9807,
+            "Re": 0.9806,
+            "Rh": 0.9801,
+            "Ru": 0.9799
+          }
+        },
+        "mondrian_shrunk": {
+          "coverage_mean": 0.9017,
+          "median_width_mean": 1.4461,
+          "worst_metal_coverage": 0.8856,
+          "worst_metal_coverage_per_draw_mean": 0.8317,
+          "worst_metal_coverage_per_draw_min": 0.7414,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9007,
+            "Os": 0.8856,
+            "Re": 0.9001,
+            "Rh": 0.8959,
+            "Ru": 0.901
+          }
+        }
+      },
+      "repeat_diagnostics": {
+        "coverage_mean": 0.9013,
+        "coverage_min": 0.863,
+        "coverage_max": 0.9262,
+        "median_width_mean": 1.4519,
+        "median_width_min": 1.4035,
+        "median_width_max": 1.5079,
+        "worst_metal_coverage_mean": 0.7905,
+        "worst_metal_coverage_min": 0.6484,
+        "repeats": 20
+      },
+      "elapsed_seconds": 82.0
+    },
+    "20261026": {
+      "point_r2": 0.3324,
+      "kappa_mean": 0.7733,
+      "n_eval_rows_calibrated": 9980,
+      "n_eval_rows_uncalibrated": 21404,
+      "arms": {
+        "split_uncal": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 2.0172,
+          "median_width": 2.0075,
+          "width_p10": 2.0045,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9203,
+              "mean_width": 2.0185
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8556,
+              "mean_width": 2.0204
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9396,
+              "mean_width": 2.0195
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8759,
+              "mean_width": 2.0147
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8977,
+              "mean_width": 2.0167
+            }
+          },
+          "worst_group_coverage": 0.8556
+        },
+        "split_uncal_matched": {
+          "n": 9980,
+          "coverage": 0.9023,
+          "mean_width": 2.0172,
+          "median_width": 2.0075,
+          "width_p10": 2.0045,
+          "width_p90": 2.0396,
+          "by_group": {
+            "Ir": {
+              "n": 1653,
+              "coverage": 0.9365,
+              "mean_width": 2.0183
+            },
+            "Os": {
+              "n": 499,
+              "coverage": 0.8377,
+              "mean_width": 2.0216
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9564,
+              "mean_width": 2.022
+            },
+            "Rh": {
+              "n": 439,
+              "coverage": 0.8884,
+              "mean_width": 2.0138
+            },
+            "Ru": {
+              "n": 7022,
+              "coverage": 0.8969,
+              "mean_width": 2.0166
+            }
+          },
+          "worst_group_coverage": 0.8377
+        },
+        "split_cal": {
+          "n": 9980,
+          "coverage": 0.8964,
+          "mean_width": 1.4476,
+          "median_width": 1.4555,
+          "width_p10": 1.4079,
+          "width_p90": 1.4714,
+          "by_group": {
+            "Ir": {
+              "n": 1653,
+              "coverage": 0.9093,
+              "mean_width": 1.445
+            },
+            "Os": {
+              "n": 499,
+              "coverage": 0.8236,
+              "mean_width": 1.4417
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9237,
+              "mean_width": 1.44
+            },
+            "Rh": {
+              "n": 439,
+              "coverage": 0.8929,
+              "mean_width": 1.449
+            },
+            "Ru": {
+              "n": 7022,
+              "coverage": 0.8973,
+              "mean_width": 1.4489
+            }
+          },
+          "worst_group_coverage": 0.8236
+        },
+        "split_cal_metal": {
+          "n": 9980,
+          "coverage": 0.8972,
+          "mean_width": 1.4566,
+          "median_width": 1.4383,
+          "width_p10": 1.3805,
+          "width_p90": 1.4671,
+          "by_group": {
+            "Ir": {
+              "n": 1653,
+              "coverage": 0.8923,
+              "mean_width": 1.3682
+            },
+            "Os": {
+              "n": 499,
+              "coverage": 0.9038,
+              "mean_width": 1.9255
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9155,
+              "mean_width": 1.3652
+            },
+            "Rh": {
+              "n": 439,
+              "coverage": 0.9043,
+              "mean_width": 1.5411
+            },
+            "Ru": {
+              "n": 7022,
+              "coverage": 0.8965,
+              "mean_width": 1.4436
+            }
+          },
+          "worst_group_coverage": 0.8923
+        },
+        "split_oracle": {
+          "n": 9980,
+          "coverage": 0.9568,
+          "mean_width": 1.4541,
+          "median_width": 1.3782,
+          "width_p10": 0.7262,
+          "width_p90": 2.3932,
+          "by_group": {
+            "Ir": {
+              "n": 1653,
+              "coverage": 0.9655,
+              "mean_width": 1.3836
+            },
+            "Os": {
+              "n": 499,
+              "coverage": 0.9499,
+              "mean_width": 1.8094
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.9482,
+              "mean_width": 1.3442
+            },
+            "Rh": {
+              "n": 439,
+              "coverage": 0.9636,
+              "mean_width": 1.5004
+            },
+            "Ru": {
+              "n": 7022,
+              "coverage": 0.9553,
+              "mean_width": 1.4484
+            }
+          },
+          "worst_group_coverage": 0.9482
+        },
+        "cqr_uncal": {
+          "n": 21404,
+          "coverage": 0.8998,
+          "mean_width": 2.0067,
+          "median_width": 1.9903,
+          "width_p10": 1.5914,
+          "width_p90": 2.4407,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9128,
+              "mean_width": 1.9395
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8744,
+              "mean_width": 2.1613
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9396,
+              "mean_width": 2.0116
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.9069,
+              "mean_width": 2.0748
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8956,
+              "mean_width": 2.0094
+            }
+          },
+          "winkler": 2.6275,
+          "worst_group": {
+            "group": "Os",
+            "n": 900,
+            "coverage": 0.8744,
+            "mean_width": 2.1613
+          },
+          "worst_group_coverage": 0.8744
+        },
+        "cqr_cal": {
+          "n": 9980,
+          "coverage": 0.8955,
+          "mean_width": 1.5634,
+          "median_width": 1.5492,
+          "width_p10": 1.149,
+          "width_p90": 1.9924,
+          "by_group": {
+            "Ir": {
+              "n": 1653,
+              "coverage": 0.8978,
+              "mean_width": 1.4719
+            },
+            "Os": {
+              "n": 499,
+              "coverage": 0.8697,
+              "mean_width": 1.7216
+            },
+            "Re": {
+              "n": 367,
+              "coverage": 0.921,
+              "mean_width": 1.5413
+            },
+            "Rh": {
+              "n": 439,
+              "coverage": 0.9043,
+              "mean_width": 1.5665
+            },
+            "Ru": {
+              "n": 7022,
+              "coverage": 0.8949,
+              "mean_width": 1.5747
+            }
+          },
+          "winkler": 2.0832,
+          "worst_group": {
+            "group": "Os",
+            "n": 499,
+            "coverage": 0.8697,
+            "mean_width": 1.7216
+          },
+          "worst_group_coverage": 0.8697
+        }
+      },
+      "primary": {
+        "arm": "split_cal",
+        "coverage_mean": 0.9007,
+        "median_width_mean": 1.4473,
+        "worst_metal_coverage": 0.8109,
+        "worst_metal_coverage_per_draw_mean": 0.7936,
+        "worst_metal_coverage_per_draw_min": 0.6966,
+        "n_repeats": 20,
+        "definition": "mean over the offset draws; the arms table above is a single draw (repeat 0) and exists for the group tables",
+        "by_metal_coverage_mean": {
+          "Ir": 0.918,
+          "Os": 0.8109,
+          "Re": 0.9202,
+          "Rh": 0.8773,
+          "Ru": 0.9013
+        }
+      },
+      "mondrian": {
+        "arm": "split_cal_metal",
+        "coverage_mean": 0.9008,
+        "median_width_mean": 1.4395,
+        "worst_metal_coverage": 0.8901,
+        "worst_metal_coverage_per_draw_mean": 0.8371,
+        "worst_metal_coverage_per_draw_min": 0.7414,
+        "n_repeats": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9003,
+          "Os": 0.8901,
+          "Re": 0.9028,
+          "Rh": 0.8967,
+          "Ru": 0.8996
+        }
+      },
+      "repair": {
+        "mondrian_floor": {
+          "coverage_mean": 0.9057,
+          "median_width_mean": 1.4489,
+          "worst_metal_coverage": 0.8901,
+          "worst_metal_coverage_per_draw_mean": 0.8462,
+          "worst_metal_coverage_per_draw_min": 0.746,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9181,
+            "Os": 0.8901,
+            "Re": 0.9216,
+            "Rh": 0.8971,
+            "Ru": 0.9016
+          }
+        },
+        "mondrian_bonferroni": {
+          "coverage_mean": 0.9808,
+          "median_width_mean": 2.3409,
+          "worst_metal_coverage": 0.9797,
+          "worst_metal_coverage_per_draw_mean": 0.9598,
+          "worst_metal_coverage_per_draw_min": 0.9059,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9814,
+            "Os": 0.9813,
+            "Re": 0.9829,
+            "Rh": 0.9821,
+            "Ru": 0.9797
+          }
+        },
+        "mondrian_shrunk": {
+          "coverage_mean": 0.9006,
+          "median_width_mean": 1.4396,
+          "worst_metal_coverage": 0.8852,
+          "worst_metal_coverage_per_draw_mean": 0.8353,
+          "worst_metal_coverage_per_draw_min": 0.746,
+          "by_metal_coverage_mean": {
+            "Ir": 0.9006,
+            "Os": 0.8852,
+            "Re": 0.9043,
+            "Rh": 0.8952,
+            "Ru": 0.8996
+          }
+        }
+      },
+      "repeat_diagnostics": {
+        "coverage_mean": 0.9007,
+        "coverage_min": 0.865,
+        "coverage_max": 0.9264,
+        "median_width_mean": 1.4473,
+        "median_width_min": 1.4065,
+        "median_width_max": 1.5127,
+        "worst_metal_coverage_mean": 0.7936,
+        "worst_metal_coverage_min": 0.6966,
+        "repeats": 20
+      },
+      "elapsed_seconds": 79.2
+    }
+  },
+  "aggregate": {
+    "split_uncal": {
+      "coverage_mean": 0.9003,
+      "coverage_min": 0.8998,
+      "median_width_mean": 2.0073,
+      "median_width_min": 2.005,
+      "mean_width_mean": 2.0143,
+      "worst_group_coverage_mean": 0.86
+    },
+    "split_uncal_matched": {
+      "coverage_mean": 0.9045,
+      "coverage_min": 0.9023,
+      "median_width_mean": 2.0073,
+      "median_width_min": 2.005,
+      "mean_width_mean": 2.0143,
+      "worst_group_coverage_mean": 0.86
+    },
+    "split_cal": {
+      "coverage_mean": 0.9,
+      "coverage_min": 0.8964,
+      "median_width_mean": 1.4486,
+      "median_width_min": 1.4298,
+      "mean_width_mean": 1.4471,
+      "worst_group_coverage_mean": 0.8275
+    },
+    "split_cal_metal": {
+      "coverage_mean": 0.8997,
+      "coverage_min": 0.8972,
+      "median_width_mean": 1.431,
+      "median_width_min": 1.4186,
+      "mean_width_mean": 1.4531,
+      "worst_group_coverage_mean": 0.8958
+    },
+    "split_oracle": {
+      "coverage_mean": 0.9569,
+      "coverage_min": 0.9552,
+      "median_width_mean": 1.3717,
+      "median_width_min": 1.3526,
+      "mean_width_mean": 1.4537,
+      "worst_group_coverage_mean": 0.946
+    },
+    "cqr_uncal": {
+      "coverage_mean": 0.9,
+      "coverage_min": 0.8995,
+      "median_width_mean": 1.9871,
+      "median_width_min": 1.9695,
+      "mean_width_mean": 2.0058,
+      "worst_group_coverage_mean": 0.8716
+    },
+    "cqr_cal": {
+      "coverage_mean": 0.8975,
+      "coverage_min": 0.8925,
+      "median_width_mean": 1.5507,
+      "median_width_min": 1.5345,
+      "mean_width_mean": 1.5712,
+      "worst_group_coverage_mean": 0.861
+    },
+    "primary": {
+      "arm": "split_cal",
+      "coverage_mean": 0.9007,
+      "median_width_mean": 1.4478,
+      "n_seeds": 5,
+      "n_repeats_per_seed": 20,
+      "by_metal_coverage_mean": {
+        "Ir": 0.9167,
+        "Os": 0.8088,
+        "Re": 0.9141,
+        "Rh": 0.8753,
+        "Ru": 0.9019
+      },
+      "worst_metal_coverage": 0.8088,
+      "worst_metal": "Os"
+    },
+    "mondrian": {
+      "arm": "split_cal_metal",
+      "coverage_mean": 0.9011,
+      "median_width_mean": 1.439,
+      "n_seeds": 5,
+      "n_repeats_per_seed": 20,
+      "by_metal_coverage_mean": {
+        "Ir": 0.9004,
+        "Os": 0.8888,
+        "Re": 0.8983,
+        "Rh": 0.8976,
+        "Ru": 0.9
+      },
+      "worst_metal_coverage": 0.8888,
+      "worst_metal": "Os"
+    },
+    "repair": {
+      "mondrian_floor": {
+        "coverage_mean": 0.9057,
+        "median_width_mean": 1.4492,
+        "worst_metal_coverage": 0.8888,
+        "worst_metal_coverage_per_draw_min": 0.746,
+        "n_seeds": 5,
+        "n_repeats_per_seed": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9167,
+          "Os": 0.8888,
+          "Re": 0.9152,
+          "Rh": 0.898,
+          "Ru": 0.9021
+        }
+      },
+      "mondrian_bonferroni": {
+        "coverage_mean": 0.9805,
+        "median_width_mean": 2.337,
+        "worst_metal_coverage": 0.9794,
+        "worst_metal_coverage_per_draw_min": 0.8793,
+        "n_seeds": 5,
+        "n_repeats_per_seed": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9817,
+          "Os": 0.9811,
+          "Re": 0.9817,
+          "Rh": 0.981,
+          "Ru": 0.9794
+        }
+      },
+      "mondrian_shrunk": {
+        "coverage_mean": 0.9009,
+        "median_width_mean": 1.439,
+        "worst_metal_coverage": 0.8844,
+        "worst_metal_coverage_per_draw_min": 0.7391,
+        "n_seeds": 5,
+        "n_repeats_per_seed": 20,
+        "by_metal_coverage_mean": {
+          "Ir": 0.9008,
+          "Os": 0.8844,
+          "Re": 0.9,
+          "Rh": 0.8958,
+          "Ru": 0.9001
+        }
+      }
+    }
+  },
+  "gate": {
+    "frozen_at": "2026-10-23T03:20+08:00",
+    "amended_at": "2026-10-23T03:40+08:00",
+    "checks": {
+      "coverage": {
+        "value": 0.9007,
+        "threshold": 0.9,
+        "pass": true
+      },
+      "median_width": {
+        "value": 1.4478,
+        "threshold": 1.5,
+        "pass": true
+      },
+      "worst_metal_coverage": {
+        "value": 0.8088,
+        "threshold": 0.87,
+        "pass": false
+      },
+      "paired_narrowing": {
+        "calibrated_width": 1.4478,
+        "uncalibrated_width_matched": 2.0073,
+        "relative_narrowing": 0.2787,
+        "required": 0.2,
+        "pass": true
+      },
+      "reproduce": {
+        "split_uncal": 2.0073,
+        "split_target": 2.0073,
+        "cqr_uncal": 1.9871,
+        "cqr_target": 1.9871,
+        "tolerance": 0.02,
+        "pass": true
+      }
+    },
+    "gate_pass": false,
+    "kill": {
+      "rule": "split_cal median width > 1.90 closes the interval line",
+      "value": 1.4478,
+      "triggered": false
+    },
+    "repair": {
+      "arm": "split_cal_metal",
+      "coverage_mean": 0.9011,
+      "median_width_mean": 1.439,
+      "worst_metal_coverage": 0.8888,
+      "note": "the pre-registered primary is the global calibrated arm; the metal-Mondrian variant is reported as the repair for its group deficit, not as a substitute for the gate result"
+    },
+    "group_repair": {
+      "frozen_at": "2026-10-23T03:20+08:00",
+      "amended_at": "2026-10-23T05:45+08:00",
+      "amendment": "the frozen wording was 'all five metals >= 0.87'. conformal_quantile already carries the finite-sample correction ceil((n+1)(1-alpha))/n, so the Mondrian mean had long passed; the number that failed was the per-draw minimum (0.7241). The gate was rewritten to that quantity before any repair arm was run.",
+      "checks": {
+        "mondrian_floor": {
+          "floor_min": {
+            "value": 0.746,
+            "threshold": 0.8,
+            "pass": false
+          },
+          "mean": {
+            "value": 0.8888,
+            "threshold": 0.87,
+            "pass": true
+          },
+          "width": {
+            "value": 1.4492,
+            "threshold": 1.6,
+            "pass": true
+          },
+          "pass": false
+        },
+        "mondrian_bonferroni": {
+          "floor_min": {
+            "value": 0.8793,
+            "threshold": 0.8,
+            "pass": true
+          },
+          "mean": {
+            "value": 0.9794,
+            "threshold": 0.87,
+            "pass": true
+          },
+          "width": {
+            "value": 2.337,
+            "threshold": 1.6,
+            "pass": false
+          },
+          "pass": false
+        },
+        "mondrian_shrunk": {
+          "floor_min": {
+            "value": 0.7391,
+            "threshold": 0.8,
+            "pass": false
+          },
+          "mean": {
+            "value": 0.8844,
+            "threshold": 0.87,
+            "pass": true
+          },
+          "width": {
+            "value": 1.439,
+            "threshold": 1.6,
+            "pass": true
+          },
+          "pass": false
+        }
+      },
+      "arm_passing_all": [],
+      "gate_pass": false,
+      "reproduce": {
+        "split_cal_width": {
+          "value": 1.4486,
+          "target": 1.4486,
+          "pass": true
+        },
+        "mondrian_width": {
+          "value": 1.439,
+          "target": 1.439,
+          "pass": true
+        },
+        "mondrian_worst": {
+          "value": 0.8888,
+          "target": 0.8888,
+          "pass": true
+        },
+        "pass": true
+      },
+      "kill": {
+        "rule": "no arm raises the per-draw minimum to 0.78 within median width <= 1.70",
+        "triggered": true
+      }
+    }
+  },
+  "caveats": [
+    "The calibration rows come from the same paper as the evaluation rows and are then excluded from scoring. That is the deployment regime being modelled: a plate arrives with its first compounds measured.",
+    "kappa is estimated on each outer fold's training rows, so a test paper's own residual scale never enters its shrinkage factor.",
+    "Calibration removes a level, not a slope. Papers whose error is mostly slope keep it, and the oracle arm measures how much of the width that leaves behind.",
+    "A CQR interval shifted by a constant has the same width, so cqr_cal can only narrow through the conformal correction E. It is the contrast that shows the split arm's gain is not a generic property of intervals.",
+    "The oracle arm uses every row of a paper to locate that paper's mean, including rows a real method would spend on calibration. It is a floor, not a deployable arm.",
+    "The metal-Mondrian arm falls back to the global quantile for any metal with fewer than 30 pool rows, so its worst-group number is a mixture of Mondrian and pooled behaviour."
+  ]
+}

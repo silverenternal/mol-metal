@@ -143,6 +143,18 @@ KILL_WIDTH = 1.90
 REPRO_SPLIT = 2.0073
 REPRO_CQR = 1.9871
 REPRO_TOL = 0.02
+SHRINK_N0 = 30.0
+REPAIR_ARMS = ("mondrian_floor", "mondrian_bonferroni", "mondrian_shrunk")
+REPAIR_FLOOR_GATE = 0.80
+REPAIR_MEAN_GATE = 0.87
+REPAIR_WIDTH_GATE = 1.60
+REPAIR_KILL_FLOOR = 0.78
+REPAIR_KILL_WIDTH = 1.70
+# Five-seed values from the UP-33 artifact.  The repair arms reuse the same
+# draws, so these three numbers must not move.
+REPAIR_REPRO_SPLIT = 1.4486  # aggregate.split_cal; aggregate.primary is 1.4478
+REPAIR_REPRO_MONDRIAN = 1.4390
+REPAIR_REPRO_WORST = 0.8888
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +207,34 @@ def _by_metal(per_seed: Dict[str, object], block: str) -> Dict[str, float]:
         for m, v in per_seed[seed][block]["by_metal_coverage_mean"].items():
             acc.setdefault(m, []).append(float(v))
     return {m: round(float(np.mean(v)), 4) for m, v in sorted(acc.items())}
+
+
+def _repeat_stats(
+    yy: np.ndarray,
+    yh: np.ndarray,
+    hh: np.ndarray,
+    mm: np.ndarray,
+    cov: List[float],
+    wid: List[float],
+    worst: List[float],
+    metal_cov: Dict[str, List[float]],
+) -> None:
+    """One draw's coverage, width and worst group for a group-repair arm.
+
+    Kept byte-for-byte identical in definition to the inline Mondrian block
+    above, so the new arms are comparable to it without re-deriving anything.
+    """
+    cov.append(float(np.mean(np.abs(yy - yh) <= hh)))
+    wid.append(float(np.median(2 * hh)))
+    groups = [float(np.mean(np.abs(yy[mm == m] - yh[mm == m]) <= hh[mm == m]))
+              for m in np.unique(mm) if int((mm == m).sum()) >= 30]
+    worst.append(float(min(groups)) if groups else float("nan"))
+    for m in np.unique(mm):
+        if int((mm == m).sum()) < 30:
+            continue
+        hit = np.abs(yy[mm == m] - yh[mm == m]) <= hh[mm == m]
+        metal_cov.setdefault(str(m), []).append(float(hit.mean()))
+
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +340,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # repaired when the mean over draws says otherwise, so both are kept.
         metal_cov_cal: Dict[str, List[float]] = {}
         metal_cov_metal: Dict[str, List[float]] = {}
+        # UP-41 group-repair arms.  Same draws as the Mondrian arm: nothing
+        # below consumes the RNG, so the reference numbers stay bit-identical.
+        repair_cov: Dict[str, List[float]] = {a: [] for a in REPAIR_ARMS}
+        repair_wid: Dict[str, List[float]] = {a: [] for a in REPAIR_ARMS}
+        repair_worst: Dict[str, List[float]] = {a: [] for a in REPAIR_ARMS}
+        repair_metal: Dict[str, Dict[str, List[float]]] = {a: {} for a in REPAIR_ARMS}
 
         for k in folds:
             te = fold_id == k
@@ -335,6 +381,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         conformal_quantile(pool_s[mask], args.alpha)
                         if int(mask.sum()) >= MIN_METAL_CAL else q_cal
                     )
+                # Three stabilisations of the same per-metal quantile.
+                alpha_b = args.alpha / max(len(np.unique(pool_m)), 1)
+                q_floor: Dict[str, float] = {}
+                q_bonf: Dict[str, float] = {}
+                q_shr: Dict[str, float] = {}
+                for m in np.unique(pool_m):
+                    mask = pool_m == m
+                    n_g = int(mask.sum())
+                    if n_g >= MIN_METAL_CAL:
+                        q_floor[m] = max(q_metal[m], q_cal)
+                        q_bonf[m] = conformal_quantile(pool_s[mask], alpha_b)
+                        w = n_g / (n_g + SHRINK_N0)
+                        q_shr[m] = float(q_cal + w * (q_metal[m] - q_cal))
+                    else:
+                        q_floor[m] = q_cal
+                        q_bonf[m] = q_cal
+                        q_shr[m] = q_cal
 
                 # CQR correction on calibrated scores.  Same offset rows,
                 # same disjointness rule: e is computed on the complement.
@@ -350,6 +413,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 rep_half: List[np.ndarray] = []
                 rep_half_m: List[np.ndarray] = []
                 rep_metal: List[np.ndarray] = []
+                rep_half_f: List[np.ndarray] = []
+                rep_half_b: List[np.ndarray] = []
+                rep_half_s: List[np.ndarray] = []
                 for rows in te_papers:
                     off, ev = draw_offset(resid, rows, N_CAL, rng, kappa)
                     hm = np.array([q_metal.get(m, q_cal) for m in metal[ev]])
@@ -358,6 +424,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     rep_half.append(np.full(len(ev), q_cal))
                     rep_half_m.append(hm)
                     rep_metal.append(metal[ev])
+                    rep_half_f.append(np.array([q_floor.get(m, q_cal) for m in metal[ev]]))
+                    rep_half_b.append(np.array([q_bonf.get(m, q_cal) for m in metal[ev]]))
+                    rep_half_s.append(np.array([q_shr.get(m, q_cal) for m in metal[ev]]))
                     if rep == 0:
                         half_cal[ev] = q_cal
                         half_cal_m[ev] = hm
@@ -398,6 +467,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                             for m in np.unique(mm) if int((mm == m).sum()) >= 30]
                 rep_worst_metal_m.append(
                     float(min(groups_m)) if groups_m else float("nan"))
+
+                for _arm, _buf in zip(REPAIR_ARMS,
+                                      (rep_half_f, rep_half_b, rep_half_s)):
+                    _repeat_stats(
+                        yy, yh, np.concatenate(_buf), mm,
+                        repair_cov[_arm], repair_wid[_arm], repair_worst[_arm],
+                        repair_metal[_arm],
+                    )
                 for m in np.unique(mm):
                     if int((mm == m).sum()) < 30:
                         continue
@@ -485,6 +562,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     k: round(float(np.mean(v)), 4)
                     for k, v in sorted(metal_cov_metal.items())},
             },
+            "repair": {
+                _arm: {
+                    "coverage_mean": round(float(np.mean(repair_cov[_arm])), 4),
+                    "median_width_mean": round(float(np.mean(repair_wid[_arm])), 4),
+                    "worst_metal_coverage": round(float(min(
+                        np.mean(v) for v in repair_metal[_arm].values())), 4),
+                    "worst_metal_coverage_per_draw_mean": round(
+                        float(np.nanmean(repair_worst[_arm])), 4),
+                    "worst_metal_coverage_per_draw_min": round(
+                        float(np.nanmin(repair_worst[_arm])), 4),
+                    "by_metal_coverage_mean": {
+                        k: round(float(np.mean(v)), 4)
+                        for k, v in sorted(repair_metal[_arm].items())},
+                }
+                for _arm in REPAIR_ARMS
+            },
             "repeat_diagnostics": {
                 "coverage_mean": round(float(np.mean(rep_cov_cal)), 4),
                 "coverage_min": round(float(np.min(rep_cov_cal)), 4),
@@ -552,6 +645,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         agg[_blk]["worst_metal_coverage"] = round(float(min(_bm.values())), 4)
         agg[_blk]["worst_metal"] = min(_bm, key=lambda k: _bm[k])
 
+    agg["repair"] = {}
+    for _arm in REPAIR_ARMS:
+        _vals = [per_seed[s]["repair"][_arm] for s in per_seed]
+        _bm: Dict[str, List[float]] = {}
+        for s in per_seed:
+            for m, v in per_seed[s]["repair"][_arm]["by_metal_coverage_mean"].items():
+                _bm.setdefault(m, []).append(float(v))
+        agg["repair"][_arm] = {
+            "coverage_mean": round(float(np.mean(
+                [v["coverage_mean"] for v in _vals])), 4),
+            "median_width_mean": round(float(np.mean(
+                [v["median_width_mean"] for v in _vals])), 4),
+            "worst_metal_coverage": round(float(min(
+                float(np.mean(v)) for v in _bm.values())), 4),
+            "worst_metal_coverage_per_draw_min": round(float(min(
+                v["worst_metal_coverage_per_draw_min"] for v in _vals)), 4),
+            "n_seeds": int(len(_vals)),
+            "n_repeats_per_seed": args.repeats,
+            "by_metal_coverage_mean": {m: round(float(np.mean(v)), 4)
+                                       for m, v in sorted(_bm.items())},
+        }
+
     cal_w = agg["primary"]["median_width_mean"]
     un_w = agg["split_uncal_matched"]["median_width_mean"]
     narrow = round(float(1.0 - cal_w / un_w), 4)
@@ -606,11 +721,69 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "deficit, not as a substitute for the gate result",
     }
 
+    # UP-41: the group-conditional repair is judged on the per-draw worst
+    # metal, not on the five-seed mean of it.  A deployment draws one
+    # calibration set; the mean of five minima is a different quantity.
+    repair_checks: Dict[str, Dict[str, object]] = {}
+    for _arm in REPAIR_ARMS:
+        _a = agg["repair"][_arm]
+        _floor = float(_a["worst_metal_coverage_per_draw_min"])
+        _mean = float(_a["worst_metal_coverage"])
+        _wid = float(_a["median_width_mean"])
+        repair_checks[_arm] = {
+            "floor_min": {"value": _floor, "threshold": REPAIR_FLOOR_GATE,
+                          "pass": bool(_floor >= REPAIR_FLOOR_GATE)},
+            "mean": {"value": _mean, "threshold": REPAIR_MEAN_GATE,
+                     "pass": bool(_mean >= REPAIR_MEAN_GATE)},
+            "width": {"value": _wid, "threshold": REPAIR_WIDTH_GATE,
+                      "pass": bool(_wid <= REPAIR_WIDTH_GATE)},
+        }
+        repair_checks[_arm]["pass"] = all(
+            bool(v["pass"]) for v in repair_checks[_arm].values() if isinstance(v, dict))
+    _passing = [a for a in REPAIR_ARMS if repair_checks[a]["pass"]]
+    repair_gate = {
+        "frozen_at": GATE_FROZEN_AT,
+        "amended_at": "2026-10-23T05:45+08:00",
+        "amendment": "the frozen wording was 'all five metals >= 0.87'. "
+                     "conformal_quantile already carries the finite-sample "
+                     "correction ceil((n+1)(1-alpha))/n, so the Mondrian mean "
+                     "had long passed; the number that failed was the per-draw "
+                     "minimum (0.7241). The gate was rewritten to that "
+                     "quantity before any repair arm was run.",
+        "checks": repair_checks,
+        "arm_passing_all": _passing,
+        "gate_pass": bool(_passing),
+        "reproduce": {
+            "split_cal_width": {"value": agg["split_cal"]["median_width_mean"],
+                                "target": REPAIR_REPRO_SPLIT,
+                                "pass": bool(abs(agg["split_cal"]["median_width_mean"]
+                                                 - REPAIR_REPRO_SPLIT) <= REPRO_TOL)},
+            "mondrian_width": {"value": agg["mondrian"]["median_width_mean"],
+                               "target": REPAIR_REPRO_MONDRIAN,
+                               "pass": bool(abs(agg["mondrian"]["median_width_mean"]
+                                                - REPAIR_REPRO_MONDRIAN) <= REPRO_TOL)},
+            "mondrian_worst": {"value": agg["mondrian"]["worst_metal_coverage"],
+                               "target": REPAIR_REPRO_WORST,
+                               "pass": bool(abs(agg["mondrian"]["worst_metal_coverage"]
+                                                - REPAIR_REPRO_WORST) <= REPRO_TOL)},
+        },
+        "kill": {
+            "rule": "no arm raises the per-draw minimum to 0.78 within median "
+                    "width <= 1.70",
+            "triggered": bool(not any(
+                float(agg["repair"][a]["worst_metal_coverage_per_draw_min"]) >= REPAIR_KILL_FLOOR
+                and float(agg["repair"][a]["median_width_mean"]) <= REPAIR_KILL_WIDTH
+                for a in REPAIR_ARMS)),
+        },
+    }
+    repair_gate["reproduce"]["pass"] = all(
+        bool(v["pass"]) for v in repair_gate["reproduce"].values())
+
     out = {
-        "artifact": "msrs_conformal_calibrated",
+        "artifact": "msrs_conformal_group_repair",
         "version": "1.0",
         "framework": "MSRS — Metal Substitution Response Surface",
-        "level": "L1 deployment interval (UP-33)",
+        "level": "L1 deployment interval (UP-33 arms) + group-conditional repair (UP-41)",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "long_parquet": str(args.long.relative_to(PROJECT_ROOT)),
@@ -649,7 +822,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "aggregate": agg,
         "gate": {"frozen_at": GATE_FROZEN_AT, "amended_at": GATE_AMENDED_AT,
                  "checks": checks, "gate_pass": bool(gate_pass), "kill": kill,
-                 "repair": repair},
+                 "repair": repair, "group_repair": repair_gate},
         "caveats": [
             "The calibration rows come from the same paper as the evaluation rows and "
             "are then excluded from scoring. That is the deployment regime being "
@@ -678,6 +851,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
               f"worst={agg[name]['worst_group_coverage_mean']}")
     print(f"[UP-33] narrowing={narrow:.4f} gate_pass={gate_pass} "
           f"kill={kill['triggered']} elapsed={round(time.time() - t0, 1)}s")
+    for _arm in REPAIR_ARMS:
+        _c = repair_checks[_arm]
+        print(f"[UP-41] {_arm:20s} floor_min={_c['floor_min']['value']:.4f} "
+              f"mean={_c['mean']['value']:.4f} width={_c['width']['value']:.4f} "
+              f"pass={_c['pass']}")
+    print(f"[UP-41] passing_arms={_passing} gate_pass={repair_gate['gate_pass']} "
+          f"kill={repair_gate['kill']['triggered']} "
+          f"reproduce={repair_gate['reproduce']['pass']}")
     print(f"json: {args.out}")
     print("PASS" if gate_pass else "FAIL")
     return 0

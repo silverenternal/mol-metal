@@ -65,6 +65,16 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 
 **第五轮只过一项（UP-36 是把已有数字说清楚，不是新增益）。** 三项 FAIL 里有两项是 kill 触发（UP-34 的 metal_out 校准、UP-35 的 LOMO 少样本），按 `reopen_rule` 这两条线到此关闭；UP-33 的失败是可修的（Mondrian），主臂已经给出修法与代价。
 
+**UP 第六轮波 1 记分牌（门槛在 2026-10-23T05:30+08:00 写死，早于任何结果）**
+
+| 项 | 问题 | 判决 | 一个数字 |
+|---|---|---|---|
+| UP-38 | 同一篇论文里未被使用的预测值能不能把 n=1 从 0.5559 抬到 0.60 | **FAIL**（kill 触发） | ppi_eb n=1 **0.5545**、n=10 **0.6716**；v_ppi/v_eb **1.04–1.26**（全部 >1）；n=50 掉到 0.6682 |
+| UP-39 | 常数偏移是不是 DOI 线的天花板 | **PASS**（4/4） | 仿射 oracle **0.7936**（常数 0.7353）；eb_slope n=10 **0.7080**、n=50 **0.7503**；n=1 不塌陷 0.5559 |
+| UP-41 | 逐抽样的最差金属能不能守住 0.80 | **FAIL**（kill 触发） | bonferroni 下界 **0.8793** 但宽度 **2.3370**；floor 0.7460、shrunk 0.7391 |
+
+**波 1 只过一项。** 两条 kill 关闭的是「用未标注预测降方差」（UP-38）与「单次抽样的组条件保证」（UP-41）；UP-39 把 DOI 线在 n=10 的读数从 0.6839 推到 **0.7080**，并证明常数偏移之上还有 0.1097 的空间（等渗再给 0.0435）。
+
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
 
 | 项 | 问题 | 判决 | 一个数字 |
@@ -496,7 +506,34 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP35.k10_n_train_ru", "value": 1452, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "per_k.10.per_fold.Ru.n_train"},
   {"id": "UP35.shift_auc_diff", "value": 5.754499251553469e-07, "artifact": "metrics/by_metric/msrs_lomo_kcal.json", "path": "shift_arm.max_abs_auc_diff"},
   {"id": "UP33.cqr_reproduce", "value": 1.9871, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.cqr_uncal.median_width_mean"},
-  {"id": "UP33.oracle", "value": 1.3717, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.split_oracle.median_width_mean"}
+  {"id": "UP33.oracle", "value": 1.3717, "artifact": "metrics/by_metric/msrs_conformal_calibrated.json", "path": "aggregate.split_oracle.median_width_mean"},
+  {"id": "UP38.n1_ppi", "value": 0.5545, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.1.ppi_eb.r2_mean"},
+  {"id": "UP38.n2_ppi", "value": 0.6066, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.2.ppi_eb.r2_mean"},
+  {"id": "UP38.n10_ppi", "value": 0.6716, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.10.ppi_eb.r2_mean"},
+  {"id": "UP38.n50_ppi", "value": 0.6682, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.50.ppi_eb.r2_mean"},
+  {"id": "UP38.n1_eb", "value": 0.5559, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.1.eb_random.r2_mean"},
+  {"id": "UP38.n10_eb", "value": 0.6839, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.10.eb_random.r2_mean"},
+  {"id": "UP38.vratio_n1", "value": 1.0382, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.1.v_ppi_over_v_eb"},
+  {"id": "UP38.vratio_n10", "value": 1.2575, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "aggregate.10.v_ppi_over_v_eb"},
+  {"id": "UP38.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "gate.gate_pass"},
+  {"id": "UP38.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_ppi_calibration.json", "path": "gate.kill.triggered"},
+  {"id": "UP39.oracle_constant", "value": 0.7353, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "oracle.oracle_constant"},
+  {"id": "UP39.oracle_affine", "value": 0.7936, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "oracle.oracle_affine"},
+  {"id": "UP39.oracle_isotonic", "value": 0.8371, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "oracle.oracle_isotonic"},
+  {"id": "UP39.n10_slope", "value": 0.708, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "aggregate.10.eb_slope.r2_mean"},
+  {"id": "UP39.n50_slope", "value": 0.7503, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "aggregate.50.eb_slope.r2_mean"},
+  {"id": "UP39.n1_slope", "value": 0.5559, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "aggregate.1.eb_slope.r2_mean"},
+  {"id": "UP39.n10_eb", "value": 0.6839, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "aggregate.10.eb_random.r2_mean"},
+  {"id": "UP39.n1_affine_unshrunk", "value": 0.4258, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "aggregate.1.affine_unshrunk.r2_mean"},
+  {"id": "UP39.gate_pass", "value": true, "artifact": "metrics/by_metric/msrs_paper_scale.json", "path": "gate.gate_pass"},
+  {"id": "UP41.floor_floor_min", "value": 0.746, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.repair.mondrian_floor.worst_metal_coverage_per_draw_min"},
+  {"id": "UP41.bonf_floor_min", "value": 0.8793, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.repair.mondrian_bonferroni.worst_metal_coverage_per_draw_min"},
+  {"id": "UP41.bonf_width", "value": 2.337, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.repair.mondrian_bonferroni.median_width_mean"},
+  {"id": "UP41.shrunk_floor_min", "value": 0.7391, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.repair.mondrian_shrunk.worst_metal_coverage_per_draw_min"},
+  {"id": "UP41.baseline_worst", "value": 0.8888, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.mondrian.worst_metal_coverage"},
+  {"id": "UP41.baseline_width", "value": 1.439, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "aggregate.mondrian.median_width_mean"},
+  {"id": "UP41.gate_pass", "value": false, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "gate.group_repair.gate_pass"},
+  {"id": "UP41.kill_triggered", "value": true, "artifact": "metrics/by_metric/msrs_conformal_group_repair.json", "path": "gate.group_repair.kill.triggered"}
 ]
 ```
 
@@ -1282,6 +1319,76 @@ DP-11 关闭的是「换损失 / 换主干」。这一项换的是机制：不�
 **这条线不是被一个坏点关掉的。** 三个机制各自独立地失败过：换损失 +0.0003（UP-31）、换主干 −0.0485（UP-28）、加 k 行在 k≤20 上是负的（本轮）。到 k=50 才回到 0.6028，比零样本高 **0.0053**，只有到 0.65 还差的 0.0526 的 **10%**。所以「LOMO 差 0.05」不是样本量差距，是这个协议下可迁移的信号本身只有这么强。
 
 **必须声明的口径。** 五个 k 点的测试集不同（k 行被移出去了），所以曲线不是配对比较，逐点之间的差含行构成变化。k=10 相对 k=0 的 −0.0078 约为均值标准误（约 0.004）的两倍，属于可分辨但不大；k=50 相对 k=20 的 +0.0224 则是明确可分辨的。三个金属折（Os / Rh / Re）不足 200 个唯一化合物、AUC 标准误 0.08–0.10，没有进曲线。
+
+### 2.35 UP-38 用未标注行的预测降方差：三个门槛全不过，kill 触发（2026-10-23）
+
+`msrs_ppi_calibration.json`（CPU 263 s，5 seed × 20 次抽样 × 4 臂 × 6 个样本量）。
+
+UP-26 在 `n_cal=1` 只拿到 0.5559，而每篇论文除校准行外还有一批没被使用的预测值。PPI/PPI++ 的做法是把这些预测并进估计量：`delta = mean_cal(y-f) + mean_unlab(f) - mean_all(f)`，观测方差换成 `sigma2/c + Var(f|unlab)/(n-c)`。把未标注项置零就退化为 `eb_offset`，所以这是严格推广，不是换模型。
+
+| n_cal | eb_random（复现臂） | ppi_eb（主臂） | ppi_maxmin | v_ppi/v_eb |
+|---:|---:|---:|---:|---:|
+| 0 | 0.3674 | 0.3674 | 0.3674 | — |
+| 1 | 0.5559 | **0.5545** | 0.5779 | 1.0382 |
+| 2 | 0.6094 | **0.6066** | 0.6372 | 1.0778 |
+| 5 | 0.6584 | 0.6519 | 0.6649 | 1.1449 |
+| 10 | 0.6839 | **0.6716** | 0.6719 | 1.2575 |
+| 50 | 0.7243 | 0.6682 | 0.6950 | 1.0377 |
+
+**四项检查过一项。** 复现臂在 n=0/1/2/10 上逐位复现 0.3674 / 0.5559 / 0.6094 / 0.6839 ✓；n=1 的 0.5545 < 0.60 ✗；n=2 的 0.6066 < 0.64 ✗；n=10 的 0.6716 < 0.6789 ✗。主臂在 n=1 低于 kill 线 0.5759，**kill 触发**。
+
+**方差往反方向走了。** `v_ppi/v_eb` 在 n=1/2/5/10 上是 1.0382 / 1.0778 / 1.1449 / 1.2575，全部大于 1 —— 未标注项**增加**方差而不是降低。原因是分母：本队列每篇论文中位 8 行，`c=1` 时未标注集约 7 行，`Var(f|unlab)` 与 `sigma2` 同量级。`c=50` 时多数论文只剩 1 行未标注，比值回落到 1.0377，但分母已经是 1，`ppi_eb` 反而掉到 0.6682，低于自己 n=10 的 0.6716。曲线在样本量上不单调，是因为未标注分母随校准集增大而缩小。
+
+**必须声明的口径。** 未标注行就是评估行 —— 这是部署制度，不是泄漏，只有它们的预测进入估计、标签从不进入。maxmin 臂按设计违反 PPI 的均匀抽样假设，单独报告。单行论文在 n_cal>0 的行集里整体消失，与 UP-26 一致。
+
+---
+
+### 2.36 UP-39 每论文斜率：仿射上界 0.7936，n=10 拿到 0.7080（2026-10-23）
+
+`msrs_paper_scale.json`（CPU 282 s，5 seed × 20 次抽样 × 3 臂 × 6 个样本量）。
+
+UP-26 只用了 ComBat 的位置参数。这一项问的是：允许每篇论文有自己的斜率，天花板有多高，10 行能不能估出来。三个 oracle 都是论文内 in-sample，评估行与 `n_cal=0` 完全一致。
+
+| 模型类 | oracle R² |
+|---|---:|
+| 常数偏移（每论文减自己的残差均值） | 0.7353 |
+| 仿射（每论文 OLS 斜率 + 截距） | **0.7936** |
+| 等渗（每论文单调回归） | 0.8371 |
+
+| n_cal | eb_random | affine_unshrunk | eb_slope（主臂） |
+|---:|---:|---:|---:|
+| 1 | 0.5559 | 0.4258 | 0.5559 |
+| 2 | 0.6094 | 0.5210 | 0.6094 |
+| 5 | 0.6584 | 0.6565 | **0.6749** |
+| 10 | 0.6839 | 0.7049 | **0.7080** |
+| 50 | 0.7243 | 0.7475 | **0.7503** |
+
+**四项检查全过。** 仿射 oracle 0.7936 ≥ 0.75 ✓；`eb_slope` 在 n=10 的 0.7080 ≥ 0.70 ✓；n=1 的 0.5559 ≥ 0.55（没有塌陷）✓；oracle_constant 0.7353 与 eb 臂 n=10 的 0.6839 逐位复现 ✓。kill 未触发。
+
+**常数偏移不是天花板。** 仿射比常数高 **0.0583**，等渗再高 **0.0435**，所以「只平移」之上还有 0.1097 的空间。收缩斜率在 n=10 拿到 0.7080（比 eb_random 高 **+0.0241**），在 n=50 拿到 0.7503（高 **+0.0260**）。不收缩的仿射在 n=1/2 崩到 0.4258 / 0.5210 —— 一两行估不出斜率；`eb_slope` 在 `c<3` 时把斜率固定为 1，因此在 n=1/2 与 eb_random 逐位相同，没有拿小样本换大样本。
+
+**口径。** 斜率收缩强度 `tau_b2` 用训练折的矩估计（论文内 ≥5 行才参与），`b_post = 1 + (b_ols-1) * tau_b2/(tau_b2+var_b)`，截距沿用 `eb_offset`。三个 oracle 用论文全部行，估计器只用该论文的 n_cal 行。0.7080 成为 DOI 线在 n=10 的新默认读数，0.6839 保留为常数偏移臂的可比基线。
+
+---
+
+### 2.37 UP-41 逐抽样的组条件下界：Bonferroni 买得到，宽度要付 62%（2026-10-23）
+
+`msrs_conformal_group_repair.json`（CPU 431 s，5 seed × 20 次抽样 × 3 个修复臂 + 7 个对照臂）。
+
+UP-33 的 Mondrian 臂在**均值**口径上过门（最差金属 0.8888），但部署只抽一次校准集，而 20 次抽样里最差的一次是 **0.7241**。三个稳定化在同一批抽样上比较，不额外消耗 rng：
+
+| 臂 | 逐抽样最差金属的最小值 | 最差金属均值 | 中位宽 |
+|---|---:|---:|---:|
+| 基线 Mondrian | 0.7241 | 0.8888 | 1.4390 |
+| `mondrian_floor` | 0.7460 | 0.8888 | 1.4492 |
+| `mondrian_bonferroni` | **0.8793** | 0.9794 | **2.3370** |
+| `mondrian_shrunk` | 0.7391 | 0.8844 | 1.4390 |
+
+**没有一个臂同时满足三个条件。** Bonferroni 是唯一买到下界的（0.8793 ≥ 0.80），但中位宽 2.3370 > 1.60，因为每个金属按 `alpha/5 = 0.02` 校准，宽度涨 **62%**。`floor` 和 `shrunk` 的宽度合格（1.4492 / 1.4390），下界只到 0.7460 / 0.7391。kill 规则（任一臂在宽度 ≤1.70 内把下界抬到 0.78）未满足，**kill 触发**。
+
+**两个便宜的臂为什么在真正出问题的金属上无效。** 缺口在 Os。`floor` 只在该金属分位数低于全局分位数时才抬高它；Os 的分位数高于全局，所以覆盖率原地不动（0.8888），而 Ir 和 Re 升到 0.9167 / 0.9152。`shrunk` 把 Os 的分位数拉向全局值，覆盖率降到 0.8844。最差组的缺口不是分位数偏小，夹紧和收缩都不针对它。
+
+**复现。** 三个对照数逐位一致：`split_cal` 中位宽 **1.4486**、Mondrian **1.4390**、最差金属 **0.8888**。新增臂与基线共享同一批抽样，所以差值可归因。
 
 ---
 

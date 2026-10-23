@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v6",
   "created": "2026-10-22",
-  "updated": "2026-10-23T05:30+08:00",
+  "updated": "2026-10-23T06:55+08:00",
   "rewritten": "2026-10-23T05:30+08:00 molmetal-todo-v5。第五轮 UP-33..UP-37 全部关闭（1 PARTIAL / 2 FAIL / 2 PASS），已完成的包从本文件删除，结论压进 closed_decisions R22-R25 与 current_position。第六轮只留 5 个未完成的包。",
   "supersedes": "molmetal-todo-v5（第五轮 UP-33..UP-37，已全部关闭）",
   "purpose": "第六轮强化。第五轮把「用目标域自己的少量标签做经验贝叶斯校准」推到三个推论上，结果：区间宽度兑现（2.0073 → 1.4478）、金属水平不可估（kill）、少样本适配不可行（kill，LOMO 永久关闭）。第六轮问三个不同的问题：①同一篇论文里未被使用的预测值能不能降小样本方差（PPI，n=1/2）；②常数偏移是不是 DOI 线的天花板（每论文斜率，ComBat 的 scale 参数，n=10）；③MoleculeNet 的 0.0503 缺口里，划分、预算、实现各占多少。外加一个修复项：组条件分位数的有限样本修正。已关闭的四条线（metal_out 水平、LOMO 少样本、排序、表示）与已测死的 DrugOOD 预算路线都不重开。",
@@ -417,7 +417,7 @@
       "id": "UP-38",
       "priority": "P1",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "小样本校准：未标注行的预测能不能把 n_cal=1 从 0.5559 抬到 0.60",
       "question": "新论文只给 1-2 行已测值时，论文均值估不准。同一篇论文还有成百上千行预测值没被使用，能不能用它们把均值估得更准？",
       "why_now": "n_cal 曲线在 n=1 只有 0.5559，而 n=10 已经拿到上界的 93%。当前估计量把每篇论文除 k 行之外的所有预测值都扔掉了。PPI/PPI++ 正是「少量标签 + 大量预测」的标准解法，且它降的是方差、不改估计目标。",
@@ -443,13 +443,47 @@
       },
       "kill": "n_cal=1 的 R² <0.5759（连 +0.02 都拿不到）⇒ 未标注行的预测对论文均值没有可用信息，小样本线关闭。",
       "cost": "CPU ~40 min",
-      "device": "cpu"
+      "device": "cpu",
+      "verdict": "FAIL",
+      "measured": {
+        "ppi_eb_n1": 0.5545,
+        "ppi_eb_n2": 0.6066,
+        "ppi_eb_n5": 0.6519,
+        "ppi_eb_n10": 0.6716,
+        "ppi_eb_n50": 0.6682,
+        "ppi_maxmin_n1": 0.5779,
+        "ppi_maxmin_n2": 0.6372,
+        "ppi_maxmin_n10": 0.6719,
+        "ppi_maxmin_n50": 0.695,
+        "eb_random_n1": 0.5559,
+        "eb_random_n2": 0.6094,
+        "eb_random_n5": 0.6584,
+        "eb_random_n10": 0.6839,
+        "eb_random_n50": 0.7243,
+        "v_ppi_over_v_eb": {
+          "1": 1.0382,
+          "2": 1.0778,
+          "5": 1.1449,
+          "10": 1.2575,
+          "50": 1.0377
+        }
+      },
+      "gate_result": {
+        "n1": "0.5545 < 0.60 FAIL",
+        "n2": "0.6066 < 0.64 FAIL",
+        "n10_no_trade": "0.6716 < 0.6789 FAIL",
+        "reproduce": "0.3674 / 0.5559 / 0.6094 / 0.6839 all bit-identical PASS"
+      },
+      "kill_triggered": true,
+      "finding": "未标注行不是免费的方差来源。PPI 的观测方差是 sigma2/c + Var(f|unlab)/(n-c)，第二项只有在 n_unlab 远大于 n_lab 时才可以忽略。本队列每篇论文中位 8 行，c=1 时未标注集约 7 行，Var(f|unlab) 与 sigma2 同量级，实测 v_ppi/v_eb 落在 1.04-1.26（全部大于 1，即未标注项增加方差而不是降低）。c=50 时多数论文的未标注集只剩 1 行，比值回落到 1.0377，但分母已经是 1，ppi_eb 反而降到 0.6682，低于 n=10 的 0.6716。三个门槛全部未过；主臂 n=1 的 0.5545 低于 kill 线 0.5759。maxmin 臂在 n=1 拿到 0.5779，只比 kill 线高 0.002，且仍低于 0.60 门槛，不构成反驳。",
+      "closed_line": "小样本 PPI 线（用未标注行的预测降方差），第六轮不再重开",
+      "date": "2026-10-23"
     },
     {
       "id": "UP-39",
       "priority": "P1",
       "wave": 1,
-      "status": "PLANNED",
+      "status": "DONE",
       "title": "每论文尺度：常数偏移是不是 DOI 线的天花板",
       "question": "0.6839 距常数偏移 oracle 0.7353 只差 0.0514。这 0.05 是估计误差，还是常数偏移本身就是天花板？若允许每篇论文有自己的斜率，上界是多少，n_cal=10 行能不能估出来？",
       "why_now": "UP-26 只用了 ComBat 的位置参数（每篇论文一个 offset），尺度参数从未用过。如果斜率版本的天花板显著更高，DOI 线还有可做的；如果没有，0.6839 就是终点，应该停止投入而不是继续找估计器。",
@@ -474,7 +508,37 @@
       },
       "kill": "affine oracle <0.72 ⇒ 常数偏移就是天花板，DOI 线在 0.6839 收口，不再找估计器，写进 catalog。",
       "cost": "CPU ~50 min",
-      "device": "cpu"
+      "device": "cpu",
+      "verdict": "PASS",
+      "measured": {
+        "oracle_constant": 0.7353,
+        "oracle_affine": 0.7936,
+        "oracle_isotonic": 0.8371,
+        "eb_slope_n1": 0.5559,
+        "eb_slope_n2": 0.6094,
+        "eb_slope_n5": 0.6749,
+        "eb_slope_n10": 0.708,
+        "eb_slope_n50": 0.7503,
+        "eb_random_n1": 0.5559,
+        "eb_random_n2": 0.6094,
+        "eb_random_n5": 0.6584,
+        "eb_random_n10": 0.6839,
+        "eb_random_n50": 0.7243,
+        "affine_unshrunk_n1": 0.4258,
+        "affine_unshrunk_n2": 0.521,
+        "affine_unshrunk_n10": 0.7049,
+        "affine_unshrunk_n50": 0.7475
+      },
+      "gate_result": {
+        "headroom": "0.7936 >= 0.75 PASS",
+        "estimator_n10": "0.7080 >= 0.70 PASS",
+        "no_collapse_n1": "0.5559 >= 0.55 PASS",
+        "reproduce": "oracle_constant 0.7353, eb_n10 0.6839, eb_n0 0.3674 all bit-identical PASS"
+      },
+      "kill_triggered": false,
+      "finding": "常数偏移不是 DOI 线的天花板。仿射 oracle 0.7936 比常数 oracle 0.7353 高 0.0583，等渗 oracle 再高 0.0435 到 0.8371，所以「只平移」这一模型类之上还有空间。收缩斜率在 n=10 拿到 0.7080（比 eb_random 的 0.6839 高 0.0241），在 n=50 拿到 0.7503（高 0.0260）。不收缩的仿射估计在 n=1/2 崩到 0.4258/0.5210，说明 1-2 行估不出斜率；eb_slope 在 c<3 时把斜率固定为 1，因此在 n=1/2 与 eb_random 逐位相同，没有用小样本收益换大样本收益。n=10 的 0.7080 成为 DOI 线的新默认读数。",
+      "next": "UP-42 把 eb_slope 并入主表，并重算索引里的 DOI 行",
+      "date": "2026-10-23"
     },
     {
       "id": "UP-40",
@@ -511,33 +575,68 @@
       "id": "UP-41",
       "priority": "P2",
       "wave": 1,
-      "status": "PLANNED",
-      "title": "组条件覆盖的有限样本修正：五个金属能不能同时 ≥0.87",
-      "question": "UP-33 用 Mondrian 把 Os 从 0.8088 修到 0.8888，但 Mondrian 在 n_cal=10 下用的是经验分位数，本身偏乐观。加有限样本修正后，五个金属还能同时过门吗？代价多少宽度？",
-      "why_now": "UP-33 的 gate 是 4/5，唯一失败项是组覆盖。修法有三条（有限样本分位数 / 组条件重加权 / 组内收缩），从未在同一批抽样上比过，所以现在不知道 0.8888 是真覆盖还是分位数太乐观。",
+      "status": "DONE",
+      "title": "组条件覆盖的下界：每次抽样的最差金属能不能守住 0.80",
+      "question": "Mondrian 把最差金属的均值修到 0.8888，但 20 次抽样里最差的一次只有 0.7241（五个 seed 分别 0.7241/0.7241/0.7586/0.7414/0.7414）。要修的是每次抽样的下界，不是均值。",
+      "why_now": "UP-33 的 Mondrian 已经过门（均值口径），但逐抽样下界比均值低 0.16。部署只抽一次，所以均值口径的 0.8888 不是保证。三种稳定化（不低全局 / Bonferroni / 向全局收缩）从未在同一批抽样上比过。",
       "literature": [
         "conditional-cp",
         "kandinsky-cp",
         "hetero-cp"
       ],
       "code_points": [
-        "扩 molmetal/scripts/msrs_conformal_calibrated.py，新增三个臂（评估与抽样沿用同一套 rng 与 20 次重复）",
-        "  臂 mondrian_fs — 分位数用 ceil((n_g+1)(1-alpha))/n_g，小组自动变保守",
-        "  臂 group_reweight — Gibbs 组条件重加权，权重由组样本数定，不换分位数",
-        "  臂 mondrian_shrunk — 组内分位数向全局分位数按 n_g 收缩（n_g 小则更靠全局）",
-        "  每个臂报 marginal / per-metal / worst-metal 覆盖 + 中位宽 + 最差金属宽；对照臂必须逐位复现 1.4478 / 1.4390 / 0.8888",
-        "  worst-group 统计量沿用修正后的口径：先按金属平均、再取最小（不是每抽样取最小再平均）"
+        "扩 molmetal/scripts/msrs_conformal_calibrated.py，在同一个 rep 循环内加三个臂（不额外消耗 rng，保证对照臂逐位复现）",
+        "  臂 mondrian_floor — q_m' = max(q_m, q_global)：小组的分位数不允许低于全局分位数",
+        "  臂 mondrian_bonferroni — 每金属用 alpha/5，得到五个金属的同时保证",
+        "  臂 mondrian_shrunk — q_m' = q_global + n_g/(n_g+30) * (q_m - q_global)",
+        "  每个臂按与 Mondrian 相同的口径报：覆盖均值、逐抽样最差金属的均值与最小值、中位宽",
+        "  对照臂必须逐位复现 1.4478 / 1.4390 / 0.8888（容差 5e-5）"
       ],
       "artifact": "metrics/by_metric/msrs_conformal_group_repair.json",
       "gate": {
-        "all_metal": "至少一个臂：五个金属覆盖全部 ≥0.87",
-        "marginal": "同臂 marginal ≥0.90",
-        "width": "同臂中位宽 ≤1.55",
-        "reproduce": "split_cal / mondrian 两臂逐位复现 1.4478 / 1.4390 / 0.8888（容差 5e-5）"
+        "floor_min": "至少一个臂：逐抽样最差金属覆盖的最小值 ≥0.80（current 0.7241）",
+        "mean": "同臂 worst-metal 均值 ≥0.87",
+        "width": "同臂中位宽 ≤1.60",
+        "reproduce": "split_cal / mondrian 两臂逐位复现 1.4478 / 1.4390 / 0.8888"
       },
-      "kill": "没有任何臂能在中位宽 ≤1.70 内让五个金属全部 ≥0.87 ⇒ 组条件覆盖在 n_cal=10 下不可得，写进 catalog 并停。",
+      "kill": "没有任何臂能在中位宽 ≤1.70 内把逐抽样最小值抬到 0.78 ⇒ 单次抽样的组条件保证在这个 n_cal 下不可得，写进 catalog 并停。",
       "cost": "CPU ~35 min",
-      "device": "cpu"
+      "device": "cpu",
+      "amendment_note": "2026-10-23T05:45+08:00，在看到任何新结果之前。原门槛写的是「五金属覆盖全部 ≥0.87」，但读代码发现 conformal_quantile 本身已经是有限样本修正（ceil((n+1)(1-alpha))/n），Mondrian 的均值口径早就过门；真正没过的是逐抽样下界（0.7241）。门槛据此改成下界口径。",
+      "verdict": "FAIL",
+      "measured": {
+        "baseline_mondrian": {
+          "per_draw_min": 0.7241,
+          "worst_mean": 0.8888,
+          "width": 1.439
+        },
+        "mondrian_floor": {
+          "per_draw_min": 0.746,
+          "worst_mean": 0.8888,
+          "width": 1.4492
+        },
+        "mondrian_bonferroni": {
+          "per_draw_min": 0.8793,
+          "worst_mean": 0.9794,
+          "width": 2.337
+        },
+        "mondrian_shrunk": {
+          "per_draw_min": 0.7391,
+          "worst_mean": 0.8844,
+          "width": 1.439
+        }
+      },
+      "gate_result": {
+        "floor_min": "only bonferroni 0.8793 >= 0.80; floor 0.7460 and shrunk 0.7391 fail",
+        "mean": "bonferroni 0.9794 >= 0.87; all arms pass on mean",
+        "width": "bonferroni 2.3370 > 1.60 FAIL; floor 1.4492 and shrunk 1.4390 pass",
+        "same_arm_all_three": "no arm; arm_passing_all = []",
+        "reproduce": "1.4486 / 1.4390 / 0.8888 all bit-identical PASS"
+      },
+      "kill_triggered": true,
+      "finding": "逐抽样的组条件下界买得到，但价格是宽度。Bonferroni 把最差一次抽样的金属覆盖从 0.7241 抬到 0.8793，代价是中位宽从 1.4390 涨到 2.3370（+62%），因为每个金属按 alpha/5=0.02 校准。另外两个便宜的臂在真正出问题的金属上无效：缺陷在 Os，而 floor 只在该金属分位数低于全局分位数时才抬高它，Os 的分位数高于全局，覆盖率原地不动（0.8888），Ir 和 Re 反而升到 0.9167 / 0.9152；shrunk 把 Os 的分位数拉向全局，覆盖率降到 0.8844。最差组的缺口不是分位数偏小，所以夹紧和收缩都不针对它。kill 规则（任一臂在宽度 <=1.70 内把逐抽样最小值抬到 0.78）未满足，该线关闭。",
+      "closed_line": "单次抽样的组条件覆盖保证（n_cal=10，五金属）",
+      "date": "2026-10-23"
     },
     {
       "id": "UP-42",
@@ -609,17 +708,22 @@
     }
   ],
   "round6_progress": {
-    "done": [],
-    "open": [
+    "done": [
       "UP-38",
       "UP-39",
+      "UP-41"
+    ],
+    "open": [
       "UP-40",
-      "UP-41",
       "UP-42"
     ],
     "note": "第六轮 5 个包，三波。门槛冻结于 2026-10-23T05:30+08:00，早于任何结果。",
     "gate_frozen_at": "2026-10-23T05:30+08:00",
-    "wave_1_verdicts": {},
+    "wave_1_verdicts": {
+      "UP-38": "FAIL (kill) — PPI 未标注项在本队列增加方差，v_ratio 1.04-1.26",
+      "UP-39": "PASS — 仿射 oracle 0.7936，eb_slope n10 0.7080",
+      "UP-41": "FAIL (kill) — bonferroni 买到 0.8793 下界但宽度 2.3370；另两臂下界 0.746/0.739"
+    },
     "wave_2_verdicts": {},
     "wave_3_verdicts": {}
   }

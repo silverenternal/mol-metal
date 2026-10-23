@@ -422,24 +422,19 @@ def _pool_repeats(vals: List[Dict[str, object]]) -> Dict[str, object]:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main(argv: Optional[Sequence[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--long", type=Path,
-                    default=PROJECT_ROOT / "data" / "msrs" / "measurements.parquet")
-    ap.add_argument("--metal-desc", type=Path,
-                    default=PROJECT_ROOT / "molmetal" / "data" / "metal_chemistry_5.csv")
-    ap.add_argument("--seeds", type=int, default=len(SEEDS))
-    ap.add_argument("--repeats", type=int, default=N_REPEATS)
-    ap.add_argument("--out", type=Path,
-                    default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_paper_calibration.json")
-    args = ap.parse_args(argv)
+def assemble(long: Path, metal_desc: Path) -> Dict[str, object]:
+    """Everything that does not depend on the seed.
 
-    t0 = time.time()
-    frame = select_cohort(args.long)
+    Extracted so UP-38 (PPI) and UP-39 (per-paper slope) run on the exact
+    same feature matrix, folds and per-paper row index.  Moving this code
+    must not change a single number: the four headline R^2 values are the
+    regression test, checked by ``--verify-only``.
+    """
+    frame = select_cohort(long)
     y = frame["value_log10"].to_numpy(dtype=float)
     doi = frame["doi"].astype(str).to_numpy()
 
-    load_descriptors(args.metal_desc)
+    load_descriptors(metal_desc)
     vocab = cell_vocabulary(frame["cell_line_key"].astype(str).tolist(), top_n=TOP_CELL_LINES)
     codes = native_codes(
         frame["metal"].astype(str).tolist(),
@@ -475,6 +470,45 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if len(rows) >= 2 and len(rows) <= 400:
             sim_by_paper[p] = similarity_block(fp, rows)
     print(f"[UP-26] similarity blocks cached for {len(sim_by_paper)} papers")
+
+    return {
+        "frame": frame,
+        "y": y,
+        "paper_idx": paper_idx,
+        "fold_id": fold_id,
+        "fold_info": fold_info,
+        "rows_by_paper": rows_by_paper,
+        "sim_by_paper": sim_by_paper,
+        "X_model": X_model,
+        "empty": empty,
+        "codes": codes,
+        "n_papers": n_papers,
+    }
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--long", type=Path,
+                    default=PROJECT_ROOT / "data" / "msrs" / "measurements.parquet")
+    ap.add_argument("--metal-desc", type=Path,
+                    default=PROJECT_ROOT / "molmetal" / "data" / "metal_chemistry_5.csv")
+    ap.add_argument("--seeds", type=int, default=len(SEEDS))
+    ap.add_argument("--repeats", type=int, default=N_REPEATS)
+    ap.add_argument("--out", type=Path,
+                    default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_paper_calibration.json")
+    args = ap.parse_args(argv)
+
+    t0 = time.time()
+    data = assemble(args.long, args.metal_desc)
+    frame = data["frame"]
+    y = data["y"]
+    paper_idx = data["paper_idx"]
+    fold_id = data["fold_id"]
+    rows_by_paper = data["rows_by_paper"]
+    sim_by_paper = data["sim_by_paper"]
+    X_model = data["X_model"]
+    empty = data["empty"]
+    codes = data["codes"]
 
     per_seed: Dict[str, object] = {}
     kappa_log: Dict[str, object] = {}

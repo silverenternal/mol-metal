@@ -12336,3 +12336,107 @@ labelled rows in the held-out metal, and it is not the training objective or the
 §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+## §6.193 — UP-38: the unlabeled rows of a paper are not a free variance source, and the PPI small-sample line closes (2026-10-23)
+
+**What this wave was for.** At `n_cal = 1` the per-paper offset estimator scores 0.5559,
+and at `n_cal = 10` it already holds 93% of the constant-shift ceiling. The estimator uses
+`c` rows of a paper and discards every other prediction for that paper. PPI/PPI++ is the
+standard answer to "few labels, many predictions": the unlabeled predictions enter the
+estimate and reduce its variance without changing what is being estimated. The gate asked
+for 0.60 at `n_cal = 1`, 0.64 at 2, and no regression at 10, with a kill at 0.5759.
+
+**Result.** The primary arm `ppi_eb` scores **0.5545 / 0.6066 / 0.6716** at
+`n_cal = 1 / 2 / 10`, against the reproduction arm's **0.5559 / 0.6094 / 0.6839**. All
+three thresholds fail and the kill fires. The `maxmin` arm reaches 0.5779 / 0.6372 / 0.6719,
+so the design variant does not rescue it: 0.5779 is 0.002 above the kill line and still
+0.022 below the gate.
+
+**Why the variance went the wrong way.** PPI's observation variance is
+`sigma2/c + Var(f | unlabeled)/(n - c)`. The second term is negligible only when the
+unlabeled set dwarfs the labeled one. The median paper here has **8 rows**, so at `c = 1`
+the unlabeled set is about 7 rows and `Var(f | unlabeled)` is the same order as `sigma2`.
+The measured ratio `v_ppi / v_eb` is **1.0382 / 1.0778 / 1.1449 / 1.2575** at
+`n_cal = 1 / 2 / 5 / 10`: every value above 1, meaning the unlabeled term adds variance
+rather than removing it. At `c = 50` most papers have one unlabeled row left, the ratio
+falls back to 1.0377, and `ppi_eb` drops to **0.6682**, below its own `n = 10` value. The
+curve is not monotone in the sample size because the unlabeled denominator shrinks as the
+labeled set grows.
+
+**Honest boundaries (ACTIVE).**
+
+  * The unlabeled rows are the evaluation rows. That is the deployment regime, not a leak:
+    only their predictions enter the estimate, never their labels.
+  * PPI assumes the calibration rows are a uniform draw from the paper. The `maxmin` arm
+    violates that assumption by design and is reported separately for that reason.
+  * FAB-PPI (arXiv:2502.02363) motivated pairing a Bayesian shrinkage with the PPI
+    observation, but its estimator is not implemented. The paper text could not be
+    retrieved and inventing its posterior would not be reproducible; the EB posterior mean
+    plays that role instead.
+  * Papers with one row cannot be calibrated and evaluated, so they leave the `n_cal > 0`
+    row sets entirely, exactly as in UP-26.
+
+**Artifacts.** `metrics/by_metric/msrs_ppi_calibration.json`,
+`molmetal/scripts/msrs_ppi_calibration.py`.
+
+**§6.193 catalog-count math.** Net **+1**. Cumulative **247 → 248**. ACTIVE
+**203 → 204**.
+
+**Workflow** | UP-38 (2026-10-23; CPU 263 s, 5 seeds x 20 repeats x 4 arms x 6 sample
+sizes; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.194 — UP-41: the per-draw worst-metal coverage cannot be pushed to 0.80 without paying for it in interval width (2026-10-23)
+
+**What this wave was for.** The metal-Mondrian arm passes its gate on the mean: worst-metal
+coverage 0.8888 over five seeds. A deployment draws one calibration set, and the worst of
+its 20 draws is **0.7241**. The mean of five minima is not a guarantee. Three stabilisations
+of the per-metal quantile were compared on the same draws: floor at the global quantile,
+Bonferroni over five metals, and shrinkage toward the global quantile. The gate required
+one arm to reach a per-draw minimum of 0.80 with worst-metal mean 0.87 and median width
+1.60.
+
+**Result.** No arm passes.
+
+| Arm | per-draw min | worst-metal mean | median width |
+|---|---|---|---|
+| `mondrian_floor` | 0.7460 | 0.8888 | 1.4492 |
+| `mondrian_bonferroni` | **0.8793** | 0.9794 | **2.3370** |
+| `mondrian_shrunk` | 0.7391 | 0.8844 | 1.4390 |
+| baseline Mondrian | 0.7241 | 0.8888 | 1.4390 |
+
+Bonferroni is the only arm that buys the floor, and it pays **+62%** in width
+(2.3370 against 1.4390) because each metal is calibrated at `alpha/5 = 0.02`. The kill rule
+asked whether any arm reaches 0.78 within width 1.70; none does, so the line closes.
+
+**Why the two cheap arms fail on the metal that matters.** The deficit is Os. `floor` raises
+a metal's quantile only when that quantile sits below the global one; Os's sits above it, so
+its coverage is unchanged at 0.8888 while Ir and Re rise to 0.9167 and 0.9152. `shrunk`
+pulls Os's quantile down toward the global value, and its coverage falls to 0.8844. The
+worst group's shortfall is not a too-small quantile, so neither clamping nor shrinking
+addresses it.
+
+**Honest boundaries (ACTIVE).**
+
+  * One calibration size, `n_cal = 10`, five metals, five seeds, 20 repeats. The
+    conclusion is about this grid, not about group-conditional coverage in general.
+  * Metals with fewer than `MIN_METAL_CAL` calibration rows fall back to the global
+    quantile in every arm, so the comparison covers the five metals that have enough rows.
+  * The gate was rewritten from "all five metals >= 0.87" to the per-draw minimum before
+    any repair arm was run. `conformal_quantile` already carries the finite-sample
+    correction `ceil((n+1)(1-alpha))/n`, so the mean-based wording had long passed; the
+    number that failed was the per-draw one. The amendment timestamp is in the artifact.
+  * The three reference numbers reproduce bit-for-bit (1.4486 / 1.4390 / 0.8888), which is
+    what makes the new arms comparable to the baseline rather than to a re-run.
+
+**Artifacts.** `metrics/by_metric/msrs_conformal_group_repair.json`,
+`molmetal/scripts/msrs_conformal_calibrated.py`.
+
+**§6.194 catalog-count math.** Net **+1**. Cumulative **248 → 249**. ACTIVE
+**204 → 205**.
+
+**Workflow** | UP-41 (2026-10-23; CPU 429 s, 5 seeds x 20 repeats x 3 repair arms + 7
+reference arms; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0
+wet-lab).
+
+---
