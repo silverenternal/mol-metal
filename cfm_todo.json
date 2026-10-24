@@ -27,7 +27,7 @@
   "dmpnn_mtw_{a2780,a2780cis,mcf7,a549,ir,os,re}_seed{0,1,2}.pt": "D-MPNN MTW cohort, 25 ckpts, seed 0/1/2 across 7 metals (paper §3.2 fold-split)",
   "_note_2026_10_16_Wf-A48_§6.74": "cfm_fullcorpus_2026_10_10_last.pt and cfm_patience10_seed0_last.pt were claimed here pre-audit but are NOT on disk per AGENTS.md §5.5 filesystem-truth audit 2026-10-16; ckpt_manifest.json has 0 entries for either. Closing drift via metadata rewrite + honest-negative §6.74 (catalog). Primary fullcorpus ckpt re-train is queued for next GPU slot.",
   "cfm_c7_fullgen_2026_10_20/checkpoints/cfm_yuelbond_wasserstein_seed0{,_last}.pt": "CLAIMED 2026-10-21, FALSIFIED 2026-10-24 (Wf-A108i, §6.197): molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/ is an EMPTY directory (0 entries, mtime 2026-10-21 16:52, ~12 h after the run ended).  A repo-wide find for any .pt written 2026-10-20..22 does not contain it.  The run's METRICS and generated_smiles.csv do survive; only the weights are gone.  A weight-level comparison against this run is therefore impossible without retraining.",
-  "_note_2026_10_24_Wf-A108i_§6.197": "Second §5.5 filesystem-truth violation of this shape after the 2026-10-16 §6.74 audit: metadata said the weights existed, the disk said otherwise.  Until a full-corpus checkpoint is verified by ls -la, no full-corpus weight-level claim may be made."
+  "_note_2026_10_24_Wf-A108i_§6.197": "Two §5.5 filesystem-truth violations of the same shape (§6.74 was the first): the c7 full-corpus weights are gone, and the c7 run's declared cosine schedule never ran.  MEASURED from its 18 lr_step events: every one records phase='constant' at 3.0e-4, because scripts/start.sh reads protocol.scheduler.type (absent -> 'none') and passes --lr-scheduler none over the yaml's train.lr_scheduler: cosine.  The same launcher reported epochs=50 for an 18-epoch config.  Consequence: a yaml describes two different protocols depending on whether it is launched through start.sh or the trainer directly.  Fix applied for the c8 re-run only (configs/c8_fullgen_b64_2026_10_24.yaml declares protocol.epochs, protocol.scheduler.*, protocol.weight_decay, protocol.max_norm, output.resume_from, and sets train.lr_scheduler: none to match c7 as executed).  The launcher itself is NOT fixed: start.sh still supplies those values from its own defaults for every other config in the repo."
  },
  "harness_and_allocator_insights": {
   "added": "2026-10-21",
@@ -1377,7 +1377,8 @@
    "status": "MEASURED 2026-10-24 (§6.196 attribution corrected, §6.197 added)",
    "finding": "FmOdeTerm is the entire cost: batch 64 drops 23,916 -> 6,382 MiB with it off; SBOO3Term and EnergyConservation are within 22 MiB of each other.  At a 32,000 MiB cap, batch 64 loses FmOdeTerm + EnergyConservation on step 1 and aborts; batch 48 completes with all three terms live at a 30,089 MiB peak.",
    "artifact": "metrics/by_metric/wfa108i_term_cost.json",
-   "consequence": "The c7 protocol (batch 64 + the shipped objective) is not runnable on GPU1 at 32,607 MiB.  See DEC_full_corpus_gpu1_protocol."
+   "consequence": "The c7 protocol (batch 64 + the shipped objective) is not runnable on GPU1 at 32,607 MiB.  See DEC_full_corpus_gpu1_protocol.",
+   "also_found": "The c7 reference run trained at a flat 3.0e-4 for all 18 epochs while its yaml declared cosine + 5-epoch warmup (§6.197 finding 4).  c8 reproduces the run as executed, not as declared."
   }
  },
  "pointer_to_history": {

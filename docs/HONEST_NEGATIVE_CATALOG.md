@@ -12680,7 +12680,7 @@ ladders attempted; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `pa
 
 ---
 
-## §6.197 — The full-corpus reference run was degraded on 1-6 steps per epoch, its summary artifact does not say so, and its checkpoint is not on disk (2026-10-24)
+## §6.197 — The full-corpus reference run was degraded on 1-6 steps per epoch, its declared schedule never ran, and its checkpoint is not on disk (2026-10-24)
 
 **Why this was checked.** A GPU1 full-corpus arm needs a same-protocol comparator. The
 only full-corpus CFM run on disk is `cfm_c7_fullgen_2026_10_20` (batch 64,
@@ -12730,6 +12730,24 @@ repo-wide `find` for any `.pt` written 2026-10-20..22 does not contain it. This 
 `cfm_fullcorpus_2026_10_10_last.pt`: the metadata was rewritten to say the weights
 exist, and they do not.
 
+**4. The declared cosine schedule never ran.** Every one of the run's 18 `lr_step`
+events records `"phase": "constant"` at 3.0e-4:
+
+```
+{"epoch": 0,  "event": "lr_step", "lr": 0.0003, "phase": "constant"}
+...
+{"epoch": 17, "event": "lr_step", "lr": 0.0003, "phase": "constant"}
+```
+
+The yaml declares `train.lr_scheduler: cosine` and `train.lr_warmup_epochs: 5`. The
+cause is in the launcher, not the trainer: `scripts/start.sh` builds the trainer
+command from `protocol.scheduler.type` (absent in this yaml → `"none"`) and passes
+`--lr-scheduler none` on the command line, which wins over the yaml under the
+precedence rule. So the reference trained at a flat 3.0e-4 for all 18 epochs, and
+the config has said otherwise since 2026-10-20. The same launcher reported
+`epochs=50` for this 18-epoch config from `protocol.epochs`'s default, which is the
+same class of defect: a value the launcher supplies that the yaml never declared.
+
 **What survives, and what it is worth.** The metrics and the generation pool survive:
 `per_epoch_metrics.json` (14 of 18 epochs, 4-17), `generated_smiles.csv`, and
 `per_epoch_metrics.csv`. So a metric-level comparison against this run is still
@@ -12737,7 +12755,18 @@ possible; a weight-level comparison (evaluating both checkpoints on one cohort) 
 not, and neither is a seed-matched rerun without retraining. Every headline from this
 run inherits a comparator that lost `FmOdeTerm` on up to 1% of steps — small, and
 unequal across epochs, which is the property that makes it a confound rather than
-noise.
+noise — and that trained at a flat learning rate while its config declared a cosine
+decay.
+
+**The re-run.** `configs/c8_fullgen_b64_2026_10_24.yaml` is this protocol re-run
+(committed 2026-10-24, `8fc837b3`). It reproduces the run *as executed*, not as
+declared: `train.lr_scheduler: none`, `protocol.scheduler.type: none`, and every
+value `scripts/start.sh` would otherwise supply from its own defaults
+(`protocol.epochs`, `protocol.weight_decay`, `protocol.max_norm`, `output.resume_from`)
+is now written in the yaml. That is the §5.11 rule applied to the launcher contract,
+which the existing gates do not cover: `_yaml_only_gate.py` checks that wrappers pass
+`--config` only, and `_config_binding_gate.py` checks that keys reach a dest, but
+neither checks that a wrapper is not *supplying* a value the config never declared.
 
 **Honest boundaries (ACTIVE).**
 
@@ -12753,12 +12782,17 @@ noise.
     parallel session's `git reset` is the documented pattern (see the 2026-10-15
     incident) but is not proven here.
   * None of this says the run's numbers are wrong. It says the reference is not the
-    clean-protocol run the todo file describes, and a GPU1 comparison must either
-    re-run the reference or declare the difference.
+    clean-protocol run the todo file describes, and a comparison must either re-run
+    the reference or declare the difference.
+  * The constant-LR finding is about *this launcher path*, not about the trainer. A
+    run launched by calling the trainer directly (as the Wf-A108 probes are) gets
+    `cosine` from the yaml. The same config therefore describes two different
+    protocols depending on how it is launched, which is the defect.
 
 **Artifacts.** `molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl`,
 `molmetal/reports/cfm_c7_fullgen_2026_10_20/per_epoch_metrics.json`,
-`configs/c7_fullgen_2026_10_20.yaml`, `cfm_todo.json` (`checkpoints_on_disk`).
+`configs/c7_fullgen_2026_10_20.yaml`,
+`configs/c8_fullgen_b64_2026_10_24.yaml`, `cfm_todo.json` (`checkpoints_on_disk`).
 
 **§6.197 catalog-count math.** Net **+1**. Cumulative **251 -> 252**. ACTIVE
 **207 -> 208**.
