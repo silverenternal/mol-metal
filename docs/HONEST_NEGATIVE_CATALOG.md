@@ -12565,3 +12565,98 @@ reproduced `fm_term` 4.108036050796509 bit-for-bit against the pre-wire-in run; 
 number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
 
 ---
+## §6.196 — Wf-A108h: four times the clouds per step is still the prior at 125 steps, and a 20 GiB cap silently zeroes weighted terms (2026-10-24)
+
+**What this wave was for.** §6.187 closed the head question (radial cannot fit one
+batch; `vector_channels` can) and left one untested single factor: the regime. The
+Wf-A108d arms train on 200 clouds at batch 8; c7 is 26,715 clouds at batch 64 but
+needs 40-90 GB. This arm was the middle rung — more clouds per optimizer step at the
+same step count — run through the trainer rather than a diagnostic field.
+
+**The memory constraint set the batch, not the design.** Under a 20 GiB allocator cap
+(`MOLMETAL_CUDA_MEM_LIMIT_MIB=20480`, added in this wave) the pre-registered
+1,600-cloud / batch-64 arm does not fit. The ladder, measured:
+
+| batch | n_train | peak alloc | what was lost |
+|---:|---:|---:|---|
+| 64 | 1,600 | 20,440 MiB | `FmOdeTerm` OOM on 25/25 steps, `SBOO3Term` on 4/25 |
+| 48 | 1,200 | 20,401 MiB | `SBOO3Term` and `EnergyConservation` at step 0-1, also with `expandable_segments:True` |
+| 32 | 800 | 20,041 MiB | `EnergyConservation` on 2 of 125 steps |
+
+The reason is not the FM forward — `fm_batch_chunk_ratio: 2.0` holds that at 157 MB.
+It is the auxiliary class-wrapper terms: each re-runs the velocity field with the
+graph retained (`FmOdeTerm` 4 forwards, `SBOO3Term` 2 per rotation, `EnergyConservation`
+2), and the bond head's pair tensors scale as `O(n_atoms^2)` over the batch. Cutting
+the batch keeps the objective identical to the A108d arms; dropping terms would have
+changed the objective instead.
+
+**Result — the field is still the prior.** 5 epochs, 800 clouds at batch 32, 25
+optimizer steps per epoch, 1,219 s:
+
+| epoch | train_loss | fm_term | bond_ce | grad_norm |
+|---:|---:|---:|---:|---:|
+| 0 | 13.509 | 12.260 | 1.030 | 6.49 |
+| 4 | 13.223 | 12.237 | 0.782 | 5.30 |
+
+`fm_term` moves **-0.19%** over 125 steps while `bond_ce` falls **-24.1%**. The bond
+head learns; the flow field does not. Reading the epoch-4 checkpoint's field on the
+same 7-cloud cohort Wf-A108d used:
+
+| `t` | `v = 0` | this arm | Gaussian closed form |
+|---:|---:|---:|---:|
+| 0.05 | 9.008 | 8.785 | 3.605 |
+| 0.25 | 9.008 | 8.798 | 5.458 |
+| 0.50 | 9.008 | 8.857 | 8.344 |
+| 0.75 | 9.008 | **9.010** | 8.537 |
+| 0.95 | 9.008 | **9.193** | 6.305 |
+| mean | 9.008 | 8.928 | 6.450 |
+
+0.9% better than predicting zero on the mean, and worse than zero at `t = 0.75` and
+`t = 0.95`. `|v|` is 0.116-0.159 across `t`, the same band as the shipped 5-epoch
+checkpoint (§6.187), and `sign_flip_achieved` is false. This is the null Wf-A108d
+already measured from the other side: 4x the corpus at fixed steps moved the gap
+0.193 -> 0.198.
+
+**Finding — a run under memory pressure was not the arm it claimed to be.** At batch
+64, `FmOdeTerm` raised CUDA OOM on every step and returned `torch.zeros(())`. The
+loss curve cannot show that: a zeroed term, a term whose weight is 0, and a term whose
+value is genuinely 0 all look the same. The per-epoch `regularizer_fallbacks` field
+recorded the counts, but nothing at the top of the artifact said the run was not the
+config. This wave adds `objective_integrity` (`degraded`, `lost_terms`,
+`fallback_counts`, `fallback_reasons`) to `per_epoch_metrics.json` and a
+`[cfm-degraded]` banner at the end of the log, so the statement is made once and
+cannot be missed. On this arm it fires: `EnergyConservation` on 2 of 125 steps.
+
+**Honest boundaries (ACTIVE).**
+
+  * No gate was frozen for this arm before it ran, so it is reported as descriptive
+    numbers, not PASS/FAIL. A threshold chosen after seeing 8.928 would be post hoc.
+  * One seed, one cohort draw, 125 steps. The readout cohort is `eval_seed 999` (7 of
+    8 rows embeddable), the same one Wf-A108d used, so the per-`t` table is comparable
+    to that table and to nothing else.
+  * `SBOO3Term` is declared `0.0` in this config rather than lost to OOM. Its measured
+    contribution is ~1e-14 and it cost `2 * n_rot` field forwards per step; leaving it
+    on made the run degraded for no measurable gain.
+  * `EnergyConservation` was live at weight 0.05 and is the term that §6.195 showed
+    evaluating the field off the interpolation path. Losing it on 2 steps is a 1.6%
+    perturbation, not a fix for that finding.
+  * The 20 GiB cap is the PyTorch allocator fraction; the process peak reported by
+    `nvidia-smi` was 20,338 MiB including the CUDA context.
+
+**Artifacts.** `metrics/by_metric/wfa108h_regime_arm.json`,
+`metrics/by_metric/wfa108h_t_sensitivity.json`,
+`results/wfa108h_b32_chunk2_vector_channels/per_epoch_metrics.json`,
+`configs/wfa108h_{b32,b48,b64}_chunk2_vector_channels.yaml`,
+`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`
+(`_apply_cuda_mem_limit`, `_objective_integrity`, `_objective_weights`),
+`molmetal/tests/test_cfm_cuda_mem_limit.py`,
+`molmetal/tests/test_cfm_objective_integrity.py`.
+
+**§6.196 catalog-count math.** Net **+1**. Cumulative **250 -> 251**. ACTIVE
+**206 -> 207**.
+
+**Workflow** | Wf-A108h (2026-10-24; GPU0 1,219 s train + 2 min probe, three batch
+ladders attempted; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` +
+0 wet-lab).
+
+---

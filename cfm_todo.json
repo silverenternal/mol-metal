@@ -1,5 +1,5 @@
 {
-  "version": "8.5 (2026-10-23 — Wf-A108e recorded: the x1 target repairs the low-t end of the velocity field and pays for it at high t; the regime arm's config is written and gate-checked but not run; two new open decisions, DEC_energy_default_off and the batch-width choice)",
+  "version": "8.6 (2026-10-24 — Wf-A108h recorded: the regime arm is a null at 125 steps; the batch-64 arm does not fit 20 GiB; objective_integrity now states whether a run's weighted terms were live)",
   "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
   "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
   "task_definition": {
@@ -611,15 +611,15 @@
       "evidence": "metrics/by_metric/wfa108g_batch_chunk_memory.json；docs/HONEST_NEGATIVE_CATALOG.md §6.188",
       "added_by": "Wf-A108g (2026-10-23)",
       "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.188",
-      "status": "ARM CONFIG WRITTEN 2026-10-23 — configs/wfa108h_b64_chunk2_vector_channels.yaml (batch 64, n_train 1,600, fm_batch_chunk_ratio 2.0, 25 optimizer steps/epoch).  §5.11 yaml-only + config-binding gates PASS; parse_args round-trip verified (batch_size 64 int, fm_batch_chunk_ratio 2.0 float, velocity_head vector_channels).  NOT RUN: the protocol change is still the open question this DEC records, and GPU0 had a co-tenant at decision time.",
+      "status": "MEASURED 2026-10-24 (§6.196) — batch 64 does NOT fit a 20 GiB allocator cap: peak 20,440 MiB and FmOdeTerm OOM on 25/25 steps.  Batch 48 also fails.  The regime arm ran at batch 32 / 800 clouds, which fits with EnergyConservation lost on 2 of 125 steps.  The 64-cloud arm remains available in configs/wfa108h_b64_chunk2_vector_channels.yaml for a run with a larger cap.",
       "why_it_is_a_decision_not_a_fix": "加宽 batch 会改变每 epoch 的 optimizer steps 和 RNG 流，已完成的 5-epoch 各臂（AUC/gap_closed 表）就不再与新的 run 同协议；这不是省显存的开关，是一次协议切换。",
       "arm_config": "configs/wfa108h_b64_chunk2_vector_channels.yaml",
-      "arm_vram_measured": "157 MB FM forward at B=64 / ratio 2.0 (§6.188)"
+      "arm_vram_measured": "b64 20,440 MiB (OOM at 20,480 cap); b48 20,401; b32 20,041"
     },
     {
       "id": "DEC_energy_default_off",
       "blocking": "not blocking; changes the objective of every config that does not set the key",
-      "question": "EnergyConservation has shipped default-ON at weight 0.05 since Wf-A44 and has never been A/B'd.  The new loss_terms export shows it is the only term that rose in the Wf-A108e smoke (+1.4804 while the total rose +0.4222), and it evaluates the field at x_t + 0.5*v0 under the same t — off the interpolation path — with an LJ potential clamped to r in [0.5, 5.0] where 1/r^12 reaches 4,096, so its magnitude tracks how far the field moves atoms.  Set the default to 0.0 (bit-exact off, opt-in like fm_ode / sboo3 / ring prior), keep 0.05, or run a two-arm A/B at the same budget first?",
+      "question": "EnergyConservation has shipped default-ON at weight 0.05 since Wf-A44 and has never been A/B'd.  The new loss_terms export shows it is the only term that rose in the Wf-A108e smoke (+1.4804 while the total rose +0.4222), and it evaluates the field at x_t + 0.5*v0 under the same t — off the interpolation path — with an LJ potential clamped to r in [0.5, 5.0] where 1/r^12 reaches 4,096, so its magnitude tracks how far the field moves atoms.  Set the default to 0.0 (bit-exact off, opt-in like fm_ode / sboo3 / ring prior), keep 0.05, or run a two-arm A/B at the same budget first?  UPDATE 2026-10-24 (§6.196): under a 20 GiB cap the term OOM'd on 2 of 125 steps of the regime arm, which made that run degraded.  It is the only term that still failed after the batch was cut to 32.",
       "evidence": "docs/HONEST_NEGATIVE_CATALOG.md §6.195; metrics/by_metric/wfa108e_t_sensitivity_x1.json; the §5.7 smoke artifact records 27 objective weights, 15 nonzero, 13 of them absent from the yaml",
       "added_by": "Wf-A108e (2026-10-23)",
       "status": "OPEN",
@@ -1321,6 +1321,46 @@
         "test": "molmetal/tests/test_wfa108e_x1_head.py::test_epoch_record_carries_every_loss_term"
       },
       "next": "The regime arm, not another head: configs/wfa108h_b64_chunk2_vector_channels.yaml (1,600 clouds at batch 64, fm_batch_chunk_ratio 2.0, 25 optimizer steps per epoch)."
+    },
+    "Wf-A108h_regime_arm": {
+      "scope": "The regime factor: more clouds per optimizer step at the same 25-steps-per-epoch budget, run through the trainer with use_fm_objective on, under a 20 GiB allocator cap.",
+      "status": "MEASURED 2026-10-24 (§6.196).  NULL at 125 steps: the field is still the prior.  The pre-registered 1,600-cloud / batch-64 arm does not fit 20 GiB.",
+      "MEASURED_2026_10_24": {
+        "artifact": "metrics/by_metric/wfa108h_regime_arm.json",
+        "run": "5 epochs, 800 clouds at batch 32, 25 steps/epoch, 1,219 s",
+        "fm_term": [
+          12.26,
+          12.237
+        ],
+        "bond_ce": [
+          1.03,
+          0.782
+        ],
+        "field_mean_mse": {
+          "network": 8.928,
+          "zero": 9.008,
+          "gaussian": 6.45
+        },
+        "mean_v_norm_range": [
+          0.116,
+          0.159
+        ],
+        "sign_flip_achieved": false,
+        "objective_integrity": {
+          "degraded": true,
+          "lost_terms": [
+            "EnergyConservation"
+          ],
+          "count": 2
+        }
+      },
+      "batch_ladder": {
+        "b64_n1600": "peak 20,440 MiB; FmOdeTerm OOM 25/25, SBOO3Term 4/25 — does not fit",
+        "b48_n1200": "peak 20,401 MiB; SBOO3Term + EnergyConservation OOM — does not fit",
+        "b32_n800": "peak 20,041 MiB; EnergyConservation 2/125 — the arm that ran"
+      },
+      "why_it_does_not_fit": "The auxiliary class-wrapper terms re-run the velocity field with the graph retained (FmOde 4 forwards, SBOO3 2*n_rot, Energy 2), and the bond head's pair tensors are O(n_atoms^2) over the batch.  The FM forward is not the cost: chunking holds it at 157 MB.",
+      "next": "A regime effect needs the 2,000-step budget (Wf-A108d: 0.217 gap_closed at 200 clouds), not 125 steps at 4x data.  Or c7 with a cap that admits it."
     }
   },
   "pointer_to_history": {

@@ -341,6 +341,52 @@ def _empty_cache_every() -> int:
 _EMPTY_CACHE_EVERY = _empty_cache_every()
 
 
+def _apply_cuda_mem_limit(device: object) -> None:
+    """Cap this process's CUDA allocator at ``MOLMETAL_CUDA_MEM_LIMIT_MIB``.
+
+    The cap is a fraction of the device's total memory handed to
+    ``torch.cuda.set_per_process_memory_fraction``, which makes the caching
+    allocator raise OOM rather than grow past it.  It bounds THIS process, not
+    the card: a co-tenant's memory is outside it.
+
+    Off when the variable is unset or 0, so every existing run is unchanged.
+    A value above the device total is clamped to 1.0 rather than erroring —
+    the caller asked for more than exists, which is a no-op, not a failure.
+    """
+    import os as _os
+
+    raw = _os.environ.get("MOLMETAL_CUDA_MEM_LIMIT_MIB", "").strip()
+    if not raw:
+        return
+    try:
+        limit_mib = float(raw)
+    except ValueError:
+        print(f"[cfm-mem] ignoring MOLMETAL_CUDA_MEM_LIMIT_MIB={raw!r} (not a number)", flush=True)
+        return
+    if limit_mib <= 0:
+        return
+    if getattr(device, "type", "cpu") != "cuda":
+        print(f"[cfm-mem] cap {limit_mib:.0f} MiB ignored on {device}", flush=True)
+        return
+    try:
+        # ``torch.device("cuda")`` carries no index, and both
+        # get_device_properties and set_per_process_memory_fraction reject
+        # that form.  Resolve it to the current device instead of assuming
+        # the caller passed ``cuda:N``.
+        if getattr(device, "index", None) is None:
+            device = torch.device("cuda", torch.cuda.current_device())
+        total = float(torch.cuda.get_device_properties(device).total_memory)
+        frac = min(1.0, limit_mib * 1024.0 * 1024.0 / total)
+        torch.cuda.set_per_process_memory_fraction(frac, device)
+        print(
+            f"[cfm-mem] allocator capped at {limit_mib:.0f} MiB "
+            f"({frac * 100.0:.2f}% of {total / 1024 ** 3:.1f} GiB) on {device}",
+            flush=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - a failed cap must not kill the run
+        print(f"[cfm-mem] cap failed: {exc}", flush=True)
+
+
 def _regularizer_fallbacks() -> Dict[str, int]:
     """Cumulative count of swallowed regulariser exceptions, by class name.
 
@@ -370,6 +416,38 @@ def _regularizer_fallback_reasons() -> Dict[str, Dict[str, int]]:
     from molmetal.loss.regularization_losses import FALLBACK_REASONS
 
     return {cls: dict(by_type) for cls, by_type in FALLBACK_REASONS.items()}
+
+
+def _objective_integrity() -> Dict[str, object]:
+    """Did every weighted term actually contribute to the objective?
+
+    Wf-A108h (2026-10-24) — at batch 64 under a 20 GiB allocator cap,
+    ``FmOdeTerm`` raised CUDA OOM on 25 of 25 steps and returned
+    ``torch.zeros(())`` each time, and ``SBOO3Term`` did so on 4 of 25.  The
+    loss curve cannot show that: a zeroed term and a term whose weight is 0
+    look the same, and both look like a smaller objective.  The per-epoch
+    ``regularizer_fallbacks`` field records the counts, but nothing at the top
+    of the artifact says the run is not the arm it claims to be.  This block
+    is that statement.
+
+    ``degraded`` is True iff any term fell back at least once.  The counts are
+    cumulative over the run, so read them against ``n_epochs x steps_per_epoch``.
+    """
+    fallbacks = _regularizer_fallbacks()
+    lost = sorted(k for k, v in fallbacks.items() if int(v) > 0)
+    return {
+        "degraded": bool(lost),
+        "lost_terms": lost,
+        "fallback_counts": fallbacks,
+        "fallback_reasons": _regularizer_fallback_reasons(),
+        "reading": (
+            "degraded=true means at least one weighted term returned zero "
+            "instead of its value on at least one step; the objective is not "
+            "the one the config describes, and any comparison against an arm "
+            "where that term was live is confounded.  An empty dict means "
+            "every weighted term contributed on every step."
+        ),
+    }
 
 
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
@@ -13326,6 +13404,7 @@ def main() -> int:
                 )
         except Exception:
             pass
+    _apply_cuda_mem_limit(device)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     # Output dirs.
@@ -17006,6 +17085,7 @@ def main() -> int:
             "The Wasserstein + Catherine closure bias contribute as "
             "engine-tagged add-ons, NOT silent substitutes."
         ),
+        "objective_integrity": _objective_integrity(),
     }
     (out_dir / "per_epoch_metrics.json").write_text(
         json.dumps(metrics_payload, indent=2) + "\n"
@@ -17345,6 +17425,15 @@ def main() -> int:
         f"Wall total: {total_elapsed:.1f}s.",
         flush=True,
     )
+    _integrity = _objective_integrity()
+    if _integrity["degraded"]:
+        print(
+            "[cfm-degraded] WARNING — the objective is NOT the one the config "
+            f"describes: {_integrity['lost_terms']} returned zero on "
+            f"{_integrity['fallback_counts']} step(s).  This run must not be "
+            "compared against an arm where those terms were live.",
+            flush=True,
+        )
 
     # Wf-TUI NEW: close the events.jsonl file handle (flush + release).
     # Per AGENTS.md §5.6 atomic_write_file safe_overwrite_check contract,

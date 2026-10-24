@@ -1,0 +1,165 @@
+{
+  "artifact": "wfa108h_regime_arm",
+  "version": "1.0",
+  "tag": "MEASURED",
+  "date": "2026-10-24",
+  "what": "Wf-A108h: the regime arm.  More clouds per optimizer step at the same step budget, under a 20 GiB allocator cap.  This is the first run in the A108 line that used the trainer end-to-end (not a diagnostic field) with use_fm_objective on.",
+  "design": {
+    "config": "configs/wfa108h_b32_chunk2_vector_channels.yaml",
+    "batch_size": 32,
+    "n_train": 800,
+    "n_val": 64,
+    "epochs": 5,
+    "steps_per_epoch": 25,
+    "total_steps": 125,
+    "velocity_head": "vector_channels",
+    "fm_batch_chunk_ratio": 2.0,
+    "memory_cap_mib": 20480,
+    "comparator": "Wf-A108d arms: 200 clouds at batch 8, same 125-step budget"
+  },
+  "batch_ladder_measured": {
+    "why": "The bond head's pair tensors scale as O(n_atoms^2) over the batch, and the default-ON class-wrapper terms re-run the velocity field with the graph retained (FmOde 4 forwards, SBOO3 2*n_rot, EnergyConservation 2).  Under a 20 GiB cap the objective does not fit above batch 32.",
+    "b64_n1600": {
+      "peak_alloc_mib": 20440,
+      "fallbacks": {
+        "FmOdeTerm": 25,
+        "SBOO3Term": 4
+      },
+      "verdict": "does not fit"
+    },
+    "b48_n1200": {
+      "peak_alloc_mib": 20401,
+      "fallbacks": {
+        "SBOO3Term": 1,
+        "EnergyConservation": 1
+      },
+      "verdict": "does not fit, also with expandable_segments"
+    },
+    "b32_n800": {
+      "peak_alloc_mib": 20041,
+      "fallbacks": {
+        "EnergyConservation": 2
+      },
+      "verdict": "fits, 2 of 125 steps lost EnergyConservation"
+    }
+  },
+  "objective_integrity": {
+    "degraded": true,
+    "lost_terms": [
+      "EnergyConservation"
+    ],
+    "fallback_counts": {
+      "EnergyConservation": 2
+    },
+    "fallback_reasons": {
+      "EnergyConservation": {
+        "OutOfMemoryError": 2
+      }
+    },
+    "reading": "degraded=true means at least one weighted term returned zero instead of its value on at least one step; the objective is not the one the config describes, and any comparison against an arm where that term was live is confounded.  An empty dict means every weighted term contributed on every step."
+  },
+  "run": {
+    "wall_time_s": 1219.3,
+    "epoch_wall_s": [
+      332.6,
+      238.9,
+      213.7,
+      215.3,
+      218.6
+    ],
+    "train_loss": [
+      13.5092,
+      13.4477,
+      13.3705,
+      13.3463,
+      13.2231
+    ],
+    "fm_term": [
+      12.2598,
+      12.2075,
+      12.2101,
+      12.267,
+      12.2369
+    ],
+    "bond_ce_loss": [
+      1.0302,
+      1.0076,
+      0.9569,
+      0.8761,
+      0.7819
+    ],
+    "grad_norm": [
+      6.486,
+      4.388,
+      3.957,
+      3.874,
+      5.296
+    ],
+    "fm_term_delta_frac": -0.001866,
+    "bond_ce_delta_frac": -0.240959,
+    "decode_ratio_every_epoch": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "process_peak_mib": 20338
+  },
+  "field_readout": {
+    "source": "checkpoint vel_field, epoch 4, extracted to /tmp/wfa108h_field.pt",
+    "probe": "molmetal/scripts/wfa108d_t_sensitivity.py",
+    "n_clouds": 7,
+    "mean_v_norm_by_t": {
+      "0.05": 0.1594,
+      "0.25": 0.1541,
+      "0.5": 0.1254,
+      "0.75": 0.1161,
+      "0.95": 0.1564
+    },
+    "mse_network_by_t": {
+      "0.05": 8.785,
+      "0.25": 8.798,
+      "0.5": 8.857,
+      "0.75": 9.01,
+      "0.95": 9.193
+    },
+    "mse_zero_by_t": {
+      "0.05": 9.008,
+      "0.25": 9.008,
+      "0.5": 9.008,
+      "0.75": 9.008,
+      "0.95": 9.008
+    },
+    "mse_gaussian_by_t": {
+      "0.05": 3.605,
+      "0.25": 5.458,
+      "0.5": 8.344,
+      "0.75": 8.537,
+      "0.95": 6.305
+    },
+    "mean_mse_network": 8.928,
+    "mean_mse_zero": 9.008,
+    "mean_mse_gaussian": 6.45,
+    "endpoint_cosine": 0.4913,
+    "sign_flip_achieved": false
+  },
+  "reading": "The regime change is a null at this budget.  Over 125 steps the field's mean per-t MSE is 8.928 against a 9.008 zero baseline — 0.9% better, and worse than zero at t=0.75 and t=0.95 — so it is still the prior, exactly as the shipped 5-epoch checkpoint is (|v| 0.106-0.136, §6.187).  fm_term moves 12.260 -> 12.237 (-0.19%) while bond_ce falls 1.030 -> 0.782 (-24.1%): the bond head learns, the flow field does not.  4x the clouds per step at the same step count does not separate from the 200-cloud arms, which is what Wf-A108d already measured as 0.193 -> 0.198 for 4x the corpus at fixed steps.",
+  "gate": {
+    "status": "NO FROZEN GATE",
+    "note": "This arm had no pre-registered numeric gate.  Reporting it as PASS or FAIL would be a post-hoc threshold, so the numbers above are descriptive.  The comparable quantity is Wf-A108d's gap_closed, which needs a 2,000-step diagnostic field, not this 125-step checkpoint."
+  },
+  "caveats": [
+    "EnergyConservation returned zero on 2 of 125 steps (CUDA OOM at the 20 GiB cap). Its weighted contribution was 2.638 of 7.94 in the CPU smoke, so the objective differed from the declared one on 1.6% of steps.",
+    "SBOO3Term is declared 0.0 in this config, not lost to OOM: its measured contribution is ~1e-14 and it cost 2*n_rot field forwards per step.",
+    "One seed, one cohort draw, one 5-epoch budget. The field readout is 7 clouds at eval_seed 999, the same cohort Wf-A108d used, so the numbers are comparable to that table and not to a population average.",
+    "The 20 GiB cap is the PyTorch allocator fraction. The process peak reported by nvidia-smi was 20,338 MiB including the CUDA context."
+  ],
+  "artifacts": [
+    "results/wfa108h_b32_chunk2_vector_channels/per_epoch_metrics.json",
+    "metrics/by_metric/wfa108h_t_sensitivity.json",
+    "configs/wfa108h_b32_chunk2_vector_channels.yaml",
+    "configs/wfa108h_b48_chunk2_vector_channels.yaml",
+    "configs/wfa108h_b64_chunk2_vector_channels.yaml"
+  ]
+}

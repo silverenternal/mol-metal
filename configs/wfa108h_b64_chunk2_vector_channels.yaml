@@ -112,13 +112,11 @@
 #   * Aux MSE with τ=0.5 (Fix 8)
 #   * Per-class PR-AUC reporting (Fix 9, no retrain delta)
 #
-# What it reduces for smoke scale:
+# Smoke scale (read the values from `protocol:` below, not from this note):
 #   * epochs: 5 (was 30 in W2)
 #   * n_seeds: 1 (was 3 in W2)
-#   * n_train/n_val: small smoke subset via CLI flags
-#     (200 train, 64 val — same as Wf-A68 / Wf-A69 smoke runs)
 #   * gen_validity_samples: 8 (was 16)
-#   * batch_size: 8 (was 16)
+#   * n_train / n_val / batch_size: this arm's regime, see `protocol:`
 #
 # Per AGENTS.md §5.11: every hyperparameter lives in the YAML.  The
 # trainer is launched via the canonical command_template at line 195
