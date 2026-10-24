@@ -12584,11 +12584,24 @@ same step count — run through the trainer rather than a diagnostic field.
 | 32 | 800 | 20,041 MiB | `EnergyConservation` on 2 of 125 steps |
 
 The reason is not the FM forward — `fm_batch_chunk_ratio: 2.0` holds that at 157 MB.
-It is the auxiliary class-wrapper terms: each re-runs the velocity field with the
-graph retained (`FmOdeTerm` 4 forwards, `SBOO3Term` 2 per rotation, `EnergyConservation`
-2), and the bond head's pair tensors scale as `O(n_atoms^2)` over the batch. Cutting
-the batch keeps the objective identical to the A108d arms; dropping terms would have
-changed the objective instead.
+This section first blamed all three class-wrapper terms together. A four-way ablation
+run afterwards (Wf-A108i, batch 64, 5 steps, same cap) does not support that:
+
+| variant | peak alloc | terms lost |
+|---|---:|---|
+| all on | 23,916 MiB | `FmOdeTerm` 5/5 |
+| `sboo3_term_weight: 0` | 23,938 MiB | `FmOdeTerm` 5/5 |
+| `sboo3` + `energy_conservation` 0 | 23,916 MiB | `FmOdeTerm` 5/5 |
+| `fm_ode` + `sboo3` + `energy` 0 | **6,382 MiB** | none |
+
+`SBOO3Term` and `EnergyConservation` are below measurement resolution (22 MiB spread,
+0.09%); `FmOdeTerm` is the whole difference. It integrates RK4 with four stages and
+four field evaluations per stage — sixteen forwards whose graphs are all retained —
+against two per rotation for `SBOO3Term` (`n_rot: 1` here) and two for
+`EnergyConservation`. Cutting the batch keeps the objective identical to the A108d
+arms; dropping terms would have changed the objective instead. This paragraph replaces
+the three-term attribution the section shipped with, and the measurement behind it is
+in `metrics/by_metric/wfa108i_term_cost.json`.
 
 **Result — the field is still the prior.** 5 epochs, 800 clouds at batch 32, 25
 optimizer steps per epoch, 1,219 s:
@@ -12642,6 +12655,12 @@ cannot be missed. On this arm it fires: `EnergyConservation` on 2 of 125 steps.
     perturbation, not a fix for that finding.
   * The 20 GiB cap is the PyTorch allocator fraction; the process peak reported by
     `nvidia-smi` was 20,338 MiB including the CUDA context.
+  * Batch 64 does not fit 32 GiB either. With `SBOO3Term` removed, a 32,000 MiB cap
+    lost `FmOdeTerm` and `EnergyConservation` on step 1 of 5 and the run aborted on
+    the 5% degraded-step rule; batch 48 ran the full objective at a 30,089 MiB peak
+    with nothing lost. So 64 clouds per step and the shipped objective are mutually
+    exclusive on any card below ~40 GiB — see §6.197 for what that does to the
+    full-corpus comparison.
 
 **Artifacts.** `metrics/by_metric/wfa108h_regime_arm.json`,
 `metrics/by_metric/wfa108h_t_sensitivity.json`,
@@ -12660,3 +12679,93 @@ ladders attempted; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `pa
 0 wet-lab).
 
 ---
+
+## §6.197 — The full-corpus reference run was degraded on 1-6 steps per epoch, its summary artifact does not say so, and its checkpoint is not on disk (2026-10-24)
+
+**Why this was checked.** A GPU1 full-corpus arm needs a same-protocol comparator. The
+only full-corpus CFM run on disk is `cfm_c7_fullgen_2026_10_20` (batch 64,
+`n_train: 26715`, 18 epochs, lr 3.0e-4, scaffold split). Before using it as the
+reference, three things about it were verified against the files rather than against
+the todo file, and all three failed.
+
+**1. The run lost weighted terms, monotonically, from epoch 5 onward.** Read from
+`events.jsonl` (the only artifact that carries the field), against ~418 steps per
+epoch (26,715 / 64):
+
+| epoch | `EnergyConservation` | `SBOO3Term` | `FmOdeTerm` |
+|---:|---:|---:|---:|
+| 4 | 0 | 0 | 0 |
+| 5-6 | 1 | 1 | 0 |
+| 7 | 2 | 2 | 0 |
+| 8-9 | 2 | 3 | 0 |
+| 10 | 2 | 3 | 1 |
+| 11 | 3 | 4 | 1 |
+| 12 | 3 | 5 | 2 |
+| 13 | 3 | 6 | 2 |
+| 14-16 | 3 | 6 | 3 |
+| 17 | 3 | 6 | 4 |
+
+Worst case is 6 of 418 steps (1.44%) for `SBOO3Term` and 4 of 418 (0.96%) for
+`FmOdeTerm`. That is under the 5% degraded-step rule the trainer now enforces, so the
+run completed; it is not under the threshold that matters for a comparator, which is
+zero. The counts grow with epoch, which is what fragmentation under a growing eval
+pool looks like, not what a fixed-shape objective looks like.
+
+**2. The summary artifact does not carry the evidence.** `per_epoch_metrics.json`
+from that run has no `regularizer_fallbacks`, no `loss_terms`, and no `fm_term` — the
+per-epoch schema at the time was bond/decode/generation metrics plus `train_loss`. A
+reader who opens the artifact sees a clean 18-epoch run. The degradation is visible
+only in `events.jsonl`, which is not where a comparison table gets its numbers. This
+is the same defect §6.196 fixed for new runs (`objective_integrity` at the top of the
+artifact, `[cfm-degraded]` banner); the fix is forward-only, and this run predates it.
+
+**3. The checkpoint the todo file claims is not on disk.** `cfm_todo.json::
+checkpoints_on_disk` records
+`cfm_c7_fullgen_2026_10_20/checkpoints/cfm_yuelbond_wasserstein_seed0{,_last}.pt` as
+"首次在 checkpoints_on_disk 里出现的可用全语料权重". `ls -la
+molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/` returns an empty directory
+(0 entries, mtime 2026-10-21 16:52, twelve hours after the run finished at 05:04). A
+repo-wide `find` for any `.pt` written 2026-10-20..22 does not contain it. This is a
+§5.5 filesystem-truth violation of the same kind §6.74 recorded for
+`cfm_fullcorpus_2026_10_10_last.pt`: the metadata was rewritten to say the weights
+exist, and they do not.
+
+**What survives, and what it is worth.** The metrics and the generation pool survive:
+`per_epoch_metrics.json` (14 of 18 epochs, 4-17), `generated_smiles.csv`, and
+`per_epoch_metrics.csv`. So a metric-level comparison against this run is still
+possible; a weight-level comparison (evaluating both checkpoints on one cohort) is
+not, and neither is a seed-matched rerun without retraining. Every headline from this
+run inherits a comparator that lost `FmOdeTerm` on up to 1% of steps — small, and
+unequal across epochs, which is the property that makes it a confound rather than
+noise.
+
+**Honest boundaries (ACTIVE).**
+
+  * The fallback counts are per epoch, not per step, and the trainer did not record
+    which steps. "6 of 418" is the denominator implied by `n_train / batch_size`; the
+    dataloader's drop-last behaviour was not verified.
+  * `per_epoch_metrics.json` holds 14 epochs (4-17) while `events.jsonl` holds 18
+    (0-17). The run was resumed from `cfm_c7_fullgen_ep4_partial_2026_10_20`, so the
+    artifact was rewritten by the resumed process. Epochs 0-3 exist only in
+    `events.jsonl`.
+  * The empty checkpoint directory has a later mtime than the run, so something
+    removed the files after they were written. What removed them is not known; a
+    parallel session's `git reset` is the documented pattern (see the 2026-10-15
+    incident) but is not proven here.
+  * None of this says the run's numbers are wrong. It says the reference is not the
+    clean-protocol run the todo file describes, and a GPU1 comparison must either
+    re-run the reference or declare the difference.
+
+**Artifacts.** `molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl`,
+`molmetal/reports/cfm_c7_fullgen_2026_10_20/per_epoch_metrics.json`,
+`configs/c7_fullgen_2026_10_20.yaml`, `cfm_todo.json` (`checkpoints_on_disk`).
+
+**§6.197 catalog-count math.** Net **+1**. Cumulative **251 -> 252**. ACTIVE
+**207 -> 208**.
+
+**Workflow** | Wf-A108i (2026-10-24; read-only audit of the reference run + 8 memory
+probes, 31 min GPU; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` +
+0 wet-lab).
+
+---
+

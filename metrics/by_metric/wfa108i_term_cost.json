@@ -1,0 +1,109 @@
+{
+  "artifact": "wfa108i_term_cost",
+  "version": "1.0",
+  "tag": "MEASURED",
+  "date": "2026-10-24",
+  "what": "Wf-A108i: which weighted term actually costs the VRAM at batch 64, and the largest batch that runs the full objective inside a 32 GiB allocator.  Wf-A108h (§6.196) attributed the batch-64 memory wall to three class-wrapper terms together; this probe separates them and finds one.",
+  "design": {
+    "base_config": "configs/wfa108h_b64_chunk2_vector_channels.yaml",
+    "overrides_common_to_every_row": {
+      "train.n_train": 320,
+      "train.n_val": 64,
+      "train.epochs": 1,
+      "eval.gen_validity_samples": 4,
+      "flow.fm_batch_chunk_ratio": 2.0,
+      "seed": 0
+    },
+    "instrument": "MOLMETAL_CUDA_MEM_LIMIT_MIB (torch.cuda.set_per_process_memory_fraction) + MOLMETAL_MEM_TRACE=1",
+    "physical_card": "GPU0 NVIDIA RTX PRO 6000 Blackwell, 95.06 GiB, CUDA_VISIBLE_DEVICES=0",
+    "why_the_cap_is_the_measurement": "The allocator cap, not the card, is what the probe varies.  A 32,000 MiB cap on a 95 GiB card presents the same allocator ceiling as a 32,607 MiB card with a resident context, so a run that OOMs under the cap would OOM on GPU1.  This is a simulation of GPU1's capacity, not a run on GPU1.",
+    "steps_per_run": 5,
+    "wall_per_run_s": "180-260"
+  },
+  "term_ablation_batch64_cap24000": {
+    "why": "Turn one class-wrapper term off at a time and read the peak.  A term whose removal does not move the peak is not the cost.",
+    "rows": [
+      {
+        "variant": "all_on",
+        "peak_alloc_mib": 23916,
+        "fallbacks": {"FmOdeTerm": 5},
+        "degraded": true
+      },
+      {
+        "variant": "sboo3_off",
+        "peak_alloc_mib": 23938,
+        "fallbacks": {"FmOdeTerm": 5},
+        "degraded": true
+      },
+      {
+        "variant": "sboo3_off_energy_off",
+        "peak_alloc_mib": 23916,
+        "fallbacks": {"FmOdeTerm": 5},
+        "degraded": true
+      },
+      {
+        "variant": "fm_ode_off_sboo3_off_energy_off",
+        "peak_alloc_mib": 6382,
+        "fallbacks": {},
+        "degraded": false
+      }
+    ],
+    "reading": "SBOO3Term and EnergyConservation are below measurement resolution at batch 64 (23,916 / 23,938 / 23,916 MiB, spread 22 MiB = 0.09%).  FmOdeTerm is the whole difference: 23,916 -> 6,382 MiB, a factor of 3.75.  Everything the objective does except the ODE closure penalty costs 6.4 GiB at batch 64.",
+    "why_fmode_costs_this_much": "FmOdeTerm integrates RK4 with four stages and four velocity-field evaluations per stage, so sixteen forwards whose autograd graphs are all retained until the backward.  SBOO3Term is two per rotation (n_rot=1 in this config) and EnergyConservation is two.  The field forward itself is chunked (fm_batch_chunk_ratio 2.0, 157 MB per chunk, Wf-A108g), so the cost is the sixteen retained graphs, not the width of any single one.",
+    "caveat": "At cap 24,000 the reported peak IS the failing FmOdeTerm allocation, not a steady state: the term asks for memory, is refused, returns zero, and releases.  The 23.9 GiB number therefore says 'FmOdeTerm tried to reach the cap', not 'the rest of the objective needs 23.9 GiB'.  Only the 6,382 MiB row is a completed-objective peak."
+  },
+  "cap_ladder_batch64": {
+    "rows": [
+      {
+        "cap_mib": 32000,
+        "config": "sboo3_off",
+        "peak_alloc_mib": 31871,
+        "fallbacks": {"FmOdeTerm": 1, "EnergyConservation": 1},
+        "exit": 2,
+        "verdict": "does not fit — both remaining terms OOM on step 1 of 5, the run aborts on the 5% degraded-step rule"
+      },
+      {
+        "cap_mib": 40000,
+        "config": "all_on",
+        "peak_alloc_mib": 39949,
+        "fallbacks": {"SBOO3Term": 4},
+        "exit": 2,
+        "verdict": "does not fit — FmOdeTerm now completes, SBOO3Term fails on 4 of 5 steps, the run aborts"
+      }
+    ],
+    "reading": "Batch 64 with the shipped objective is a >40 GiB proposition, and batch 64 with SBOO3 removed still exceeds 32 GiB.  GPU1 (32,607 MiB total) cannot run the c7 protocol at batch 64 at any term setting that keeps FmOdeTerm live."
+  },
+  "batch_ladder_cap32000": {
+    "why": "If batch 64 cannot fit, what is the largest batch that runs the full objective (all three class-wrapper terms live) inside GPU1's capacity?",
+    "rows": [
+      {"batch_size": 48, "n_train": 240, "peak_alloc_mib": 30089, "fallbacks": {}, "degraded": false, "exit": 0},
+      {"batch_size": 40, "n_train": 200, "peak_alloc_mib": 28675, "fallbacks": {}, "degraded": false, "exit": 0}
+    ],
+    "reading": "Batch 48 runs the full objective under a 32,000 MiB cap with nothing lost: peak 30,089 MiB, objective_integrity.degraded false, exit 0.  Margin to a 32,607 MiB card is ~1.7 GiB after the CUDA context, so it fits only on an otherwise idle GPU1."
+  },
+  "class_term_magnitudes": {
+    "why": "A term can be cheap to keep and still be worth nothing; these are the weighted contributions at epoch 0 on the same 5-step cohort.",
+    "rows": {
+      "fm_term": 12.634,
+      "bond_ce": 1.001,
+      "fm_ode_class_term": 0.183,
+      "energy_class_term": 0.0118,
+      "sboo3_class_term": 1.17e-17
+    },
+    "reading": "FmOdeTerm contributes 1.3% of the loss and 73% of the memory.  SBOO3Term contributes 1e-17 and, at this batch, no measurable memory either."
+  },
+  "honest_boundaries": [
+    "Five optimizer steps per row, one seed, one cohort draw.  Every row is a memory measurement, not a training result; no loss curve here is evidence about learning.",
+    "The probe emulates GPU1's capacity with an allocator cap on GPU0.  It does not reproduce GPU1's kernel latencies, its 32 GB of HBM, or contention from the co-tenant that held 11.7 GiB during these runs.",
+    "peak_alloc is torch.cuda.max_memory_allocated.  nvidia-smi peak is 300-600 MiB higher (context + non-PyTorch allocations); the 20 GiB arm in §6.196 measured 20,338 MiB on nvidia-smi against a 20,440 MiB allocator peak.",
+    "The batch ladder holds steps fixed at 5, so batch 48 and batch 40 do not have the same optimizer-step budget as batch 64 would.  This is a fit test, not a protocol arm.",
+    "Nothing here measures the generation-eval pool, which is a separate and larger consumer at full-corpus scale (c7 peaked at 91.7 GB with 1,536 candidates on 2026-10-20).  A GPU1 full-corpus run needs its eval pool sized independently of this table."
+  ],
+  "consequence_for_the_gpu1_full_corpus_run": "The c7 protocol (batch 64, full 26,715 clouds, 18 epochs) is not runnable on GPU1 at 32,607 MiB with FmOdeTerm live.  The measured options are batch 48 with the objective intact (protocol differs in batch size), batch 64 with FmOdeTerm declared 0.0 (objective differs), or batch 64 on GPU0 (neither differs).  Choosing among them is a protocol decision, not an engineering one.",
+  "provenance": {
+    "probe_configs": "/tmp/wfa108i/{v1_all,v2_no_sboo3,v3_no_sboo3_no_energy,v4_none,v1_all_cap40,v2_cap32,v1_b48_cap32,v1_b40_cap32}.yaml",
+    "probe_outputs": "/tmp/wfa108i/out_*/per_epoch_metrics.json (ephemeral, /tmp)",
+    "code": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py (_apply_cuda_mem_limit, _objective_integrity, _objective_weights)",
+    "catalog": "docs/HONEST_NEGATIVE_CATALOG.md §6.196 (corrected attribution), §6.197"
+  }
+}
