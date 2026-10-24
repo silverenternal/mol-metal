@@ -190,3 +190,67 @@ def test_invalid_denominator_floor_is_rejected():
                 hidden_dim=8, n_layers=1, prediction_target="x1",
                 x1_denominator_floor=bad,
             )
+
+
+def test_epoch_record_carries_every_loss_term():
+    """The epoch total must be decomposable from the artifact alone.
+
+    Wf-A108e's smoke reported `train_loss` rising 7.52 -> 7.94 while all five
+    exported terms fell.  The objective had ~25 terms and only five reached
+    `per_epoch_metrics.json`, so the run could not say which one went up — the
+    Wf-A105 defect class (§6.148) with a different symptom.  `loss_terms` is
+    the fix: the epoch mean of every tensor in `_LAST_LOSS_TERMS`.
+    """
+    import dataclasses
+
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import EpochMetrics
+
+    names = {f.name for f in dataclasses.fields(EpochMetrics)}
+    assert "loss_terms" in names
+
+    m = EpochMetrics(
+        epoch=0, wall_time_s=0.0, train_loss=3.0, bond_ce_loss=0.0,
+        wasserstein_loss=0.0, catherine_audit_pass=True,
+        decode_ratio_rdkit_strict=0.0, decode_ratio_val=0, decode_ratio_n=0,
+        decoding_attempted=False, lr=0.0, grad_norm=0.0,
+    )
+    m.loss_terms.update({"fm_term": 1.0, "0.05*cb_loss": 2.0})
+    carried = dataclasses.asdict(m)["loss_terms"]
+    assert carried == {"fm_term": 1.0, "0.05*cb_loss": 2.0}
+    assert sum(carried.values()) == pytest.approx(m.train_loss)
+
+
+def test_objective_weights_records_every_numeric_weight():
+    """The artifact must say what the objective's multipliers were.
+
+    `loss_terms` records the weighted contribution (weight x raw).  On the
+    Wf-A108e smoke the one term that rose was `energy_class_term`, whose
+    weight is an argparse default of 0.05 that appears in no CFM yaml — the
+    artifact could show the term was nonzero but not what set it.  This
+    helper is the other half of the product.
+    """
+    import argparse
+
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+        _objective_weights,
+    )
+
+    ns = argparse.Namespace(
+        energy_conservation_weight=0.05,
+        fm_ode_term_weight=0.0,
+        ring_template_weight=1e-3,
+        wasserstein_weight=0.1,
+        # not weights: must not appear
+        use_fm_objective=True,
+        epochs=5,
+        gen_validity_weight_enabled=False,
+    )
+    got = _objective_weights(ns)
+    assert got == {
+        "energy_conservation_weight": 0.05,
+        "fm_ode_term_weight": 0.0,
+        "ring_template_weight": 1e-3,
+        "wasserstein_weight": 0.1,
+    }
+    # a bool must not be coerced to 1.0 even though isinstance(True, int)
+    assert "gen_validity_weight_enabled" not in got

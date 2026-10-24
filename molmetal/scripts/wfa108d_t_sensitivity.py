@@ -115,6 +115,24 @@ def main() -> int:
     # cannot beat it is losing to a one-parameter model.
     _d = (x1 - mu).reshape(-1)
     s2 = float(_d.var(unbiased=False))
+    # Per-atom radius of x_t about its own cloud centroid.  The Gaussian
+    # posterior mean is ``c(t)(x_t - t mu)``, whose magnitude is proportional
+    # to that radius, so a field that can express it must have
+    # ``|v| ~ radius``.  The vector-channel head unit-normalises every channel
+    # and multiplies by a scalar gate, so ``|u| <= sum_c |w_c|`` regardless of
+    # radius — this correlation is how that structural claim is tested instead
+    # of argued.
+    def _radius(xt: torch.Tensor) -> torch.Tensor:
+        out = torch.zeros(xt.shape[0], device=xt.device)
+        start = 0
+        for n in sizes:
+            blk = xt[start:start + n]
+            out[start:start + n] = (blk - blk.mean(dim=0, keepdim=True)).norm(
+                dim=-1
+            )
+            start += n
+        return out
+
     preds: Dict[float, torch.Tensor] = {}
     rows: List[Dict[str, Any]] = []
     with torch.no_grad():
@@ -129,6 +147,14 @@ def main() -> int:
             _den = (1.0 - tv) ** 2 * sigma ** 2 + tv ** 2 * s2
             _c = _num / max(_den, 1e-12)
             v_gauss = _c * (xt - tv * mu)
+            rad = _radius(xt)
+            vn = v.norm(dim=-1)
+            if float(rad.std()) > 1e-8 and float(vn.std()) > 1e-8:
+                _corr = float(
+                    torch.corrcoef(torch.stack([rad, vn]))[0, 1]
+                )
+            else:
+                _corr = 0.0
             rows.append(
                 {
                     "t": tv,
@@ -145,6 +171,13 @@ def main() -> int:
                         F.mse_loss(v_gauss, tgt)
                     ),
                     "gaussian_coefficient": float(_c),
+                    "corr_v_norm_with_radius": _corr,
+                    "corr_gauss_norm_with_radius": float(
+                        torch.corrcoef(
+                            torch.stack([rad, v_gauss.norm(dim=-1)])
+                        )[0, 1]
+                    ),
+                    "mean_radius": float(rad.mean()),
                 }
             )
 

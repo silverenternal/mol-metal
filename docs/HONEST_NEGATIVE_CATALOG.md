@@ -12440,3 +12440,128 @@ reference arms; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `paper
 wet-lab).
 
 ---
+## §6.195 — Wf-A108e: the x1 target repairs the low-`t` end of the field and pays for it at high `t` (2026-10-23)
+
+**What this wave was for.** §6.187 measured that the velocity field is 64% worse than
+`v = 0` at `t = 0.05`, that it never reverses direction across the path
+(endpoint cosine +0.736), and that a one-parameter Gaussian closed form beats it by 4.1x
+at that end. The proposed next single-factor test was an absolute-position target, on the
+argument that asking a velocity head to represent a sign reversal is the wrong question.
+
+**What was actually shipped is the cheap form, and it was labelled as such.** The head
+still emits a displacement `u`; `x1_hat = x_t + u` makes the residual `u - (1-t)(x1 - x0)`.
+That is velocity regression under an implicit `(1-t)^2` weight — full weight at `t = 0`,
+zero at `t = 1` — not a position head with free magnitude. It is still the right first
+test because it weights exactly the region that was broken.
+
+**Capacity gate** (`wfa107h_velocity_capacity.py --cycle-batches 25 --t-uniform
+--eval-seed 999`, read on a fixed held-out cohort at `t = 0.5`):
+
+| arm | steps | reached MSE | gap closed |
+|---|---:|---:|---:|
+| velocity | 500 | 7.267 | 0.193 |
+| velocity | 2,000 | 7.033 | 0.219 |
+| x1 | 500 | 7.304 | 0.189 |
+| x1 | 2,000 | 7.414 | 0.177 |
+
+**Per-`t` read of the 2,000-step fields** (same cohort and draw):
+
+| `t` | `v = 0` | velocity | x1 | Gaussian closed form |
+|---:|---:|---:|---:|---:|
+| 0.05 | 9.008 | 14.781 | **7.409** | 3.605 |
+| 0.25 | 9.008 | 9.638 | **7.188** | 5.458 |
+| 0.50 | 9.008 | 7.445 | 7.673 | 8.344 |
+| 0.75 | 9.008 | 6.744 | 8.487 | 8.537 |
+| 0.95 | 9.008 | 6.994 | 8.945 | 6.305 |
+| mean | 9.008 | 9.120 | **7.940** | 6.450 |
+
+**Finding 1 — the cell the ODE starts from is fixed.** At `t = 0.05` the field goes from
+64% worse than predicting zero to 18% better, the largest single-cell move measured on this
+field. The five-`t` mean improves 9.120 -> 7.940.
+
+**Finding 2 — the high-`t` end pays for it.** `t = 0.95` degrades 6.994 -> 8.945 and
+`t = 0.75` 6.744 -> 8.487. The capacity gate at `t = 0.5` is slightly worse
+(0.219 -> 0.177), and the 500-step arm beats the 2,000-step one, so the arm is not climbing
+with budget. This is a redistribution, not a level shift.
+
+**Finding 3 — neither arm beats the closed form.** The Gaussian posterior mean is 6.450 on
+the five-`t` mean against 7.940 for x1 and 9.120 for velocity. A field that loses to a
+one-parameter model is still the finding; the x1 target narrowed the loss but did not close
+it. `sign_flip_achieved` is false for both arms and the endpoint cosine rises 0.736 -> 0.852,
+i.e. the field became *more* consistent across `t` while the target reverses — the wrong
+direction.
+
+**Finding 4 — the new `loss_terms` export explains the smoke's rising total.** On the
+§5.7 CPU smoke (2 epochs, 200 clouds, batch 8) `train_loss` rose 7.5187 -> 7.9409 while
+every exported term fell. The full decomposition shows the rise is one term:
+
+| term | epoch 0 | epoch 1 | delta |
+|---|---:|---:|---:|
+| `energy_class_term` | 1.1579 | 2.6383 | **+1.4804** |
+| `fm_term` | 5.0831 | 4.1080 | -0.9751 |
+| `bond_ce` | 1.0283 | 1.0049 | -0.0233 |
+| `wasserstein_weight*w2_val` | 0.0597 | 0.0519 | -0.0078 |
+| `entropy_term` | -0.0690 | -0.0717 | -0.0026 |
+| `fm_ode_class_term` | 0.2575 | 0.2082 | -0.0493 |
+| **sum of recorded** | **7.5187** | **7.9409** | **+0.4222** |
+
+The recorded terms sum to `train_loss` at both epochs (largest gap 6.5e-08, float32 accumulation order). `energy_class_term` alone
+rose by more than the total, so without it the objective fell 1.058. The term is
+`EnergyConservation` at its argparse default `weight = 0.05` (Wf-A44 made it default-ON);
+it appears in neither `configs/wfa108e_x1_cpu_smoke.yaml` nor
+`configs/wfa108h_b64_chunk2_vector_channels.yaml`, and it was not in the artifact's
+recorded `config` block before this wave. It evaluates the field at `x_t + 0.5 * v0` under
+the *same* `t`, which is off the interpolation path, and its LJ potential is clamped to
+`r in [0.5, 5.0]` where `1/r^12` reaches 4,096 — so its magnitude tracks how far the field
+moves atoms, i.e. exactly what the FM objective is trying to increase.
+
+**Finding 5 — thirteen of the fifteen nonzero loss weights live only in argparse.**
+The artifact's new `objective_weights` block (27 keys, every numeric `*_weight` dest) shows
+this smoke ran with 15 nonzero weights: `bond_loss` 1.0, `fm` 1.0, `wasserstein` 0.1,
+`entropy_reg` 0.1, `so3_average` 0.1, `lambda_cfm_coupling` 0.1, `bond_aux_mse` 0.1, and
+0.05 each for `energy_conservation`, `fm_ode_term`, `sboo3_term`, `qed`, `molecule`,
+`stereo`, `fragment`, `property`. Only `bond_aux_mse_weight` and `wasserstein_weight` appear
+in `configs/wfa108e_x1_cpu_smoke.yaml`; the other thirteen are argparse defaults. That is
+the §5.11 failure mode in its exact form — a knob that lives only in the parser is a knob
+nobody audits — and it is why the `energy_class_term` growth was invisible for as long as it
+was. `loss_terms` gives the product and `objective_weights` gives the multiplier; both are
+now in the artifact, so the objective is reconstructible without opening the YAML or the
+source.
+
+**Consequence.** The x1 arm is not adopted as the default target: it wins at the start of
+the ODE and loses at the end, and it still loses to the closed form. The next change in
+this line is the regime (1,600 clouds at batch 64 with `fm_batch_chunk_ratio: 2.0`, 157 MB
+of FM-forward memory per §6.188), held at 25 optimizer steps per epoch so the arm is not
+confounded with a budget cut. The energy term's default is a separate open decision
+(`DEC_energy_default_off` in `cfm_todo.json`) because changing a default moves the objective
+of every config that relies on it.
+
+**Honest boundaries (ACTIVE).**
+
+  * One seed, one held-out cohort, one noise draw per arm. The per-`t` table is the primary
+    evidence; the capacity gate reads a single `t = 0.5` batch and is the summary.
+  * The `x1` arm changes the sampler conversion (`vel = u / max(1-t, 0.02)`), so a trained
+    x1 checkpoint is not interchangeable with a velocity one.
+  * No 5-epoch transport arm was run for x1. The 120-step transport arm was flat for both
+    heads, so another run at that budget would not separate them.
+  * The loss decomposition is a 2-epoch CPU smoke, not a quality measurement. It says what
+    the objective was made of, not which term is good for the model.
+  * The Gaussian closed form treats `(x0, x1)` as jointly Gaussian with isotropic variance,
+    which the coordinate distribution is not. It is a reference point, not the optimum.
+
+**Artifacts.** `metrics/by_metric/wfa108e_ho_cycle25_vc_x1_{500,2000}.json`,
+`metrics/by_metric/wfa108e_t_sensitivity_x1.json`,
+`configs/wfa108e_x1_cpu_smoke.yaml`, `configs/wfa108h_b64_chunk2_vector_channels.yaml`,
+`molmetal/scripts/wfa107h_velocity_capacity.py`,
+`molmetal/scripts/wfa108d_t_sensitivity.py`,
+`molmetal/scripts/train_cfm_yuelbond_wasserstein.py` (`EpochMetrics.loss_terms`),
+`docs/WF_A108_VELOCITY_HEAD_SURVEY.md` §8.
+
+**§6.195 catalog-count math.** Net **+1**. Cumulative **249 -> 250**. ACTIVE **205 -> 206**.
+
+**Workflow** | Wf-A108e (2026-10-22/23; GPU0 2 x 500/2,000-step fields + 5-`t` read;
+CPU 320 s §5.7 smoke re-run after the `loss_terms` and `objective_weights` wire-ins, which
+reproduced `fm_term` 4.108036050796509 bit-for-bit against the pre-wire-in run; §5.2 every
+number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---

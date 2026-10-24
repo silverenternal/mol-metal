@@ -1,0 +1,349 @@
+# configs/wfa108h_b64_chunk2_vector_channels.yaml — Wf-A108h: the regime arm.
+#
+# Derived from configs/wfa108_vector_channels.yaml.  Three changes:
+#
+#   1. protocol.batch_size: 8 -> 64
+#   2. protocol.n_train:  200 -> 1600   (so the optimizer-step budget is held)
+#   3. flow.fm_batch_chunk_ratio: 0.0 -> 2.0
+#
+# Why the step budget is held.  The A108a/c/d arms run 200 clouds at batch 8,
+# i.e. 25 optimizer steps per epoch and 125 over five epochs.  Widening the
+# batch alone would cut that to 3 steps per epoch (15 total) and confound the
+# regime change with a budget cut.  1600 clouds at batch 64 is also 25 steps
+# per epoch, so the only difference is how much data each step sees.
+#
+# Why chunking.  Wf-A108g MEASURED this exact forward at B = 64: 1,254 MB
+# unchunked, 157 MB at ratio 2.0, for 1.05x the wall time
+# (metrics/by_metric/wfa108g_batch_chunk_memory.json).  The split is exact
+# (max|d| <= 8.0e-7 over 24 cells) because the radius graph is block-diagonal
+# and node_mask drops padded endpoints.  It is only active for a
+# padding-invariant head; `vector_channels` is one, the legacy `radial` head
+# is not, and `_fm_padding_invariant` enforces that.
+#
+# What this arm is for.  Wf-A108d MEASURED that the field closes 0.219 of the
+# gap at 2000 steps on 200 clouds, that 4x the corpus at fixed steps moves
+# nothing (0.193 -> 0.198), and that the field is 64% worse than v = 0 at
+# t = 0.05.  The remaining untested change is the regime, not the head.
+#
+# VRAM budget: B = 64 / ratio 2.0 is 157 MB for the FM forward alone
+# (MEASURED).  The full step also runs the bond head and the decoder, so the
+# real footprint is larger and is not measured here; GPU0 has 97,887 MiB.
+# configs/wfa108h_b64_chunk2_vector_channels.yaml (derived) — Wf-A108a/c: the SAME protocol as
+# configs/wfa107g_fm_sigma_control.yaml (5 epochs, seed 0, n_train 200,
+# n_val 64, fm_noise_sigma 2.485, per-module grad clip), with ONE change:
+# the coordinate head.  Control arm = results/wfa107g_fm_sigma_control.
+# budget-matched control: no ring prior, no new bond features
+#
+# One-factor A/B on the Wf-A96 protocol: n_train=200, n_val=64, 5 metals,
+# seed 0, 5 epochs, batch 8, edge-MPNN-residual head.  Every arm shares
+# that protocol; only ring_template_weight / ring_template_formulation /
+# bond_rbf_features+bond_pair_chemistry differ.
+# (The old header said "budget-matched control (weight=0.0)" while the body
+#  has carried 0.01 since Wf-A78; corrected by Wf-A96 so the file does not
+#  describe a run it would not perform.)
+# (3-layer residual pair head with LayerNorm + dropout) smoke.
+#
+# 2026-10-18 — Wf-A74 ships the model-side architectural upgrade that
+# complements the Wf-A73 loss-side fix.  The 2-layer MLP pair head
+# (~5K params, no normalisation, no dropout, no residual) is replaced
+# by a 3-layer residual head:
+#
+#     Linear(H+3, H) -> LayerNorm -> ReLU -> Dropout(0.1)
+#       -> Linear(H, H) -> LayerNorm -> ReLU -> Dropout(0.1)
+#       -> Linear(H, 5)
+#     + residual around the inner 2 layers
+#
+# Param count at H=64: ~12K (vs ~5K for the 2-layer head) — a 2.4×
+# widening of the pair head.  Same message-passing backbone as
+# YuelBondEdgeMPNNHead (4 message-passing layers on the line graph);
+# only the pair head is upgraded.  Pair head upgrade rationales:
+#
+#   * Adds a second hidden layer (so the head can compose non-linear
+#     features of h_e rather than just passing it through);
+#   * Adds LayerNorm on each hidden activation (training stability
+#     + ability to learn at higher learning rates);
+#   * Adds a residual connection around the inner 2 layers (so the
+#     head can recover the Wf-A71 2-layer behaviour as a degenerate
+#     solution);
+#   * Adds dropout 0.1 on each hidden activation (regularisation so
+#     the new capacity does not memorise the 200-cloud training set).
+#
+# What it carries over from Wf-A73 (cfm_5metal_wfa73_operators.yaml):
+#   * All Fix 6 + 7 + 8 + 9 + Operator 1 (logit adjustment tau=0.1)
+#
+# What it ADDS (Wf-A74 Architecture 1):
+#   * bond_predictor: yuelbond_edge_mpnn_residual (new YAML value)
+#
+# MEASURED targets (per Wf-A72 plan Section 4):
+#   * Per-class PR-AUC for AROMATIC >= 0.55 (was 0.505 at Wf-A73 tau=0.1)
+#   * Per-class PR-AUC for SINGLE >= 0.7 (was 0.498 at Wf-A73 tau=0.1)
+#   * bond_f1 >= 0.20 (was 0.0 at Wf-A73)
+#   * largest_fragment_frac >= 0.20 (was 0.048 at Wf-A73, the
+#     fragmentation problem is NOT addressed by this head upgrade
+#     alone — that requires Wf-A75 MolDiff guidance).
+# Menon 2020 ICLR'21, arXiv:2007.07314) on top of the Wf-A70 W3
+# plumb-repair smoke.  Per-class logit adjustment adds tau * log(pi_c)
+# to the logits BEFORE the CE loss, which gives the OPTIMAL decision
+# boundary under known class prior without changing the model's
+# output distribution.  This is the principled upgrade over the
+# existing inverse-frequency `bond_class_weights` (which scales the
+# per-class loss; logit adjustment shifts the per-class logit).
+#
+# MEASURED targets (per Wf-A71 honest-negative §6.99):
+#   * Per-class PR-AUC for SINGLE >= 0.7 (was 0.514)
+#   * Per-class PR-AUC for AROMATIC >= 0.6 (was 0.403)
+#   * Per-class PR-AUC for DOUBLE >= 0.10 (was 0.0025)
+#
+# What it carries over from W3 (cfm_5metal_wfa70_w3_smoke.yaml):
+#   * Bond predictor: yuelbond_edge_mpnn (Wf-A70 Fix 6)
+#   * Per-class threshold sweep (Wf-A70 Fix 7)
+#   * Aux MSE with τ=0.5 (Wf-A70 Fix 8)
+#   * Per-class PR-AUC reporting (Wf-A70 Fix 9)
+#   * EpochMetrics 44-field plumb (Wf-A70 W3)
+#   * bond_class_weights: true (existing inverse-freq power 0.5)
+#   * bond_class_weight_power: 0.5 (unchanged; the logit adjustment
+#     is applied IN ADDITION to the weights, not as a replacement)
+#
+# What it ADDS (Wf-A73 Operator 1):
+#   * bond_logit_adjustment: true   (per-class logit shift)
+#   * bond_logit_adjustment_tau: 1.0  (textbook Menon 2020 setting)
+#   * Edge MPNN head (bond_predictor=yuelbond_edge_mpnn, n_edge_layers=4)
+#   * Per-class threshold sweep (Fix 7)
+#   * Aux MSE with τ=0.5 (Fix 8)
+#   * Per-class PR-AUC reporting (Fix 9, no retrain delta)
+#
+# What it reduces for smoke scale:
+#   * epochs: 5 (was 30 in W2)
+#   * n_seeds: 1 (was 3 in W2)
+#   * n_train/n_val: small smoke subset via CLI flags
+#     (200 train, 64 val — same as Wf-A68 / Wf-A69 smoke runs)
+#   * gen_validity_samples: 8 (was 16)
+#   * batch_size: 8 (was 16)
+#
+# Per AGENTS.md §5.11: every hyperparameter lives in the YAML.  The
+# trainer is launched via the canonical command_template at line 195
+# below — no CLI hyperparameters, only --seed + --out-dir.
+#
+# Per §5.7 50-step CPU smoke: this is a GPU smoke, not a flag wire-in
+# smoke.  No NEW flags are introduced by W3 (Fix 8 flags were wire-in'd
+# by W2; the W3 work is dataclass + plumb only).  The §5.7 requirement
+# is satisfied by W2's existing 50-step smoke (6/6 PASS per the W2
+# output summary).
+#
+# Per §5.5 filesystem-truth: every metric output by this run must
+# trace to per_epoch_metrics.json + events.jsonl on disk with MEASURED
+# tag.  The W3 closeout verifies the per-class + sweep + aux_mse fields
+# all reach per_epoch_metrics.json.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: true
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_logit_adjustment: true
+  bond_logit_adjustment_tau: 0.1
+  bond_head_kind: single
+  bond_predictor: yuelbond_edge_mpnn_residual
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  # Wf-A93 — archived run: keep the pre-Wf-A93 metal placement so
+  # this config still reproduces its checkpoint.
+  metal_placement: legacy
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  bond_label_smoothing: 0.0
+  # Fix 8 (W2) — aux MSE + temperature.
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  head_class: YuelBondDecoderHead
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  # Wf-A107e (2026-10-21) — Wf-A107 ran with `use_fm_objective` absent and
+  # `wasserstein_weight: 0.0`, so the velocity field was NEVER TRAINED:
+  # MEASURED, its weights are bit-identical between the control and the
+  # edge_ring arm, and the sampler emits the same collapsed clouds for both
+  # (mean pair distance 2.26 A, 89% of pairs inside the 3.5 A cutoff).
+  # Every `gen_ring_*` number in Wf-A107 is therefore a decode of noise, not
+  # generated chemistry.  Same defect as the one documented for cfm.yaml in
+  # configs/c7_*: "the velocity field was trained on a zero target because
+  # `use_fm_objective` was missing".  This arm turns it on.
+  use_fm_objective: true
+  fm_t_per_cloud: 1
+  wasserstein_weight: 0.1
+  # Wf-A108a/c (2026-10-22) — THE ONLY DIFFERENCE FROM THE CONTROL.
+  # `radial` (the default) emits
+  #   tanh(vel_head(h)) * vel_scale * (x - centroid) + last_v
+  # and Wf-A107h MEASURED that it cannot fit one 8-cloud batch (MSE
+  # 10.529 vs a 10.652 v=0 baseline and a 5.783 radial-only ceiling).
+  # `vector_channels` keeps 8 independent 3-vectors per atom and emits a
+  # learned projection of them; MEASURED on the same batch: 0.548.
+  # `metal_frame_channels` seeds channel 1 with (x - x_metal) and channel
+  # 2 with (x - donor_centroid).  See docs/WF_A108_VELOCITY_HEAD_SURVEY.md.
+  velocity_head: vector_channels
+  # Wf-A108g — group the FM batch by cloud size so the pad width follows
+  # each group instead of the batch outlier.  MEASURED at B = 64:
+  # 1,254 MB -> 157 MB for 1.05x the time.
+  fm_batch_chunk_ratio: 2.0
+  vector_channels: 8
+  metal_frame_channels: true
+  # Wf-A107g (2026-10-22) — THE KEY THE Wf-A107e ARMS FORGOT.
+  # Wf-A107e left `fm_noise_sigma` at its argparse default 1.0 while the
+  # corpus sits at per-coordinate std ~1.875 A (MEASURED on the 63-cloud
+  # val cohort of this exact config: mean 1.875, median 2.020) and the
+  # c7 config measured 2.485 on the full cohort.  A prior at 1.0 against
+  # data at 1.9-2.5 is the 2.5x mismatch Wf-R28 fixed on 2026-10-07; the
+  # velocity target is then dominated by a constant radial expansion, so
+  # a 5-epoch run cannot transport the cloud and looks like 'the sampler
+  # never moves'.  That is exactly what Wf-A107e measured (2.18 A vs
+  # truth 4.68 A), so its geometry reading was confounded.
+  #
+  # 2.485 is the c7 value, MEASURED on the full 26,715-cloud cohort, and
+  # it is the value the parent CFM configs use.  It is 33% above this
+  # 200-cloud subset's 1.875, which is inside the trainer's own
+  # [0.8, 1.25] warning band on the ratio, so the run records
+  # `fm_prior_scale.ok = true` and a reader can check it.
+  fm_noise_sigma: 2.485
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  # Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance applied to
+  # the EGNN velocity field at every ODE step.  0.0 (default in Wf-A74)
+  # disables guidance (back-compat).  0.1 (this config) is a mild prior
+  # (~10% of EGNN velocity at full magnitude) that pulls bonded (Z_i, Z_j)
+  # pairs toward their expected per-(Z_i, Z_j) distance (e.g. C-C 1.50 Å,
+  # Pt-N 2.05 Å).  The guidance is a Hooke-spring force — see
+  # ``_BondLengthGuidance`` in
+  # ``molmetal/adapters/flow_matching_lipman/__init__.py``.
+  bond_length_guidance_weight: 0.0
+  # Wf-A78 (OPT-5) — ring-template prior weight.  Matches the ring-size
+  # profile of the bond head's soft graph against each molecule's truth
+  # profile.  0.0 (default) is an exact zero term.
+  ring_template_weight: 0.0
+  # Wf-A107 arm: budget-matched control: no ring prior, no new bond features
+  ring_template_formulation: count
+protocol:
+  # Wf-A96 (2026-10-19) — the smoke subset used to live in the
+  # command_template as {n_train}/{n_val}, which start.sh cannot fill (it
+  # has no such placeholder), so the canonical launcher died with a
+  # KeyError reported as "could not parse YAML".  They are trainer dests
+  # (--n-train / --n-val), so per AGENTS.md 5.11 they belong here.
+  n_train: 1600
+  n_val: 64
+  batch_size: 64
+  lr: 0.0001
+  gen_validity_samples: 8
+  gen_eval_n: 32
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 1
+  epochs: 5
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+  # Wf-A107e — clip the head and the flow field SEPARATELY.  With one global
+  # norm the ring term raises the joint norm (MEASURED 2.62 -> 7.94 on the
+  # untrained-sampler pair; 17.1 on this config's control epoch 0) and the
+  # clip then rescales the velocity field too, which is the very module the
+  # A/B is supposed to hold fixed.  Both arms use this scope, so the
+  # comparison is one-factor again.
+  grad_clip_scope: per_module
+output:
+  base_dir: results/wfa108h_b64_chunk2
+  log_master: results/wfa108h_b64_chunk2/master.log
+  ckpt_dir: results/wfa108h_b64_chunk2/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false
+  user_ok_granted: "Wf-A108h regime arm, 5 epochs, 1 seed, batch 64 + chunk 2.0, GPU0 (2026-10-23)"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  # W3 smoke: --n-train / --n-val are pre-launch scaling flags (set via
+  # the launch wrapper, NOT a hyperparameter override); the §5.11 rule
+  # applies to training hyperparameters (lr, epochs, batch_size, etc.),
+  # not to data-subset selectors.  Same pattern as cfm_5metal_wfa68_smoke.yaml.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - "One-factor regime arm: 1,600 clouds at batch 64 against the Wf-A108d arms'
+    200 clouds at batch 8, with the optimizer-step budget held at 25 per epoch
+    (125 over five epochs).  The only intended difference is how much data each
+    step sees."
+  - "Read against metrics/by_metric/wfa108d_regime_gate.json (gap_closed 0.219 at
+    2,000 steps, 0.193 at 500) and the per-t table in
+    metrics/by_metric/wfa108d_t_sensitivity.json, not against an epoch mean."
+  - "Peak FM-forward memory is 157 MB at B=64 / ratio 2.0 (MEASURED, §6.188)."
+  do_not_claim:
+  - "That 5 epochs produces a usable sampler.  The shipped 5-epoch checkpoint still
+    sits at the prior (|v| 0.106-0.136 across t, §6.187); this arm asks whether the
+    regime raises the field's learning rate, not whether it is finished."
+  - "That gen_* metrics mean generated chemistry.  Every gen_ring_* / gen_validity
+    number in this line is a decode of a field that has not converged (§6.162)."
+  - "A bond_f1 or bond_pr_auc lift.  The bond head and the decoder are unchanged and
+    5 epochs is under-budget for calibration (§6.107)."
+  - "That the wider batch alone fixes the low-t defect.  Wf-A108e measured the x1
+    target repairing t=0.05 (14.781 -> 7.409) while degrading t=0.95 (6.994 ->
+    8.945), and this config keeps prediction_target at velocity."
+  deferred:
+  - "A longer run on this regime (the arm is a 5-epoch probe, not a retrain)."
+  - "The cfm_5metal_v5 cohort.  This arm stays on v3 so it is comparable with the
+    Wf-A108a/c/d/g arms; v5 changes both the cohort and the split (§6.195 note and
+    cfm_todo.json CFM_V3_V4_SCAFFOLD_ID_IS_WHOLE_COMPLEX)."

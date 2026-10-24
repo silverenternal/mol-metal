@@ -403,7 +403,71 @@ the refusal rule are in `docs/HONEST_NEGATIVE_CATALOG.md` §6.189.
 Artifacts: `metrics/by_metric/wfa108g_batch_chunk_memory.json`,
 `metrics/by_metric/triton_blackwell_bench.json`.
 
-## 8. References
+## 8. Wf-A108e — the x1 target fixes the low-`t` end and charges for it at high `t`
+
+The x1 target as shipped is the cheap form §3.2 warned about, and the warning was correct:
+the head still emits a displacement `u`, and `x1_hat = x_t + u` makes the residual
+`u - (1-t)(x1 - x0)`. That is velocity regression with an implicit `(1-t)^2` weight — full
+weight at `t = 0`, zero at `t = 1` — not an absolute-position head. It is nonetheless the
+right first test, because it weights exactly the region §6 measured as broken.
+
+**Capacity gate, held-out, 25 cohorts, `t ~ U(0,1)`, read on a fixed cohort at `t = 0.5`**
+(`wfa107h_velocity_capacity.py --cycle-batches 25 --t-uniform --eval-seed 999`):
+
+| arm | steps | reached MSE | gap closed |
+|---|---:|---:|---:|
+| velocity | 500 | 7.267 | 0.193 |
+| velocity | 2,000 | 7.033 | 0.219 |
+| x1 | 500 | 7.304 | 0.189 |
+| x1 | 2,000 | 7.414 | 0.177 |
+
+**Per-`t` read of the 2,000-step fields** (`wfa108d_t_sensitivity.py`, same cohort and draw):
+
+| `t` | `v = 0` | velocity | x1 | Gaussian closed form |
+|---:|---:|---:|---:|---:|
+| 0.05 | 9.008 | 14.781 | **7.409** | 3.605 |
+| 0.25 | 9.008 | 9.638 | **7.188** | 5.458 |
+| 0.50 | 9.008 | 7.445 | 7.673 | 8.344 |
+| 0.75 | 9.008 | 6.744 | 8.487 | 8.537 |
+| 0.95 | 9.008 | 6.994 | 8.945 | 6.305 |
+| mean | 9.008 | 9.120 | **7.940** | 6.450 |
+
+**What it fixed.** At `t = 0.05` the field goes from 64% worse than predicting zero to 18%
+better. That is the largest single-cell move measured on this field, and it is the cell the
+ODE starts from.
+
+**What it cost.** The high-`t` end degrades: 6.994 → 8.945 at `t = 0.95`, 6.744 → 8.487 at
+0.75. The five-`t` mean improves 9.120 → 7.940, but the capacity gate at `t = 0.5` is
+slightly worse (0.219 → 0.177 gap closed), and the 500-step arm is better than the
+2,000-step one, so the arm is not climbing with budget.
+
+**Why it did not do better.** The required conditional mean reverses sign between the two
+ends of the path. The x1 arm does not reverse either: endpoint cosine rises 0.736 → 0.852
+and `sign_flip_achieved` is false. Making the field *more* consistent across `t` while the
+target reverses is the wrong direction, and it is the reason the gain is a redistribution
+rather than a level shift.
+
+**Where it leaves the plan.** Neither arm reaches the one-parameter Gaussian posterior mean
+(6.450), which is the number that matters: the field is still beaten by a closed form with
+one degree of freedom. A genuine x1 head — one that emits a position with free magnitude —
+would have to beat that baseline to be worth its complexity, and nothing measured here
+suggests it would. The next change in this line is the **regime**, not the head:
+`configs/wfa108h_b64_chunk2_vector_channels.yaml` holds the optimizer-step budget at 125
+while moving from 200 clouds at batch 8 to 1,600 at batch 64, which Wf-A108g measured at
+157 MB of FM-forward memory.
+
+**Honest boundaries.** One seed, one held-out cohort, one noise draw. The capacity gate reads
+a single `t = 0.5` batch, so the per-`t` table is the primary evidence and the gate is the
+summary. `x1` changes the sampler conversion (`vel = u / max(1-t, 0.02)`), so a trained x1
+checkpoint is not interchangeable with a velocity one. No 5-epoch transport arm was run for
+x1; the 120-step transport arm in §5.3 was flat for both arms, and running another at that
+budget would not separate them.
+
+Artifacts: `metrics/by_metric/wfa108e_ho_cycle25_vc_x1_{500,2000}.json`,
+`metrics/by_metric/wfa108e_t_sensitivity_x1.json`,
+`configs/wfa108e_x1_cpu_smoke.yaml`, `docs/HONEST_NEGATIVE_CATALOG.md` §6.195.
+
+## 9. References
 
 * Satorras, Hoogeboom, Welling. *E(n) Equivariant Graph Neural Networks.* ICML 2021. arXiv:2102.09844.
 * Thomas et al. *Tensor Field Networks.* arXiv:1802.08219.

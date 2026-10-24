@@ -1485,6 +1485,17 @@ class EpochMetrics:
     decode_n_single_fragment: int = 0
     decode_single_fragment_ratio: float = 0.0
     decode_fragments_mean: float = 0.0
+    # Wf-A108e (2026-10-23) — the epoch mean of EVERY tensor that entered the
+    # objective, keyed exactly as in `_LAST_LOSS_TERMS`.
+    #
+    # Why this field exists: the epoch record exported five terms (fm, bond CE,
+    # Wasserstein, aux MSE, ring prior) and the other twenty-odd were only ever
+    # accumulated in `_LAST_EPOCH_TERM_MEANS` and dropped.  On the Wf-A108e x1
+    # smoke that made `train_loss` rise 7.52 -> 7.94 while all five exported
+    # terms fell, and the run could not say which term went up.  A total that
+    # cannot be decomposed is not an auditable number (the Wf-A105 defect
+    # class, §6.148).
+    loss_terms: Dict[str, float] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -1537,6 +1548,27 @@ def _triton_dispatch_describe() -> Dict[str, object]:
     except Exception:  # noqa: BLE001 - optional dependency
         return {}
     return triton_config.describe()
+
+
+def _objective_weights(args: object) -> Dict[str, float]:
+    """Every numeric ``*_weight`` the run actually used, keyed by dest.
+
+    The Wf-A108e smoke (2026-10-23) showed ``energy_class_term`` rising by
+    more than the whole objective while every exported term fell, and the
+    artifact could not say what its weight was: ``EnergyConservation`` has
+    been default-ON at 0.05 since Wf-A44 and appears in no CFM yaml.  The
+    new ``loss_terms`` field gives the weighted contribution; this gives the
+    multiplier, for every term at once rather than one hand-listed key at a
+    time.  Booleans are excluded on purpose — ``isinstance(True, int)``.
+    """
+    out: Dict[str, float] = {}
+    for key, value in sorted(vars(args).items()):
+        if not key.endswith("_weight"):
+            continue
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        out[key] = float(value)
+    return out
 
 
 def _block_diag_radius_edges(
@@ -16204,6 +16236,9 @@ def main() -> int:
             # artifact-level evidence that `use_fm_objective: true` reached
             # the objective.
             fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
+            # Wf-A108e — every term that entered the objective, so the total
+            # is decomposable from the artifact alone.
+            loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
             # Wf-R43 m4 — real SA on generated molecules.
             gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
             gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
@@ -16346,6 +16381,8 @@ def main() -> int:
                     _gen_chem.get("raw_ring_3_share", 0.0) or 0.0
                 ),
                 fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
+                # Wf-A108e — see the primary site.
+                loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
                 # Wf-R43 m4 — real SA on generated molecules (see the
                 # EpochMetrics field docs for why `gen_sa_observed` is the
                 # field to branch on).
@@ -16832,6 +16869,22 @@ def main() -> int:
             # unattributable: the gate is backend-dependent and per-op, so
             # "TRITON_USE_FUSED was on" is not enough to know what ran.
             "triton_dispatch": _triton_dispatch_describe(),
+            # Wf-A108h — how the FM batch was grouped.  0.0 is one padded
+            # forward (the pre-Wf-A108g path); >0 splits the batch into
+            # size-homogeneous groups.  Recorded for the same reason as
+            # triton_dispatch: it changes peak VRAM by up to 25x and the
+            # number is otherwise invisible in the artifact.
+            "fm_batch_chunk_ratio": float(
+                getattr(args, "fm_batch_chunk_ratio", 0.0)
+            ),
+            "fm_batch_chunk_max_clouds": int(
+                getattr(args, "fm_batch_chunk_max_clouds", 64)
+            ),
+            # Wf-A108e follow-up — the multiplier for every loss term the run
+            # used.  `loss_terms` records the weighted contribution, which is
+            # the product; a reader who wants to know whether a term was on,
+            # and at what strength, needs this half as well.
+            "objective_weights": _objective_weights(args),
         },
         # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #

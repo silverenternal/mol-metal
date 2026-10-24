@@ -129,6 +129,17 @@ def main() -> int:
     ap.add_argument("--vector-channels", type=int, default=8)
     ap.add_argument("--t-embedding-dim", type=int, default=None)
     ap.add_argument(
+        "--prediction-target",
+        choices=("velocity", "x1"),
+        default=None,
+        help=(
+            "Wf-A108e: override what the head is trained to emit.  In x1 "
+            "mode the loss is on x1_hat = x_t + u and the reported MSE is "
+            "still the derived velocity's, so arms stay comparable."
+        ),
+    )
+    ap.add_argument("--x1-denominator-floor", type=float, default=0.02)
+    ap.add_argument(
         "--metal-frame-channels", action="store_true", default=False
     )
     ap.add_argument(
@@ -175,6 +186,9 @@ def main() -> int:
     # the gate only needs to be able to turn it on.
     if args.t_embedding_dim is not None:
         ns.t_embedding_dim = int(args.t_embedding_dim)
+    if args.prediction_target is not None:
+        ns.prediction_target = str(args.prediction_target)
+    ns.x1_denominator_floor = float(args.x1_denominator_floor)
     model = build_joint_model(ns).to(dev)
     if fresh:
         print(
@@ -255,6 +269,7 @@ def main() -> int:
     for step in range(1, int(args.steps) + 1):
         if not batches:
             bxt, bt, bz_, bsz, btgt = xt, t_col, z, sizes, tgt
+            bx1 = x1
         else:
             b = batches[(step - 1) % len(batches)]
             if args.t_uniform:
@@ -268,8 +283,14 @@ def main() -> int:
             )
             btgt = b["x1"] - b["x0"]
             bz_, bsz = b["z"], b["sizes"]
-        vp = model.fm_velocity(bxt, bt, bz_, cloud_sizes=bsz)
-        loss = F.mse_loss(vp, btgt)
+            bx1 = b["x1"]
+        if str(getattr(model.vel_field, "prediction_target", "velocity")) == "x1":
+            loss = F.mse_loss(
+                model.fm_x1(bxt, bt, bz_, cloud_sizes=bsz), bx1
+            )
+        else:
+            vp = model.fm_velocity(bxt, bt, bz_, cloud_sizes=bsz)
+            loss = F.mse_loss(vp, btgt)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()
@@ -304,6 +325,9 @@ def main() -> int:
             int(args.vector_channels) if head == "vector_channels" else 0
         ),
         "t_embedding_dim": int(getattr(ns, "t_embedding_dim", 0)),
+        "prediction_target": str(
+            getattr(ns, "prediction_target", "velocity")
+        ),
         "metal_frame_channels": bool(args.metal_frame_channels),
         "radial_centroid_masked": bool(args.radial_centroid_masked),
         "fresh_field": fresh,
@@ -357,6 +381,9 @@ def main() -> int:
                 "velocity_head": head,
                 "vector_channels": int(args.vector_channels),
                 "t_embedding_dim": int(getattr(ns, "t_embedding_dim", 0)),
+                "prediction_target": str(
+                    getattr(ns, "prediction_target", "velocity")
+                ),
                 "steps": int(args.steps),
                 "cycle_batches": int(args.cycle_batches),
                 "t_uniform": bool(args.t_uniform),
