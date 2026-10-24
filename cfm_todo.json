@@ -1,1473 +1,167 @@
 {
- "version": "8.8 (2026-10-24 — Wf-A108i: five open decisions closed; EnergyConservation flipped to opt-in, entropy weight kept at 0.1 with its warning; start.sh no longer supplies values the config did not declare; c8 full-corpus batch-64 run in flight on GPU0)",
- "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
- "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
- "task_definition": {
-  "primary": "Target-conditioned 3D molecule generation (SBDD-style: pocket + metal preference -> 3D + bonds)",
-  "domain": "Precious-metal anticancer (Pt / Ru / Ir / Rh / Os / Re)",
-  "data_on_disk": {
-   "platinai_4cell.csv": "100 Pt compounds, 4 cell lines (MCF7/A549/A2780/A2780cis), MB-Finder scrape, .data/molmetal/platinai_4cell_mbfinder.meta.json::underlying_paper='Rusanov 2025 PlatinAI'",
-   "platinai_4cell_long.csv": "16,313 rows; source='PlatinAI_4cell_synthetic_Rusanov2025_§1.2' (SYNTHETIC expansion)",
-   "platinai_4cells_with_5metal_train.csv": "42,945 rows; mixed PlatinAI + MetalCytoToxDB",
-   "MetalCytoToxDB.csv": "4.6 MB; 5-metal (Ru/Ir/Rh/Re/Os; NO Pt)",
-   "crossdocked2020/": "Wf-A14 (2026-10-13) — canonical 100K + 100 DiffDock-split pocket benchmark. Sibling project at /home/hugo/codes/pocket/data/crossdocked2020/ (8.3 GB), accessible via molmetal.data.crossdocked_pool.list_pocket_pool(). Same benchmark used by Pocket2Mol / TargetDiff / DecompDiff / DiffBP / RxnFlow. Pocket-loader wire-in is CrossDockedDataset(manifest_csv=...). See docs/HONEST_NEGATIVE_CATALOG.md entry Wf-A14-Gap1.",
-   "tmQM_X.q (NATURAL CHARGES, BLOCKED)": "Wf-A14 Gap 2 — NBO Loewdin per-atom natural charges. Source: github.com/uiocompcat/tmQM/blob/main/tmQM/tmQM_X.q (canonical Balcells 2020 SI). BLOCKED on this host (GitHub + Zenodo + Mendeley all unreachable). parse_natural_charges() in molmetal/data/tmqm.py:244 is the auto-detector. NaturalChargeLoss in molmetal/loss/chemistry_losses.py is the per-atom MSE loss (default weight=0 preserves 7-shipped-CFM-YAML bit-exact). See docs/HONEST_NEGATIVE_CATALOG.md entry Wf-A14-Gap2."
-  },
-  "math_innovations": [
-   "Lambda Calculus: β-NF + Catherine P1-P6 closure properties",
-   "ASTSR + Hilbert + MCTS triangle closure",
-   "EGNN velocity field + Lipman CFM (YuelBond)",
-   "D-MPNN as 7-role shared backbone (119 scripts / 180 tests / 25 configs at 2026-10-10)",
-   "Hierarchical multi-metal (R20-P3, deferred)"
-  ]
- },
- "checkpoints_on_disk": {
-  "cfm_yuelbond_wasserstein.smoke_stub.pt": "CFM/YuelBond, smoke-scale, 639 KB on disk (NOT paper-primary; smoke_stub only — primary fullcorpus ckpt was never retrained)",
-  "cfm_yuelbond_wasserstein_seed0.smoke_stub.pt": "CFM/YuelBond seed0, smoke-scale, 7.8 MB on disk (NOT paper-primary; smoke_stub only)",
-  "dmpnn_mtw_{a2780,a2780cis,mcf7,a549,ir,os,re}_seed{0,1,2}.pt": "D-MPNN MTW cohort, 25 ckpts, seed 0/1/2 across 7 metals (paper §3.2 fold-split)",
-  "_note_2026_10_16_Wf-A48_§6.74": "cfm_fullcorpus_2026_10_10_last.pt and cfm_patience10_seed0_last.pt were claimed here pre-audit but are NOT on disk per AGENTS.md §5.5 filesystem-truth audit 2026-10-16; ckpt_manifest.json has 0 entries for either. Closing drift via metadata rewrite + honest-negative §6.74 (catalog). Primary fullcorpus ckpt re-train is queued for next GPU slot.",
-  "cfm_c7_fullgen_2026_10_20/checkpoints/cfm_yuelbond_wasserstein_seed0{,_last}.pt": "CLAIMED 2026-10-21, FALSIFIED 2026-10-24 (Wf-A108i, §6.197): molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/ is an EMPTY directory (0 entries, mtime 2026-10-21 16:52, ~12 h after the run ended).  A repo-wide find for any .pt written 2026-10-20..22 does not contain it.  The run's METRICS and generated_smiles.csv do survive; only the weights are gone.  A weight-level comparison against this run is therefore impossible without retraining.",
-  "_note_2026_10_24_Wf-A108i_§6.197": "Two §5.5 filesystem-truth violations of the same shape (§6.74 was the first): the c7 full-corpus weights are gone, and the c7 run's declared cosine schedule never ran.  MEASURED from its 18 lr_step events: every one records phase='constant' at 3.0e-4, because scripts/start.sh reads protocol.scheduler.type (absent -> 'none') and passes --lr-scheduler none over the yaml's train.lr_scheduler: cosine.  The same launcher reported epochs=50 for an 18-epoch config.  Consequence: a yaml describes two different protocols depending on whether it is launched through start.sh or the trainer directly.  Fix applied for the c8 re-run only (configs/c8_fullgen_b64_2026_10_24.yaml declares protocol.epochs, protocol.scheduler.*, protocol.weight_decay, protocol.max_norm, output.resume_from, and sets train.lr_scheduler: none to match c7 as executed).  The launcher itself is NOT fixed: start.sh still supplies those values from its own defaults for every other config in the repo."
- },
- "harness_and_allocator_insights": {
-  "added": "2026-10-21",
-  "trigger": "用户指令：『你构思一下显存占用是不是还能优化，按理来说我们这种任务现在占用 20GB 顶天了，你看看是不是哪里造成显存泄漏还是有什么 bug，做一下对应的修复（但是之前好的点不要改没）』",
-  "headline": "不是显存泄漏。nvidia-smi 报的是 reserved（分配器为空块保留的缓存），不是 allocated（活张量）。allocated 每步之后全程平坦在 71-87 MiB。真正的 bug 有两个：① 峰值随 batch 超线性且被 reserved 掩盖，导致此前三次错误归因；② 正则项在显存压力下静默归零，使『六项全开』名不副实。两个都已修，且默认关闭新旋钮以保持既有 run 逐位一致。",
-  "1_allocated_vs_reserved": {
-   "why_it_matters": "此前所有『这个 run 用了 92 GB』的陈述都是关于空块的陈述。把 nvidia-smi 当 allocated 用，会让『batch 减半只省 7 GB』这种结论看起来成立。",
-   "measurement": "MOLMETAL_MEM_TRACE=1 每步打印 memory_allocated / memory_reserved / max_memory_allocated；n_train=256, batch 32, 六项全开, gen_eval_n=0",
-   "table_step_alloc_reserved_peakalloc": [
+  "version": "9.0 (2026-10-25)",
+  "rule": "This file is a TASK PLAN, not a log. Completed work and history live in git log and docs/HONEST_NEGATIVE_CATALOG.md; nothing finished stays here. Every task has a numeric done_when. Nothing is marked DONE without an artifact path.",
+  "scope": "CFM / generative line only. Predictive line: docs/PREDICTIVE_LINE_INDEX.md.",
+  "principle": "Do not iterate the model blindly. Gate each module on its own function, then gate the seams between modules. A module that cannot pass its own gate is a bug to fix, not a result to report. Fix order is by measured severity, not by convenience.",
+
+  "module_gates": [
     {
-     "step": 0,
-     "allocated_mib": 71,
-     "reserved_mib": 8836,
-     "peak_alloc_mib": 8563
+      "id": "M1",
+      "module": "data entry",
+      "check": "For every training batch: x_t == (1-t)*x0 + t*x1 elementwise, v_target == x1 - x0, and x0's per-atom std matches flow.fm_noise_sigma.",
+      "pass": "max |x_t - ((1-t)*x0 + t*x1)| < 1e-5 and max |v_target - (x1-x0)| == 0",
+      "status": "PLANNED"
     },
     {
-     "step": 3,
-     "allocated_mib": 76,
-     "reserved_mib": 16068,
-     "peak_alloc_mib": 10226
+      "id": "M2",
+      "module": "conditioning path (metal / t / atom type)",
+      "check": "Hold a fixed batch, perturb ONE conditioning input at a time, measure the relative change in the velocity output: swap the metal atom's identity, shift t by 0.25, swap an atom type.",
+      "pass": "each of the three produces ||dv|| / ||v|| > 1e-2. A conditioning channel that moves the output by 0 is not connected.",
+      "status": "PLANNED",
+      "why": "The velocity field is called as fm_velocity(x, t, z, cloud_sizes, pocket_embed). Metal identity enters ONLY through the atomic-number embedding; there is no per-cloud metal descriptor and no metal id embedding. If that path is weak the field can only learn the metal marginal."
     },
     {
-     "step": 7,
-     "allocated_mib": 76,
-     "reserved_mib": 17998,
-     "peak_alloc_mib": 16555
+      "id": "M3",
+      "module": "velocity head capacity",
+      "check": "One fixed batch, 2,000 optimizer steps, no regularisers. Measure train MSE against the v=0 baseline (mean-squared target norm) for velocity_head in {radial, vector_channels}.",
+      "pass": "train MSE <= 10% of the v=0 baseline for the head we ship",
+      "status": "PLANNED",
+      "known": "Wf-A108a measured radial best-possible 5.783 against a v=0 baseline of 10.652 on one 8-cloud batch, i.e. radial's own ceiling is 54% of baseline and the trained model never reaches it."
+    },
+    {
+      "id": "M4",
+      "module": "output scale",
+      "check": "On a held-out batch at several t, report ||v_pred|| / ||v_target|| and the regression slope of v_pred on v_target.",
+      "pass": "ratio in [0.5, 2.0] and slope in [0.5, 2.0]",
+      "status": "PLANNED",
+      "why": "Wf-A108h reported |v| = 0.116-0.159 across t on the readout cohort. If the target norm is O(3), the field is emitting a few percent of the required magnitude, which makes the MSE look like 'the prior' regardless of what the network learned. Highest-yield check in the list."
+    },
+    {
+      "id": "M5",
+      "module": "gradient path",
+      "check": "One backward from fm_term alone; per-parameter-block grad norm for vel_field.*, head.*, pocket_encoder.*.",
+      "pass": "no parameter block has grad norm 0, and none is more than 100x another block's",
+      "status": "PLANNED"
+    },
+    {
+      "id": "M6",
+      "module": "time resolution",
+      "check": "Fix x and z, sweep t over 101 points in [0,1], record the velocity.",
+      "pass": "the output changes by more than 10% of its own norm across the sweep, smoothly. A field flat in t cannot represent a flow.",
+      "status": "PLANNED",
+      "why": "vel_field.time_mlp is Linear(1->128) -> SiLU -> Linear(128->128) on the RAW scalar t; the sinusoidal embedding (t_embedding_dim) is opt-in and defaults to 0."
+    },
+    {
+      "id": "M7",
+      "module": "warm start",
+      "check": "List which parameters tmQM pretraining does NOT transfer.",
+      "pass": "no missing key may be an atom embedding, a time MLP, or a velocity head; those must be listed explicitly if they are",
+      "status": "PLANNED",
+      "known": "The load log reports 47/51 transferred, 4 missing, and the 4 have never been named."
+    },
+    {
+      "id": "M8",
+      "module": "train / sample seam",
+      "check": "Run the trainer's velocity call and the ODE sampler's velocity call on the same (x, t, z, cloud_sizes); compare bit-exactly.",
+      "pass": "max |dv| == 0",
+      "status": "PLANNED"
+    },
+    {
+      "id": "M9",
+      "module": "objective balance",
+      "check": "From loss_terms, each weighted term's share of the total, per epoch.",
+      "pass": "no single term above 90% of the total; every term declared in the config appears non-zero",
+      "status": "PLANNED",
+      "known": "c7 epoch 0: fm_term 12.6 of a 13.7 total (92%), bond_ce 1.0 (7%), everything else under 1%."
+    },
+    {
+      "id": "M10",
+      "module": "metric chain",
+      "check": "Every reported generation metric names the checkpoint hash, the split fingerprint and the sampler settings; the checkpoint on disk is the one the run wrote.",
+      "pass": "hash + split fingerprint match, and the checkpoint exists at the path the artifact names",
+      "status": "PLANNED"
     }
-   ],
-   "leak_verdict": "NO LEAK (MEASURED)。没有引用泄漏、没有保留计算图、没有累积列表。涨的只有 reserved —— 语料每朵云原子数不同（median 34 / max 146），一个 epoch 内形状种类成百上千，分配器按形状留空块。",
-   "artifact": "docs/HONEST_NEGATIVE_CATALOG.md §6.150c"
-  },
-  "2_batch_is_a_real_lever": {
-   "correction": "§6.150b 的 Correction 1（『峰值不依赖 batch』）对 nvidia-smi 成立、对真实峰值不成立。",
-   "first_batch_peak_alloc": {
-    "batch_64_mib": 34279,
-    "batch_32_mib": 11499,
-    "ratio": 3.0,
-    "note": "batch 翻倍、真实显存 3.0x —— 超线性，是 O(pairs) 的键对项与 x.unsqueeze(0)-x.unsqueeze(1) 的形状"
-   },
-   "n_train_4096_arms": [
+  ],
+
+  "tasks": [
     {
-     "arm": "batch 64, empty_cache every 8",
-     "peak_alloc_mib": 56706,
-     "nvidia_smi_peak_mib": 82076,
-     "epoch_s": 161.6
+      "id": "G1",
+      "phase": "gate",
+      "what": "Implement the ten gates as molmetal/scripts/cfm_module_gates.py with --gate M1..M10 and --json, each emitting PASS/FAIL plus the measured numbers.",
+      "done_when": "all ten gates run against a checkpoint and emit a JSON artifact",
+      "status": "PLANNED"
     },
     {
-     "arm": "batch 32, empty_cache every step",
-     "peak_alloc_mib": 36769,
-     "nvidia_smi_peak_mib": 20000,
-     "epoch_s": 286.3
+      "id": "G2",
+      "phase": "gate",
+      "what": "Run G1 on the 5-epoch vector_channels checkpoint and on the c8 full-corpus checkpoint.",
+      "done_when": "two JSON artifacts, every gate PASS or FAIL with numbers",
+      "status": "PLANNED"
     },
     {
-     "arm": "batch 32, no empty_cache",
-     "peak_alloc_mib": null,
-     "nvidia_smi_peak_mib": null,
-     "epoch_s": 189.6
+      "id": "F1",
+      "phase": "fix",
+      "what": "Fix every FAILing gate, highest severity first. Candidates already identified: (a) output scale of the radial head — tanh(x)*vel_scale*(x-centroid) bounds |v| by the centroid radius and is the default for every full-corpus run; (b) replace the raw-scalar time_mlp with the existing sinusoidal t_embedding_dim path; (c) give the field an explicit per-cloud metal embedding instead of relying on the atomic-number embedding alone; (d) name and fix the 4 parameters tmQM pretraining does not transfer.",
+      "done_when": "the failing gate flips to PASS under the same protocol, and the fix is a config key wherever possible (AGENTS.md 5.11)",
+      "status": "PLANNED"
+    },
+    {
+      "id": "F2",
+      "phase": "fix",
+      "what": "Re-run the 125-step regime arm with the fixes on, against the Wf-A108h baseline (fm_term 12.260 -> 12.237, field 8.928 vs v=0 9.008).",
+      "done_when": "fm_term falls by more than 10% in 125 steps, or the arm is a measured no-op with the gate numbers that explain why",
+      "status": "PLANNED"
+    },
+    {
+      "id": "R1",
+      "phase": "result",
+      "what": "Full-corpus run with the fixed model: batch 64, 18 epochs, same split as c7.",
+      "done_when": "checkpoint on disk + per-epoch metrics + generation pool, and the field beats v=0 by a margin that survives a seed repeat",
+      "status": "PLANNED"
+    },
+    {
+      "id": "R2",
+      "phase": "result",
+      "what": "Three seeds of the R1 config.",
+      "done_when": "per-seed numbers with a paired test, not a 5-point bootstrap",
+      "status": "PLANNED"
+    },
+    {
+      "id": "R3",
+      "phase": "result",
+      "what": "Generation pool quality on the R1 checkpoint: validity, uniqueness, novelty, SA, QED, ring profile, metal retention.",
+      "done_when": "one artifact per metric with the checkpoint hash attached (M10)",
+      "status": "PLANNED"
+    },
+    {
+      "id": "R4",
+      "phase": "result",
+      "what": "Paper-ready documentation: one results document where every number carries its artifact path, plus a claims table.",
+      "done_when": "docs/CFM_RESULTS.md exists and every number in it is machine-checked against an artifact",
+      "status": "PLANNED"
     }
-   ]
-  },
-  "3_knobs_shipped": {
-   "MOLMETAL_EMPTY_CACHE_EVERY": {
-    "default": 0,
-    "default_means": "关闭；既有 run 逐位一致",
-    "effect": "reserved 从爬过 80 GB 变成 8-21 GB 锯齿，peak_alloc 保持 36.8 GB",
-    "cost": "epoch 189.6 -> 286.3 s（+51%），因为每步释放并重分配数十 GB 不是免费的",
-    "how_to_set": "设成余量允许的最大值，不要设 1",
-    "full_corpus_usage": "完成的 18/18 epoch run 用的是 empty_cache_every: 8"
-   },
-   "expandable_segments": {
-    "status": "在修好后的代码上有效，但完成的那个 run 并没有用它",
-    "honest_note": "§6.150c 说它是最大杠杆，容易让人以为完成的 run 用了它。实际没有：resume config 只设了 empty_cache_every: 8，start.sh 也不导出 PYTORCH_CUDA_ALLOC_CONF。所以 18-epoch 完成是 empty_cache_every 的证据，不是 expandable_segments 在全语料上的证据。"
-   }
-  },
-  "4_bugs_found_and_fixed": [
-   {
-    "id": "BUG-MEM-1",
-    "what": "峰值随 batch 超线性，且被 reserved 掩盖，导致三次错误归因（生成评估 / CPU 热点 _build_bond_pair_features / batch 只省 7 GB）",
-    "fix": "MOLMETAL_MEM_TRACE=1 逐 step 打印三件套；MOLMETAL_EMPTY_CACHE_EVERY=N",
-    "commit": "ba604b88"
-   },
-   {
-    "id": "BUG-REG-1",
-    "what": "regularization_losses.py 每个 term 都是 except Exception -> return torch.zeros(())，且 _maybe_warn_import 按 (class_name, exc_type_name) 去重，每进程只 warn 一次。全语料 run 中 EnergyConservation（CUDA OOM）与 SBOO3Term（cusolver）都触发过，于是『六项全开』在显存压力下静默变成四项，而 loss 曲线平滑、YAML 权重正确，产物自己说不出这件事。",
-    "fix": "FALLBACK_COUNTS 每次吞异常都 +1；train_epoch 事件新增 regularizer_fallbacks 字段；空 dict 即正面证据",
-    "commit": "ba604b88",
-    "tests": "molmetal/tests/test_regularizer_fallback_counts.py（3 passed）",
-    "residual": "C7 18-epoch run 里 epochs 5-17 每轮都有 1-6 步某个加权项返回 0（EnergyConservation 31 步 / SBOO3Term 52 / FmOdeTerm 19），epochs 0-3 是未记录而非零（计数器在 run 中途才落地）。所以这个池子也不能叫『六项全开』。"
-   }
   ],
-  "5_hypotheses_killed": [
-   {
-    "hypothesis": "SBOO3Term 的 n_perm 买了额外前向（它是该项最大的乘数）",
-    "verdict": "FALSE。n_perm 只对已 detached 的 per_sample_loss 做 randperm，一次模型调用都没有；只有 n_rot 每轮 2 次前向。探针启动后读代码立即 pkill，未产出数字。"
-   },
-   {
-    "hypothesis": "nvidia-smi 显示的 92 GB 说明模型/数据占用了 92 GB",
-    "verdict": "FALSE。见 1_allocated_vs_reserved。"
-   },
-   {
-    "hypothesis": "expandable_segments 是全语料 OOM 的解",
-    "verdict": "UNMEASURED at full corpus。它在 4096 云上有效，但完成的 run 没开；全语料无杠杆对照需要 ≥96 GB 空闲显存，2026-10-21 GPU0 只有 48.7 GB 空闲（两个外部进程占 36.6 + 11.3 GB）。所以准确说法不是『比例未测』，而是『在这个尺度这块卡上比例无定义：不开杠杆 run 根本放不下』。"
-   }
-  ],
-  "6_checkpoint_and_resume_facts": {
-   "checkpoint_is_pickle_not_torch": "wf386a3_atomic_write.atomic_write_file 写的是 pickle；torch.load 会报 Invalid magic number，必须用 pickle.load。内容含 epoch / optimiser_state_dict / args。",
-   "resume_is_two_keys": "resume_from 是 MODE（auto/none/path），文件在 resume_from_path；_start_epoch = last_epoch + 1。",
-   "c7_checkpoints_on_disk": {
-    "path": "molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
-    "bytes": 8391950,
-    "note": "18/18 epoch 完成后的 checkpoint；此前该路径只有 smoke_stub，本次全语料 run 首次产出可用权重"
-   }
+
+  "running_now": {
+    "id": "c8",
+    "config": "configs/c8_fullgen_b64_2026_10_24.yaml",
+    "what": "batch 64, 26,715 clouds, 18 epochs, GPU0, launched 2026-10-25",
+    "note": "Reference arm, not the fixed arm. Its checkpoint is needed because c7's was lost. Do not treat its numbers as the model's ceiling."
   },
-  "7_honest_boundaries": [
-   "20 GB 是 batch-32 的数字，不是 batch-64 的。batch 32 真实峰值 11.5-36.8 GB；batch 64 是 34.3-56.7 GB。要让 batch-64 的语义压进 20 GB 需要梯度累积（2 x 32），这个 trainer 没有；改 batch_size 会改变每 epoch 的 optimizer steps（418 -> 835），那是另一个 run，不是同一个 run 的更省显存版本。",
-   "即使 allocated 平坦，peak_alloc 在一个 epoch 内仍会涨（batch 32 下 128 步内 11.5 -> 36.8 GB）。涨的是每步的瞬时量，由每个 batch 里最大的几朵云驱动（语料 median 34 原子、max 146），不是保留状态。要进一步压住需要给 pair 张量设上限，那是模型改动，不是分配器改动。",
-   "本轮所有数字都是在同一张卡上另有一个外部 11.3 GB 进程（用户的 lineageflow）时取的；部分 arm 还和另一个 agent 的冷启动 C7 抢过卡（该 run 已按用户授权 kill）。",
-   "+51% 是 4096 云的数；在 26,715 云上这个比例不存在（对照 arm 放不下）。把它外推到全语料就是跨 6.5x 步数变化的外推，正是 §6.150b 栽过的坑。",
-   "§8 的显存数字是本轮 Wf-A108g 在 GPU0 空闲时测的（0% util, 2 MiB used），与 §1-§7 那轮（同卡有外部 11.3 GB 进程）不是同一环境；两轮的峰值不可直接相减。"
-  ],
-  "artifacts": {
-   "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.150c（含完整表格与更正）",
-   "code": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py（_mem_trace_enabled / _empty_cache_every / _regularizer_fallbacks）；molmetal/loss/regularization_losses.py（FALLBACK_COUNTS）",
-   "tests": "molmetal/tests/test_regularizer_fallback_counts.py",
-   "probe_configs": [
-    "configs/c7_memtrace_2026_10_21.yaml",
-    "configs/c7_nrot1_4096_2026_10_20.yaml",
-    "configs/c7_b32_4096_2026_10_20.yaml"
-   ],
-   "resume_config": "configs/c7_c7resume_b32_2026_10_21.yaml"
+
+  "constraints": {
+    "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
+    "gpu": "GPU0",
+    "venv": "/home/hugo/codes/mol-metal/.venv",
+    "no_wet_lab": true,
+    "no_paper_dir_edits": true,
+    "numbers": "every number traces to an artifact path on disk"
   },
-  "8_wfa108g_padding_and_dispatch_2026_10_23": {
-   "trigger": "用户指令：『显存优化不是砍模型的参数量，关键在于每个batch上多少数据的优化』",
-   "headline": "不是参数量。64 朵真实云的原子数 16/38/225（min/median/max，mean 46.2），pad 到 batch 最大值后 2,957 个真原子占 14,400 个槽位 —— 79.5% 的原子槽和 83.6% 的边槽是 0。按尺寸分组前向后，B=255 的 ratio 2.0 是 9.0x 更省显存且 2.1x 更快；但在 arm 自己的 batch_size 8 上分组是净亏（1.65-2.10x 显存换 1.92-3.51x 时间），因为前向在该宽度是 CPU-dispatch-bound。",
-   "mechanism": "CFMJointModel._fm_chunk_plan 按原子数排序，下一个云超过 ratio*min(group) 就切组；_fm_field_forward 每组跑一次 padded 前向并在真实行上合并。精确而非近似：半径图是块对角的，node_mask 丢掉所有 pad 端点。legacy radial head 的 centroid 是对 padded 宽度求均值，_fm_padding_invariant 会把它挡掉。",
-   "bug_found": "initial_vector_channels 的 donor 掩码漏了 node_mask；pad 原子在原点、落在 2.8 Å 金属壳内，所以 n_max 从 40 变到 50 时 donor_centroid（以及 metal-frame 通道）漂移 7.1e-1（1.47e1 尺度的 5%）。已修，漂移 0.000e+00。",
-   "dispatch_bound": "torch.profiler 2 朵云：self CPU 4.29 ms vs self CUDA 0.64 ms，每次前向 23 个 aten::linear + 9 个 _ScatterSum。所以每多一组约 3 ms，与组内原子数无关。",
-   "table_batch_ratio_peak_ms": [
-    {
-     "batch": 8,
-     "ratio": 0.0,
-     "peak_mb": 41.18,
-     "ms": 3.3,
-     "memory_x": 1.0,
-     "time_x": 1.0
-    },
-    {
-     "batch": 8,
-     "ratio": 2.0,
-     "peak_mb": 25.0,
-     "ms": 6.34,
-     "memory_x": 1.65,
-     "time_x": 1.92
-    },
-    {
-     "batch": 32,
-     "ratio": 0.0,
-     "peak_mb": 283.81,
-     "ms": 4.22,
-     "memory_x": 1.0,
-     "time_x": 1.0
-    },
-    {
-     "batch": 32,
-     "ratio": 2.0,
-     "peak_mb": 58.32,
-     "ms": 10.15,
-     "memory_x": 4.87,
-     "time_x": 2.41
-    },
-    {
-     "batch": 64,
-     "ratio": 0.0,
-     "peak_mb": 1254.07,
-     "ms": 13.2,
-     "memory_x": 1.0,
-     "time_x": 1.0
-    },
-    {
-     "batch": 64,
-     "ratio": 2.0,
-     "peak_mb": 157.05,
-     "ms": 13.9,
-     "memory_x": 7.99,
-     "time_x": 1.05
-    },
-    {
-     "batch": 127,
-     "ratio": 0.0,
-     "peak_mb": 3005.34,
-     "ms": 30.27,
-     "memory_x": 1.0,
-     "time_x": 1.0
-    },
-    {
-     "batch": 127,
-     "ratio": 2.0,
-     "peak_mb": 356.36,
-     "ms": 16.29,
-     "memory_x": 8.43,
-     "time_x": 0.54
-    },
-    {
-     "batch": 255,
-     "ratio": 0.0,
-     "peak_mb": 6036.7,
-     "ms": 61.5,
-     "memory_x": 1.0,
-     "time_x": 1.0
-    },
-    {
-     "batch": 255,
-     "ratio": 1.25,
-     "peak_mb": 240.57,
-     "ms": 40.15,
-     "memory_x": 25.09,
-     "time_x": 0.65
-    },
-    {
-     "batch": 255,
-     "ratio": 2.0,
-     "peak_mb": 673.56,
-     "ms": 29.76,
-     "memory_x": 8.96,
-     "time_x": 0.48
-    }
-   ],
-   "default_and_recommendation": "fm_batch_chunk_ratio 默认 0.0（关闭），因为 batch_size 8 上不划算。batch 加宽到 64 以上时设 2.0：64 处持平，127/255 处更快。加宽 batch 属于训练协议改动，本波次没有做。",
-   "batch8_is_below_the_knee": "unchunked B=8 与 B=32 分别是 3.30 ms 与 4.22 ms（405 vs 1,289 原子）：3.2x 的数据只要 1.28x 的时间。batch 8 是惯例，不是这张卡的限制（97,887 MiB，B=8 时占用 41 MB）。",
-   "honest_boundaries": [
-    "跨进程的计时抖动可达 1.8x（同一未分组 B=8 前向两次测得 4.14 ms 与 7.48 ms），只有同一进程同一 n_clouds 的行可比；artifact 里每行带 stdev。",
-    "只测了 FM 前向，没测完整训练步（bond head 与 decoder 不在本波次），所以步级显存收益小于表中数字，且未量化。",
-    "一个 cohort、一个 seed；64 朵云是 train split 的前缀，不是随机抽样。",
-    "peak 是 max_memory_allocated 不是 max_memory_reserved；保留池更大，差值未测。",
-    "ratio 只扫了 0/1.25/1.5/2.0 四点，1.5-2.0 之间的最优未定位。",
-    "B=127/255 超过该 arm 训练过的任何 batch，是为找拐点构造的合成宽 batch。"
-   ],
-   "artifacts": {
-    "metric": "metrics/by_metric/wfa108g_batch_chunk_memory.json",
-    "script": "molmetal/scripts/wfa108g_batch_chunk_memory.py",
-    "tests": "molmetal/tests/test_wfa108g_batch_chunking.py（11 passed）",
-    "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.188"
-   }
+
+  "pointer": {
+    "history": "git log",
+    "negative_catalog": "docs/HONEST_NEGATIVE_CATALOG.md",
+    "metric_registry": "registry/metrics.yaml (molmetal/scripts/registry.py check)",
+    "predictive_line": "docs/PREDICTIVE_LINE_INDEX.md"
   }
- },
- "results_generation_line": {
-  "metrics_on_disk": {
-   "m14_decode_ratio": "metrics/by_metric/cfm_decode_real.json -- 0.994 (platinai 5k, RDKit-strict, real)",
-   "m15_rmsd": "metrics/by_metric/docked_pose_rmsd.json -- 0.6578 Å, 5/5 pockets ≤ 2 Å (vs DiffDock 38.2% < 2 Å)",
-   "m7_diversity": "metrics/by_metric/cfm_internal_diversity_intdiv1.json + m7_diversity.json",
-   "m2_r2": "metrics/by_metric/m2_r2_per_cohort.json",
-   "tmqm_bond_perception": "metrics/by_metric/tmqm_bond_perception_3seed.json -- bond EXISTENCE F1 0.9961 vs OpenBabel 0.9771"
-  },
-  "full_corpus_free_generation_pool_2026_10_21": {
-   "path": "molmetal/reports/cfm_c7_fullgen_2026_10_20/",
-   "run": "n_train=26,715, 18/18 epoch, exit=0, wall 11,232 s, 1,064-1,140 s/epoch, 46 次可恢复 OOM, peak_alloc 96,102 MiB",
-   "rows": "12,669 行 / 12,668 可打分 / 10,190 唯一 SMILES",
-   "quality": "SA 6.99, QED 0.124, SA<=4.5 = 0.28% [0.21,0.39] (36/12,668), 联合闸 (SA<=4.5 且 novelty>=0.90) = 0/10,190",
-   "vs_small_pool": "n_train=256 池 SA<=4.5 是 0.69% [0.42,1.11] (n=2,330) —— 放大语料没有改善可合成性",
-   "single_fragment_rate": "1,079/12,669 = 8.52%（4-epoch 时 4.47%）。但在这个数据集里单片段率不是质量指标：语料本身 69.1% 是 3 个 component，单一 component 只占 0.07%。两种读法（『在学会成键』/『连通性变差』）都已撤回。",
-   "verdict": "NOT SUPPORTED (C7)。联合闸 0/10,190；通过 SA 的 36 个分子平均新颖度 0.8587 < 0.90，都是训练集近亲。",
-   "artifact": "docs/CLAIM_LEDGER.md C7；metrics/by_metric/c7_scale_matched_pools.json"
-  }
- },
- "scoring_reuse_map": {
-  "principle": "Reuse cloned repos' evaluation scripts, not write new code",
-  "mapping": {
-   "validity/SASD": "RDKit + canonical Ertl-SA via sa_penalty.py:81-125 (RDKit-Contrib fallback). In-tree fork molmetal/eval/scoring/sascorer.py (188 LOC, Apache-2.0 header) diverges from canonical LigandDiff BY DESIGN (rewrite path: canonical Ertl-2009 algorithm + bundled fpscores.pkl.gz via __file__-relative path, instead of LigandDiff's /mnt/gs21/scratch/... sys.path hack). 13 downstream importers WORK (verified 2026-10-16 via grep across molmetal/ + molmetal_lam/: end_of_training.py:58, eval/scoring/{targetdiff,softmol,pocket2mol,admet8}_score.py, adapters/flow_matching_lipman/sa_penalty.py:119, etc). 8/8 test_sascorer_fork_divergence.py PASS (the divergence is the test target, NOT a bug) — see honest-negative §6.74 (catalog) for OPEN-5_sascorer_fork close-out.",
-   "docking/RMSD": "OpenBabel + meeko + AutoDock Vina via molmetal/molmetal_lam/sbdd_env/ adapters; rmsd_pose reuse from references/SoftMol/eval_sbdd.py",
-   "decode_ratio": "RDKit + Wf-R44 generated_smiles.csv pipeline (cfm_decoder_yuelbond.py:730-766 + DecodedMol.error)",
-   "synthesis_route": "AiZynthFinder via molmetal/molmetal_lam/sbdd_env/aizynth_*.py; references/RxnFlow/ + references/SynFlowNet/",
-   "ADMET": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py -- 8 proxies, 0 of 8 read metal (document as scope limit, NOT target)"
-  },
-  "_wf_a54_decode_panel_link_added_2026_10_16": "cfm_property_panel.py now accepts --ckpt-path (Wf-A54 W1 Fix 1A). NEW surface closes the m4/m5/m7 'panel measures no model' honest-negative: a CFM checkpoint can be fed in directly via --ckpt-path + --n-samples + --decode-seed, the helper _decode_smiles_from_ckpt loads the ckpt via torch.load + builds CFMJointModel + runs generate_clouds_from_noise + YuelBondBondDecoder.decode, writes SMILES to a temp CSV, and the existing read_smiles_csv + build_panel path emits the SA + QED aggregate JSON. HONEST-NEGATIVE: the helper handles the canonical 13-entry 'pt' z_table preset only (the on-disk smoke_stub ckpts use 4-entry + 9-entry shapes that fail load_state_dict with size mismatch and the helper prints '[wfA54-decode] HONEST-NEGATIVE: load_state_dict hit shape mismatches'). 7 tests in molmetal/tests/test_cfm_property_panel_decode_link.py PASS (CLI surface + mutual exclusion + requirement + missing-file + smoke-stub + helper-direct). This entry updates the earlier 'panel measures no model' verdict per memory cfm-property-panel-measures-no-model.md — the surface is now SHIPPED for production ckpts."
- },
- "baselines_same_dataset_same_domain": {
-  "principle": "Q1 or Q2 journal; precious-metal anticancer cohort; generative 3D model; reusable eval pipeline",
-  "user_verdicts_2026_10_13": "PRIMARY_1 + PRIMARY_2 cited + BOTH SECONDARY listed. PlatinAI cited as preprint with NOT PEER-REVIEWED marker.",
-  "PRIMARY_1_LigandDiff": {
-   "cite": "Jin, H.; Merz, K. M., Jr. J. Chem. Theory Comput. 2024, 20(10), 4377-4384. DOI 10.1021/acs.jctc.4c00232. PMID 38743854. PMCID PMC11137811",
-   "venue": "JCTC = Q1",
-   "dataset": "CSD-derived 23,308 TMCs (Arunachalam J. Chem. Phys. 2022, 157, 184112) -> 87,531 train samples",
-   "split": "400 val + 400 test + 87,131 train. PPR_100 test: 100 Pt/Pd/Ru complexes, 148 samples (Pt/Pd/Ru excluded from training -- transferability test)",
-   "metrics": "validity, connectivity, uniqueness, novelty, whole_complex_validity, SA",
-   "PPR_100_results": {
-    "validity": "0.94 +/- 0.017",
-    "connectivity": "0.94 +/- 0.015",
-    "uniqueness": "0.92 +/- 0.019",
-    "novelty": "1.00",
-    "whole_complex_validity": "0.87 +/- 0.026",
-    "SA_N_atom_11_40": "0.68 +/- 0.008"
-   },
-   "code": "github.com/Neon8988/LigandDiff",
-   "alignment": "PARTIAL -- same Pt/Pd/Ru metals, not anticancer-specific"
-  },
-  "PRIMARY_2_PlatinAI_Rusanov": {
-   "cite": "Rusanov et al. ChemRxiv 10.26434/chemrxiv-2025-pp32k. v1 2025-06, v2 2026-03. CC BY-NC-ND. Babak Lab, CityU Hong Kong",
-   "venue": "ChemRxiv PREPRINT (NOT PEER-REVIEWED in Q1/Q2 yet) -- cite with explicit NOT PEER-REVIEWED marker per AGENTS.md CITATION-PROVENANCE-MARKER + user verdict 2026-10-13",
-   "dataset": "v1: 4,078 Pt complexes / 18,995 IC50. v2: 3,725 distinct Pt structures (1,134 manuscripts) / 17,732 IC50. Screening 214,373 known Pt against MCF-7/A549/A2780/A2780cis (72h). v1 synthesised 20, v2 synthesised 19 (up to 72% pred/obs agreement)",
-   "split": "scaffold-based (Tables S4-S5 in SI, exact construction NOT publicly disclosed in supplied content)",
-   "metrics": "qualitative agreement; in vitro IC50 in 4 cell lines; in vivo mouse; ADME; proteome/transcriptome",
-   "PlatinAI_compound": "bis-NHC Pt(II), de novo fragment-based assembly. Qualitatively 'superior to cisplatin in A2780cis'. Mechanism: NOT DNA adduct",
-   "platform": "mb-finder.org (free, public, v2 release)",
-   "code": "**UNVERIFIED 2026-10-13** -- 11 candidate URLs all 404 (dmitry-brezgunov/KANO/PlatinAI/MKANO/platinum-kano/cisplatin-resistance-deep-learning/dmitrii-brezgunov/OrganiKANO + 8 Babak-Lab variants). GitHub search returns 0 results. dmitry-brezgunov user has 2 unrelated public repos only. The 'github.com/dmitry-brezgunov/OrganiKANO' URL in earlier cfm_todo.json drafts was a hallucination from a WebFetch (now corrected). The repo may be: (a) private/embargoed until v3 of the preprint, (b) under a username we haven't guessed, (c) the SI's 'collections of the algorithms' is a non-code artefact (a data archive or a Notion link).",
-   "alignment": "**PARTIAL same-dataset (audit-resolved 2026-10-13)** -- platinai_4cell_mbfinder.csv (100 rows, REAL MB-Finder portal scrape, has_<line> + bioDataCount) is the real PlatinAI cohort. platinai_4cell.csv (4078 rows) is NOT PlatinAI cohort -- it is the SYNTHETIC build_platinai_4cell_csv.py output (formula 6.0 + cell_offsets + N(0, 0.45) + A2780cis_resistance_bonus, MEASURED distribution MCF7=5.9981 / A549=6.1525 / A2780=5.6917 / A2780cis=6.5938 / std 0.45). Real PlatinAI numeric pIC50 (Tables S4-S5 of Rusanov 2025 SI xlsx) is Cloudflare-blocked from this host per Wf-292D/Wf-295B; we hold the partial MB-Finder harvest only."
-  },
-  "SECONDARY_1_multi_LigandDiff": {
-   "cite": "Jin & Merz JCTC 2024, DOI 10.1021/acs.jctc.4c00775. PMID 39251343. PMCID PMC11428130",
-   "venue": "JCTC = Q1 (same authors as PRIMARY_1, follow-up)",
-   "task": "3D TMC with user-predefined ligand denticity",
-   "test": "338 Fe(II) spin-crossover complexes from 47 known (NOT Pt anticancer)",
-   "code": "github.com/Neon8988/LigandDiff (extended)"
-  },
-  "SECONDARY_2_Balcells_JACSAu": {
-   "cite": "Strandgaard, Linjordet, Kneiding, Burnage, Nova, Jensen, Balcells. JACS Au 2025, 5(5), 2294-2308. ChemRxiv 2024 v1",
-   "venue": "JACS Au = Q1 (ACS open-access sister of JACS)",
-   "task": "Inverse design of TMC ligands (imines, phosphines, carbenes)",
-   "method": "JT-VAE + SMILES metal-ligand bond encoding + DFT-conditional (HOMO-LUMO gap, Ir charge)",
-   "data": "tmQMg-L ligand library",
-   "code_release": "NOT verified in search"
-  },
-  "out_of_scope_but_same_dataset": {
-   "Krasnov_2026_JMedChem": "DOI 10.1021/acs.jmedchem.5c02755. MetalCytoToxDB, 26,500 IC50 / 7,050 complexes (Ru/Ir/Rh/Re/Os; NO Pt). LightGBM Ru 0.81 / Ir 0.73. PREDICTIVE (DeepSeek line) -- cite as same-dataset cross-ref only"
-  },
-  "expanded_dataset_chain_on_disk": {
-   "platinai_4cell.csv": "4078 rows, **SYNTHETIC** per build_platinai_4cell_csv.py::pIC50 = 6.0 + cell_offsets + N(0, 0.45) + A2780cis_resistance_bonus. .data/molmetal/platinai_4cell.meta.json correctly labels SYNTHETIC. **CANNOT be used as real pIC50 in paper Table.**",
-   "platinai_4cell_mbfinder.csv": "100 rows, REAL MB-Finder portal scrape from platinai_real_label_loader.py (Wf-295B). Columns: mb_id, imageId, smiles, mw, ceilLineCount, bioDataCount, has_mcf7, has_a549, has_a2780, has_a2780cis, n_cell_lines_with_data, n_biodata_total, total_cell_lines_listed. Coverage: a549=100, mcf7=0, a2780=0, a2780cis=0 (A549-only). USE for paper Table: **qualitative coverage** (has_<line>) + PlatinAI cohort identity, NOT for pIC50 AUC",
-   "platinai_4cell_long.csv": "16,313 rows, SYNTHETIC per source column (PlatinAI_4cell_synthetic_Rusanov2025_§1.2)",
-   "platinai_4cells_with_5metal_train.csv": "42,945 rows, MIXED with MetalCytoToxDB (source column has both 'PlatinAI_4cell_synthetic' and 'MetalCytoToxDB')"
-  }
- },
- "tasks_roi_ordered": {
-  "TIER_2_HONEST_NEGATIVE_ACCOUNTING_MEDIUM_ROI": [
-   {
-    "id": "SHORTCUT_CLASS_TERM_SCALE_FREE_WFA102",
-    "what": "shortcut_distill_class_term: Wf-A102 wired the second view; Wf-A103 calibrated the perturbation and measured the scale-free form. The term is exactly quadratic in sigma (local exponent 2.00-2.06 over a 100x ladder), so term/sigma^2 is a constant = E[||grad v||^2] = 1.52e-04 with 7.6% spread. That is the scale-free statistic, and it does NOT make the term observable: the velocity field is smooth (Lipschitz ~0.012/A). Reaching 1% of bond_ce needs weight ~68 at epoch 1 and ~321 at epoch 8. The remaining question is modelling (is a self-consistency penalty the right regulariser for a field this smooth), not calibration.",
-    "cost": "0 (answered on CPU); a quality A/B would be ~15 min GPU but has no expected effect at these magnitudes",
-    "blocks": "nothing; the term is additive zero",
-    "status": "ANSWERED IN THE NEGATIVE 2026-10-20 (Wf-A103, §6.147); term stays at weight 0.0",
-    "MEASURED_2026_10_20": {
-     "shortcut_distill_class_term": {
-      "value": 0.0,
-      "requires_grad": false,
-      "weight": 0.05
-     },
-     "shortcut_distill_loss_old_term": {
-      "value": 1.89676,
-      "requires_grad": true
-     },
-     "probe": "molmetal/tests/test_cfm_loss_gradient_liveness.py (1 epoch, 32 clouds, all feature flags on)",
-     "catalog": "docs/HONEST_NEGATIVE_CATALOG.md §6.143"
-    },
-    "remaining": "None on calibration. Optional: decide whether to retire the term, or replace it with a field-roughness regulariser that acts on grad v directly (the statistic 1.52e-04 is now measurable, so a target value could be chosen).",
-    "MEASURED_2026_10_20_WFA103": {
-     "artifact": "metrics/by_metric/wfa103_shortcut_sigma_sweep.json",
-     "script": "molmetal/scripts/wfa103_shortcut_sigma_sweep.py",
-     "sigma_ladder_term": {
-      "0.01": 1.4881801568833453e-08,
-      "0.05": 3.728694935034582e-07,
-      "0.1": 1.4958224028305267e-06,
-      "0.25": 9.438536835659761e-06,
-      "0.5": 3.844291131827049e-05,
-      "1.0": 0.0001601113035576418
-     },
-     "growth_exponents": [
-      2.001,
-      2.004,
-      2.01,
-      2.026,
-      2.058
-     ],
-     "bond_ce_at_sigma_sweep": 1.0158201456069946,
-     "sigma2_normalised": {
-      "mean": 0.00015207459859567507,
-      "min": 0.00014881801568833453,
-      "max": 0.0001601113035576418,
-      "spread_over_min": 0.07588656398267331
-     },
-     "epoch_ladder_sigma_0p1": {
-      "1": {
-       "term": 1.4958224028305267e-06,
-       "bond_ce": 1.0158201456069946
-      },
-      "2": {
-       "term": 1.5538e-06,
-       "bond_ce": 0.6771
-      },
-      "4": {
-       "term": 1.3163e-06,
-       "bond_ce": 0.3667
-      },
-      "8": {
-       "term": 1.4099e-06,
-       "bond_ce": 0.0452
-      }
-     },
-     "weight_for_1pct_of_bond_ce": {
-      "epoch_1": 67.9,
-      "epoch_8": 320.5
-     },
-     "caveat": "A102 measured 1.24e-08 on the same cohort shape but with ALL feature flags on (bond_ce 1.68); this sweep uses the minimal flag set (bond_ce 1.0158), so the two differ by 20%. Cross-wave comparison is not valid.",
-     "catalog": "docs/HONEST_NEGATIVE_CATALOG.md §6.147"
-    }
-   },
-   {
-    "id": "L3_A_B_Phase_3_redo_or_treat_partial",
-    "what": "Phase 3 control arm decode_rate 0.109. ROOT CAUSE (MEASURED from molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json): 57/64 clouds (89.1%) failed with KekulizeException/AtomKekulizeException — the bond head marked a bond AROMATIC on atoms that close no ring ('non-ring atom 0 marked aromatic'), and RDKit refuses the whole molecule. Only 7/64 decoded (0.109). This is the same defect OPT-2 measured from the ring-size side.",
-    "cost": "0 (closed); optional re-measure ~15 min GPU/CPU",
-    "blocks": "honest-negative section",
-    "status": "CLOSED 2026-10-19 (Wf-A96 re-measured; §6.131)",
-    "what_shipped": "Wf-A79 decode-time repair _demote_aromatic_outside_rings in cfm_decoder_yuelbond.py (5 tests). Demotes aromatic bonds/atoms that lie in no ring BEFORE SanitizeMol. Wf-A96 re-ran the probe on the checkpoint now at the path and isolated the repair with a same-weights A/B.",
-    "remaining": "none",
-    "MEASURED_2026_10_19": {
-     "post_repair_decode_rate": 1.0,
-     "post_repair_n_with_smiles": 64,
-     "post_repair_single_fragment_ratio": 0.046875,
-     "post_repair_frac_any_aromatic": 0.03125,
-     "post_repair_n_repaired": 0,
-     "causal_ab_decode_rate_shipped": 1.0,
-     "causal_ab_decode_rate_no_repairs": 0.953125,
-     "causal_ab_delta": 0.046875,
-     "checkpoint_sha256": "b76198add67c2794ffb4947c0201104dc5fe31ee108f2b761354f71b574217a0",
-     "artifact": "metrics/by_metric/cfm_l3_decode_post_repair.json",
-     "caveat": "The 2026-10-12 arm measured a different file (overwritten 2026-10-13); the 0.109 -> 1.000 headline is mostly the checkpoint, the repair is worth +0.047 on the current file."
-    }
-   },
-   {
-    "id": "CONNECTIVITY_LOSS_WFA98",
-    "what": "The assemble/connectivity term has never contributed a gradient: assemble_loss=0.0 at every epoch on every cohort, with assemble_enabled=1.0. Wf-A98 measured WHY on 64 real val clouds: the escape-time statistic is correct on the decoded graph (fragmented 0.239 vs connected 0.123) but the model's soft graph reads 0.145, below every truth graph (p50 0.175, max 0.212), and the soft graph is 7x more connected than truth by lambda2 (48.75 vs 6.92). Any tau that fires on the soft graph also fires on correct complexes.",
-    "cost": "0 (closed for the diagnosis); spectral GPU A/B is a separate ~2 GPU-hr run",
-    "blocks": "nothing (diagnosis complete); the quality claim it was supposed to unlock",
-    "status": "MEASURED 2026-10-20 (Wf-A98; §6.141)",
-    "what_shipped": "(1) assemble_inert + assemble_hinge_tau in the epoch event and a [cfm-assemble] INERT stdout line; (2) --assemble-hinge-tau-mode corpus; (3) assemble_formulation=spectral (heat-kernel component count on the decode-rule graph); (4) wf_blkc_l3_guidance_probe.integrate() now emits in input order with template_index.",
-    "MEASURED_2026_10_20": {
-     "discrimination_artifact": "metrics/by_metric/wfa98_assemble_discrimination.json",
-     "smoke_artifact": "metrics/by_metric/wfa98_assemble_smoke.json",
-     "stay_mean_truth_p50": 0.1752,
-     "stay_mean_truth_max": 0.2121,
-     "stay_mean_decoded_fragmented": 0.2391,
-     "stay_mean_decoded_connected": 0.123,
-     "stay_mean_model_soft": 0.145,
-     "lambda2_ratio_truth": 6.92,
-     "lambda2_ratio_decoded_fragmented": 7.9e-05,
-     "lambda2_ratio_decoded_connected": 27.49,
-     "lambda2_ratio_model_soft": 48.75,
-     "tau_derived_pt_cohort": 0.24,
-     "escape_time_smoke_loss": "0.0 at both epochs (inert=1.0)",
-     "spectral_smoke_loss": "0.01592 -> 0.00440 (inert=0.0)",
-     "caveat": "2 epochs, 1 seed, 24 clouds, CPU. decode_fragments_mean moved 10.125 -> 2.5 in the arm whose term was EXACTLY ZERO, so it cannot attribute anything."
-    },
-    "remaining": "spectral is saturated (zero gradient) on hard-fragmented graphs; 0.6 s/cloud on CPU; fragmentation is valence saturation (Wf-A97 0/16 clouds had budget at the closest inter-component pair), so a connectivity term would have to create valence, not bonds.",
-    "tests": "molmetal/tests/test_wfa98_assemble_hinge_tau.py (6) + test_wfa98_spectral_connectivity.py (8)"
-   },
-   {
-    "id": "DIAGNOSTIC_TERMS_NOT_IN_LOSS_WFA105",
-    "what": "Four class-wrapper loss terms (consistency/so3/edm/shortcut) are computed every step, recorded in the trainer side-channel and carry gradients, but Wf-A34-1 removed them from the loss sum - so their *_term_weight flags never shaped training. MEASURED: --consistency-term-weight 1e-9 and 500 give a bit-identical epoch (train_loss 5.4288 / bond_ce 1.1657 / grad_norm 80.749); weight 0.0 differs only because consistency_loss_fn draws torch.randn_like and shifts the RNG stream. In the same dict, bond_aux_mse_term and ring_prior_term were IN the sum but unrecorded, so the guard could not see them.",
-    "status": "MEASURED + REPAIRED 2026-10-20 (Wf-A105, §6.148): split into _LAST_DIAGNOSTIC_TERMS, added a completeness audit (_LAST_LOSS_AUDIT: total == sum_recorded, MEASURED exact 3.290618896484375), registered the two missing terms, rewrote the four flag help texts, 9 new tests. Bit-exact: 5.0606 / 1.1691 / 0.7631 / 48.909 reproduced. THEN DELETED 2026-10-20 (Wf-A106, §6.149).",
-    "remaining": "none",
-    "catalog": "docs/HONEST_NEGATIVE_CATALOG.md §6.148",
-    "tests": "molmetal/tests/test_wfa105_diagnostic_terms.py (6) + test_cfm_loss_gradient_liveness.py (+3)"
-   }
-  ],
-  "TIER_3_DEFERRED_NO_TABLE_IMPACT": [
-   {
-    "id": "OPT-5_ring_template_prior",
-    "what": "Training-time ring-template prior. SHIPPED as molmetal/loss/ring_template.py (non-backtracking cycle counts, hard-value/soft-gradient, 10 tests) wired into train_cfm_yuelbond_wasserstein.py behind flow.ring_template_weight (default 0.0, bit-exact). MEASURED on the §5.7 CPU smoke: ring_prior_term 0.238 vs bond_ce 0.997 at weight 0.01.",
-    "cost": "1 GPU smoke (~15 min) + 1 analysis script",
-    "status": "FAILED 2026-10-21 (Wf-A107, §6.152) as shipped (count / per_atom); PARTIALLY RECOVERED 2026-10-21 (Wf-A107b, §6.153) as opt-in edge_ring; MECHANISM EXPLAINED (Wf-A107c/d, §6.162) — head effect on an untrained sampler; SAMPLER-ON RE-RUN (Wf-A107e, §6.166) — still a blob; existence AP +0.0181, single-bond class AP -0.1697; ROOT CAUSE (Wf-A107g/h, §6.170) — the velocity field cannot fit one batch (|v| 0.30 vs |target| 5.16, MSE 10.53 vs a 5.78 radial ceiling), so the sampler returns the prior; the prior stays opt-in; HEAD REPLACED (Wf-A108a, §6.173) -- the sampler returns the prior because the radial head cannot fit one batch, so an opt-in `vector_channels` coordinate head now exists (10.0% of the v=0 baseline at 400 steps vs 98.8% radial); a 5-epoch A/B is STILL flat for both heads because 120 steps at lr 1e-4 is under-budget, so the prior's own gate remains unmeasured; BUDGET ARM (Wf-A108b, §6.186) -- 10x the lr is equally flat (fm_term 12.1608 -> 12.1200, 0.34%, inside the epoch noise) and the field moves 2.1% of its coherent-Adam bound, so the binding constraint is the FM gradient's signal-to-noise at 200 clouds / batch 8, not the step count; the c7 regime change is the untested arm and is blocked on VRAM; REGIME GATE (Wf-A108d, §6.187) -- under the trainer's own sampling distribution the field does learn (gap 0.052 at 125 steps, 0.217 at 2000, 0.255 at 10000) and the radial head does not (0.012 at 1000), but 4x corpus / C=32 / sinusoidal t are all null, and the field is 64% WORSE than predicting zero at t=0.05, where a one-parameter Gaussian closed form is 4.1x better. The binding defect is the low-t half, not the budget",
-    "remaining": "Next step is the absolute-position (x1) head, which changes what the low-t target is; it is no longer 'run c7', because 4x the corpus at fixed steps moved the gap 0.193 -> 0.198. Next step is a REGIME change, not a longer run: c7 (26,715 clouds, batch 64) is the only arm that raises the FM gradient SNR; it needs ~40-90 GB and is blocked while co-tenants hold GPU0. Next step is a BUDGET run, not another flag: the c7 protocol with `velocity_head: vector_channels`, which is the first setting where `gen_ring_*` can mean generated chemistry. No weight of the count form helps (sweep 0 / 1e-4 / 1e-3 / 1e-2 -> bond AP 0.5617 / 0.5365 / 0.4513 / 0.4670 while 5/6 share moves 0.172 -> 0.191). per_atom degenerates. edge_ring keeps bond AP flat over 3 seeds and moves the decoded 3-ring share -0.142 (p=0.016), but §6.162 shows WHY its local probe is null: the Wf-A107 configs never trained the velocity field (use_fm_objective absent, wasserstein_weight 0.0), so `gen_ring_*` is a decode of collapsed noise (mean pair distance 2.26 A, 89% of pairs inside the 3.5 A cutoff, 156 rings/mol raw). The head's raw graph differs by only -0.0045 in 3-share; the assembler amplifies it to -0.121. Open: the Wf-A107e pair (use_fm_objective=true, tmqm init, w2 0.1) is the first A/B where `gen_ring_*` can mean generated chemistry. Until it lands the prior has NO measured generation benefit and stays opt-in (weight 0.0, formulation count). Also open: the global gradient clip (max_norm 5.0) rescales the flow field whenever the ring term lifts the norm above 5.0 (MEASURED 7.94 vs control 2.62), so a trained-sampler A/B needs per-module clipping. Wf-A107e then turned the sampler on (use_fm_objective true, tmqm init, w2 0.1, per-module clip) and MEASURED that 5 epochs on 200 clouds does not produce a usable sampler (mean pair distance 2.18 A, 90.9% of pairs inside the cutoff, 166 rings/mol raw), that the decoded A/B is unchanged (-0.1368 vs -0.1357), and that the prior now costs bond AP -0.170 (0.347 -> 0.177). So: the prior stays opt-in and disabled. SUPERSEDED 2026-10-22 by §6.170: more budget is NOT the next attempt — the velocity field cannot fit even one 8-cloud batch (200 steps at 10x the lr: |v| 0.298 vs |target| 5.159, MSE 10.529 against a 5.783 radial-only ceiling), so `generate_clouds_from_noise` returns the prior and every gen_* metric is a readout of fm_noise_sigma (MEASURED: 3-share 0.877 at sigma 2.485 vs 0.502 at sigma 1.0). The next model-side work is a velocity head that can express a non-radial per-atom vector, not another ring formulation and not a longer run.",
-    "MEASURED_2026_10_19": {
-     "gate": "PASS (direction only)",
-     "artifact": "metrics/by_metric/wfa96_ring_prior_gate.json",
-     "run_dir": "results/cfm_5metal_wfa78_ring_prior",
-     "epochs": 5,
-     "epoch_0_rings_per_mol": 0.0,
-     "epoch_4_rings_per_mol": 7.052083333333333,
-     "epoch_4_share_5_6": 0.19054652880354506,
-     "epoch_4_share_3": 0.43722304283604135,
-     "real_rings_per_mol": 4.193,
-     "real_share_5_6": 0.9692344383496303,
-     "real_share_3": 0.004889100882423086,
-     "pre_prior_share_5_6": 0.018518518518518517,
-     "pre_prior_share_3": 0.8981481481481481,
-     "ring_prior_term_epoch4": 0.7178196310997009,
-     "ring_prior_share_of_train_loss_epoch4": 0.37901197412237486,
-     "train_loss_epoch2": 1.2078732872009275,
-     "train_loss_epoch4": 1.8939233589172364,
-     "bond_ce_epoch0": 1.0284778356552124,
-     "bond_ce_epoch4": 0.9094425821304322,
-     "single_fragment_ratio_every_epoch": 0.0,
-     "gate_criteria": {
-      "share_5_6_doubled": true,
-      "share_3_reduced_20pct": true,
-      "rings_per_mol_moved_toward_real": true
-     },
-     "caveat": "5 epochs, ~96 generated molecules/epoch; a PASS means the prior is wired and moves the profile the right way, not that the ring-size defect is fixed. gen_single_fragment_ratio stayed 0.000 at every epoch."
-    },
-    "MEASURED_2026_10_21": {
-     "count_form_sweep": "see §6.152 (FAILED)",
-     "per_atom": "degenerate (bond AP 0.0436 = the positive rate)",
-     "edge_ring_3seed": {
-      "delta_bond_ap": -0.0013,
-      "p_ap": 0.9239,
-      "delta_ring_3": -0.1415,
-      "p_ring_3": 0.0164,
-      "delta_ring_5_6": 0.0719,
-      "p_ring_5_6": 0.0652
-     },
-     "truth_geometry_probe": "null on every metric (see §6.153)",
-     "artifacts": [
-      "metrics/by_metric/wfa107_ring_prior_ab.json",
-      "metrics/by_metric/wfa107_bond_graph_profile.json",
-      "metrics/by_metric/wfa107_ring_gradient_probe.json",
-      "metrics/by_metric/wfa107c_head_swap_probe.json",
-      "metrics/by_metric/wfa107c_head_swap_probe_gen402.json",
-      "metrics/by_metric/wfa107d_decode_head_swap.json"
-     ],
-     "head_swap_2x2": {
-      "artifact": "metrics/by_metric/wfa107d_decode_head_swap.json",
-      "vel_field_max_abs_delta_between_arms": 0.0,
-      "head_max_abs_delta_between_arms": 0.0029,
-      "sampler_max_abs_deviation_A": 0.0,
-      "generated_geometry_mean_pair_distance": 2.26,
-      "generated_geometry_frac_pairs_in_cutoff": 0.891,
-      "truth_geometry_mean_pair_distance": 5.0,
-      "truth_geometry_frac_pairs_in_cutoff": 0.412,
-      "raw_edge_head_effect_ring_3": -0.0045,
-      "decoded_head_effect_ring_3": -0.1211,
-      "decoded_model_effect_ring_3": 0.0,
-      "reading": "the effect is the head, but only after assembly, on geometry that is not a molecule"
-     }
-    }
-   }
-  ]
- },
- "user_open_decisions": [
-  {
-   "id": "DEC_retrain_slot",
-   "blocking": "TIER_2+ items; does not block paper Table",
-   "question": "Round 9 + threshold sweep said 'head retrain slot IS the right call'. Now that CFM line is re-scoped to generative only, retrain still relevant? OR stays parked until TIER_1 produces a clearer defect?",
-   "status": "RESOLVED 2026-10-24 (Wf-A108i) — SUPERSEDED by the c8 full-corpus run",
-   "resolution": "The 'head retrain slot' question predates the CFM re-scope.  The bond head is not a separate deliverable: it is the decoder's bond predictor, so it is retrained by the generation line's own full-corpus run.  configs/c8_fullgen_b64_2026_10_24.yaml trains it on all 26,715 clouds for 18 epochs and checkpoints every epoch, which is the retrain.  No separate slot is scheduled; if the c8 bond metrics are the same plateau as c7, the question becomes a modelling question (Wf-A107's head work), not a scheduling one."
-  },
-  {
-   "id": "DEC_general_sbdd_baselines",
-   "blocking": "not blocking; footnote vs headline",
-   "question": "Include TargetDiff / DiffDock as broader-context rows? They only have general CrossDocked numbers, not precious-metal-specific. user said 'same-dataset same-domain' -- likely footnote only.",
-   "status": "RESOLVED 2026-10-24 (Wf-A108i) — FOOTNOTE ONLY",
-   "resolution": "TargetDiff / DiffDock carry general CrossDocked numbers only.  The user's rule is same-dataset same-domain, and a general-protein-ligand row is neither.  They stay out of the headline table and appear at most as a footnote naming the domain gap.  No further work queued."
-  },
-  {
-   "id": "DEC_entropy_default_below_floor",
-   "blocking": "not blocking; affects how noisy a default run's log is",
-   "question": "--entropy-reg-weight defaults to 0.1 (Wf-A43, 2026-10-15) but the BLK-C14 MEASURED observability floor is 0.12, so the shipped default sits INSIDE the sub-threshold band and every run that does not set the flag prints the sub-threshold warning. Raise the default to 0.12 (silences the warning, but moves the objective of the ~157 configs that rely on the default), keep 0.1 and accept the warning (truthful: the term really is below the measured floor), or move the default back to 0.0 (off)?",
-   "evidence": "molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py; ENTROPY_REG_MEASURED_FLOOR = 0.12 in train_cfm_yuelbond_wasserstein.py; 21 of 178 configs set the key explicitly",
-   "added_by": "Wf-A99 (2026-10-20) while repairing the stale test",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.142",
-   "status": "RESOLVED 2026-10-24 (Wf-A108i, §6.198) — KEEP 0.1, keep the warning",
-   "resolution": "The warning compares 0.1 against ENTROPY_REG_MEASURED_FLOOR = 0.12, but the warning's own arithmetic shows the term at w=0.1 is 1.29%-1.94% of a live train_loss of 9.28459 (raw H in [1.2,1.8]), i.e. above the 1% observability bar the BLK-C14 paragraph uses.  0.12 is the low end of the measured PARITY band, not an observability threshold for 0.1 — different quantity.  Raising the default would move 157 configs to satisfy a comparison that is not the one being made.  The weight stays 0.1 and the warning stays because it states a true thing; a config that wants parity sets 0.12 explicitly (configs/cfm_entropy_reg_012_2026_10_11.yaml)."
-  },
-  {
-   "id": "DEC_per_loss_projection_inert",
-   "blocking": "not blocking; DECLARED_INERT by design per AGENTS.md §5.11",
-   "question": "The 9-layer table row `per_loss_projection` is by-design DECLARED_INERT — no `LossProjection` class exists in any of the 5 loss modules (`chemistry_losses.py`, `distillation_losses.py`, `regularization_losses.py`, `property_losses.py`, `stererochemistry_losses.py`) and no trainer dest `--per-loss-projection-lr` exists. Per §5.11 verbatim: 'the key MUST BE REMOVED from DECLARED_INERT_PATHS the first time a model attribute matches the loss-projection naming convention'. Wf-A28 step-3 (2026-10-14) resolved a §5.5 filesystem-truth disk-vs-doc mismatch: §6.47d claimed the key was reserved in `DECLARED_INERT_PATHS` but the string was missing from the frozenset at `molmetal/scripts/wfA2_config_loader.py:242`. Step-3 added the entry; total frozenset size 39 → 40. This DEC tracks the disposal commitment: any future `LossProjection` `nn.Module` landing in any of the 5 loss modules with a matching argparse dest `--per-loss-projection-lr` must trigger the removal.",
-   "DECLARE_INERT_STATUS": "active",
-   "reserved_in_frozenset": "molmetal/scripts/wfA2_config_loader.py:312 (after the Wf-A28 step-3 commit)",
-   "disposal_trigger": "First `LossProjection` class landing in any loss module with a `--per-loss-projection-lr` dest → remove from DECLARED_INERT_PATHS + add to consuming entry",
-   "added_by": "Wf-A28 step-3 commit (2026-10-14)",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.49c",
-   "disposal_trigger_enforced_by": "molmetal/tests/test_dec_per_loss_projection_disposal.py (Wf-A104, 4 tests)",
-   "disposal_note": "Since Wf-A104 the trigger is mechanical, not a memo: the test globs molmetal/loss/*.py for a class matching *Projection* and molmetal/scripts/*.py for the --per-loss-projection-lr dest, and fails if exactly one of {reserved, consumed} holds. It also re-asserts the NEGATIVE half on every run (no class, no dest), so 'nothing consumes it' is verified rather than assumed.",
-   "disposal_instruction": "When it fires: remove 'model.per_loss_projection_lr' from DECLARED_INERT_PATHS in molmetal/scripts/wfA2_config_loader.py, wire the dest into the trainer, and delete the 4 tests.",
-   "status": "RESOLVED 2026-10-24 (Wf-A108i) — STANDING INVARIANT, not a decision",
-   "resolution": "Nothing to decide: the key is DECLARED_INERT by design and the disposal trigger is already mechanical.  molmetal/tests/test_dec_per_loss_projection_disposal.py (Wf-A104, 4 tests) globs molmetal/loss/*.py for a *Projection* class and molmetal/scripts/*.py for the --per-loss-projection-lr dest, failing if exactly one of {reserved, consumed} holds, and re-asserts the negative half every run.  Reclassified from an open decision to an enforced invariant; nothing to schedule."
-  },
-  {
-   "id": "DEC_delete_diagnostic_class_wrappers",
-   "blocking": "not blocking; affects per-step cost and every run's RNG stream",
-   "question": "Wf-A105 proved the four class wrappers (consistency/so3/edm/shortcut) never enter the loss. Keep them as a computed-but-discarded harness (bit-exact, but two flags and 1-2 forwards per step are spent on nothing), or delete them (saves the compute, changes the RNG stream of every run that has consistency/edm weight > 0, which is the default)?",
-   "evidence": "metrics: probe rows in HONEST_NEGATIVE_CATALOG.md §6.148; molmetal/tests/test_wfa105_diagnostic_terms.py",
-   "added_by": "Wf-A105 (2026-10-20)",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.148",
-   "status": "RESOLVED 2026-10-20 (Wf-A106, §6.149) - deleted, not kept",
-   "resolution": "The four wrappers were strict duplicates of inline paths already in the loss sum, so deleting them loses no capability. They were deleted together with their five flags, _LAST_DIAGNOSTIC_TERMS, the A103 sweep script and its test. MEASURED: the post-deletion epoch-0 result is bit-identical to the pre-deletion '--consistency-term-weight 0 --edm-term-weight 0' arm (5.0606 / 1.1691 / 48.909), i.e. the old default was the clean baseline plus a random stream no objective used. Epoch 1 moves (3.4511 -> 6.0958) because the trajectories differ from step 1. Wall time on the toy cohort is unchanged (1.0 s vs 1.1 s), so the gain is correctness, not speed."
-  },
-  {
-   "id": "DEC_widen_batch_to_64_or_255",
-   "blocking": "not blocking; changes every arm's optimizer steps per epoch",
-   "question": "Wf-A108g 实测 batch 8 远在吞吐拐点左侧（B=8 与 B=32 的 FM 前向分别是 3.30 ms 与 4.22 ms，405 vs 1,289 原子），且显存从来不是限制（B=8 占 41 MB，B=64 占 1.25 GB，卡有 97,887 MiB）。是否把 wfa108 这一线的 batch_size 从 8 加宽到 64（配 fm_batch_chunk_ratio: 2.0，157 MB / 13.9 ms），还是保持 8 以便与已完成的 Wf-A108a/c/d 各臂可比？",
-   "evidence": "metrics/by_metric/wfa108g_batch_chunk_memory.json；docs/HONEST_NEGATIVE_CATALOG.md §6.188",
-   "added_by": "Wf-A108g (2026-10-23)",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.188",
-   "status": "MEASURED 2026-10-24 (§6.196) — batch 64 does NOT fit a 20 GiB allocator cap: peak 20,440 MiB and FmOdeTerm OOM on 25/25 steps.  Batch 48 also fails.  The regime arm ran at batch 32 / 800 clouds, which fits with EnergyConservation lost on 2 of 125 steps.  The 64-cloud arm remains available in configs/wfa108h_b64_chunk2_vector_channels.yaml for a run with a larger cap.",
-   "why_it_is_a_decision_not_a_fix": "加宽 batch 会改变每 epoch 的 optimizer steps 和 RNG 流，已完成的 5-epoch 各臂（AUC/gap_closed 表）就不再与新的 run 同协议；这不是省显存的开关，是一次协议切换。",
-   "arm_config": "configs/wfa108h_b64_chunk2_vector_channels.yaml",
-   "arm_vram_measured": "b64 20,440 MiB (OOM at 20,480 cap); b48 20,401; b32 20,041"
-  },
-  {
-   "id": "DEC_energy_default_off",
-   "blocking": "not blocking; changes the objective of every config that does not set the key",
-   "question": "EnergyConservation has shipped default-ON at weight 0.05 since Wf-A44 and has never been A/B'd.  The new loss_terms export shows it is the only term that rose in the Wf-A108e smoke (+1.4804 while the total rose +0.4222), and it evaluates the field at x_t + 0.5*v0 under the same t — off the interpolation path — with an LJ potential clamped to r in [0.5, 5.0] where 1/r^12 reaches 4,096, so its magnitude tracks how far the field moves atoms.  Set the default to 0.0 (bit-exact off, opt-in like fm_ode / sboo3 / ring prior), keep 0.05, or run a two-arm A/B at the same budget first?  UPDATE 2026-10-24 (§6.196): under a 20 GiB cap the term OOM'd on 2 of 125 steps of the regime arm, which made that run degraded.  It is the only term that still failed after the batch was cut to 32.",
-   "evidence": "docs/HONEST_NEGATIVE_CATALOG.md §6.195; metrics/by_metric/wfa108e_t_sensitivity_x1.json; the §5.7 smoke artifact records 27 objective weights, 15 nonzero, 13 of them absent from the yaml",
-   "added_by": "Wf-A108e (2026-10-23)",
-   "status": "RESOLVED 2026-10-24 (Wf-A108i, §6.198) — FLIPPED 0.05 -> 0.0 (opt-in)",
-   "why_it_is_a_decision_not_a_fix": "a default change moves the objective of every config that relies on it, which is the same class as DEC_entropy_default_below_floor; the term has no measured benefit to trade against, so the choice is the user's",
-   "resolution": "The argparse default and the main() signature default are both 0.0 now, bit-exact pre-Wf-A23.  Reason is measurement, not policy: §6.195 showed the term evaluates the field at x_t + 0.5*v0 under the same t (off the interpolation path) with an LJ potential clamped to r in [0.5,5.0] where 1/r^12 reaches 4096, so its magnitude tracks displacement rather than energy drift; in the Wf-A108e smoke it was the only weighted term that rose (+1.4804 against a total of +0.4222); and Wf-A108i measured that it costs 0 MiB of peak memory at batch 64, so no throughput argument holds either.  c7 and c8 both declare 0.05 explicitly, so the reference arm keeps the objective its artifacts were produced under.  Blast radius: the 157 configs that do not set the key change objective on re-run — intended, and the reason c7 was frozen.",
-   "test_updated": "molmetal/tests/test_wfa100_class_term_weights.py now pins 0.0",
-   "still_missing": "an A/B.  This is a reasoned flip, not a measured win; §6.198 records it."
-  },
-  {
-   "id": "DEC_full_corpus_gpu1_protocol",
-   "blocking": "blocks the GPU1 full-corpus arm only; nothing else in the CFM line depends on it",
-   "question": "The c7 full-corpus protocol is batch 64 over 26,715 clouds with FmOdeTerm/EnergyConservation/SBOO3Term live.  MEASURED 2026-10-24 (Wf-A108i): that objective needs >40 GiB at batch 64, and even with SBOO3Term removed a 32,000 MiB cap loses FmOdeTerm on step 1.  GPU1 has 32,607 MiB.  Three options, mutually exclusive: (a) batch 48 on GPU1 — objective intact, batch size differs from the reference; (b) batch 64 on GPU1 with fm_ode_term_weight declared 0.0 — batch matches, objective does not; (c) batch 64 on GPU0, which is where c7 ran — neither differs, but the run is not on GPU1 as asked.  A fourth option, checkpointing FmOdeTerm's sixteen retained forwards, would keep both and fit ~10 GiB, at the cost of doubling that term's forward compute and touching the loss path.",
-   "evidence": "metrics/by_metric/wfa108i_term_cost.json; docs/HONEST_NEGATIVE_CATALOG.md §6.196 (corrected attribution) + §6.197 (the reference run is itself degraded)",
-   "added_by": "Wf-A108i (2026-10-24)",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.196, §6.197",
-   "status": "RESOLVED 2026-10-24 — user chose option (c): batch 64 on GPU0",
-   "resolution": "User picked batch 64 on GPU0 over batch 48 on GPU1 / batch 64 with FmOdeTerm off / a checkpointing code change.  Rationale recorded: option (c) is the only one where neither the batch size nor the objective differs from the c7 reference, and GPU0 is where c7 itself ran.  Launched 2026-10-24 via scripts/start.sh as configs/c8_fullgen_b64_2026_10_24.yaml (commit 8fc837b3); out_dir molmetal/reports/cfm_c8_fullgen_2026_10_24.  GPU1 remains unable to host this protocol: MEASURED >40 GiB at batch 64 with FmOdeTerm live, 32,607 MiB total."
-  }
- ],
- "pocket_pool": {
-  "kind": "crossdocked2020",
-  "root": "/home/hugo/codes/pocket/data/crossdocked2020",
-  "train_manifest": "manifests/train_manifest.csv",
-  "test_manifest": "manifests/test_manifest.csv",
-  "pocket10_subdir": "pocket10/crossdocked_pocket10",
-  "max_n_train": 10000,
-  "max_n_test": 100,
-  "loader": "molmetal.data.crossdocked_pool.list_pocket_pool(split=...)",
-  "wired_into": "molmetal.data.crossdocked.CrossDockedDataset(manifest_csv=...)"
- },
- "split_protocol": {
-  "default": "scaffold_80_10_10",
-  "scaffold_kind": "bemis_murcko",
-  "scaffold_proxy_for_empty_smiles": "csd_6letter_refcode",
-  "smiles_fill_rate_tmqm_parsed_csv": 0.902,
-  "honest_negative_csd_proxy": "docs/HONEST_NEGATIVE_CATALOG.md::Wf-A14-Gap3",
-  "loader": "molmetal.data.tmqm_clouds.load_tmqm_clouds(split_kind='scaffold', ...)",
-  "yaml_key_per_yaml": "data.tmqm_split_kind (random|scaffold; default random preserves Wf-A8c bit-exact)"
- },
- "forward_look": {
-  "Wf-A72_part_2_Wf-A73_算子升级": {
-   "scope": "Per-loss math + per-pair feature encoders + class-imbalance operators in YuelBondDecoderHead pair_head path. NOT a new architecture.",
-   "operator_ships": [
-    "Operator 1: per-class logit adjustment (Menon 2020, ~20 LOC + 4 tests)",
-    "Operator 2: RBF distance encoding for pair_head (~30 LOC + 5 tests)",
-    "Operator 3: per-pair chemistry context (5 binary features, ~40 LOC + 5 tests)"
-   ],
-   "pain_points_addressed": [
-    "P1 minority-class PR-AUC < 0.5",
-    "P3 pair_head expressiveness for 95/5 imbalance"
-   ],
-   "MEASURED_gate": "per-class PR-AUC for SINGLE >= 0.7 AND AROMATIC >= 0.6 AND DOUBLE >= 0.10",
-   "ships": "5-epoch GPU smoke + new §6.100 catalog entry",
-   "status": "SHIPPED — Operator 1 as Wf-A73 (§6.100); Operators 2+3 as Wf-A107 (§6.152), 2026-10-21",
-   "MEASURED_2026_10_21": {
-    "protocol": "5 epochs, n_train=200, n_val=64, 5 metals, seed 0, batch 8, yuelbond_edge_mpnn_residual",
-    "gate": "SINGLE >= 0.7 AND AROMATIC >= 0.6 AND DOUBLE >= 0.10 (per-class existence AP)",
-    "measured": {
-     "single": 0.3838,
-     "aromatic": 0.7295,
-     "double": 0.1198
-    },
-    "gate_result": "2/3 PASS (aromatic, double); SINGLE FAILS (0.3838 < 0.7)",
-    "control_same_protocol": {
-     "single": 0.341,
-     "aromatic": 0.5325,
-     "double": 0.0168
-    },
-    "existence_ap": {
-     "control": 0.5617,
-     "features": 0.7556,
-     "delta": 0.1939
-    },
-    "best_f1": {
-     "control": 0.7157,
-     "features": 0.7743,
-     "delta": 0.0587
-    },
-    "side_effect_on_rings": {
-     "ring_3_share": [
-      0.5096,
-      0.263
-     ],
-     "ring_5_6_share": [
-      0.172,
-      0.252
-     ]
-    },
-    "artifact": "metrics/by_metric/wfa107_ring_prior_ab.json",
-    "seed_spread_3seed": {
-     "bond_ap": {
-      "control": [
-       0.5617,
-       0.695,
-       0.6949
-      ],
-      "features": [
-       0.7556,
-       0.7357,
-       0.8724
-      ]
-     },
-     "paired_delta_ap": {
-      "values": [
-       0.1939,
-       0.0408,
-       0.1774
-      ],
-      "mean": 0.1374,
-      "t": 2.83,
-      "p_two_sided": 0.1055
-     },
-     "paired_delta_ring_3": {
-      "values": [
-       -0.2466,
-       -0.1469,
-       -0.1439
-      ],
-      "mean": -0.1791,
-      "p_two_sided": 0.0337
-     },
-     "paired_delta_ring_5_6": {
-      "values": [
-       0.08,
-       -0.0022,
-       0.0707
-      ],
-      "mean": 0.0495,
-      "p_two_sided": 0.1973
-     },
-     "truth_geometry_probe": "null (3-share -0.008 p=0.90; 5/6 +0.018 p=0.63; F1 -0.013 p=0.48)",
-     "gate_scope_note": "The SINGLE gate (>=0.7) has to be read against the base rate: SINGLE is 2.36% of candidate pairs on this cohort, so 0.3838 is a 16.3x lift and 0.7 would require near-perfect ranking. §6.100 already recorded the gate as aspirational. Not a code defect."
-    }
-   }
-  },
-  "Wf-A72_part_3_Wf-A74_MLP_迁移": {
-   "scope": "Replace 2-layer MLP pair_head with directed-message-passing per-pair scorer (Chemprop D-MPNN style).",
-   "architecture_ships": [
-    "Architecture 1: Chemprop-style directed pre-activation pair scorer in YuelBondEdgeMPNNHead (~250 LOC + 10 tests)",
-    "Architecture 2: MolDiff-style bond-predictor guidance for EGNN denoiser (Wf-A75, deferred; needs bond head stable first)"
-   ],
-   "pain_points_addressed": [
-    "P2 largest_fragment_frac=0.048",
-    "P3 pair_head expressiveness",
-    "P4 msg_mlp expressiveness for long-range info"
-   ],
-   "MEASURED_gate": "per-class PR-AUC for AROMATIC >= 0.55 AND SINGLE >= 0.7 AND bond_f1 >= 0.20",
-   "ships": "5-epoch GPU smoke + new §6.101 catalog entry"
-  },
-  "deferred": {
-   "Wf-A75a": "guidance-weight sweep (0.05 / 0.1 / 0.2) to find the sweet spot that keeps the fragment-ratio win without breaking gen_validity (the §6.103 honest-negative; 3×5-epoch GPU smokes)",
-   "Wf-A76": "30-epoch retrain consolidation. CARRY: guidance_weight=0.10 AND early-stop at the ep-3 sweet spot (every arm collapses at ep 4; the guidance weight is not the lever). §6.107 is the evidence.",
-   "Wf-A77+": "Allegro pairwise equivariant latent / EquiformerV2 backbone / MoE per-edge (per SOTA survey A3/A1/B4)"
-  },
-  "shipped_scaffolds": {
-   "Wf-A77": {
-    "scope": "Allegro-style pairwise equivariant latent SCAFFOLD (per Musaelian 2023 Nat. Commun., arXiv:2204.09490). L=0 (invariant) path LIVE + 5/5 unit tests; L≥1 (equivariant) path is NotImplementedError stub gated on use_equivariant=True. NO e3nn, NO GPU smoke, NO MEASURED gate.",
-    "shipped_files": [
-     "molmetal/adapters/pair_equivariant.py",
-     "molmetal/tests/test_pair_equivariant.py",
-     "configs/cfm_5metal_wfa77_allegro_scaffold.yaml"
-    ],
-    "deferred_to": "Wf-A77+ e3nn.o3.EquivariantTensorProduct wire-in (replaces _tensor_product stub, removes flow.pair_equivariant_enabled from DECLARED_INERT_PATHS, runs 30-epoch GPU retrain)",
-    "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.104"
-   }
-  },
-  "Wf-A78_OPT5_ring_template_prior": {
-   "status": "CODE SHIPPED 2026-10-18 (§6.105); GPU GATE RUN 2026-10-21 — count/per_atom FAILED (§6.152); opt-in edge_ring added 2026-10-21 (§6.153)",
-   "files": [
-    "molmetal/loss/ring_template.py",
-    "molmetal/tests/test_wfa78_ring_template_prior.py",
-    "configs/cfm_5metal_wfa78_ring_prior.yaml",
-    "configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml"
-   ],
-   "yaml_key": "flow.ring_template_weight (default 0.0, bit-exact)",
-   "deferred": "NONE — the GPU 5-epoch smoke and the ring-size MEASURED gate ran on 2026-10-21 (6 arms).",
-   "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.105",
-   "MEASURED_2026_10_21": {
-    "verdict": "The prior does not improve ring composition enough to pay for its bond-accuracy cost at any of the four measured weights.",
-    "weight_sweep": {
-     "protocol": "count form, weight 0 / 1e-4 / 1e-3 / 1e-2, otherwise identical (5 epochs, n_train=200, seed 0)",
-     "bond_existence_ap": {
-      "0": 0.5617,
-      "1e-4": 0.5365,
-      "1e-3": 0.4513,
-      "1e-2": 0.467
-     },
-     "ring_5_6_share": {
-      "0": 0.172,
-      "1e-4": 0.1818,
-      "1e-3": 0.1853,
-      "1e-2": 0.1905
-     },
-     "ring_3_share": {
-      "0": 0.5096,
-      "1e-4": 0.5065,
-      "1e-3": 0.4487,
-      "1e-2": 0.4372
-     },
-     "peak_grad_norm": {
-      "0": 2.62,
-      "1e-4": 3.58,
-      "1e-3": 27.87,
-      "1e-2": 280.11
-     }
-    },
-    "per_atom": {
-     "bond_existence_ap": 0.0436,
-     "gen_rings_per_mol": 0.0,
-     "peak_grad_norm": 3605.68,
-     "reading": "degenerate: AP equals the positive rate; fixing the vanishing gradient made the magnitude dominate the CE"
-    },
-    "bond_head_graph_on_truth_geometry": {
-     "weight": [
-      0,
-      0.0001,
-      0.001,
-      0.01
-     ],
-     "rings_per_mol": [
-      23.81,
-      28.02,
-      48.84,
-      76.13
-     ],
-     "precision": [
-      0.555,
-      0.493,
-      0.306,
-      0.227
-     ],
-     "recall": [
-      0.904,
-      0.918,
-      0.918,
-      0.93
-     ],
-     "bond_f1": [
-      0.688,
-      0.642,
-      0.458,
-      0.365
-     ],
-     "reading": "the prior buys ring COUNT by adding edges; recall is pinned while precision falls"
-    },
-    "correction_to_Wf_A96": "Wf-A96 reported rings/mol 0.0 -> 7.05 as the prior working. That was a within-run trajectory: the matched no-prior control reaches 6.542 rings/mol by the same epoch on its own. The prior's marginal contribution is +0.51.",
-    "artifacts": [
-     "metrics/by_metric/wfa107_ring_prior_ab.json",
-     "metrics/by_metric/wfa107_bond_graph_profile.json",
-     "metrics/by_metric/wfa107_ring_gradient_probe.json"
-    ],
-    "edge_ring": {
-     "formulation": "per-edge ring-membership BCE (density-intensive gradient)",
-     "probe_grad_ratio_p050_over_p090": {
-      "count": 7540.2,
-      "per_atom": null,
-      "edge_ring": 2.7,
-      "share_analysis_only": 76.8
-     },
-     "paired_3seed_vs_control": {
-      "delta_bond_ap": -0.0013,
-      "p_ap": 0.9239,
-      "delta_ring_3": -0.1415,
-      "p_ring_3": 0.0164,
-      "delta_ring_5_6": 0.0719,
-      "p_ring_5_6": 0.0652
-     },
-     "truth_geometry_probe": "null (3-share +0.002 p=0.98; 5/6 -0.019 p=0.23; F1 -0.029 p=0.46)",
-     "default": "OFF — weight 0.0, formulation count"
-    }
-   }
-  },
-  "Wf-A79_aromatic_outside_ring_repair": {
-   "status": "SHIPPED 2026-10-18 (§6.106)",
-   "files": [
-    "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py (_demote_aromatic_outside_rings)",
-    "molmetal/tests/test_wfa79_aromatic_outside_ring.py"
-   ],
-   "evidence": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json::decode.rows (57/64 kekulize failures)",
-   "deferred": "re-measure the arm's decode_rate after the repair + report aromatic fraction of survivors",
-   "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.106"
-  },
-  "Wf-A75a_guidance_weight_sweep": {
-   "status": "SHIPPED 2026-10-18 (§6.107)",
-   "sweet_spot": "guidance_weight 0.10 at epoch 3: gen_validity 0.948 (w=0.00 control 0.469)",
-   "finding": "Interior optimum: ep3 gen_validity 0.469/0.677/0.823/0.948/0.573 for w=0/0.02/0.05/0.10/0.20. The ep4 collapse (0.406-0.531) happens with NO guidance too, so it is the Wf-A74 head, not the prior. bond_f1 is flat in w (0.452-0.454), so the fragment/bond_f1 lift in §6.103 was the head plus the 32->200 train-size change, NOT the guidance.",
-   "artifact": "metrics/by_metric/cfm_wfa75a_guidance_sweep.json",
-   "analysis_script": "molmetal/scripts/wfa75a_sweep_analysis.py",
-   "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.107"
-  },
-  "Wf-A80_A81_train_inference_decode_chain": {
-   "status": "SHIPPED 2026-10-18 (code + 2 end-to-end smokes; §6.108)",
-   "scope": "Three links that were missing between the trainer's calibration and the decoder: (1) per_class decision rule in bond_decision + YuelBondBondDecoder; (2) decode_ratio moved after the bond-accuracy hand-off (it used to run with thresholds=None and abort); (3) _rdkit_strict_reason reordered + DecodedMol.error passed in, so sanitize_failed:<ExcClass> / empty_decode / assembly_error are reachable.",
-   "artifact_links": [
-    "per_epoch_metrics.json: decode_decision + decode_per_class_thresholds",
-    "checkpoint: decode_calibration {decision, decision_threshold, per_class_thresholds, source_epoch}",
-    "reader: molmetal/eval/bond_threshold_calibration.py::decoder_kwargs_from_checkpoint"
-   ],
-   "MEASURED": "/tmp/wfa81_smoke (1 epoch, 400/32, 1 seed): decode_decision=per_class, thresholds [0.05,0.1,0.05,0.1,0.05], decode_ratio 1.000 (32/32), gen_validity 0.250 (2/8), ckpt stamp present. /tmp/wfa80_smoke epoch0 failure_reasons {ok:3, sanitize_failed:KekulizeException:5} -- the same five samples read {ok:3, no_smiles:5} before the reorder.",
-   "remaining": [
-    "NO quality gate: 1 epoch + untrained head puts every threshold on the grid floor; the bond_f1 / gen_validity LIFT is unmeasured. Needs a 5-epoch arm at the same budget as Wf-A75a (GPU).",
-    "The ep-3/ep-4 no_smiles collapse (§6.107) has NOT been re-classified -- needs a re-run of one arm with the new taxonomy, not a re-parse.",
-    "cfm_property_panel._decode_smiles_from_ckpt still refuses v2 (vel_field.*) checkpoints, so the stamp has no production consumer yet (see deferred.Wf-A82)."
-   ]
-  },
-  "Wf-A82_model_factory": {
-   "status": "SHIPPED 2026-10-18 (code + 6 tests + 1 CPU decode + 1 regression smoke; §6.109)",
-   "what": "Extracted the CFMJointModel construction out of main() into build_joint_model(args, device=None); cfm_property_panel._rebuild_v2_model builds argparse.Namespace(**ckpt['args']) and loads with strict=True. Fixed four more latent breaks in the panel decode path: hidden_dim unbound on the v2 branch, decoder.eval() on a non-nn.Module, result.smiles instead of result.decoded.smiles (this one made every decode count as 0/N), and the atomic-write pickle load (Wf-A81).",
-   "MEASURED": "/tmp/wfa81b_smoke ckpt (v2, hidden 128, 1 epoch): 6/6 clouds decoded, decision read from the checkpoint stamp (per_class, thresholds [0.05,0.1,0.05,0.1,0.05]). Regression: same state_dict keys/shapes/932,746 params as the pre-extraction run; max|dparam| 5.2e-5 after 50 steps (GPU non-determinism, no --deterministic).",
-   "remaining": [
-    "The helper decodes 3 fixed hydrocarbon scaffolds at the origin, not the tmQM corpus; the SMILES carry [HH] and one scaffold dies in the kekulizer (a 3-membered aromatic ring -- the OPT-2 ring-size defect).",
-    "No chemistry metric measured through this path; it is a wiring proof, not a quality result."
-   ]
-  },
-  "Wf-A83_small_ring_aromatic_demotion": {
-   "status": "SHIPPED 2026-10-18 (code + 6 tests + 1 CPU A/B; §6.110)",
-   "what": "_demote_small_ring_aromatic(mol, min_size=5): aromatic bonds with BOTH endpoints in a ring < 5 become SINGLE before SanitizeMol. Companion to Wf-A79 (which only handles bonds in NO ring).",
-   "MEASURED": "/tmp/wfa81b_smoke ckpt, 3-cloud probe: cloud 3 went from smiles='' + KekulizeException 'Unkekulized atoms: 0 1 2' to smiles='C1CN1.[HH]x5' with no error. Decode 2/3 -> 3/3.",
-   "remaining": [
-    "The generator still emits 89.8% 3-rings; re-run the OPT-2 ring audit on a post-Wf-A83 corpus to see the decode-rate effect (GPU).",
-    "The L3 arm's 0.109 decode_rate has NOT been re-measured under Wf-A83.",
-    "Aromatic fraction of the generated corpus will fall for a decode-side reason, not a modelling one -- report both numbers together."
-   ]
-  },
-  "Wf-A84_kekulize_fallback": {
-   "status": "SHIPPED 2026-10-19 (code + 9 tests + 1 CPU 1-epoch A/B; §6.111)",
-   "what": "_demote_all_aromatic(mol): on a KekulizeException ONLY, clear every aromatic flag and rewrite every aromatic bond as SINGLE, then re-sanitise. DecodedMol.repair records \"kekulize_demoted_all\"; the trainer counts these in ok_repaired:<repair> (n_ok sums ok + ok_repaired, so gen_validity still means RDKit-accepts-it).",
-   "measured": "/tmp/wfa83_smoke (pre): gen_validity 0.500 (8/16), failure_reasons {ok:8, sanitize_failed:KekulizeException:8}, per-seed [0.125, 0.875]. /tmp/wfa84_smoke (post): gen_validity 1.000 (16/16), {ok:8, ok_repaired:kekulize_demoted_all:8}, per-seed [1.0, 1.0]. decode_ratio 1.000 (32/32) in both. gen_single_fragment_ratio 0.000 and largest_fragment_frac 0.949 in both — fragmentation untouched.",
-   "honest": "Half the valid molecules are repaired (saturated), not clean. Not a ring-size/aromaticity fix; the generator still emits 89.8% 3-rings. n=16, 1 ckpt, 1 epoch, CPU.",
-   "incidental": "configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml + cfm_5metal_wfa80_per_class_cpu_smoke.yaml declared compute.gpu: cpu (start.sh-only) so --device resolved to auto and ran on cuda:0; both now also carry compute.device: cpu (MEASURED device=cpu in the Wf-A84 run)."
-  },
-  "Wf-A85_ring_size_profile_shared": {
-   "status": "SHIPPED 2026-10-19 (1 shared module + 2 callers + 9 tests + 1 plumb run; §6.112)",
-   "what": "molmetal/eval/ring_profile.py: SSSR ring sizes, shares over RINGS (OPT-2 denominator). Trainer decode_chemistry -> summarise_decode_chemistry -> EpochMetrics.gen_rings_per_mol / gen_ring_5_6_share / gen_ring_3_share / gen_ring_size_distribution; panel build_panel -> aggregate.ring_profile.",
-   "measured": "Shared module reproduces OPT-2 exactly on the 66-molecule corpus: 3-share 0.8981, 5/6-share 0.0185, rings/mol 1.6364 (published 0.8981/0.0185/1.6364). Trainer plumb MEASURED in /tmp/wfa85_plumb/per_epoch_metrics.json (32/8, 4 samples, 1 epoch): 16.75 rings/mol, 5/6-share 0.194, 3-share 0.582.",
-   "honest": "Measurement, not a fix: the 89.8% 3-ring rate is unchanged. Post-Wf-A84 ring profile is UNMEASURED because generated_smiles.csv is not written by default. The 4-molecule plumb numbers are not corpus statistics."
-  },
-  "Wf-A86_bo_target_teacher_forcing": {
-   "status": "SHIPPED 2026-10-19 (PairFeature field + 3-level precedence + two-regime synthetic training; §6.114)",
-   "what": "PairFeature.bond_orders_continuous (E,) added; _featurise precedence = explicit pf field > cloud.bonds+bond_orders_continuous mapped by _bo_target_for_edges > gap. make_synthetic_training_set emits the order-implied Wiberg BO on _BO_TEACHER_FORCE_P=0.25 of rows and the gap on the rest.",
-   "measured": "CPU seed 0 200 epochs: pre-A86 all-gap head train 0.9579 / val 0.9471. p=0.25 train 0.9651 / val 0.9760, gap-regime 0.9571, truth-regime 0.9963. p=0.35 gap 0.9540; p=0.50 gap 0.9444 (aggregate rises to 0.9736). 0.25 keeps the generation regime at the pre-A86 level.",
-   "honest": "Truth-regime accuracy is teacher forcing, not a blind decode: a cloud carrying bond_orders_continuous now feeds the answer for its true pairs. The CFM generation path has no truth BO, so no generation metric moves. default_trained_head weights are not bit-identical to pre-A86."
-  },
-  "Wf-A87_skip_guard_and_stale_tests": {
-   "status": "SHIPPED 2026-10-19 (diagnostics + result field + 4 stale-test repairs; §6.115)",
-   "what": "last_losses initialised in __init__ (the P1 guard read it before assigning, so a first-step non-finite raised AttributeError); nonfinite_terms names the offending loss; DecodedMol.teacher_forced + _bo_truth_available make a truth-fed decode distinguishable from a blind one; rescue fixture uses in-vocab atoms and asserts skipped_oov==0; a5 tests build BondOrderHead(9+2*hidden); atom-contract CE expectation applies the P0-F3 vocab mask; decoder vocab test uses U(92) instead of Pt(78).",
-   "measured": "117 passed, 1 xfailed across the 11 affected files (bond_head 31, rescue 5, a5 10, atom contract 3, plus 6 adjacent). All four stale tests verified failing at HEAD before the repair.",
-   "honest": "teacher_forced has no consumer yet — it makes the leak visible, not impossible. The atom CE still returns inf for a masked target class; that is the P1 guard signal, fixed at the data boundary not by clamping. No model behaviour changed."
-  },
-  "Wf-A87b_masked_target_inf": {
-   "status": "SHIPPED 2026-10-19 (atom + bond CE exclude masked-target rows; §6.116 supersedes the §6.115 bullet)",
-   "what": "train_step atom CE and bond CE now test the TARGET logit: rows whose target class is masked are excluded from the mean via torch.where (not x*mask, so inf*0 cannot nan), counted in oov_target_atom_rows / oov_target_bond_rows and warned about; all-unusable terms contribute 0 with a second warning. last_losses now merges with update so cumulative diagnostics survive the step.",
-   "measured": "OOV batch (elements 2-5, 4/8 atoms OOV x2 mols): loss finite, oov_target_atom_rows=8, oov_target_bond_rows=14/18, skipped_oov absent. Valid batch numerics unchanged bit-for-bit: loss 7.187979221343994, cfm 4.79056453704834, atom 2.0794413089752197, bond 2.1894707679748535.",
-   "honest": "Excluding rows is not cleaning the data; the counter is the signal. If every real atom is OOV, atom_loss is 0 and the step still runs on cfm+bond. The bond CE drops the edge rather than re-weighting. test_lipman_spatial_contract still fails (velocity-norm bound), verified at HEAD and unrelated."
-  },
-  "Wf-A87c_oov_log_visibility": {
-   "status": "SHIPPED 2026-10-19 (log suffix + JSON sidecar + 4 tests; §6.117)",
-   "what": "train_pocket_flow: _oov_log_suffix renders oov_atom_rows / oov_bond_rows / skipped_oov only when non-zero, and the JSON summary carries oov_diagnostics. metallo_drug_smoke_retrain: same suffix + oov_diagnostics in final_metrics. validate_generate: counters in every per-step record. r10_cfg_real_crossdocked already dumps the whole last_losses dict.",
-   "measured": "train_pocket_flow._toy_mol draws elements 2-5, so 10/32 atoms per step are OOV. Before: log line had no counter. After: \"[step 1/2] loss=6.0134 ... | oov_atom_rows=10 oov_bond_rows=0 skipped_oov=0\"; summary JSON oov_diagnostics.oov_target_atom_rows=20 after 2 steps (cumulative). 4 new tests pass.",
-   "honest": "The toy data is still OOV — the counter exposes it, the demo data was deliberately left unchanged. Counters are cumulative, not per-step. Visibility is not enforcement. metallo/validate were syntax-checked, not run end-to-end."
-  },
-  "Wf-A88_metal_index_propagation": {
-   "status": "SHIPPED 2026-10-19 (_carry_metal_index + both sampler return sites + 6 tests; §6.119)",
-   "what": "generate_clouds_from_noise now copies the template's metal_atom_index onto the generated cloud (explicit index wins, else first Z in _TARGET_METALS, else NO_METAL_INDEX). BondAwareDecoder._featurise reads that field for angle_to_metal and d_to_metal.",
-   "measured": "Before: generated AtomCloud carried only positions + atomic_numbers, so 2 of the 11 pair-feature columns were pinned at 0.0 at every sampled decode while training saw their real values. After: end-to-end sampler test (zero-velocity model, n_steps=1, grouped + pad_groups) returns index 3 for a [C,C,N,Pt,H] template. 6 tests pass.",
-   "honest": "Does NOT touch the shipped YuelBond path: YuelBondDecoderHead's per-edge features are only is_short/is_long/is_dative + distance and it never reads metal_atom_index. The fix lands in the LipmanFlowMatchingAdapter path (validate_generate, metallo_drug_smoke_retrain). cfm_property_panel still decodes metal-free scaffolds."
-  },
-  "Wf-A89_stratified_cohort": {
-   "status": "SHIPPED 2026-10-19 (_stratified_row_sample + build_csv_cohort n_clouds branch + metal-mix log + 6 tests; §6.120)",
-   "what": "Capped cohort selection is now a seeded per-metal shuffle with a largest-remainder quota, then a seeded shuffle of the merged list. The cohort line prints the per-metal mix. A full run (n_clouds >= corpus size) is untouched.",
-   "measured": "MEASURED on metalcytotox_5metal_multitask_v3.csv: first 512 train rows are ALL Ru (full split Ru 12471 / Ir 3444 / Os 834 / Rh 696 / Re 692), so --n-train 64 was 64 Ru complexes. After: train mix {Ru 44, Ir 12, Rh 3, Os 3, Re 2}; val 16 -> {Ru 13, Ir 1, Os 1, Rh 1}. Same 1-epoch CPU smoke: failure_reasons {ok:10, ok_repaired:kekulize_demoted_all:6} -> {ok:16}; largest_fragment_frac 0.951 -> 0.775 (cohort-confounded, one run).",
-   "honest": "The file order does NOT reach the batches: train_one_epoch permutes the cohort every epoch, so batch composition is mixed regardless (an earlier draft claimed single-metal batches; that was wrong). The 16-cloud val cohort still has no Re. The mix line reports built clouds, not selected rows."
-  },
-  "Wf-A90_metal_pair_features": {
-   "status": "SHIPPED 2026-10-19 (metal pair block + dual-format checkpoint loader + reproducible permutation; 13 tests; §6.121)",
-   "what": "YuelBondDecoderHead, YuelBondEdgeMPNNHead and YuelBondEdgeMPNNHeadResidual gain use_metal_features: 3 columns (d_to_metal / angle_to_metal / is_metal_edge) appended to the pair-head input (atom head 2H+3 -> 2H+6; edge heads edge_init 2H+4 -> 2H+7 and pair_head H+3 -> H+6). Trainer flag --use-metal-pair-features (YAML flow.use_metal_pair_features, default ON for new runs, OFF in the classes for bit-exact compat). load_cfm_checkpoint reads both torch.save zip and the raw pickle the trainer has written since Wf-A30-1. _epoch_permutation makes batch order reproducible in (seed, epoch).",
-   "measured": "/tmp/audit_e2e3: metal_pair_features=ON, gen_validity 1.000 (16/16), failure_reasons {ok:16}, train_loss 0.9520. Resume from /tmp/audit_e2e3 works (pickle path; torch.load alone fails with 'Invalid magic number'). Resume from a pre-A90 ckpt auto-overrides the flag to False and loads. Two same-seed runs: train_loss=0.9364 bond_ce=1.0109 grad_norm=2.717 identical.",
-   "honest": "No GPU quality gate yet: the block is verified to be read (moving only the metal changes the logits, for all three heads) and to train, not to improve bond F1 or the ring profile. DMPNNBondHead is unchanged (own featuriser). Pre-A90 checkpoints keep the old architecture via the compatibility default."
-  },
-  "Wf-A91_A92_dative_provenance": {
-   "status": "SHIPPED 2026-10-19 (code + 15 tests + 102-test regression sweep; §6.122)",
-   "what": "Decode provenance + order-invariant dative features. (1) YuelBondDecoderHead.forward tested is_dative as donor(i) & metal(j) over triu(i<j), so the same bond was dative only when the donor had the lower index (every metal-first cloud lost the feature); now symmetric. (2) Three donor lists and two metal lists were live at once; all sites now import _DONOR_ZS and read head.metal_set. (3) DecodedMol gains dative_source (truth/z_rule/mixed/\"\"), dative_manufactured and a derived warnings list; truth (cloud.is_dative_pair) wins over the Z rule, and the Z rule gains the 2.5 A bound BondAwareDecoder always had. (4) teacher_forced was set and never read: decode_flags now reaches chemistry_out / per_epoch_metrics.json / the [cfm-gen] line / the property panel. Also: EGNN velocity gate wrapped in tanh (was quadratic in coordinate scale), panel templates are real val clouds instead of metal-free scaffolds, and [cfm-head] reports the head state rather than the launch flag.",
-   "MEASURED": "val cohort 63 clouds: 466 dative flag entries, 0 missed by the old asymmetric rule (latent on MetalCytoTox, active on metal-first orderings). Panel: 4 REAL val clouds, mix {Ir:1, Ru:3}, 4/4 decoded. Velocity norm 0.066 -> 300 for a 100x coordinate scale (7,519x vs 100x linear) before tanh; 3/3 spatial-contract tests pass after. Tests: 15 new + 102 pass.",
-   "remaining": [
-    "NO quality gate: the dative/provenance fixes change what a decode reports, not whether it is right. Bond F1 / ring profile after Wf-A92 is unmeasured.",
-    "The symmetric-dative change has no tmQM measurement; the 2.5 A bound is inherited from BondAwareDecoder, not calibrated.",
-    "dative_source=\"truth\" is the cloud label (Wiberg BO<1.0 + loader coordination rule), not an experimental observation.",
-    "Pre-existing, unrelated: test_wf348c1_cfm_acceleration_trainer_wiring still fails at HEAD (missing use_so3_averaged_fm kwarg and --use-cudagraphs-cfm flag)."
-   ]
-  },
-  "Wf-A93_metal_placement": {
-   "status": "SHIPPED 2026-10-19 (code + 6 tests + 1 CPU smoke + 2 panel runs; §6.123)",
-   "what": "ETKDG embeds an isolated metal atom at the ORIGIN and centres the ligand there too, so every CSV-built cloud had the metal INSIDE the ligand. flow.metal_placement (default bonded) places the metal 2.05 A outside the top-ranked donor along donor-heavy_centroid and pushes it out until no other heavy atom is within 1.2 A; the donor filter then re-runs. legacy keeps the ETKDG position and is pinned in the 19 archived configs. Also wired --dative-distance-cutoff, which was parsed and then ignored (the builder hardcoded 2.6).",
-   "MEASURED": "32 val clouds: median M-donor 0.366 -> 2.050 A; share <1.0 A 58.7% -> 0%; share in [1.8,2.6] 24.0% -> 96.3%; median nearest-heavy 0.366 -> 1.633 A; clouds with a heavy atom <1.0 A 32/32 -> 0/32; dative bonds 121 -> 54. Train 30/32 and val 32/32 clouds were affected under legacy. 1-epoch CPU smoke (bonded): train_loss 0.9664 (legacy 0.9780), gen_validity 1.000 (16/16), decode_ratio 1.000.",
-   "remaining": [
-    "The bonded position is a GUESS: MetalCytoTox ships free-ligand SMILES, not coordination geometry. The dative count falling 121 -> 54 means the guess is monodentate, not that coordination was recovered.",
-    "Top-ranked donor (N>P>S>O>halide) is not checked against a coordination table.",
-    "NO GPU quality gate: bond F1 / ring profile on physical geometry is unmeasured.",
-    "Pre-Wf-A93 checkpoints were trained on the overlapping geometry and are not comparable to post-A93 runs."
-   ]
-  },
-  "Wf-A94_acceleration_and_dative_audit": {
-   "status": "SHIPPED 2026-10-19 (§6.125)",
-   "scope": "CFM line only: Wf-348-C1 acceleration-test repair; dative donor-set unification; dative cutoff calibration.",
-   "ships": [
-    "test_wf348c1 tests 2-4 rewritten to shipped surfaces (5 passed, 0 skipped)",
-    "_DONOR_ZS extended with F/Cl/Br/I; cohort builder derives from it",
-    "dative_max_distance default 2.5 -> 2.6, threaded through trainer + panel",
-    "3 metrics JSON + §6.125"
-   ],
-   "MEASURED": {
-    "tmqm_old_rule_missed_frac": 0.8784,
-    "tmqm_missed_pairs_lt_2p5A": 828,
-    "cutoff_2p6_precision": 0.9935,
-    "cutoff_2p6_recall": 0.9841,
-    "donor_ceiling_pre": 0.5556,
-    "donor_ceiling_post": 0.7507,
-    "cohort_push_cap_rate": 0.00501,
-    "cohort_bonds_changed_by_halide_extension": 0
-   },
-   "OPEN": [
-    "Pt-C (396/1701 = 23.3%) outside the donor set by design",
-    "no GPU quality gate for Wf-A90..A94",
-    "2.6 A is a Pt transfer assumption for Ru/Ir/Rh/Os/Re",
-    "pre-A94 checkpoints not comparable on the is_dative feature"
-   ]
-  },
-  "Wf-A95_per_metal_dative_and_feature_schema": {
-   "status": "SHIPPED 2026-10-19 (§6.130)",
-   "scope": "CFM line: per-metal dative calibration, carbon candidate, edge-head rule unification, checkpoint feature schema, 5-epoch GPU gate.",
-   "ships": [
-    "_DONOR_ZS += C (feature-side); builder _DONOR_RANK explicit",
-    "YuelBondEdgeMPNNHead donor_zs + symmetric dative rule",
-    "feature_schema stamp + restore_feature_schema (trainer resume + panel)",
-    "2 metrics JSON + §6.130 + 6 tests"
-   ],
-   "MEASURED": {
-    "cutoff_best_range_A": [
-     2.5,
-     2.7
-    ],
-    "f1_at_2p6_min": 0.9167,
-    "f1_at_2p6_max": 0.9893,
-    "ceiling_old_min": 0.349,
-    "ceiling_old_max": 0.557,
-    "ceiling_with_carbon": 1.0,
-    "metalcytotox_pair_feature_flips": 1540,
-    "metalcytotox_builder_bonds_changed": 0,
-    "gpu_gate_wall_s": 913.0,
-    "gpu_gate_pr_auc_epoch4": 0.9825,
-    "gpu_gate_single_fragment_ratio": 0.0,
-    "metalcytotox_pair_feature_flips_carbon_only": 1539
-   },
-   "OPEN": [
-    "B/Si/As are candidates but their atom one-hot is padding (vocab extension would break ckpts)",
-    "connectivity: single_fragment_ratio 0.000 at 5 epochs",
-    "5-epoch gate, not a 30-epoch quality run"
-   ]
-  },
-  "Wf-A96_l3_remeasure_and_legacy_ckpt_compat": {
-   "status": "SHIPPED 2026-10-19 (§6.131)",
-   "scope": "CFM line: L3 Phase-3 re-measure, decode-repair causal A/B, legacy checkpoint compatibility, OPT-5 ring-size gate + launch fix.",
-   "ships": [
-    "wf_blkc_l3_guidance_probe: builds the checkpoint’s own model (t_embedding_dim / pocket_inject_per_layer inferred from the state_dict), restores feature_schema, passes dative_max_distance",
-    "migrate_legacy_vel_state_dict: vel_field.time_embed_proj.* -> vel_field.t_to_h.*, rebuilding the module with bias so the trained bias is kept",
-    "wf_a96_l3_repair_ab.py: same-weights repair on/off A/B",
-    "wf_a96_ring_size_gate.py: OPT-5 gate (rings/mol, 5/6 share, 3 share vs OPT-2 real + pre-prior)",
-    "try_build_full_cfm_model refuses a partial velocity-field build instead of returning a random-init model",
-    "ring-prior configs: n_train/n_val moved into the YAML (start.sh could not fill the placeholders) + stale weight=0.0 headers corrected",
-    "4 tests (test_wfa96_legacy_ckpt_compat.py)"
-   ],
-   "MEASURED": {
-    "l3_decode_rate_post_repair": 1.0,
-    "l3_repair_causal_delta": 0.046875,
-    "l3_single_fragment_ratio": 0.046875,
-    "l3_frac_any_aromatic": 0.03125,
-    "l3_n_repaired": 0,
-    "opt5_rings_per_mol_epoch4": 7.052083333333333,
-    "opt5_share_5_6_epoch4": 0.19054652880354506,
-    "opt5_share_3_epoch4": 0.43722304283604135,
-    "opt5_ring_prior_share_of_train_loss_epoch4": 0.37901197412237486,
-    "opt5_gate": "PASS (direction only)"
-   },
-   "OPEN": [
-    "the 2026-10-12 L3 arm is unreproducible (its checkpoint was overwritten)",
-    "decode_rate is a sanitisation count, not chemistry: 4.7% single-fragment at 3.1% aromatic",
-    "OPT-5 weight 0.01 overshoots rings/mol (7.05 vs 4.19) and leaves 5/6 share at 0.19 vs 0.97; needs a weight sweep, not a longer run"
-   ]
-  },
-  "Wf-A97_bond_metric_and_fragmentation": {
-   "status": "SHIPPED 2026-10-19 (§6.132)",
-   "scope": "CFM line: bond ranking metric correction + fragmentation root-cause diagnosis.",
-   "ships": [
-    "bond_pr_auc is the EXISTENCE AP again; bond_pr_auc_class0 keeps the old number; bond_existence_ap added",
-    "best-F1 sweep grid 0.05..0.95 -> 0.01..0.99",
-    "wf_a97_bond_metric_recheck.py (GPU) + wf_a97_fragmentation_diagnosis.py",
-    "3 new tests + 2 repaired (they had pinned the false invariant)",
-    "2 metrics JSON + §6.132"
-   ],
-   "MEASURED": {
-    "existence_ap_64_clouds": 0.2659421713902104,
-    "class0_ap_old_headline": 0.6208978507965912,
-    "best_f1": 0.4656591099916037,
-    "best_threshold": 0.87,
-    "f1_at_0p5": 0.46562001511208123,
-    "fragmented_frac_16_clouds": 1.0,
-    "mean_components": 4.9375,
-    "mean_bridges_added": 0.8125,
-    "frac_with_candidate_and_budget": 0.0,
-    "median_closest_inter_component_distance_A": 2.7507708072662354
-   },
-   "OPEN": [
-    "existence AP 0.266 < positive rate 0.298: the head ranks bonds no better than chance on real tmQM geometry",
-    "OpenBabel reaches existence F1 ~0.98 on the same corpus; the head reaches 0.466",
-    "fragmentation cannot be fixed decode-side: 0/16 fragmented clouds had valence budget at the closest inter-component pair",
-    "assemble_loss_weight is 0.0 in every shipped config; the training-time connectivity term has never run in this line"
-   ]
-  },
-  "Wf-A107_ring_prior_gate_and_bond_features": {
-   "status": "SHIPPED 2026-10-21 (§6.152) + Wf-A107e (§6.166) — sampler-on A/B: still a blob; prior moves ring mix at the cost of single-bond class AP",
-   "why": "OPT-5/Wf-A78 had only a 5-epoch 'PASS direction only' (3-ring share stuck at 0.44 vs real 0.005) and Wf-A72 Operators 2+3 had never been run. This wave ran both as a one-factor A/B and found two structural gradient defects in the prior.",
-   "code": [
-    "molmetal/loss/ring_template.py — formulation=per_atom + squared triangle correction",
-    "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py — rbf_expand / _pair_chemistry_features / 3 heads wired",
-    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py — 4 argparse dests + head-state log + artifact knob record",
-    "configs/wfa107_{control,count,count_w1e3,count_w1e4,per_atom,features}.yaml",
-    "molmetal/scripts/wfa107_{ab_analysis,bond_graph_profile,ring_gradient_probe}.py"
-   ],
-   "tests": "27 new (test_wfa107_ring_prior_per_atom 10 / test_wfa107_bond_pair_features 9 / test_wfa107_wiring 8)",
-   "MEASURED_defect_1": "count form's gradient collapses as rings appear: 0.782 (p=0.50, 0 hard triangles) -> 1.04e-4 (p=0.90, K20); per_atom 0.536 -> 226.",
-   "MEASURED_defect_2": "old triangle correction 0.5*raw[3] zeroed the 6-ring count AND its gradient on soft graphs (6-atom hexagon p=0.35 + chord p=0.35: old 0.0/0.0, new 0.001838/-0.001195).",
-   "MEASURED_verdict": "The prior is a net negative at all four weights; per_atom is degenerate; RBF + pair chemistry is the only positive (bond AP +0.194).",
-   "OPEN": [
-    "RESOLVED 2026-10-21c (§6.162). The decoded ring gain is real as a number but is a head effect on an UNTRAINED sampler: `gen_ring_*` in Wf-A107 is a decode of collapsed noise, and the assembler amplifies a 0.45 pp raw-graph difference into 12 pp. The mechanism is NOT local ring closure and NOT a velocity-field change. Remaining: Wf-A107e (use_fm_objective=true) is the first A/B where the metric can mean generated chemistry; the global gradient clip must be made per-module before that comparison, because the ring term lifts grad_norm 2.62 -> 7.94 and clip_grad_norm_(5.0) rescales the whole model.",
-    "3 seeds only, 5 epochs, 200 clouds. The features arm's bond-AP delta is 3/3 same-sign but p=0.106; the 3-ring delta is significant (p=0.034).",
-    "Wf-A72 part-2 gate is 2/3 — SINGLE 0.3838 against a 0.7 bar at a 2.36% base rate (16.3x lift). The gate is aspirational (§6.100), not a code defect.",
-    "Wf-A107e answered the 'trained sampler' question in the negative at this budget: the sampler is still a blob (2.18 A mean pair distance) and the decoded metric is unchanged. The remaining path to a generation claim is the c7 budget (full corpus, many epochs), not another ring formulation or another flag."
-   ],
-   "artifacts": [
-    "metrics/by_metric/wfa107_ring_prior_ab.json",
-    "metrics/by_metric/wfa107_bond_graph_profile.json",
-    "metrics/by_metric/wfa107_ring_gradient_probe.json",
-    "results/wfa107_{control,count,count_w1e3,count_w1e4,per_atom,features}/"
-   ],
-   "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.152 + §6.153 + §6.162",
-   "seed_spread": {
-    "n_seeds": 3,
-    "control_bond_ap": [
-     0.5617,
-     0.695,
-     0.6949
-    ],
-    "features_bond_ap": [
-     0.7556,
-     0.7357,
-     0.8724
-    ],
-    "control_range": 0.1333,
-    "features_range": 0.1367,
-    "reading": "the run-to-run spread equals the single-seed effect; only paired 3-seed deltas may be quoted"
-   },
-   "MEASURED_2026_10_21c": {
-    "what": "head-swap 2x2 (model x head) through the trainer's own decode path, plus a raw-edge probe on the same clouds",
-    "root_cause": "configs/wfa107_*.yaml carry wasserstein_weight 0.0 and no use_fm_objective, so the velocity field is never trained; vel_field weights are bit-identical between arms and the sampler returns identical clouds",
-    "raw_edge_3share": {
-     "control": 0.07,
-     "edge_ring_w1": 0.065,
-     "delta": -0.0045
-    },
-    "decoded_3share": {
-     "control": 0.526,
-     "edge_ring_w1": 0.405,
-     "delta": -0.1211
-    },
-    "decoded_5_6share": {
-     "control": 0.15,
-     "edge_ring_w1": 0.211,
-     "delta": 0.0613
-    },
-    "decoded_rings_per_mol": {
-     "control": 7.31,
-     "edge_ring_w1": 10.97,
-     "delta": 3.66
-    },
-    "model_effect": 0.0,
-    "artifacts": [
-     "metrics/by_metric/wfa107c_head_swap_probe.json",
-     "metrics/by_metric/wfa107c_head_swap_probe_gen402.json",
-     "metrics/by_metric/wfa107d_decode_head_swap.json"
-    ],
-    "scripts": [
-     "molmetal/scripts/wfa107c_head_swap_probe.py",
-     "molmetal/scripts/wfa107d_decode_head_swap.py"
-    ]
-   },
-   "configs_followup": [
-    "configs/wfa107e_fm_control.yaml",
-    "configs/wfa107e_fm_edge_ring_w1.yaml"
-   ],
-   "MEASURED_2026_10_21e": {
-    "configs": [
-     "configs/wfa107e_fm_control.yaml",
-     "configs/wfa107e_fm_edge_ring_w1.yaml"
-    ],
-    "artifact": "metrics/by_metric/wfa107e_ab.json",
-    "probe_artifact": "metrics/by_metric/wfa107e_head_swap_probe_gen402.json",
-    "decoded_ring_3_share": {
-     "control": 0.5016,
-     "edge_ring_w1": 0.3648,
-     "delta": -0.1368
-    },
-    "decoded_ring_5_6_share": {
-     "control": 0.1688,
-     "edge_ring_w1": 0.2121,
-     "delta": 0.0433
-    },
-    "decoded_rings_per_mol": {
-     "control": 6.48,
-     "edge_ring_w1": 9.82,
-     "delta": 3.34
-    },
-    "bond_existence_ap": {
-     "control": 0.3465,
-     "edge_ring_w1": 0.1768,
-     "delta": -0.1697
-    },
-    "generated_geometry": {
-     "mean_pair_distance_A": 2.18,
-     "frac_pairs_in_cutoff": 0.909,
-     "raw_rings_per_mol": {
-      "control": 165.9,
-      "edge_ring_w1": 198.1
-     },
-     "reading": "still a blob: 5 epochs of FM on 200 clouds moved mean pair distance 2.26 -> 2.18 A"
-    },
-    "clip_fix": {
-     "grad_clip_scope": "per_module",
-     "pre_clip_grad_norm": {
-      "control": 7.52,
-      "edge_ring_w1": 8.47
-     },
-     "vel_field_max_abs_delta": 5.3e-08,
-     "head_max_abs_delta": 0.00295,
-     "reading": "the flow field is isolated to float32 reduction order, 5.5e-5 of the head's delta"
-    }
-   }
-  },
-  "Wf-A108e_x1_target": {
-   "scope": "The absolute-position (x1) target, as the cheap form x1_hat = x_t + u, which is velocity regression under an implicit (1-t)^2 weight.  One factor changed against the Wf-A108d regime gate.",
-   "status": "MEASURED 2026-10-23 (§6.195).  NOT ADOPTED as the default target: it wins at the start of the ODE and loses at the end, and it still loses to the Gaussian closed form.",
-   "MEASURED_2026_10_23": {
-    "capacity_gate_gap_closed": {
-     "velocity_500": 0.193,
-     "velocity_2000": 0.219,
-     "x1_500": 0.189,
-     "x1_2000": 0.177
-    },
-    "per_t_mse": {
-     "zero": {
-      "0.05": 9.008,
-      "0.25": 9.008,
-      "0.5": 9.008,
-      "0.75": 9.008,
-      "0.95": 9.008
-     },
-     "velocity": {
-      "0.05": 14.781,
-      "0.25": 9.638,
-      "0.5": 7.445,
-      "0.75": 6.744,
-      "0.95": 6.994
-     },
-     "x1": {
-      "0.05": 7.409,
-      "0.25": 7.188,
-      "0.5": 7.673,
-      "0.75": 8.487,
-      "0.95": 8.945
-     },
-     "gaussian_closed_form": {
-      "0.05": 3.605,
-      "0.25": 5.458,
-      "0.5": 8.344,
-      "0.75": 8.537,
-      "0.95": 6.305
-     }
-    },
-    "mean_over_t": {
-     "velocity": 9.12,
-     "x1": 7.94,
-     "gaussian": 6.45
-    },
-    "endpoint_cosine": {
-     "velocity": 0.736,
-     "x1": 0.852
-    },
-    "sign_flip_achieved": false,
-    "corr_v_norm_with_radius_at_t005": {
-     "x1": 0.477,
-     "gaussian": 0.979
-    },
-    "artifacts": [
-     "metrics/by_metric/wfa108e_ho_cycle25_vc_x1_500.json",
-     "metrics/by_metric/wfa108e_ho_cycle25_vc_x1_2000.json",
-     "metrics/by_metric/wfa108e_t_sensitivity_x1.json"
-    ]
-   },
-   "loss_terms_export": {
-    "shipped": "EpochMetrics.loss_terms — the epoch mean of every tensor that entered the objective",
-    "why": "the smoke's train_loss rose 7.5187 -> 7.9409 while all five exported terms fell; the export shows energy_class_term alone rose +1.4804, more than the total, so without it the objective fell 1.058",
-    "audit": "sum(loss_terms) == train_loss to 6.5e-08 at both smoke epochs (float32 accumulation order)",
-    "test": "molmetal/tests/test_wfa108e_x1_head.py::test_epoch_record_carries_every_loss_term"
-   },
-   "next": "The regime arm, not another head: configs/wfa108h_b64_chunk2_vector_channels.yaml (1,600 clouds at batch 64, fm_batch_chunk_ratio 2.0, 25 optimizer steps per epoch)."
-  },
-  "Wf-A108h_regime_arm": {
-   "scope": "The regime factor: more clouds per optimizer step at the same 25-steps-per-epoch budget, run through the trainer with use_fm_objective on, under a 20 GiB allocator cap.",
-   "status": "MEASURED 2026-10-24 (§6.196).  NULL at 125 steps: the field is still the prior.  The pre-registered 1,600-cloud / batch-64 arm does not fit 20 GiB.",
-   "MEASURED_2026_10_24": {
-    "artifact": "metrics/by_metric/wfa108h_regime_arm.json",
-    "run": "5 epochs, 800 clouds at batch 32, 25 steps/epoch, 1,219 s",
-    "fm_term": [
-     12.26,
-     12.237
-    ],
-    "bond_ce": [
-     1.03,
-     0.782
-    ],
-    "field_mean_mse": {
-     "network": 8.928,
-     "zero": 9.008,
-     "gaussian": 6.45
-    },
-    "mean_v_norm_range": [
-     0.116,
-     0.159
-    ],
-    "sign_flip_achieved": false,
-    "objective_integrity": {
-     "degraded": true,
-     "lost_terms": [
-      "EnergyConservation"
-     ],
-     "count": 2
-    }
-   },
-   "batch_ladder": {
-    "b64_n1600": "peak 20,440 MiB; FmOdeTerm OOM 25/25, SBOO3Term 4/25 — does not fit",
-    "b48_n1200": "peak 20,401 MiB; SBOO3Term + EnergyConservation OOM — does not fit",
-    "b32_n800": "peak 20,041 MiB; EnergyConservation 2/125 — the arm that ran"
-   },
-   "why_it_does_not_fit": "The auxiliary class-wrapper terms re-run the velocity field with the graph retained (FmOde 4 forwards, SBOO3 2*n_rot, Energy 2), and the bond head's pair tensors are O(n_atoms^2) over the batch.  The FM forward is not the cost: chunking holds it at 157 MB.",
-   "next": "A regime effect needs the 2,000-step budget (Wf-A108d: 0.217 gap_closed at 200 clouds), not 125 steps at 4x data.  Or c7 with a cap that admits it."
-  },
-  "Wf-A108i_term_cost": {
-   "scope": "Which weighted term costs the batch-64 VRAM, and the largest batch that runs the full objective inside 32 GiB.  Eight probes, 5 optimizer steps each, allocator cap varied on a 95 GiB card.",
-   "status": "MEASURED 2026-10-24 (§6.196 attribution corrected, §6.197 added)",
-   "finding": "FmOdeTerm is the entire cost: batch 64 drops 23,916 -> 6,382 MiB with it off; SBOO3Term and EnergyConservation are within 22 MiB of each other.  At a 32,000 MiB cap, batch 64 loses FmOdeTerm + EnergyConservation on step 1 and aborts; batch 48 completes with all three terms live at a 30,089 MiB peak.",
-   "artifact": "metrics/by_metric/wfa108i_term_cost.json",
-   "consequence": "The c7 protocol (batch 64 + the shipped objective) is not runnable on GPU1 at 32,607 MiB.  See DEC_full_corpus_gpu1_protocol.",
-   "also_found": "The c7 reference run trained at a flat 3.0e-4 for all 18 epochs while its yaml declared cosine + 5-epoch warmup (§6.197 finding 4).  c8 reproduces the run as executed, not as declared."
-  }
- },
- "pointer_to_history": {
-  "git_log": "Round 1-9 findings preserved in git history (per 2026-09-30 user directive '扁平化这些wave')",
-  "docs": [
-   "docs/00_MODEL_NARRATIVE.md (PINNED -- authoritative for architecture)",
-   "docs/CFM_STATUS_2026_10_12.md (rounds 1-4 review, 80 KB)",
-   "docs/CFM_SIX_ROUND_CONCLUSION_2026_10_13.md (rounds 5-6 + OPT plan, 12 KB)",
-   "docs/HONEST_NEGATIVE_CATALOG.md (94 entries per Wf-369-A3)",
-   "docs/ALIGNED_COMPARISON.md (same-protocol view)"
-  ],
-  "backup": "cfm_todo.json.bak.v7.7 (455 KB; v7.5+v7.6+v7.7 retro, recoverable on demand)"
- },
- "what_throw_away": [
-  "round 1-9 retro (cfm_todo.json.bak.v7.7 + git log + docs/CFM_STATUS_2026_10_12.md)",
-  "BLK-C-M1..M7 + L1..L5 + OBJ + PERF (all CLOSED; reconstruct from docs/)",
-  "round6 code_health 5 items (3 still owed housekeeping; see HONEST_NEGATIVE_CATALOG.md)",
-  "OPT-1..5 detailed prose (compressed; statuses in tasks_roi_ordered or honest_negatives)",
-  "Whole Paper A: cross-metal pIC50 / Krasnov-2026 / m1 m19 m21 / Chemprop / Bemis-Murcko (OUT OF SCOPE: DeepSeek line)"
- ],
- "data_audit_handoff_2026_10_22": {
-  "why_this_block": "User asked for the remaining data-line items to be recorded in one place (2026-10-22). Items 2 and 3 are generative-line and belong in this file. Items 1 and 4 are predictive-line / external-eval items, recorded here as handoff pointers only; they do not change the scope boundary above.",
-  "source": {
-   "artifacts": [
-    "metrics/by_metric/tmqm_cfm_data_audit.json",
-    "metrics/by_metric/nci60_split_coverage_audit.json",
-    "metrics/by_metric/split_coverage_4cell.json"
-   ],
-   "docs": [
-    "docs/DATA_INVENTORY.md",
-    "docs/DATA_LEAKAGE_AUDIT.md"
-   ],
-   "data_docs_commit": "dc9ba599",
-   "split_default_flip_commit": "26598016"
-  },
-  "confirmed_clean": [
-   "tmQM six-metal corpus: 33,429 complexes; geometry, Wiberg bond orders and NBO charges present on 33,429/33,429. No duplicate CSD codes, no non-finite coordinates, one metal atom per complex, metal column agrees with that atom on 33,429/33,429.",
-   "CFM CSV cohorts v3 / v4 / v5: 0 shared scaffolds and 0 shared canonical SMILES across every train/val/test pair.",
-   "NCI-60 and Pt 4-cell: 0 scaffolds span two splits under either protocol."
-  ],
-  "items": [
-   {
-    "id": "DATA_NCI60_COVERAGE_RETRAIN",
-    "scope": "predictive line -- pointer only, not a CFM task",
-    "state": "OPEN",
-    "what": "The m21 default split moved on 2026-10-21 from scaffold_70_10_10 to scaffold_coverage_70_10_20, and no model has been retrained on it. 0.7294 (9-cell, 5 seeds) and 0.6683 (m3 real) are legacy-protocol numbers; they reproduce only through the configs that pin the legacy split.",
-    "evidence": "metrics/by_metric/nci60_split_coverage_audit.json: coverage 5,371/920/1,532 rows against legacy 7,320/160/343. Legacy leaves 5 of 9 cells under 30 test rows and SKOV3 with 0 val rows; coverage leaves 0. Legacy pins: configs/training/nci60_9cell_5seed_50ep_v1.yaml, nci60_9cell_probe_seed0_cap512_d4.yaml, nci60_9cell_probe_seed12_cap512_d4.yaml, configs/train_cisplatin_resistance_real_v1.yaml, configs/train_cisplatin_resistance_v1.yaml.",
-    "action": "Run configs/training/nci60_9cell_coverage_5seed_50ep_v1.yaml on GPU0. Do not compare the result with 0.7294: the two test sets differ about 4.5x in size (1,532 vs 343 rows).",
-    "cost": "~5.4 GPU-h; nothing else blocks it."
-   },
-   {
-    "id": "CFM_V3_V4_SCAFFOLD_ID_IS_WHOLE_COMPLEX",
-    "scope": "generative",
-    "state": "OPEN (decision)",
-    "what": "The in-file scaffold_id in cfm_5metal_v3/v4 covers the whole complex, counterions and solvent included, and is stereo-aware. On a desalted stereo-blind ligand scaffold, 222 scaffolds are shared between train and test (73.71% of test rows) and 131 between train and val (79.63% of val rows). cfm_5metal_v5 has a real desalted split (17,138/2,448/4,897, 0 shared) but no config reads it.",
-    "evidence": "docs/DATA_LEAKAGE_AUDIT.md section 2; molmetal/reports/wf_a51_leakage_audit/leakage_audit.json",
-    "action": "Choose one. (a) Move training to cfm_5metal_v5: the cohort and the split both change, so every existing checkpoint becomes incomparable with anything trained afterwards. (b) Keep v3/v4 and state in every generation-metric table that the split is not a ligand-scaffold OOD split.",
-    "cost": "0 to decide; a v5 retrain is a full run."
-   },
-   {
-    "id": "TMQM_VAL_COHORT_NOT_METAL_BALANCED",
-    "scope": "generative",
-    "state": "OPEN (decision)",
-    "what": "n_val defaults to 192 and tmqm_min_per_metal to 0, so the cohort every generation metric is averaged over is a 192-of-960 reservoir window. At seed 0 it is Pt 19 / Ru 93 against a corpus that is Pt 24.75% / Ru 29.32%.",
-    "evidence": "metrics/by_metric/tmqm_cfm_data_audit.json::val_cohort_at_n192",
-    "action": "Set tmqm_min_per_metal: 20 in the CFM configs. The cohort becomes Pt 46 / Ru 52 and the loader scans all 2,061 candidates instead of a 960-candidate window. One YAML key, but it changes the val cohort, so metrics measured before and after are not comparable.",
-    "cost": "0 to change; the next run reports on a different cohort."
-   },
-   {
-    "id": "PT_BIODATA_ALL_IS_A_POOL",
-    "scope": "external evaluation -- pointer only, not a CFM task",
-    "state": "OPEN",
-    "what": "17,735 Pt rows with no split column: 3,668 duplicate (compound_code, cell_line) rows, 987 exact duplicate measurements, and 296 of 3,555 unique SMILES fail RDKit parsing.",
-    "evidence": "docs/DATA_INVENTORY.md section 1.3; docs/DATA_LEAKAGE_AUDIT.md section 3",
-    "action": "De-duplicate before using it as an external evaluation set. The 4-cell cohort (platinai_4cell_real_trainer.csv) already filters and median-collapses these.",
-    "cost": "0; CPU only."
-   }
-  ]
- }
 }
