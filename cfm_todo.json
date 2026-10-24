@@ -1,5 +1,5 @@
 {
- "version": "8.7 (2026-10-24 — Wf-A108i: FmOdeTerm is the entire batch-64 memory cost (23,916 -> 6,382 MiB with it off); batch 48 runs the full objective under a 32 GiB cap, batch 64 does not; the c7 full-corpus reference is degraded 1-6 steps/epoch and its checkpoint is missing from disk)",
+ "version": "8.8 (2026-10-24 — Wf-A108i: five open decisions closed; EnergyConservation flipped to opt-in, entropy weight kept at 0.1 with its warning; start.sh no longer supplies values the config did not declare; c8 full-corpus batch-64 run in flight on GPU0)",
  "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
  "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
  "task_definition": {
@@ -567,12 +567,16 @@
   {
    "id": "DEC_retrain_slot",
    "blocking": "TIER_2+ items; does not block paper Table",
-   "question": "Round 9 + threshold sweep said 'head retrain slot IS the right call'. Now that CFM line is re-scoped to generative only, retrain still relevant? OR stays parked until TIER_1 produces a clearer defect?"
+   "question": "Round 9 + threshold sweep said 'head retrain slot IS the right call'. Now that CFM line is re-scoped to generative only, retrain still relevant? OR stays parked until TIER_1 produces a clearer defect?",
+   "status": "RESOLVED 2026-10-24 (Wf-A108i) — SUPERSEDED by the c8 full-corpus run",
+   "resolution": "The 'head retrain slot' question predates the CFM re-scope.  The bond head is not a separate deliverable: it is the decoder's bond predictor, so it is retrained by the generation line's own full-corpus run.  configs/c8_fullgen_b64_2026_10_24.yaml trains it on all 26,715 clouds for 18 epochs and checkpoints every epoch, which is the retrain.  No separate slot is scheduled; if the c8 bond metrics are the same plateau as c7, the question becomes a modelling question (Wf-A107's head work), not a scheduling one."
   },
   {
    "id": "DEC_general_sbdd_baselines",
    "blocking": "not blocking; footnote vs headline",
-   "question": "Include TargetDiff / DiffDock as broader-context rows? They only have general CrossDocked numbers, not precious-metal-specific. user said 'same-dataset same-domain' -- likely footnote only."
+   "question": "Include TargetDiff / DiffDock as broader-context rows? They only have general CrossDocked numbers, not precious-metal-specific. user said 'same-dataset same-domain' -- likely footnote only.",
+   "status": "RESOLVED 2026-10-24 (Wf-A108i) — FOOTNOTE ONLY",
+   "resolution": "TargetDiff / DiffDock carry general CrossDocked numbers only.  The user's rule is same-dataset same-domain, and a general-protein-ligand row is neither.  They stay out of the headline table and appear at most as a footnote naming the domain gap.  No further work queued."
   },
   {
    "id": "DEC_entropy_default_below_floor",
@@ -580,7 +584,9 @@
    "question": "--entropy-reg-weight defaults to 0.1 (Wf-A43, 2026-10-15) but the BLK-C14 MEASURED observability floor is 0.12, so the shipped default sits INSIDE the sub-threshold band and every run that does not set the flag prints the sub-threshold warning. Raise the default to 0.12 (silences the warning, but moves the objective of the ~157 configs that rely on the default), keep 0.1 and accept the warning (truthful: the term really is below the measured floor), or move the default back to 0.0 (off)?",
    "evidence": "molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py; ENTROPY_REG_MEASURED_FLOOR = 0.12 in train_cfm_yuelbond_wasserstein.py; 21 of 178 configs set the key explicitly",
    "added_by": "Wf-A99 (2026-10-20) while repairing the stale test",
-   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.142"
+   "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.142",
+   "status": "RESOLVED 2026-10-24 (Wf-A108i, §6.198) — KEEP 0.1, keep the warning",
+   "resolution": "The warning compares 0.1 against ENTROPY_REG_MEASURED_FLOOR = 0.12, but the warning's own arithmetic shows the term at w=0.1 is 1.29%-1.94% of a live train_loss of 9.28459 (raw H in [1.2,1.8]), i.e. above the 1% observability bar the BLK-C14 paragraph uses.  0.12 is the low end of the measured PARITY band, not an observability threshold for 0.1 — different quantity.  Raising the default would move 157 configs to satisfy a comparison that is not the one being made.  The weight stays 0.1 and the warning stays because it states a true thing; a config that wants parity sets 0.12 explicitly (configs/cfm_entropy_reg_012_2026_10_11.yaml)."
   },
   {
    "id": "DEC_per_loss_projection_inert",
@@ -593,7 +599,9 @@
    "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.49c",
    "disposal_trigger_enforced_by": "molmetal/tests/test_dec_per_loss_projection_disposal.py (Wf-A104, 4 tests)",
    "disposal_note": "Since Wf-A104 the trigger is mechanical, not a memo: the test globs molmetal/loss/*.py for a class matching *Projection* and molmetal/scripts/*.py for the --per-loss-projection-lr dest, and fails if exactly one of {reserved, consumed} holds. It also re-asserts the NEGATIVE half on every run (no class, no dest), so 'nothing consumes it' is verified rather than assumed.",
-   "disposal_instruction": "When it fires: remove 'model.per_loss_projection_lr' from DECLARED_INERT_PATHS in molmetal/scripts/wfA2_config_loader.py, wire the dest into the trainer, and delete the 4 tests."
+   "disposal_instruction": "When it fires: remove 'model.per_loss_projection_lr' from DECLARED_INERT_PATHS in molmetal/scripts/wfA2_config_loader.py, wire the dest into the trainer, and delete the 4 tests.",
+   "status": "RESOLVED 2026-10-24 (Wf-A108i) — STANDING INVARIANT, not a decision",
+   "resolution": "Nothing to decide: the key is DECLARED_INERT by design and the disposal trigger is already mechanical.  molmetal/tests/test_dec_per_loss_projection_disposal.py (Wf-A104, 4 tests) globs molmetal/loss/*.py for a *Projection* class and molmetal/scripts/*.py for the --per-loss-projection-lr dest, failing if exactly one of {reserved, consumed} holds, and re-asserts the negative half every run.  Reclassified from an open decision to an enforced invariant; nothing to schedule."
   },
   {
    "id": "DEC_delete_diagnostic_class_wrappers",
@@ -623,8 +631,11 @@
    "question": "EnergyConservation has shipped default-ON at weight 0.05 since Wf-A44 and has never been A/B'd.  The new loss_terms export shows it is the only term that rose in the Wf-A108e smoke (+1.4804 while the total rose +0.4222), and it evaluates the field at x_t + 0.5*v0 under the same t — off the interpolation path — with an LJ potential clamped to r in [0.5, 5.0] where 1/r^12 reaches 4,096, so its magnitude tracks how far the field moves atoms.  Set the default to 0.0 (bit-exact off, opt-in like fm_ode / sboo3 / ring prior), keep 0.05, or run a two-arm A/B at the same budget first?  UPDATE 2026-10-24 (§6.196): under a 20 GiB cap the term OOM'd on 2 of 125 steps of the regime arm, which made that run degraded.  It is the only term that still failed after the batch was cut to 32.",
    "evidence": "docs/HONEST_NEGATIVE_CATALOG.md §6.195; metrics/by_metric/wfa108e_t_sensitivity_x1.json; the §5.7 smoke artifact records 27 objective weights, 15 nonzero, 13 of them absent from the yaml",
    "added_by": "Wf-A108e (2026-10-23)",
-   "status": "OPEN",
-   "why_it_is_a_decision_not_a_fix": "a default change moves the objective of every config that relies on it, which is the same class as DEC_entropy_default_below_floor; the term has no measured benefit to trade against, so the choice is the user's"
+   "status": "RESOLVED 2026-10-24 (Wf-A108i, §6.198) — FLIPPED 0.05 -> 0.0 (opt-in)",
+   "why_it_is_a_decision_not_a_fix": "a default change moves the objective of every config that relies on it, which is the same class as DEC_entropy_default_below_floor; the term has no measured benefit to trade against, so the choice is the user's",
+   "resolution": "The argparse default and the main() signature default are both 0.0 now, bit-exact pre-Wf-A23.  Reason is measurement, not policy: §6.195 showed the term evaluates the field at x_t + 0.5*v0 under the same t (off the interpolation path) with an LJ potential clamped to r in [0.5,5.0] where 1/r^12 reaches 4096, so its magnitude tracks displacement rather than energy drift; in the Wf-A108e smoke it was the only weighted term that rose (+1.4804 against a total of +0.4222); and Wf-A108i measured that it costs 0 MiB of peak memory at batch 64, so no throughput argument holds either.  c7 and c8 both declare 0.05 explicitly, so the reference arm keeps the objective its artifacts were produced under.  Blast radius: the 157 configs that do not set the key change objective on re-run — intended, and the reason c7 was frozen.",
+   "test_updated": "molmetal/tests/test_wfa100_class_term_weights.py now pins 0.0",
+   "still_missing": "an A/B.  This is a reasoned flip, not a measured win; §6.198 records it."
   },
   {
    "id": "DEC_full_corpus_gpu1_protocol",
@@ -633,7 +644,8 @@
    "evidence": "metrics/by_metric/wfa108i_term_cost.json; docs/HONEST_NEGATIVE_CATALOG.md §6.196 (corrected attribution) + §6.197 (the reference run is itself degraded)",
    "added_by": "Wf-A108i (2026-10-24)",
    "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.196, §6.197",
-   "status": "OPEN — awaiting user choice"
+   "status": "RESOLVED 2026-10-24 — user chose option (c): batch 64 on GPU0",
+   "resolution": "User picked batch 64 on GPU0 over batch 48 on GPU1 / batch 64 with FmOdeTerm off / a checkpointing code change.  Rationale recorded: option (c) is the only one where neither the batch size nor the objective differs from the c7 reference, and GPU0 is where c7 itself ran.  Launched 2026-10-24 via scripts/start.sh as configs/c8_fullgen_b64_2026_10_24.yaml (commit 8fc837b3); out_dir molmetal/reports/cfm_c8_fullgen_2026_10_24.  GPU1 remains unable to host this protocol: MEASURED >40 GiB at batch 64 with FmOdeTerm live, 32,607 MiB total."
   }
  ],
  "pocket_pool": {

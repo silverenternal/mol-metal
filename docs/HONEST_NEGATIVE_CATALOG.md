@@ -12803,3 +12803,80 @@ probes, 31 min GPU; §5.2 every number is an artifact field; §5.3 + §5.4: 0 `p
 
 ---
 
+## §6.198 — Two default-ON regularisers, two different answers: EnergyConservation goes opt-in, the entropy weight stays (2026-10-24)
+
+**The open question.** `cfm_todo.json` carried two decisions of the same shape:
+a regulariser is ON by default, has never been A/B'd, and the artifact cannot say
+whether it helped. `DEC_energy_default_off` (Wf-A108e) and
+`DEC_entropy_default_below_floor` (Wf-A99). They were left open because flipping
+a default moves the objective of every config that does not set the key.
+
+**EnergyConservation — flipped to 0.0.** Three measurements, none of which is an
+A/B, all of which point the same way:
+
+  * §6.195 measured what the term evaluates. It calls the field at
+    `x_t + 0.5 * v0` under the same `t`, i.e. off the interpolation path the rest
+    of the objective trains on, and its LJ potential is clamped to
+    `r in [0.5, 5.0]`, where `1/r^12` reaches 4,096. The term's magnitude
+    therefore tracks how far the field moves atoms, not an energy drift.
+  * In the Wf-A108e smoke it was the only weighted term that rose while the total
+    fell or moved less: `+1.4804` against a total change of `+0.4222`.
+  * Wf-A108i's four-way ablation shows it costs no measurable memory at batch 64
+    (removing it changes the peak by 0 MiB), so it was never carrying a
+    throughput argument either.
+
+The default is now `0.0` (bit-exact pre-Wf-A23). Both full-corpus configs,
+`c7_fullgen_2026_10_20.yaml` and `c8_fullgen_b64_2026_10_24.yaml`, declare
+`energy_conservation_weight: 0.05` explicitly, so the reference arm keeps the
+objective its artifacts were produced under and a re-run of c7 no longer depends
+on a default.
+
+**Entropy weight — kept at 0.1, and the warning is the point.** The guard fires
+when `0 < w < ENTROPY_REG_MEASURED_FLOOR (0.12)`, so every default run prints it.
+The warning's own arithmetic is why the default does not move: at `w = 0.1` with
+raw `H in [1.2, 1.8]` the term is `0.12-0.18` on a live `train_loss` of 9.28459,
+i.e. **1.29%-1.94% of the loss**. BLK-C14's complaint was about `w = 0.01`, where
+the term was 0.11%-0.19% — unobservable. At 0.1 it is above the 1% bar that same
+paragraph uses.
+
+So `0.12` is not an observability threshold for the shipped weight; it is the low
+end of the measured parity band, which is a different quantity. Raising the
+default to 0.12 would move the objective of 157 configs to satisfy a number that
+is not the comparison being made. The weight stays at 0.1 and the warning stays,
+because it states a true thing: the term is below the parity band, and a reader
+who wants parity should set 0.12 explicitly
+(`configs/cfm_entropy_reg_012_2026_10_11.yaml` does).
+
+**Honest boundaries (ACTIVE).**
+
+  * Neither resolution is an A/B. The energy flip rests on what the term
+    evaluates and on its behaviour in one smoke; the entropy decision rests on
+    arithmetic over a measured `train_loss`. A two-arm A/B at equal budget is
+    still the only thing that would settle either, and neither has been run.
+  * Flipping the energy default changes the objective of every config that does
+    not set the key (157 configs, counted by Wf-A108i). Their existing artifacts
+    were produced under 0.05 and are not affected; a *re-run* of one is. That is
+    the intended effect and it is why c7 is frozen rather than left to the
+    default.
+  * `test_wfa100_class_term_weights.py` pinned 0.05 and now pins 0.0. The other
+    two class-wrapper weights are unchanged, so "one flipped" cannot be mistaken
+    for "all three".
+  * The entropy floor constant was not re-measured. If BLK-C14 is ever re-run,
+    the floor and this paragraph move together.
+
+**Artifacts.** `molmetal/scripts/train_cfm_yuelbond_wasserstein.py`
+(`energy_conservation_weight` default and help text, `ENTROPY_REG_MEASURED_FLOOR`),
+`molmetal/tests/test_wfa100_class_term_weights.py`,
+`molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py`,
+`configs/c7_fullgen_2026_10_20.yaml` (frozen at 0.05),
+`configs/c8_fullgen_b64_2026_10_24.yaml`.
+
+**§6.198 catalog-count math.** Net **+1**. Cumulative **252 -> 253**. ACTIVE
+**208 -> 209**.
+
+**Workflow** | Wf-A108i (2026-10-24; two decisions closed by measurement, 0 GPU;
+§5.2 every number traces to §6.195 / §6.196 / the BLK-C14 test; §5.3 + §5.4: 0
+`paper/*` + 0 wet-lab).
+
+---
+

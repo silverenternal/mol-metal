@@ -491,6 +491,45 @@ events_jsonl_path = str(
 # Path('.'), i.e. writing into the CWD).  Added --no-events-jsonl to the
 # trainer; emitted below only when the yaml actually says False.
 events_jsonl_disabled = out_block.get('events_jsonl', True) is False
+# 2026-10-24 (Wf-A108i, §6.197) — A LAUNCHER MUST NOT SUPPLY A VALUE THE CONFIG
+# DID NOT DECLARE.
+#
+# MEASURED: the c7 full-corpus run declared `train.lr_scheduler: cosine` and
+# trained at a flat 3.0e-4 for all 18 epochs.  This script read
+# `protocol.scheduler.type` (absent from that yaml), defaulted it to "none", and
+# passed `--lr-scheduler none` on the command line, which wins over the yaml
+# under the documented precedence rule.  The same script reported `epochs=50`
+# for an 18-epoch config.  Both are the §5.11 defect in the launcher: a knob
+# that lives only in a shell script is a knob nobody audits.
+#
+# The rule now: for each flag, take `protocol.<key>` if declared, else the
+# trainer's own yaml key `train.<key>` if declared, else emit NOTHING and let
+# the trainer's argparse default stand.  Empty is a value here — `_add_flag`
+# skips it — so "undeclared" is visible in the rendered command instead of being
+# papered over by a launcher default.
+_proto = d.get('protocol', {}) or {}
+_train = d.get('train', {}) or {}
+_out = d.get('output', {}) or {}
+_sched = _proto.get('scheduler', {}) or {}
+
+
+def _first(*vals):
+    for v in vals:
+        if v is None or v == '':
+            continue
+        return v
+    return ''
+
+
+_declared_sched = _first(_sched.get('type'), _train.get('lr_scheduler'))
+_declared_warmup = _first(_sched.get('warmup_epochs'), _train.get('lr_warmup_epochs'))
+_declared_min_lr = _first(_sched.get('min_lr'), _train.get('lr_min_lr'))
+_declared_pct = _first(_sched.get('pct_start'), _train.get('lr_pct_start'))
+_declared_wd = _first(_proto.get('weight_decay'), _train.get('weight_decay'))
+_declared_max_norm = _first(_proto.get('max_norm'), _train.get('max_norm'))
+_declared_epochs = _first(_proto.get('epochs'), _train.get('epochs'))
+_declared_resume = _first(_out.get('resume_from'), _train.get('resume_from'))
+
 lines = [
     f'ENTRY_SCRIPT={shlex.quote(e.get("script", ""))}',
     f'ENTRY_COMMAND={shlex.quote(cmd)}',
@@ -505,7 +544,7 @@ lines = [
     # that actually knows the sweep size -- the same semantics as chemprop's
     # --n-seeds-min (train_chemprop_v2_v3.py:1714).  Default 1 = no opinion.
     f'N_SEEDS_MIN={d.get("protocol", {}).get("n_seeds_min", 1)}',
-    f'EPOCHS={d.get("protocol", {}).get("epochs", 50)}',
+    f'EPOCHS={_declared_epochs if _declared_epochs != "" else "(trainer default)"}',
     f'DIRECTIVES_USER_OK={d.get("directives", {}).get("user_ok_required", True)}',
     # Wf-A6 A2 BLOCKER C fix (2026-10-03) — extract LR scheduler
     # protocol fields (SCHEDULER + WARMUP_EPOCHS + MIN_LR +
@@ -517,23 +556,23 @@ lines = [
     # + --lr-warmup-epochs INT + --lr-min-lr FLOAT + --weight-decay
     # FLOAT are wired in both trainers per AGENTS.md §5.7
     # trainer flag wire-in smoke-required rule.
-    f'SCHEDULER={shlex.quote(str(d.get("protocol", {}).get("scheduler", {}).get("type", "none")))}',
-    f'LR_WARMUP_EPOCHS={int(d.get("protocol", {}).get("scheduler", {}).get("warmup_epochs", 5))}',
-    f'LR_MIN_LR={d.get("protocol", {}).get("scheduler", {}).get("min_lr", 1e-6)}',
+    f'SCHEDULER={shlex.quote(str(_declared_sched))}',
+    f'LR_WARMUP_EPOCHS={_declared_warmup}',
+    f'LR_MIN_LR={_declared_min_lr}',
     # 2026-10-09 — OneCycle pct_start (warmup fraction of total steps).
     # EMITTED EMPTY when the yaml does not declare it, so the trainer keeps
     # its own None default (historical hardcoded 0.3) and the `_add_flag`
     # guard above appends nothing.
-    f'LR_PCT_START={shlex.quote(str(d.get("protocol", {}).get("scheduler", {}).get("pct_start", "")))}',
-    f'WEIGHT_DECAY={d.get("protocol", {}).get("weight_decay", 0.0)}',
+    f'LR_PCT_START={shlex.quote(str(_declared_pct))}',
+    f'WEIGHT_DECAY={_declared_wd}',
     # Wf-A8 (2026-10-03) — max-norm gradient clipping threshold. Default
     # 5.0 (Pascanu 2013 standard for transformer/GNN stability). The
     # trainer's --max-norm flag accepts this via the line below.
-    f'MAX_NORM={d.get("protocol", {}).get("max_norm", 5.0)}',
+    f'MAX_NORM={_declared_max_norm}',
     # Wf-A5 N3 — checkpoint resumption env vars (consumed by the
     # build-launch-command block below).
     f'CHECKPOINT_INTERVAL={ckpt_interval}',
-    f'RESUME_FROM={shlex.quote(resume_from)}',
+    f'RESUME_FROM={shlex.quote(str(_declared_resume))}',
     # Wf-TUI NEW — runtime events.jsonl path (consumed by both the
     # trainer --events-jsonl-path flag + the TUI dashboard
     # --events-jsonl flag).  Default = <out_dir>/events.jsonl when the
@@ -673,6 +712,13 @@ fi
 APPENDED_FLAGS=""
 _add_flag() {
   local _flag="$1" _var="$2"
+  # 2026-10-24 (Wf-A108i, §6.197) — an EMPTY value means the config declared
+  # nothing for this knob.  Emit no flag and let the trainer's argparse default
+  # stand; emitting a launcher default is how c7's cosine schedule was replaced
+  # by a constant LR without a single line of the config changing.
+  if [[ -z "${!_var}" ]]; then
+    return 0
+  fi
   if [[ "${EXTRA_PROBE_OK:-0}" == "0" ]] \
      || [[ " ${EXTRA_SUPPORTED_FLAGS:-} " == *" ${_flag} "* ]]; then
     APPENDED_FLAGS="${APPENDED_FLAGS} ${_flag} \"${!_var}\""

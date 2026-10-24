@@ -37,7 +37,12 @@ TRAINER = REPO / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 #: inline sibling, i.e. the only weights that actually move an objective.
 WEIGHTS = {
     "fm_ode_term_weight": 0.05,
-    "energy_conservation_weight": 0.05,
+    # Wf-A108i (2026-10-24, §6.198) — 0.05 -> 0.0.  EnergyConservation is now
+    # opt-in: §6.195 measured it evaluating the field at x_t + 0.5*v0 under the
+    # same t (off the interpolation path) and it has never been A/B'd.  The
+    # other two stay ON; sboo3 is inert at this scale (term ~1e-17) and fm_ode
+    # is a closure penalty with a defined target.
+    "energy_conservation_weight": 0.0,
     "sboo3_term_weight": 0.05,
 }
 

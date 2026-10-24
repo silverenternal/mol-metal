@@ -472,6 +472,15 @@ flow:
   # config-side record of the same constraint.
   monge_ampere: false
 
+  # 2026-10-24 (Wf-A108i, §6.198) — FROZEN, not tuned.  Wf-A108i flipped the
+  # argparse default of energy_conservation_weight from 0.05 to 0.0 (opt-in),
+  # because §6.195 measured that term evaluating the field off the interpolation
+  # path and it had never been A/B'd.  This run trained at 0.05, so the value is
+  # declared here: without it, re-running this config would silently produce a
+  # different objective from the one behind the artifacts in
+  # molmetal/reports/cfm_c7_fullgen_2026_10_20/.
+  energy_conservation_weight: 0.05
+
 # NO `data:` SECTION. Two measured reasons, both load-bearing:
 #   1. A section with only comments parses as the bare leaf `data: None`, which
 #      the loader reports as an unresolved key (`data=None`) and strict mode

@@ -4324,7 +4324,17 @@ def train_one_epoch(
     wasserstein_pocket_n_mc: int = 64,      # Monte-Carlo samples for the per-pocket W₂
     pocket_dist: Optional[torch.Tensor] = None,  # per-pocket W₂ distribution; None = disable
     fm_ode_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = FmOdeTerm off)
-    energy_conservation_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EnergyConservation off)
+    # Wf-A108i (2026-10-24, §6.198) — 0.05 -> 0.0, i.e. OPT-IN.
+    # It shipped default-ON from Wf-A44 and was never A/B'd.  §6.195 measured
+    # what it actually evaluates: the field at x_t + 0.5*v0 under the same t,
+    # which is off the interpolation path, with an LJ potential clamped to
+    # r in [0.5, 5.0] where 1/r^12 reaches 4096 — so the term's magnitude
+    # tracks how far the field moves atoms rather than an energy drift.  In the
+    # Wf-A108e smoke it was the only term that rose (+1.4804 while the total
+    # rose +0.4222).  An unvalidated regulariser with a measured off-path
+    # evaluation should not be on by default; 0.0 is bit-exact pre-Wf-A23.
+    # Configs that want it declare it — c7 and c8 both do, at 0.05.
+    energy_conservation_weight: float = 0.0,
     sboo3_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = SBOO3Term off)
     sboo3_alpha: float = 0.5,  # SBO × O(3) mixing weight
     sboo3_n_perm: int = 4,  # SBO permutations per batch
@@ -11145,10 +11155,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--energy-conservation-weight",
         type=float,
-        default=0.05,
+        default=0.0,
         help=(
             "Wf-A100: weight of the EnergyConservation class term "
-            "(Wf-A23/A44). Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+            "(Wf-A23/A44). Wf-A108i (§6.198) flipped the default 0.05 -> 0.0: "
+            "the term is opt-in now, because §6.195 measured it evaluating the "
+            "field off the interpolation path and it has never been A/B'd. "
+            "0.0 is bit-exact pre-Wf-A23."
         ),
     )
     p.add_argument(
@@ -14902,6 +14915,7 @@ def main() -> int:
             flush=True,
         )
     _loop_end = _start_epoch + 1 if _eval_only else args.epochs
+    _abort_degraded = False
     for epoch in range(_start_epoch, _loop_end):
         epoch_start = time.time()
         # Round-4 E3 — per-epoch bond-score accumulator.  Reset HERE, at the
@@ -16340,6 +16354,34 @@ def main() -> int:
             f"wall={elapsed:.1f}s",
             flush=True,
         )
+        # Wf-A108i (2026-10-24) — stop after epoch 0 if the objective was not
+        # the one the config describes.  MEASURED on the Wf-A108h ladder: at
+        # batch 64 under a 20 GiB cap, FmOdeTerm raised CUDA OOM on 25 of 25
+        # steps and returned zeros, so the arm ran a different objective for
+        # five epochs and the only record was a per-epoch counter.  A
+        # full-corpus run is hours long; discovering this at the end costs the
+        # whole run.  The threshold is 5% of the epoch's steps, so a single
+        # transient allocation failure does not kill a healthy run.
+        if int(epoch) == 0:
+            _lost0 = {
+                k: int(v) for k, v in _regularizer_fallbacks().items() if int(v) > 0
+            }
+            _n_steps0 = max(
+                1,
+                (len(train_clouds_d) + int(args.batch_size) - 1)
+                // max(int(args.batch_size), 1),
+            )
+            _over = {k: v for k, v in _lost0.items() if v > 0.05 * _n_steps0}
+            if _over:
+                print(
+                    "[cfm-degraded] ABORT after epoch 0 — weighted term(s) "
+                    f"{_over} returned zero on more than 5% of {_n_steps0} steps.  "
+                    "The objective is not the one the config describes; fix the "
+                    "memory or declare the term off before running this arm.",
+                    flush=True,
+                )
+                _abort_degraded = True
+                break
         # Wf-TUI NEW: structured per-epoch event to stdout + events.jsonl
         # via the central emit_event() helper. TUI dashboard consumers
         # parse the JSON line for live metrics; text-log consumers
@@ -17418,6 +17460,15 @@ def main() -> int:
         "- Wf-123 P3 (cross-module integration verification)",
     ]
     (out_dir / "synthesis.md").write_text("\n".join(lines) + "\n")
+    if _abort_degraded:
+        print(
+            "[Wf-124 P2] ABORTED after epoch 0 — a weighted term was lost on "
+            "more than 5% of the epoch's steps (see [cfm-degraded] above).  "
+            "The artifact is written with objective_integrity.degraded=true.",
+            flush=True,
+        )
+        _close_event_emitter()
+        return 2
     # Final summary.
     print(
         f"[Wf-124 P2] DONE. best_decode_ratio={best_decode_ratio:.3f} "
