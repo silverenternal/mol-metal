@@ -97,8 +97,18 @@
     "The probe emulates GPU1's capacity with an allocator cap on GPU0.  It does not reproduce GPU1's kernel latencies, its 32 GB of HBM, or contention from the co-tenant that held 11.7 GiB during these runs.",
     "peak_alloc is torch.cuda.max_memory_allocated.  nvidia-smi peak is 300-600 MiB higher (context + non-PyTorch allocations); the 20 GiB arm in §6.196 measured 20,338 MiB on nvidia-smi against a 20,440 MiB allocator peak.",
     "The batch ladder holds steps fixed at 5, so batch 48 and batch 40 do not have the same optimizer-step budget as batch 64 would.  This is a fit test, not a protocol arm.",
-    "Nothing here measures the generation-eval pool, which is a separate and larger consumer at full-corpus scale (c7 peaked at 91.7 GB with 1,536 candidates on 2026-10-20).  A GPU1 full-corpus run needs its eval pool sized independently of this table."
+    "Nothing here measures the generation-eval pool in isolation.  One row does show it does not raise the batch-48 peak: with gen_eval_n 128 x 6 seeds (384 candidates scored, the cohort has 64 val clouds) the peak stayed at 30,089 MiB and the run exited 0.  At c7's scale the eval is the larger consumer (1,536 candidates, 91.7 GB peak on 2026-10-20), so a full-corpus GPU1 run must size the eval pool against the training peak, not against this table."
   ],
+  "eval_pool_at_batch48": {
+    "config": "v1_b48_cap32_eval768 (batch 48, n_train 240, n_val 64, gen_eval_n 128, gen_eval_seeds 0-5)",
+    "candidates_requested": 768,
+    "candidates_scored": 384,
+    "why_not_768": "gen_eval_n is a per-seed count capped by the val cohort: 64 clouds x 6 seeds = 384.  c7 has n_val 192, so the same setting scores 768 there.",
+    "peak_alloc_mib": 30089,
+    "training_only_peak_mib": 30089,
+    "reading": "The eval pool did not raise the peak above the training peak at this candidate count, i.e. it stayed under ~30 GiB.  c7's 91.7 GB peak was 1,536 candidates on top of a batch-64 training peak; the eval cost is roughly linear in candidates, so 768 candidates would land near the batch-48 training peak and 1,536 well above it.",
+    "exit": 0
+  },
   "consequence_for_the_gpu1_full_corpus_run": "The c7 protocol (batch 64, full 26,715 clouds, 18 epochs) is not runnable on GPU1 at 32,607 MiB with FmOdeTerm live.  The measured options are batch 48 with the objective intact (protocol differs in batch size), batch 64 with FmOdeTerm declared 0.0 (objective differs), or batch 64 on GPU0 (neither differs).  Choosing among them is a protocol decision, not an engineering one.",
   "provenance": {
     "probe_configs": "/tmp/wfa108i/{v1_all,v2_no_sboo3,v3_no_sboo3_no_energy,v4_none,v1_all_cap40,v2_cap32,v1_b48_cap32,v1_b40_cap32}.yaml",
