@@ -1403,6 +1403,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "passing": [r["id"] for r in results if r["status"] == "PASS"],
         },
         "wall_time_s": round(time.time() - t0, 1),
+        # An artifact nobody can regenerate is an anecdote.  The command line
+        # is recorded verbatim so the exact invocation, including --gate and
+        # --seed, is recoverable from the file alone.
+        "provenance": {
+            "script": "molmetal/scripts/cfm_module_gates.py",
+            "argv": list(sys.argv),
+            "gate_set": list(args.gate) if args.gate else "all",
+        },
     }
 
     if args.json:
