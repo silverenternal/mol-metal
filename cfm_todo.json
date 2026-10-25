@@ -38,8 +38,8 @@
       "pass": "ratio in [0.5, 2.0] x bayes_ratio(t), lower bound applied only where bayes_ratio >= 0.15",
       "status": "FAIL",
       "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
-      "measured": "Wf-A108j arm, ratio / bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.94, 1.11, 4.64, 0.43, 0.56. Two points are outside the [0.5, 2.0] band: t=0.50 emits 4.6x what the interpolant makes achievable (bayes_ratio 0.072, so the lower bound is waived there and only the upper bound applies), t=0.75 emits 0.43x (bayes_ratio 0.393). Pre-fix the same checkpoint family emitted 0.021..0.025 raw, i.e. 3-6% of achievable at the ends.",
-      "why": "The old band was a fixed [0.5, 2.0] on the raw ratio, which at t=0.5 demands ten times the achievable magnitude. The band is now relative to bayes_ratio (Wf-A108j). The residual failure is a magnitude that has not shrunk to the conditional mean at the midpoint and slightly over-shrunk at t=0.75; a 36-epoch budget arm is running to separate that from a head defect."
+      "measured": "Wf-A108j arm, 36 epochs, ratio / bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.80, 0.98, 4.02, 0.73, 0.79. Four of five points are inside the [0.5, 2.0] band; t=0.50 emits 4.0x what a linear function of x_t can reach. Pre-fix the same family emitted 0.021..0.025 raw (3-6% of achievable at the ends). The 6-epoch arm was 0.94, 1.11, 4.64, 0.43, 0.56, so t=0.75 crossed into the band with budget.",
+      "why": "The band is relative to bayes_ratio, which is measured as the best LINEAR predictor of v from x_t. That is a lower bound on what is achievable: the field also sees geometry, which a linear functional of x_t does not capture. Two readings of the t=0.50 residual are still open -- the field extracts more than the linear bound, or it over-emits at the midpoint -- and they are not separable without a nonparametric estimate of E[v|x_t]. A regularised (GCV) initialiser was tried and did not move the number (4.02 vs 3.80), so the residual is not the initialisation."
     },
     {
       "id": "M5",
@@ -106,7 +106,7 @@
       "done_when": "all three gates PASS on a checkpoint written by that config, under the same protocol as the failing measurement",
       "status": "PARTIAL",
       "blocked_by": "nothing, after the memory workaround. MEASURED 2026-10-25: both launches of this config reached anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07) and were killed by the kernel; both were global OOMs that took an unrelated tmux session with them. One variable explains it \u2014 FmOdeTerm at weight 0.05 runs 16 extra velocity-field forwards per step and holds every graph until backward: with it on, RSS went 1.1 -> 8.0 GB in 26 s with no reclaim; with fm_ode_term_weight 0.0, peak 5.28 GB and a bounded 2.1 <-> 4.6 GB sawtooth. The term contributes 0.159 of a 29.72 train_loss, so it is off in the arm (see the config comment) and the arm now runs under an 8 GB RSS ceiling. The retention itself is F3.",
-      "note": "M2 and M6 PASS on the arm; M4 still fails at t=0.50 (4.64x achievable) and t=0.75 (0.43x). M10 fails on a checkpoint-identity mismatch, not on a missing provenance block."
+      "note": "M2 and M6 PASS. M4 fails only at t=0.50 (4.02x the linear-Gaussian achievable magnitude); the initialiser is not the cause (GCV init changed it 3.80 -> 4.02). M10 fails on a checkpoint-identity mismatch, not on a missing provenance block."
     },
     {
       "id": "F2",
@@ -141,6 +141,13 @@
       "phase": "result",
       "what": "Generation pool quality on the R1 checkpoint: validity, uniqueness, novelty, SA, QED, ring profile, metal retention.",
       "done_when": "one artifact per metric with the checkpoint hash attached (M10)",
+      "status": "PLANNED"
+    },
+    {
+      "id": "F4",
+      "phase": "fix",
+      "what": "Decide M4 at t=0.50. bayes_ratio is the best LINEAR predictor of v from x_t; the field also sees geometry, so the true achievable magnitude may exceed it. Estimate E[v|x_t] nonparametrically (e.g. a k-NN or a small model trained on a held-out split, measured on the same cohort) and compare its magnitude with the 4.02x the arm emits.",
+      "done_when": "an artifact carries the nonparametric |E[v|x_t]| / |v| at the five M4 t values, and M4's band is either re-anchored to it or the field is declared over-emitting with that number as the evidence",
       "status": "PLANNED"
     }
   ],
