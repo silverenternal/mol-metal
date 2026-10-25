@@ -1,0 +1,104 @@
+# configs/wfa108l_t3_smoke_2026_10_25.yaml — wiring smoke for the T3 arm.
+#
+# Same code path as wfa108l_t3_seed0, at 1/50th the data and 1/30th the eval.
+# Its job is to prove the config reaches the trainer, the checkpoint gets
+# written, the selection block appears in the artifact, and the pool CSV lands
+# on disk — before 3 x 18 epochs are spent discovering that one of those is
+# false.  Nothing measured here is a result; every number in this directory is
+# discarded.
+#
+# Diffs from wfa108l_t3_seed0: train.n_train 26715 -> 512, train.epochs 18 -> 1,
+# eval.gen_eval_n 1000 -> 32, output.* -> results/wfa108l_t3_smoke.
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  yuelbond_vocab: all6
+  use_egnn_velocity: true
+  use_tmqm_init: true
+  use_fm_objective: true
+  fm_t_per_cloud: 1
+  connectivity_prior: "on"
+  connectivity_prior_min_logit: 0.0
+train:
+  n_train: 512
+  epochs: 1
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  fm_noise_sigma: 2.485
+  lr_scheduler: none
+  lr_warmup_epochs: 0
+  resume_from: none
+  bond_head_warmup_epochs: 0
+  consistency_weight: 0.05
+  shortcut_distill: true
+  so3_average: true
+  sboo3_n_rot: 1
+flow:
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  use_ot_cfm: false
+  monge_ampere: false
+  fm_ode_term_weight: 0.0
+  energy_conservation_weight: 0.05
+  sboo3_term_weight: 0.05
+  sboo3_n_rot: 1
+compute:
+  device: cuda:0
+  tf32: false
+  torch_compile: false
+  triton_ot: false
+eval:
+  early_stop_metric: bond_type_f1
+  early_stop_epsilon: 0.85
+  early_stop_patience: 999
+  wasserstein_weight: 0.1
+  gen_eval_n: 32
+  gen_eval_seeds: "0"
+  n_steps: 50
+  method: midpoint
+output:
+  out_dir: results/wfa108l_t3_smoke
+  ckpt_dir: results/wfa108l_t3_smoke/checkpoints
+  base_dir: results/wfa108l_t3_smoke
+  checkpoint_interval: 1
+  resume_from: none
+  save_generated_smiles: true
+  log_master: results/wfa108l_t3_smoke/master.log
+  training_summary: results/wfa108l_t3_smoke/synthesis.md
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
+  tmqm_split_kind: scaffold
+protocol:
+  seed: 0
+  n_seeds: 1
+  n_seeds_min: 1
+  epochs: 1
+  weight_decay: 0.0
+  max_norm: 5.0
+  scheduler:
+    type: none
+    warmup_epochs: 0
+    min_lr: 1.0e-06
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  user_ok_granted: "Wf-A108l T3 smoke (2026-10-25), GPU0, 512 clouds x 1 epoch"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}

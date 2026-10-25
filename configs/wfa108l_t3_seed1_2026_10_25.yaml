@@ -1,0 +1,131 @@
+# configs/wfa108l_t3_seed1_2026_10_25.yaml — T3: the measurement arm (seed 0).
+#
+# WHY THIS FILE EXISTS.  Every CFM number in cfm_todo.json is currently scored
+# against a run that cannot support it: the c8 full-corpus arm (2026-10-24) has
+# gen_eval_n 128 x 6 = 768 samples, no saved pool, and its checkpoint selection
+# is degenerate.  T3 is the arm every module (MOD1-MOD9) will be measured
+# against, so it has to be one protocol, stated once, with a pool big enough to
+# compute a rate on.
+#
+# WHAT DIFFERS FROM c8_fullgen_b64_2026_10_24.yaml, AND WHY
+#
+#   * flow.fm_ode_term_weight 0.05 -> 0.0.  MEASURED 2026-10-25: the term holds
+#     16 velocity-field graphs per step (4 RK4 steps x 4 evaluations) and drove
+#     a 64-cloud CPU arm to 42.5 GB, twice killing the host (anon-rss 35.79 GB
+#     pid 2513370, 42.52 GB pid 2581802).  With it at 0.0 the same arm peaks at
+#     5.28 GB.  It is 0.5% of the objective; T2 is the task that finds out
+#     whether it can be made affordable, and no arm carries it until then.
+#   * eval.gen_eval_n 128 -> 1000.  Every pool-level metric in the acceptance
+#     table is a rate.  At 768 samples the c8 pool had 66 survivors and an
+#     IntDiv1 of 0.869 that nothing can be compared to (D7).
+#   * eval.gen_eval_seeds "0 1 2 3 4 5" -> "0".  1000 samples from one eval seed
+#     keeps the pool a single draw, so its rate has one denominator.  Six seeds
+#     would give 6000 samples at six times the eval cost.
+#   * eval.early_stop_metric bond_type_f1, patience 999.  The c8 arm was
+#     configured with bond_exact_type, which is structurally 0.000 (it needs
+#     every bond in a ~45-bond complex exactly right) and therefore selected
+#     epoch 0 of 36.  bond_type_macro_f1 moves on the same arm (0.475 / 0.632 /
+#     0.618 at c8 epochs 0/1/2), so it can rank epochs.  Patience 999 keeps the
+#     run from stopping before the pool is measured at the epoch it selects;
+#     if the criterion still turns out constant, resolve_selection selects the
+#     final epoch and records provenance.selection.degenerate = true.
+#   * output.* and protocol.seed per seed, so the three seeds never share a
+#     directory.
+#
+# UNCHANGED FROM c8 (same protocol on purpose): n_train 26,715, batch 64, 18
+# epochs, lr 3.0e-4, scaffold split, hidden 128, 3 layers, tmqm init, radial/
+# vector_channels head as c8 shipped it, n_steps 50 midpoint, checkpoint_interval
+# 1, save_generated_smiles true.
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  yuelbond_vocab: all6
+  use_egnn_velocity: true
+  use_tmqm_init: true
+  use_fm_objective: true
+  fm_t_per_cloud: 1
+  connectivity_prior: "on"
+  connectivity_prior_min_logit: 0.0
+train:
+  n_train: 26715
+  epochs: 18
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  fm_noise_sigma: 2.485
+  lr_scheduler: none
+  lr_warmup_epochs: 5
+  resume_from: none
+  bond_head_warmup_epochs: 0
+  consistency_weight: 0.05
+  shortcut_distill: true
+  so3_average: true
+  sboo3_n_rot: 1
+flow:
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  use_ot_cfm: false
+  monge_ampere: false
+  fm_ode_term_weight: 0.0
+  energy_conservation_weight: 0.05
+  sboo3_term_weight: 0.05
+  sboo3_n_rot: 1
+compute:
+  device: cuda:0
+  tf32: false
+  torch_compile: false
+  triton_ot: false
+eval:
+  early_stop_metric: bond_type_f1
+  early_stop_epsilon: 0.85
+  early_stop_patience: 999
+  wasserstein_weight: 0.1
+  gen_eval_n: 1000
+  gen_eval_seeds: "0"
+  n_steps: 50
+  method: midpoint
+output:
+  out_dir: results/wfa108l_t3_seed1
+  ckpt_dir: results/wfa108l_t3_seed1/checkpoints
+  base_dir: results/wfa108l_t3_seed1
+  checkpoint_interval: 1
+  resume_from: none
+  save_generated_smiles: true
+  log_master: results/wfa108l_t3_seed1/master.log
+  training_summary: results/wfa108l_t3_seed1/synthesis.md
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
+  tmqm_split_kind: scaffold
+protocol:
+  seed: 1
+  n_seeds: 1
+  n_seeds_min: 1
+  epochs: 18
+  weight_decay: 0.0
+  max_norm: 5.0
+  scheduler:
+    type: none
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+directives:
+  kill_then_adapt: true
+  time_budget: 6h
+  user_ok_required: false
+  user_ok_granted: "Wf-A108l T3 measurement arm (2026-10-25), GPU0, 18 epochs x 3 seeds"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
