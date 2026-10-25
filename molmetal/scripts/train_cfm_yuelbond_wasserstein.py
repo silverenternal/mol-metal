@@ -570,8 +570,20 @@ def emit_event(event_type: str, **fields) -> None:
 def _install_event_emitter(
     emit_enabled: bool,
     events_jsonl_path: Path,
+    fresh_run: bool = False,
 ) -> None:
-    """Module-level install hook called from main() once per job."""
+    """Module-level install hook called from main() once per job.
+
+    ``fresh_run`` rotates an existing events file out of the way.  The file is
+    opened in append mode, which is right for a resumed run and wrong for a new
+    one: MEASURED 2026-10-25, a job killed after epoch 0 and relaunched with
+    ``resume_from: none`` appended its own epoch 0 to the dead run's, leaving
+    two rows labelled epoch 0 with train losses 109.68 and a different objective
+    (``energy_conservation_weight`` had changed between them).  Anything reading
+    the file as "this run's history" then averages two models.  The old rows are
+    kept as ``<name>.prev`` rather than deleted, so the killed run stays
+    inspectable.
+    """
     global _EVENT_ENABLED, _EVENT_LOG_PATH, _EVENT_FH
     _EVENT_ENABLED = bool(emit_enabled)
     _EVENT_LOG_PATH = Path(events_jsonl_path)
@@ -581,6 +593,18 @@ def _install_event_emitter(
         except Exception:
             pass
     _EVENT_FH = None
+    if fresh_run:
+        try:
+            if _EVENT_LOG_PATH.is_file() and _EVENT_LOG_PATH.stat().st_size > 0:
+                prev = _EVENT_LOG_PATH.with_name(_EVENT_LOG_PATH.name + ".prev")
+                _EVENT_LOG_PATH.replace(prev)
+                print(
+                    f"[events] fresh run: moved the previous events file to "
+                    f"{prev.name} so this file describes this run only",
+                    flush=True,
+                )
+        except Exception:
+            pass
 
 
 def _close_event_emitter() -> None:
@@ -13855,6 +13879,10 @@ def main() -> int:
     _install_event_emitter(
         emit_enabled=bool(args.emit_json_events),
         events_jsonl_path=_events_jsonl_path,
+        # Only an explicit `resume_from: none` is known-fresh.  `auto` may pick
+        # up the seed's last checkpoint, and then appending is correct.
+        fresh_run=str(getattr(args, "resume_from", "auto") or "auto").strip().lower()
+        == "none",
     )
     # Cohort.
     print(
