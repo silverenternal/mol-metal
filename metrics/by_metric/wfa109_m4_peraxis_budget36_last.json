@@ -1,0 +1,146 @@
+{
+  "metric": "wfa108i_module_gates",
+  "tag": "MEASURED",
+  "date": "2026-10-25",
+  "generated_at_unix": 1792932655,
+  "what": "The ten module gates from cfm_todo.json v9.0, executed against one checkpoint. Each gate measures one module's own function; the seam gates (M1, M8) measure the join between two modules.",
+  "checkpoint": "/home/hugo/codes/mol-metal/results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "checkpoint_sha256": "ec87306e7b55014b23895bf2afe949816fe86481ccfad40becf9dd762b8730dc",
+  "ckpt_epoch": 35,
+  "velocity_head": "vector_channels",
+  "prediction_target": "velocity",
+  "t_embedding_dim": 32,
+  "radial_centroid_masked": false,
+  "dataset": "csv",
+  "run_dir": null,
+  "device": "cpu",
+  "n_clouds": 8,
+  "n_atoms": 405,
+  "seed": 0,
+  "legacy_vel_migration": {},
+  "gates": [
+    {
+      "id": "M4",
+      "module": "output scale",
+      "status": "PASS",
+      "checks": {
+        "ratio_in_band_vs_bayes_all_t": true
+      },
+      "measured": {
+        "per_t": [
+          {
+            "t": 0.05,
+            "mean_v_norm": 3.3610408306121826,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.5816579078517499,
+            "bayes_ratio": 0.6978586373884892,
+            "bayes_ratio_shared_slope": 0.6966636180877686,
+            "shared_slope_underestimates_by": 1.0017153462154387,
+            "ratio_over_bayes": 0.8334895875594761,
+            "ratio_over_shared_slope": 0.8349193107691038,
+            "live": true,
+            "slope_origin": 0.3652471601963043,
+            "slope_with_intercept": 0.3655831813812256,
+            "cosine": 0.6279415488243103
+          },
+          {
+            "t": 0.25,
+            "mean_v_norm": 2.748960494995117,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.48477728387925784,
+            "bayes_ratio": 0.5426185096999039,
+            "bayes_ratio_shared_slope": 0.49625664949417114,
+            "shared_slope_underestimates_by": 1.0934231516151751,
+            "ratio_over_bayes": 0.893403515017143,
+            "ratio_over_shared_slope": 0.9768680870541199,
+            "live": true,
+            "slope_origin": 0.2218477427959442,
+            "slope_with_intercept": 0.22199366986751556,
+            "cosine": 0.4576282501220703
+          },
+          {
+            "t": 0.5,
+            "mean_v_norm": 1.4529788494110107,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.2739637167918896,
+            "bayes_ratio": 0.4361995942334388,
+            "bayes_ratio_shared_slope": 0.07205886393785477,
+            "shared_slope_underestimates_by": 6.053378729501306,
+            "ratio_over_bayes": 0.628069627788956,
+            "ratio_over_shared_slope": 3.8019433255034696,
+            "live": true,
+            "slope_origin": 0.059130389243364334,
+            "slope_with_intercept": 0.05877915024757385,
+            "cosine": 0.21583291888237
+          },
+          {
+            "t": 0.75,
+            "mean_v_norm": 1.4709724187850952,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.2753120433207864,
+            "bayes_ratio": 0.48413996028272405,
+            "bayes_ratio_shared_slope": 0.39278745651245117,
+            "shared_slope_underestimates_by": 1.2325749008926843,
+            "ratio_over_bayes": 0.5686620934161517,
+            "ratio_over_shared_slope": 0.7009186234338396,
+            "live": true,
+            "slope_origin": 0.12993548810482025,
+            "slope_with_intercept": 0.12961629033088684,
+            "cosine": 0.47195714712142944
+          },
+          {
+            "t": 0.95,
+            "mean_v_norm": 2.750812292098999,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.5188449208515659,
+            "bayes_ratio": 0.6411268752692818,
+            "bayes_ratio_shared_slope": 0.6371180415153503,
+            "shared_slope_underestimates_by": 1.0062921366100332,
+            "ratio_over_bayes": 0.8092702721807506,
+            "ratio_over_shared_slope": 0.8143623112877508,
+            "live": true,
+            "slope_origin": 0.3007464110851288,
+            "slope_with_intercept": 0.3010726571083069,
+            "cosine": 0.5796460509300232
+          }
+        ],
+        "ratio_min": 0.2739637167918896,
+        "ratio_max": 0.5816579078517499,
+        "ratio_over_bayes_min": 0.5686620934161517,
+        "ratio_over_bayes_max": 0.893403515017143,
+        "slope_min": 0.059130389243364334,
+        "slope_max": 0.3652471601963043,
+        "cohort_mean_over_std": 1.0365590425615205e-09,
+        "cohort_centred": true,
+        "band": "[0.5, 2.0] x bayes_ratio (per-axis linear-Gaussian optimum); lower bound only where bayes >= 0.15"
+      },
+      "detail": null,
+      "wall_time_s": 2.39
+    }
+  ],
+  "summary": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0,
+    "failing": [],
+    "passing": [
+      "M4"
+    ]
+  },
+  "wall_time_s": 7.0,
+  "provenance": {
+    "script": "molmetal/scripts/cfm_module_gates.py",
+    "argv": [
+      "molmetal/scripts/cfm_module_gates.py",
+      "--ckpt",
+      "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "--gate",
+      "M4",
+      "--json",
+      "metrics/by_metric/wfa109_m4_peraxis_budget36_last.json"
+    ],
+    "gate_set": [
+      "M4"
+    ]
+  }
+}

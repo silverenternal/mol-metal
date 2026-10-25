@@ -1,0 +1,791 @@
+{
+  "script": "molmetal/scripts/wf_a109_conditional_mean_envelope.py",
+  "module": "MOD7",
+  "addresses": [
+    "D5"
+  ],
+  "measured_at": "2026-10-25T20:58:16",
+  "config": "configs/wfa108j_fixed_cpu_2026_10_25.yaml",
+  "data_csv": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+  "split": "val",
+  "n_draws": 48,
+  "k": 32,
+  "sigma": 2.485,
+  "seed": 0,
+  "modes": [
+    "coord3",
+    "coord_metal5",
+    "coord_metal8"
+  ],
+  "model_gates_artifact": "/home/hugo/codes/mol-metal/metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+  "definitions": {
+    "bayes_ratio_shared_slope": "best single global scalar slope v ~ a*x_t over the pooled sample (cfm_module_gates._bayes_ratio).  Optimal only for ISOTROPIC data; on this cohort it averages three per-axis slopes of opposite sign.  This was M4's reference before Wf-A109 and it is kept only as the size of the restriction.",
+    "bayes_ratio_per_axis": "closed-form per-axis linear-Gaussian optimum (cfm_module_gates._bayes_ratio_per_axis).  M4's reference.  Still a lower bound on the true envelope, because atoms are correlated within a molecule and this ignores that.",
+    "knn_ratio": "||E[v|s]|| / ||v|| with E estimated by k-NN over the feature set s(x_t).  Lower bound on the true envelope, by the L2 projection property of conditional expectation.",
+    "m4_ceiling": "2.0 * bayes_ratio_per_axis, the upper bound gate M4 judges."
+  },
+  "verdict": "shared_slope_reference_wrong",
+  "verdict_note": "At t=0.50 the old shared-slope reference is 7.09x smaller than the per-axis linear-Gaussian optimum, and an independent k-NN estimate of E[v|x_t] lands within a few percent of the per-axis value.  M4 was failing on the restriction in its reference, not on the field.",
+  "shared_slope_underestimate_at_t0.50": 7.091753426991614,
+  "verdict_cohort_n_clouds": 252,
+  "mod6_decision": "not_built",
+  "mod6_note": "The measured envelope does not exceed M4's corrected ceiling at any t.  There is no measured over-emission for a magnitude head to correct, so MOD6 is not built; re-anchoring the reference is the whole fix.",
+  "t_values_exceeding_m4_ceiling": [],
+  "ordering_tolerance": 0.02,
+  "cohort_size_sensitivity": [
+    {
+      "n_clouds": 8,
+      "n_atoms": 405,
+      "t0.50_bayes_ratio": 0.4361995942334388,
+      "t0.50_best_knn_ratio": 0.47875811596419005,
+      "t0.50_knn_over_bayes": 1.0975666238423307
+    },
+    {
+      "n_clouds": 63,
+      "n_atoms": 3231,
+      "t0.50_bayes_ratio": 0.5336203267548365,
+      "t0.50_best_knn_ratio": 0.5867439752960265,
+      "t0.50_knn_over_bayes": 1.0995532701391955
+    },
+    {
+      "n_clouds": 252,
+      "n_atoms": 12255,
+      "t0.50_bayes_ratio": 0.47861813448649354,
+      "t0.50_best_knn_ratio": 0.535778977072403,
+      "t0.50_knn_over_bayes": 1.1194289109986126
+    }
+  ],
+  "t0.50_ratio_drop_from_smallest_to_largest_cohort": -0.11910160727693642,
+  "cohorts": [
+    {
+      "n_clouds": 8,
+      "n_atoms": 405,
+      "split_fingerprint": "02f051939183c558adf20909cbefc48db97cce937a63268b747cac56309e4f1f",
+      "clouds_without_metal_index": 0,
+      "per_t": [
+        {
+          "t": 0.05,
+          "bayes_ratio": 0.6978586373884892,
+          "bayes_ratio_per_axis": 0.6978586373884892,
+          "bayes_ratio_shared_slope": 0.6966636180877686,
+          "shared_slope_underestimates_by": 1.0017153462154387,
+          "m4_upper_ratio": 1.3957172747769784,
+          "best_knn_ratio": 0.6768341177659671,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 0.969872810199499,
+          "knn_nonlinear_gain_over_per_axis": 0.969872810199499,
+          "ordering_holds_within_2pct": false,
+          "per_axis_over_shared": 1.0017153462154387,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 19440,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6768341177659671,
+              "linear_on_same_features_ratio": 0.6963961632274338,
+              "knn_over_bayes": 0.969872810199499,
+              "linear_over_bayes": 0.9979043403882938,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.6627238482967205,
+              "linear_on_same_features_ratio": 0.6964263505861725,
+              "knn_over_bayes": 0.9496534294921829,
+              "linear_over_bayes": 0.9979475975139084,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.6631936696810466,
+              "linear_on_same_features_ratio": 0.6964661975867787,
+              "knn_over_bayes": 0.9503266623779781,
+              "linear_over_bayes": 0.9980046964713065,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.6816085381777013,
+            "bayes_ratio": 0.6966636180877686,
+            "ratio_over_bayes": 0.9783897428842472
+          }
+        },
+        {
+          "t": 0.25,
+          "bayes_ratio": 0.5426185096999039,
+          "bayes_ratio_per_axis": 0.5426185096999039,
+          "bayes_ratio_shared_slope": 0.49625664949417114,
+          "shared_slope_underestimates_by": 1.0934231516151751,
+          "m4_upper_ratio": 1.0852370193998078,
+          "best_knn_ratio": 0.537202813389138,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 0.9900193299455247,
+          "knn_nonlinear_gain_over_per_axis": 0.9900193299455247,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.0934231516151751,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 19440,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.537202813389138,
+              "linear_on_same_features_ratio": 0.5405948003626359,
+              "knn_over_bayes": 0.9900193299455247,
+              "linear_over_bayes": 0.9962704749265054,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.5230110359486365,
+              "linear_on_same_features_ratio": 0.5407490094022325,
+              "knn_over_bayes": 0.9638650849523889,
+              "linear_over_bayes": 0.996554669138166,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.5219215754543072,
+              "linear_on_same_features_ratio": 0.5428071124255519,
+              "knn_over_bayes": 0.9618573014454609,
+              "linear_over_bayes": 1.00034757886485,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.5879900290380852,
+            "bayes_ratio": 0.49625664949417114,
+            "ratio_over_bayes": 1.1848506808672827
+          }
+        },
+        {
+          "t": 0.5,
+          "bayes_ratio": 0.4361995942334388,
+          "bayes_ratio_per_axis": 0.4361995942334388,
+          "bayes_ratio_shared_slope": 0.07205886393785477,
+          "shared_slope_underestimates_by": 6.053378729501306,
+          "m4_upper_ratio": 0.8723991884668776,
+          "best_knn_ratio": 0.47875811596419005,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.0975666238423307,
+          "knn_nonlinear_gain_over_per_axis": 1.0975666238423307,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 6.053378729501306,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 19440,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.47875811596419005,
+              "linear_on_same_features_ratio": 0.43856992053178145,
+              "knn_over_bayes": 1.0975666238423307,
+              "linear_over_bayes": 1.0054340405852698,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.46933512259549776,
+              "linear_on_same_features_ratio": 0.4404569055668157,
+              "knn_over_bayes": 1.075964143021018,
+              "linear_over_bayes": 1.0097600075508062,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.47090210729894866,
+              "linear_on_same_features_ratio": 0.4501583979196629,
+              "knn_over_bayes": 1.0795565001074676,
+              "linear_over_bayes": 1.0320009552295775,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.3266247889206461,
+            "bayes_ratio": 0.07205886393785477,
+            "ratio_over_bayes": 4.532749630945263
+          }
+        },
+        {
+          "t": 0.75,
+          "bayes_ratio": 0.48413996028272405,
+          "bayes_ratio_per_axis": 0.48413996028272405,
+          "bayes_ratio_shared_slope": 0.39278745651245117,
+          "shared_slope_underestimates_by": 1.2325749008926843,
+          "m4_upper_ratio": 0.9682799205654481,
+          "best_knn_ratio": 0.6212352653968799,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.2831728763601666,
+          "knn_nonlinear_gain_over_per_axis": 1.2831728763601666,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.2325749008926843,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 19440,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6212352653968799,
+              "linear_on_same_features_ratio": 0.4898069397321393,
+              "knn_over_bayes": 1.2831728763601666,
+              "linear_over_bayes": 1.0117052503703803,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.6162964762434381,
+              "linear_on_same_features_ratio": 0.4909860482941964,
+              "knn_over_bayes": 1.272971716450628,
+              "linear_over_bayes": 1.0141407208103095,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.6174424638931185,
+              "linear_on_same_features_ratio": 0.5043863946327256,
+              "knn_over_bayes": 1.2753387750363543,
+              "linear_over_bayes": 1.0418193828457751,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.09438545943761119,
+            "bayes_ratio": 0.39278745651245117,
+            "ratio_over_bayes": 0.24029652136974292
+          }
+        },
+        {
+          "t": 0.95,
+          "bayes_ratio": 0.6411268752692818,
+          "bayes_ratio_per_axis": 0.6411268752692818,
+          "bayes_ratio_shared_slope": 0.6371180415153503,
+          "shared_slope_underestimates_by": 1.0062921366100332,
+          "m4_upper_ratio": 1.2822537505385636,
+          "best_knn_ratio": 0.7780137384986018,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.2135097880147758,
+          "knn_nonlinear_gain_over_per_axis": 1.2135097880147758,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.0062921366100332,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 19440,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.7780137384986018,
+              "linear_on_same_features_ratio": 0.6392068930338016,
+              "knn_over_bayes": 1.2135097880147758,
+              "linear_over_bayes": 0.9970053006518035,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.7677963855409964,
+              "linear_on_same_features_ratio": 0.6392548751340689,
+              "knn_over_bayes": 1.197573234187869,
+              "linear_over_bayes": 0.9970801409090413,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.7712981141318911,
+              "linear_on_same_features_ratio": 0.6488980396907917,
+              "knn_over_bayes": 1.2030350682272297,
+              "linear_over_bayes": 1.0121211022673882,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.2964636279368535,
+            "bayes_ratio": 0.6371180415153503,
+            "ratio_over_bayes": 0.4653197816086498
+          }
+        }
+      ]
+    },
+    {
+      "n_clouds": 63,
+      "n_atoms": 3231,
+      "split_fingerprint": "22ddd0d793cbf31a34998880187e20f7c3d88374022f046cd7a2ee32b6a96738",
+      "clouds_without_metal_index": 0,
+      "per_t": [
+        {
+          "t": 0.05,
+          "bayes_ratio": 0.5929474880955691,
+          "bayes_ratio_per_axis": 0.5929474880955691,
+          "bayes_ratio_shared_slope": 0.5914587378501892,
+          "shared_slope_underestimates_by": 1.00251708217346,
+          "m4_upper_ratio": 1.1858949761911382,
+          "best_knn_ratio": 0.6010054647509453,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.0135896969245233,
+          "knn_nonlinear_gain_over_per_axis": 1.0135896969245233,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.00251708217346,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 155088,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6010054647509453,
+              "linear_on_same_features_ratio": 0.592375907909232,
+              "knn_over_bayes": 1.0135896969245233,
+              "linear_over_bayes": 0.9990360357404112,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.5916991176087507,
+              "linear_on_same_features_ratio": 0.5923831573500762,
+              "knn_over_bayes": 0.9978946356770515,
+              "linear_over_bayes": 0.999048261849788,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.5908584611092597,
+              "linear_on_same_features_ratio": 0.5924738087919866,
+              "knn_over_bayes": 0.9964768769102658,
+              "linear_over_bayes": 0.9992011445986494,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.6816085381777013,
+            "bayes_ratio": 0.6966636180877686,
+            "ratio_over_bayes": 0.9783897428842472
+          }
+        },
+        {
+          "t": 0.25,
+          "bayes_ratio": 0.45564032294753753,
+          "bayes_ratio_per_axis": 0.45564032294753753,
+          "bayes_ratio_shared_slope": 0.3095795512199402,
+          "shared_slope_underestimates_by": 1.471803680676017,
+          "m4_upper_ratio": 0.9112806458950751,
+          "best_knn_ratio": 0.4878754031076239,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.0707467678706697,
+          "knn_nonlinear_gain_over_per_axis": 1.0707467678706697,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.471803680676017,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 155088,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.4878754031076239,
+              "linear_on_same_features_ratio": 0.45413033828774585,
+              "knn_over_bayes": 1.0707467678706697,
+              "linear_over_bayes": 0.9966860161760408,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.4839300120175437,
+              "linear_on_same_features_ratio": 0.45419947879208034,
+              "knn_over_bayes": 1.062087764504687,
+              "linear_over_bayes": 0.9968377597791689,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.4831935412103177,
+              "linear_on_same_features_ratio": 0.4582141746356865,
+              "knn_over_bayes": 1.0604714220298554,
+              "linear_over_bayes": 1.0056488672282091,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.5879900290380852,
+            "bayes_ratio": 0.49625664949417114,
+            "ratio_over_bayes": 1.1848506808672827
+          }
+        },
+        {
+          "t": 0.5,
+          "bayes_ratio": 0.5336203267548365,
+          "bayes_ratio_per_axis": 0.5336203267548365,
+          "bayes_ratio_shared_slope": 0.18129850924015045,
+          "shared_slope_underestimates_by": 2.9433244045487204,
+          "m4_upper_ratio": 1.067240653509673,
+          "best_knn_ratio": 0.5867439752960265,
+          "best_mode": "coord_metal8",
+          "best_knn_over_bayes": 1.0995532701391955,
+          "knn_nonlinear_gain_over_per_axis": 1.0995532701391955,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 2.9433244045487204,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 155088,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.5828984992945132,
+              "linear_on_same_features_ratio": 0.5329591513451799,
+              "knn_over_bayes": 1.0923468804859018,
+              "linear_over_bayes": 0.9987609628484779,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.5865594359294005,
+              "linear_on_same_features_ratio": 0.5329959553867539,
+              "knn_over_bayes": 1.0992074449197025,
+              "linear_over_bayes": 0.998829933312549,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.5867439752960265,
+              "linear_on_same_features_ratio": 0.540542396524784,
+              "knn_over_bayes": 1.0995532701391955,
+              "linear_over_bayes": 1.0129719004747129,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.3266247889206461,
+            "bayes_ratio": 0.07205886393785477,
+            "ratio_over_bayes": 4.532749630945263
+          }
+        },
+        {
+          "t": 0.75,
+          "bayes_ratio": 0.6285685721781884,
+          "bayes_ratio_per_axis": 0.6285685721781884,
+          "bayes_ratio_shared_slope": 0.5703047513961792,
+          "shared_slope_underestimates_by": 1.1021626080431066,
+          "m4_upper_ratio": 1.2571371443563768,
+          "best_knn_ratio": 0.6960460743508962,
+          "best_mode": "coord_metal5",
+          "best_knn_over_bayes": 1.107351059469736,
+          "knn_nonlinear_gain_over_per_axis": 1.107351059469736,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.1021626080431066,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 155088,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6953191408743988,
+              "linear_on_same_features_ratio": 0.6289788325517882,
+              "knn_over_bayes": 1.1061945691380952,
+              "linear_over_bayes": 1.0006526899239938,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.6960460743508962,
+              "linear_on_same_features_ratio": 0.6289898212885309,
+              "knn_over_bayes": 1.107351059469736,
+              "linear_over_bayes": 1.0006701720846187,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.695787181668889,
+              "linear_on_same_features_ratio": 0.6368268541919393,
+              "knn_over_bayes": 1.106939182876686,
+              "linear_over_bayes": 1.013138235634552,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.09438545943761119,
+            "bayes_ratio": 0.39278745651245117,
+            "ratio_over_bayes": 0.24029652136974292
+          }
+        },
+        {
+          "t": 0.95,
+          "bayes_ratio": 0.7405174626292562,
+          "bayes_ratio_per_axis": 0.7405174626292562,
+          "bayes_ratio_shared_slope": 0.7406090497970581,
+          "shared_slope_underestimates_by": 0.9998763353380208,
+          "m4_upper_ratio": 1.4810349252585124,
+          "best_knn_ratio": 0.8388895408596049,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.1328423476754648,
+          "knn_nonlinear_gain_over_per_axis": 1.1328423476754648,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 0.9998763353380208,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 155088,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.8388895408596049,
+              "linear_on_same_features_ratio": 0.7403707450708913,
+              "knn_over_bayes": 1.1328423476754648,
+              "linear_over_bayes": 0.9998018715752577,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.832703144172291,
+              "linear_on_same_features_ratio": 0.7403785054479733,
+              "knn_over_bayes": 1.1244881939930538,
+              "linear_over_bayes": 0.999812351243157,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.8352169266311882,
+              "linear_on_same_features_ratio": 0.7462483099011503,
+              "knn_over_bayes": 1.1278828235403056,
+              "linear_over_bayes": 1.0077389765415474,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.2964636279368535,
+            "bayes_ratio": 0.6371180415153503,
+            "ratio_over_bayes": 0.4653197816086498
+          }
+        }
+      ]
+    },
+    {
+      "n_clouds": 252,
+      "n_atoms": 12255,
+      "split_fingerprint": "6bf0676c9127d46ac9a717fd6c1f34dc0868f07b8efeae41514dd1a34ac88081",
+      "clouds_without_metal_index": 0,
+      "per_t": [
+        {
+          "t": 0.05,
+          "bayes_ratio": 0.6419765879686341,
+          "bayes_ratio_per_axis": 0.6419765879686341,
+          "bayes_ratio_shared_slope": 0.6409671902656555,
+          "shared_slope_underestimates_by": 1.0015748040122932,
+          "m4_upper_ratio": 1.2839531759372682,
+          "best_knn_ratio": 0.6520889760913253,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.0157519578006562,
+          "knn_nonlinear_gain_over_per_axis": 1.0157519578006562,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.0015748040122932,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 588240,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6520889760913253,
+              "linear_on_same_features_ratio": 0.6422591428983818,
+              "knn_over_bayes": 1.0157519578006562,
+              "linear_over_bayes": 1.000440132763473,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.6446505261842228,
+              "linear_on_same_features_ratio": 0.6422613260270235,
+              "knn_over_bayes": 1.0041651646893381,
+              "linear_over_bayes": 1.0004435333993882,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.6425125269425599,
+              "linear_on_same_features_ratio": 0.6423194664599134,
+              "knn_over_bayes": 1.000834826353437,
+              "linear_over_bayes": 1.0005340981239896,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.6816085381777013,
+            "bayes_ratio": 0.6966636180877686,
+            "ratio_over_bayes": 0.9783897428842472
+          }
+        },
+        {
+          "t": 0.25,
+          "bayes_ratio": 0.48533641480337797,
+          "bayes_ratio_per_axis": 0.48533641480337797,
+          "bayes_ratio_shared_slope": 0.3980144262313843,
+          "shared_slope_underestimates_by": 1.2193940290024297,
+          "m4_upper_ratio": 0.9706728296067559,
+          "best_knn_ratio": 0.5146465680417712,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.0603914158187935,
+          "knn_nonlinear_gain_over_per_axis": 1.0603914158187935,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.2193940290024297,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 588240,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.5146465680417712,
+              "linear_on_same_features_ratio": 0.48522610373479647,
+              "knn_over_bayes": 1.0603914158187935,
+              "linear_over_bayes": 0.9997727121534324,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.5099272037498931,
+              "linear_on_same_features_ratio": 0.4852406592659084,
+              "knn_over_bayes": 1.0506675126705205,
+              "linear_over_bayes": 0.9998027027551428,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.5061818253111758,
+              "linear_on_same_features_ratio": 0.4883002602669974,
+              "knn_over_bayes": 1.0429504357637018,
+              "linear_over_bayes": 1.0061067856711723,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.5879900290380852,
+            "bayes_ratio": 0.49625664949417114,
+            "ratio_over_bayes": 1.1848506808672827
+          }
+        },
+        {
+          "t": 0.5,
+          "bayes_ratio": 0.47861813448649354,
+          "bayes_ratio_per_axis": 0.47861813448649354,
+          "bayes_ratio_shared_slope": 0.067489393055439,
+          "shared_slope_underestimates_by": 7.091753426991614,
+          "m4_upper_ratio": 0.9572362689729871,
+          "best_knn_ratio": 0.535778977072403,
+          "best_mode": "coord_metal5",
+          "best_knn_over_bayes": 1.1194289109986126,
+          "knn_nonlinear_gain_over_per_axis": 1.1194289109986126,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 7.091753426991614,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 588240,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.5320623184036999,
+              "linear_on_same_features_ratio": 0.4784242574809947,
+              "knn_over_bayes": 1.111663516415955,
+              "linear_over_bayes": 0.9995949234023345,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.535778977072403,
+              "linear_on_same_features_ratio": 0.4785329804337672,
+              "knn_over_bayes": 1.1194289109986126,
+              "linear_over_bayes": 0.999822083522143,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.5346656750748958,
+              "linear_on_same_features_ratio": 0.48748541270095913,
+              "knn_over_bayes": 1.1171028353293286,
+              "linear_over_bayes": 1.0185268329290933,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.3266247889206461,
+            "bayes_ratio": 0.07205886393785477,
+            "ratio_over_bayes": 4.532749630945263
+          }
+        },
+        {
+          "t": 0.75,
+          "bayes_ratio": 0.5670386782002936,
+          "bayes_ratio_per_axis": 0.5670386782002936,
+          "bayes_ratio_shared_slope": 0.4946330785751343,
+          "shared_slope_underestimates_by": 1.1463824454153666,
+          "m4_upper_ratio": 1.1340773564005873,
+          "best_knn_ratio": 0.6412435099933248,
+          "best_mode": "coord_metal5",
+          "best_knn_over_bayes": 1.1308637922699516,
+          "knn_nonlinear_gain_over_per_axis": 1.1308637922699516,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.1463824454153666,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 588240,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.6389872665092065,
+              "linear_on_same_features_ratio": 0.5672854408498316,
+              "knn_over_bayes": 1.126884798295009,
+              "linear_over_bayes": 1.0004351778088951,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.6412435099933248,
+              "linear_on_same_features_ratio": 0.5673441236766742,
+              "knn_over_bayes": 1.1308637922699516,
+              "linear_over_bayes": 1.0005386677983767,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.6406237117010621,
+              "linear_on_same_features_ratio": 0.5775529747593781,
+              "knn_over_bayes": 1.1297707481512862,
+              "linear_over_bayes": 1.018542468024325,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.09438545943761119,
+            "bayes_ratio": 0.39278745651245117,
+            "ratio_over_bayes": 0.24029652136974292
+          }
+        },
+        {
+          "t": 0.95,
+          "bayes_ratio": 0.6975764319743861,
+          "bayes_ratio_per_axis": 0.6975764319743861,
+          "bayes_ratio_shared_slope": 0.6963450908660889,
+          "shared_slope_underestimates_by": 1.0017682915043828,
+          "m4_upper_ratio": 1.3951528639487722,
+          "best_knn_ratio": 0.8164890217800967,
+          "best_mode": "coord3",
+          "best_knn_over_bayes": 1.1704653201501465,
+          "knn_nonlinear_gain_over_per_axis": 1.1704653201501465,
+          "ordering_holds_within_2pct": true,
+          "per_axis_over_shared": 1.0017682915043828,
+          "lower_bound_exceeds_m4_ceiling": false,
+          "n_points": 588240,
+          "per_mode": {
+            "coord3": {
+              "knn_ratio": 0.8164890217800967,
+              "linear_on_same_features_ratio": 0.6979756843787678,
+              "knn_over_bayes": 1.1704653201501465,
+              "linear_over_bayes": 1.0005723421636417,
+              "k_eff": 32,
+              "dim": 3
+            },
+            "coord_metal5": {
+              "knn_ratio": 0.8104708425175479,
+              "linear_on_same_features_ratio": 0.6979850448618905,
+              "knn_over_bayes": 1.161838051528821,
+              "linear_over_bayes": 1.0005857607407231,
+              "k_eff": 32,
+              "dim": 5
+            },
+            "coord_metal8": {
+              "knn_ratio": 0.8133871072593416,
+              "linear_on_same_features_ratio": 0.7054760865605011,
+              "knn_over_bayes": 1.166018618142202,
+              "linear_over_bayes": 1.0113244287278402,
+              "k_eff": 32,
+              "dim": 8
+            }
+          },
+          "model": {
+            "ratio": 0.2964636279368535,
+            "bayes_ratio": 0.6371180415153503,
+            "ratio_over_bayes": 0.4653197816086498
+          }
+        }
+      ]
+    }
+  ],
+  "wall_time_s": 90.14
+}

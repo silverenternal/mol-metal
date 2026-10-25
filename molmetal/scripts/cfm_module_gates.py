@@ -460,22 +460,27 @@ def gate_m3(ctx: Dict[str, Any]) -> Dict[str, Any]:
 
 def _bayes_ratio(x1: torch.Tensor, sigma: float, t: float,
                  n_draws: int = 48, seed: int = 0) -> float:
-    """Best magnitude any model can emit at time ``t``, as a ratio.
+    """The best **single scalar slope** ``v ~ a * x_t``, as a magnitude ratio.
 
-    The FM target is ``x1 - x0`` with ``x0 ~ N(0, sigma^2)`` independent of
-    ``x1``, and the field only sees ``x_t = (1-t) x0 + t x1``.  The best
-    MSE predictor is the conditional mean, and its magnitude relative to
-    ``|x1 - x0|`` is a property of the interpolant, not of the network.
+    RETRACTED CLAIM (Wf-A109, 2026-10-25).  This function used to say it
+    returned "the best magnitude any model can emit".  It does not.  It fits
+    ONE slope shared by all three coordinates, which is optimal only when the
+    data variance is isotropic.  The MetalCytoToxDB val cohort is not: its
+    per-axis variance is 16.95 / 2.67 / 1.60 A^2 (MEASURED, 254 clouds), so the
+    per-axis optimal slopes have opposite signs (+0.93, -0.79, -1.18) and
+    averaging them to one number discards almost the whole signal at the
+    midpoint.  MEASURED at t=0.5 on that cohort: this function returns 0.068
+    while the per-axis optimum is 0.479 — a factor of 7, and the same factor
+    by which M4 was failing the field.
 
-    MEASURED on the 8-cloud val cohort (405 atoms, sigma 2.485, data coord
-    std 2.36): ratio 0.725 at t=0, 0.054 at t=0.5, 0.689 at t=1.  At t=0.5
-    the best possible field emits **5%** of the target magnitude and reaches
-    99.7% of the ``v = 0`` MSE — the midpoint of this interpolant is almost
-    pure noise, so "the field is too small at t=0.5" is not a defect.
+    The old docstring also said the midpoint "reaches 99.7% of the ``v = 0``
+    MSE".  That is true of THIS restricted predictor (R^2 = 0.005) and false
+    of any linear predictor (R^2 = 0.229).  The interpolation midpoint is not
+    almost pure noise; it is almost pure noise *in the isotropic projection*.
 
-    A fixed band of [0.5, 2.0] on the raw ratio therefore demanded 10x the
-    achievable magnitude at the midpoint, and no trained model could satisfy
-    it.  This function supplies the reference the band has to be relative to.
+    Kept because it is the number every earlier artifact carries, and because
+    the difference between it and :func:`_bayes_ratio_per_axis` measures the
+    cost of the restriction.  The band must use the per-axis value.
     """
     g = torch.Generator(device="cpu").manual_seed(int(seed))
     x1c = x1.detach().cpu()
@@ -492,17 +497,68 @@ def _bayes_ratio(x1: torch.Tensor, sigma: float, t: float,
     return float(pred.norm() / y.norm().clamp_min(1e-12))
 
 
+def _bayes_ratio_per_axis(x1: torch.Tensor, sigma: float, t: float) -> float:
+    """The best magnitude of any predictor LINEAR in ``x_t``, per axis.
+
+    Closed form, no sampling.  With ``x_t = (1-t) x0 + t x1``, ``x0 ~ N(0,
+    sigma^2 I)`` independent of ``x1``, and per-axis data variance ``s_j^2``::
+
+        Var(x_t)_j = (1-t)^2 sigma^2 + t^2 s_j^2
+        Cov(v_j, x_t_j) = t s_j^2 - (1-t) sigma^2        (v = x1 - x0)
+        Var(v_j) = s_j^2 + sigma^2
+        a_j = Cov / Var(x_t)
+        ratio = sqrt( sum_j a_j^2 Var(x_t)_j / sum_j Var(v_j) )
+
+    The shared-slope form is the same expression with ``a`` replaced by the
+    single ``sum_j Cov_j / sum_j Var(x_t)_j``; evaluated that way it reproduces
+    :func:`_bayes_ratio` to four decimals at every t (MEASURED, Wf-A109), which
+    is what makes this a correction rather than a different quantity.
+
+    Zero-mean data is assumed, exactly as :func:`_bayes_ratio` assumes it by
+    having no intercept.  :func:`gate_m4` records the cohort's
+    ``|mean| / std`` so a future cohort that breaks the assumption is visible
+    rather than silently mis-scored.
+
+    This is still a LOWER bound on the true envelope: atoms are correlated
+    within a molecule, so the full-covariance conditional mean is larger.
+    """
+    x1c = x1.detach().cpu().double()
+    s2 = x1c.var(dim=0, unbiased=False)
+    sig2 = float(sigma) ** 2
+    vx = (1.0 - float(t)) ** 2 * sig2 + float(t) ** 2 * s2
+    cov = float(t) * s2 - (1.0 - float(t)) * sig2
+    vv = s2 + sig2
+    a = cov / vx.clamp_min(1e-12)
+    num = float((a ** 2 * vx).sum())
+    den = float(vv.sum())
+    if den <= 0.0:
+        return 0.0
+    return float((num / den) ** 0.5)
+
+
+
 def gate_m4(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """Output scale: is the field emitting the magnitude the target asks for?
 
     "The magnitude the target asks for" is NOT ``|x1 - x0|``.  The field sees
     only ``x_t``, so the best it can do is the conditional mean, and that is
     much smaller than the target at the midpoint of the path.  See
-    :func:`_bayes_ratio`: at ``t = 0.5`` the achievable ratio is 0.054, so a
-    fixed band of [0.5, 2.0] on the raw ratio (the pre-Wf-A108j criterion)
-    demanded ten times the achievable magnitude and no trained model could
-    have passed it.  The band is now ``[0.5, 2.0] x bayes_ratio``, with the
-    lower bound applied only where ``bayes_ratio >= 0.15``.
+    :func:`_bayes_ratio_per_axis`: at ``t = 0.5`` the achievable ratio is
+    0.479 on the MetalCytoToxDB val cohort, so a fixed band of [0.5, 2.0] on
+    the raw ratio (the pre-Wf-A108j criterion) demanded the achievable
+    magnitude at every t and nothing more.  The band is ``[0.5, 2.0] x
+    bayes_ratio``, with the lower bound applied only where
+    ``bayes_ratio >= 0.15``.
+
+    Wf-A109 (2026-10-25) — this gate's reference was WRONG until now.  It
+    used :func:`_bayes_ratio`, which fits one slope shared by all three
+    coordinates.  That is optimal only for isotropic data, and this cohort's
+    per-axis variance is 16.95 / 2.67 / 1.60 A^2, so the three optimal slopes
+    have opposite signs and the shared one averages to ~1/7 of the truth at
+    the midpoint.  MEASURED: 0.068 (shared) vs 0.479 (per-axis) at t=0.5, and
+    the field was failing by 4.02-4.53x — the same factor.  The per-axis
+    number is also what an independent k-NN estimate of E[v|x_t] returns
+    (0.4786, MOD7, 254 clouds), so the two derivations agree.
 
     A ratio far BELOW the band is the failure this gate exists for: the field
     emits a few percent of what is achievable and the MSE reads as the ``v=0``
@@ -535,7 +591,14 @@ def gate_m4(ctx: Dict[str, Any]) -> Dict[str, Any]:
         dq = q - qm
         slope1 = float((dq * (p - pm)).sum() / (dq * dq).sum().clamp_min(1e-12))
         cos = float(F.cosine_similarity(p, q, dim=0))
-        bayes = _bayes_ratio(x1, sigma, tv, seed=int(ctx["seed"]) + 11)
+        # Wf-A109 — the band's reference is the PER-AXIS linear-Gaussian
+        # optimum, not the single shared slope.  See _bayes_ratio_per_axis:
+        # on an anisotropic cohort the shared slope averages three optimal
+        # slopes of opposite sign and comes out ~7x too small at t=0.5,
+        # which is exactly the factor M4 was failing by.  The shared-slope
+        # number is kept in the row so the two are never confused again.
+        bayes = _bayes_ratio_per_axis(x1, sigma, tv)
+        bayes_shared = _bayes_ratio(x1, sigma, tv, seed=int(ctx["seed"]) + 11)
         # The band is relative to what the interpolant makes achievable at
         # this t.  Where the conditional mean itself is below 15% of the
         # target, the point carries no signal and only the upper bound is
@@ -550,7 +613,14 @@ def gate_m4(ctx: Dict[str, Any]) -> Dict[str, Any]:
                 "mean_target_norm": float(tgt.norm(dim=-1).mean()),
                 "ratio": ratio,
                 "bayes_ratio": bayes,
+                "bayes_ratio_shared_slope": bayes_shared,
+                "shared_slope_underestimates_by": (
+                    (bayes / bayes_shared) if bayes_shared > 0.0 else None
+                ),
                 "ratio_over_bayes": (ratio / bayes) if bayes > 0.0 else None,
+                "ratio_over_shared_slope": (
+                    (ratio / bayes_shared) if bayes_shared > 0.0 else None
+                ),
                 "live": bool(live),
                 "slope_origin": slope0,
                 "slope_with_intercept": slope1,
@@ -559,6 +629,10 @@ def gate_m4(ctx: Dict[str, Any]) -> Dict[str, Any]:
         )
         ok = ok and t_ok
 
+    x1c = x1.detach().cpu().double()
+    mean_over_std = float(
+        x1c.mean(dim=0).norm() / x1c.std(dim=0).norm().clamp_min(1e-12)
+    )
     checks = {"ratio_in_band_vs_bayes_all_t": bool(ok)}
     return {
         "measured": {
@@ -573,7 +647,12 @@ def gate_m4(ctx: Dict[str, Any]) -> Dict[str, Any]:
             ),
             "slope_min": min(r["slope_origin"] for r in rows),
             "slope_max": max(r["slope_origin"] for r in rows),
-            "band": "[0.5, 2.0] x bayes_ratio; lower bound only where bayes >= 0.15",
+            "cohort_mean_over_std": mean_over_std,
+            "cohort_centred": bool(mean_over_std < 0.05),
+            "band": (
+                "[0.5, 2.0] x bayes_ratio (per-axis linear-Gaussian optimum); "
+                "lower bound only where bayes >= 0.15"
+            ),
         },
         "checks": checks,
         "pass": all(checks.values()),

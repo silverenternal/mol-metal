@@ -3,7 +3,6 @@
   "rule": "This file is a TASK PLAN, not a log. Every entry names a measured defect and the model change that addresses it. Completed work and history live in git log and docs/HONEST_NEGATIVE_CATALOG.md. Nothing is DONE without an artifact path.",
   "scope": "CFM / generative line only. The predictive line is docs/PREDICTIVE_LINE_INDEX.md and is out of scope here.",
   "principle": "A defect that is a property of the model gets a model change, not a longer run. A defect that is a property of the measurement gets a measurement, not a model change. Which one it is has to be decided by a number, so every entry below carries one.",
-
   "diagnosis": [
     {
       "id": "D1",
@@ -11,7 +10,9 @@
       "measured": "c8 full corpus, epochs 0/1/2: bond_f1 0.960/0.991/0.995, bond_type_macro_f1_pooled 0.475/0.632/0.618 against an OpenBabel reference of 0.505, exact_type_rate 0.005/0.031/0.010. Same run logs bond_features=OFF: the decoder reads raw distance plus is_short/is_long, so the EGNN velocity field receives no bond order at all.",
       "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log",
       "reading": "Corrected 2026-10-25. The earlier version of this entry said macro_f1 was 0.000 and blamed the bond head; that number came from the 64-cloud gcv36 arm (0.0182 at epoch 0, 0.1125 at epoch 33), where the bond head has almost no data. On the full corpus the head is above the OpenBabel reference by epoch 0. So the defect is not bond-order prediction — it is that the order the head does predict is never fed back into the geometry field, and that exact_type (every bond in a ~45-bond complex correct) sits at its floor by construction.",
-      "addressed_by": ["MOD1"]
+      "addressed_by": [
+        "MOD1"
+      ]
     },
     {
       "id": "D2",
@@ -19,7 +20,9 @@
       "measured": "single_fragment_rate 0.2505 on the c8 pool (n=2112); 0.0851 on the c7 pool (n=12669). Real tmQM reference 1.0.",
       "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
       "reading": "Three quarters of the pool is two or more disconnected pieces. No sampling-side fix can recover a molecule that was never connected.",
-      "addressed_by": ["MOD2"]
+      "addressed_by": [
+        "MOD2"
+      ]
     },
     {
       "id": "D3",
@@ -27,7 +30,9 @@
       "measured": "three_ring_share 0.6684 and six_ring_share 0.0292 on c7 (n=12669); real tmQM 0.0001 and 0.8753.",
       "artifact": "metrics/by_metric/c7_fullgen_pool_quality.json",
       "reading": "67% of all rings are three-membered. That is the signature of a decoder closing triangles among atoms that happen to be near each other, not of a learned ring prior.",
-      "addressed_by": ["MOD4"]
+      "addressed_by": [
+        "MOD4"
+      ]
     },
     {
       "id": "D4",
@@ -35,15 +40,21 @@
       "measured": "sampled metal_ligand_min 1.234 A against a real 1.953; min_pair_distance 0.570 against 1.172; frac_pairs_hard_clash 0.0148 against 0.0; 143 hard-clash pairs across 24 clouds. SMOKE SCALE: 24 clouds, 20 steps, one checkpoint.",
       "artifact": "metrics/by_metric/cfm_generated_geometry_defect.json",
       "reading": "A 1.23 A metal-ligand distance is shorter than any Pt/Ru/Ir donor bond. The field has no per-metal geometry prior, so nothing in the objective prefers 2.0 A over 1.2 A.",
-      "addressed_by": ["MOD2", "MOD3"]
+      "addressed_by": [
+        "MOD2",
+        "MOD3"
+      ]
     },
     {
       "id": "D5",
-      "symptom": "M4 fails at t=0.50 only.",
-      "measured": "ratio / linear-Gaussian bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.68 / 1.18 / 4.53 / 0.24 / 0.47 on epoch 0 and 0.80 / 0.98 / 4.02 / 0.73 / 0.79 on epoch 17 of the same 36-epoch arm. Only t=0.50 leaves the [0.5, 2.0] band, at both checkpoints and at initialisation (5.12 with a zero init).",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
-      "reading": "Either the field extracts more than a linear functional of x_t can (it also sees geometry), or it over-emits at the midpoint. A GCV-regularised initialiser moved the epoch-17 value 3.80 to 4.02, and the epoch-0 value of the same arm is 4.53, so neither the initialiser nor the training budget is the lever. Not decidable without a nonparametric estimate of E[v|x_t].",
-      "addressed_by": ["MOD7", "MOD6"]
+      "symptom": "M4 fails at t=0.50 only, because its reference is a single shared slope.",
+      "measured": "The old reference, cfm_module_gates._bayes_ratio, fits ONE slope v ~ a*x_t shared by all three coordinates. The cohort's per-axis variance is 16.95 / 2.67 / 1.60 A^2, so the three optimal slopes have opposite signs (+0.93, -0.79, -1.18 at t=0.50) and the shared one averages to 0.0675. The per-axis closed-form optimum at the same t is 0.4786, a factor of 7.09. An independent k-NN estimate of E[v|x_t] returns 0.5358 (254 clouds, k=32, 5D features), i.e. 1.12x the per-axis value, so the non-linear part is 12% and the restriction is the rest. Corrected, M4 PASSES at all five t on both 36-epoch arms (0.80/0.90/0.66/0.59/0.78 of the per-axis reference on gcv36, 0.83/0.89/0.63/0.57/0.81 on budget36).",
+      "artifact": "metrics/by_metric/wfa109_conditional_mean_envelope.json",
+      "reading": "The field was never over-emitting at the midpoint. M4 was comparing it to a reference that discards two thirds of the signal on an anisotropic cohort. The shared-slope error is largest exactly at t=0.50 (7.09x) and negligible at the ends (1.00x at t=0.05, 1.00x at t=0.95), which is why only one of the five t values ever failed.",
+      "addressed_by": [
+        "MOD7",
+        "T4"
+      ]
     },
     {
       "id": "D6",
@@ -51,7 +62,9 @@
       "measured": "M2 shows a metal swap changes the output by 43.5% and a t shift by 106.9%; nothing measures whether a sample conditioned on (metal, coordination number) actually has that metal in that coordination.",
       "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
       "reading": "A generator whose selling point is metal-awareness has to be scored on the condition being met, not on the output moving.",
-      "addressed_by": ["MOD5"]
+      "addressed_by": [
+        "MOD5"
+      ]
     },
     {
       "id": "D7",
@@ -59,7 +72,9 @@
       "measured": "IntDiv1 0.869 at n=37, with the artifact's own note that the MOSES comparison needs n>=1000 and that an n=37 sample of the training data itself already sits at 0.885. Novelty has never been measured.",
       "artifact": "metrics/by_metric/m7_diversity.json",
       "reading": "Not a model defect and not a result either: the cohort is too small for the metric to mean anything.",
-      "addressed_by": ["MOD8"]
+      "addressed_by": [
+        "MOD8"
+      ]
     },
     {
       "id": "D8",
@@ -68,7 +83,9 @@
       "artifact": "metrics/by_metric/cfm_metal_blind_ablation.json",
       "artifact_status": "ABSENT",
       "reading": "Without a comparator the pool numbers have no scale. The cheapest defensible one is the same model with metal identity removed from every input, because it isolates the paper's claim.",
-      "addressed_by": ["MOD9"]
+      "addressed_by": [
+        "MOD9"
+      ]
     },
     {
       "id": "D9",
@@ -76,7 +93,12 @@
       "measured": "SA 6.44 and QED 0.094 on n=66 survivors of the free-generation panel (one seed, one checkpoint).",
       "artifact": "metrics/by_metric/cfm_free_generation_panel_seed0.json",
       "reading": "A consequence, not an independent defect: a fragmented 3-ring-dominant pool cannot score well on either. No separate module is planned; the targets are pool-level acceptance tests on MOD1-MOD4.",
-      "addressed_by": ["MOD1", "MOD2", "MOD3", "MOD4"],
+      "addressed_by": [
+        "MOD1",
+        "MOD2",
+        "MOD3",
+        "MOD4"
+      ],
       "done_when": "SA <= 4.5 and QED >= 0.30 on a >=1000-molecule pool"
     },
     {
@@ -85,7 +107,9 @@
       "measured": "On the gcv36 arm the configured criterion bond_exact_type read 0.000 at all 36 epochs, so best_epoch was 0 while the run reached epoch 35; the gates then loaded _last.pt (sha 23d5be27) while per_epoch_metrics.json named seed0.pt (sha 0550a84b) and M10 failed the hash check. The same run's bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over those epochs, and its gen_validity_n was 0 (no generation eval), so the signal existed and the criterion did not use it.",
       "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
       "reading": "Two defects wearing one symptom. The chain half: the gates loaded a file the artifact did not name, so the hash check compared two epochs. Fixed on 2026-10-25 — the gates now load the artifact-named checkpoint, and M10 passes on the re-gated run. The selection half: bond_exact_type cannot move, so 'best' meant 'first'. Fixed in three places — the config must name a criterion that moves (bond_type_f1, measured 0.018 to 0.113 on this arm), resolve_selection selects the final epoch when a criterion is constant and records provenance.selection, and the pool numbers are re-measured on whatever checkpoint the artifact names.",
-      "addressed_by": ["T1"]
+      "addressed_by": [
+        "T1"
+      ]
     },
     {
       "id": "D11",
@@ -93,15 +117,18 @@
       "measured": "anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07). With fm_ode_term_weight 0.0 the same arm peaks at 5.28 GB and oscillates 2.1-4.6 GB.",
       "artifact": "configs/wfa108j_fixed_cpu_2026_10_25.yaml",
       "reading": "FmOdeTerm runs 16 extra velocity-field forwards per step and keeps all their graphs. Bounded at 16 graphs, so the retention is across steps.",
-      "addressed_by": ["T2"]
+      "addressed_by": [
+        "T2"
+      ]
     }
   ],
-
   "modules": [
     {
       "id": "MOD1",
       "name": "TypedEdgeField",
-      "addresses": ["D1"],
+      "addresses": [
+        "D1"
+      ],
       "where": "molmetal/adapters/flow_matching_lipman/ (EGNNVelocityField edge features) + the decode path that supplies the predicted order",
       "change": "Feed the bond order the head already predicts back into the EGNN as a typed edge feature. No new order head: MEASURED on the c8 full corpus the head reaches macro-F1(type) 0.475/0.632/0.618 at epochs 0/1/2 against an OpenBabel reference of 0.505, while the same run logs bond_features=OFF, so the field reads raw distance plus is_short/is_long and the order never reaches the coordinates. The change is the edge-feature path, a checkpoint that declares whether it has it, and a decode step that uses the same order logits the metric scores.",
       "done_when": "on the same c8 protocol: an on/off ablation of the typed-edge path changes the velocity field's output on identical inputs (M2-style perturbation, >= 1e-2), single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 does not fall below 0.618.",
@@ -110,25 +137,38 @@
     {
       "id": "MOD2",
       "name": "GeometryConsistencyTerm",
-      "addresses": ["D2", "D4"],
+      "addresses": [
+        "D2",
+        "D4"
+      ],
       "where": "molmetal/loss/geometry_consistency.py (new) + train_cfm_yuelbond_wasserstein.py (--geometry-consistency-weight)",
       "change": "LANDED 2026-10-25. One differentiable term evaluated on x1_hat, not on the training x1, with three parts: non-bonded pairs below 0.7*(rcov_i+rcov_j); bonded pairs outside [0.85, 1.25] x (rcov_i+rcov_j); metal-ligand pairs outside the per-metal band from MOD3. Each part is a hinge-squared mean over the pairs that exist, so a satisfied pair contributes exactly zero. Master weight plus three part weights, all defaulting to 0.0/1.0 and therefore bit-exact for every existing config. Registered in _LAST_LOSS_TERMS as geometry_term so the liveness guard and the M9 share table see it.",
       "done_when": "on a >=1000-molecule pool: single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A.",
-      "risk": "A strong attraction term collapses the cloud; the weight needs a 3-point budget sweep before any result is quoted."
+      "risk": "A strong attraction term collapses the cloud; the weight needs a 3-point budget sweep before any result is quoted.",
+      "evidence": [
+        "metrics/by_metric/wfa108l_geom_smoke_loss_terms.json"
+      ]
     },
     {
       "id": "MOD3",
       "name": "MetalGeometryPrior",
-      "addresses": ["D4"],
+      "addresses": [
+        "D4"
+      ],
       "where": "molmetal/loss/geometry_consistency.py (METAL_ML_BAND_A), consumed by MOD2's third part",
       "change": "LANDED 2026-10-25 as the band table, not as a learned prior. MEASURED p10/p90 of the metal-ligand distance per metal from the REAL_DFT cohort in metrics/by_metric/cfm_metal_geometry.json: Pt 1.979-2.466 (n=3571), Ru 1.939-2.371 (5723), Ir 2.005-2.360 (3549), Rh 1.995-2.351 (2374), Os 1.870-2.439 (844), Re 1.938-2.427 (2457). MOD2 penalises an M-L pair outside its own metal's band, so the prior is metal-specific rather than one constant. Not yet fed into the field as a conditioning vector: that needs a CN head, which is MOD5.",
       "done_when": "median M-L distance within 0.15 A of the DFT per-metal median on the metals held out of the prior fit.",
-      "risk": "Some metals have few rows; the per-metal median has to carry its own n and be reported with it."
+      "risk": "Some metals have few rows; the per-metal median has to carry its own n and be reported with it.",
+      "evidence": [
+        "metrics/by_metric/wfa108l_geom_smoke_loss_terms.json"
+      ]
     },
     {
       "id": "MOD4",
       "name": "RingSizePrior",
-      "addresses": ["D3"],
+      "addresses": [
+        "D3"
+      ],
       "where": "new RingSizePriorHead + decoder in molmetal/adapters/flow_matching_lipman/",
       "change": "Enumerate candidate cycles in the predicted bond graph, featurise each by size, planarity and the MOD1 bond orders, predict a plausibility score, and rescore the edges that close it. Train on truth graphs with the spurious triangles the current decoder emits as explicit negatives.",
       "done_when": "on a >=1000-molecule pool: three_ring_share <= 0.10 and six_ring_share >= 0.45, with single_fragment_rate not falling below its MOD2 value.",
@@ -137,7 +177,9 @@
     {
       "id": "MOD5",
       "name": "ConditionEncoder",
-      "addresses": ["D6"],
+      "addresses": [
+        "D6"
+      ],
       "where": "molmetal/adapters/flow_matching_lipman/ (metal embedding table) + new coordination head",
       "change": "Extend the metal conditioning table from metal identity to (metal, coordination number) pairs; add a coordination-number head so the realised CN is measurable; add classifier-free guidance with a config-keyed scale so the condition can be strengthened at sample time.",
       "done_when": "given (metal, CN), >=60% of samples match both, metal retention >=0.95, and the guidance scale is reported with the number it was measured at.",
@@ -146,25 +188,42 @@
     {
       "id": "MOD6",
       "name": "MagnitudeCalibrationHead",
-      "addresses": ["D5"],
+      "addresses": [
+        "D5"
+      ],
       "where": "molmetal/adapters/flow_matching_lipman/vector_channels.py",
       "change": "Replace the scalar channel gate with a per-t magnitude head whose target is the measured conditional-mean envelope from MOD7, trained with an auxiliary loss on |v_pred| against that envelope. Only build this if MOD7 says the field is over-emitting; if MOD7 says the envelope is larger than the linear bound, the gate is re-anchored instead and this module is not built.",
       "done_when": "M4 PASS at all five t values on a trained arm, or a recorded decision that the band was wrong with the MOD7 number as the evidence.",
-      "risk": "Fitting the gate to the envelope is close to fitting the metric. The envelope must be measured on data the field was not trained on."
+      "risk": "Fitting the gate to the envelope is close to fitting the metric. The envelope must be measured on data the field was not trained on.",
+      "status": "DECIDED_NOT_BUILT",
+      "decision": "MOD7 measured the envelope at 1.02-1.28x the corrected reference at every t and every cohort size (8 / 63 / 252 clouds). It never approaches M4's 2.0x ceiling, so there is no measured over-emission for a magnitude head to correct. Re-anchoring the reference was the whole fix.",
+      "evidence": [
+        "metrics/by_metric/wfa109_conditional_mean_envelope.json"
+      ]
     },
     {
       "id": "MOD7",
       "name": "NonparametricEnvelope",
-      "addresses": ["D5"],
+      "addresses": [
+        "D5"
+      ],
       "where": "new script molmetal/scripts/wf_a109_conditional_mean_envelope.py",
       "change": "Estimate E[v|x_t] nonparametrically at the five M4 t values, by k-NN over x_t on a held-out split, and report |E[v|x_t]| / |v| next to the linear-Gaussian bayes_ratio. This is a measurement, not a model change; it decides whether MOD6 is built.",
       "done_when": "one artifact carrying both ratios at t = 0.05/0.25/0.50/0.75/0.95, with the held-out split fingerprint and the k used.",
-      "risk": "k-NN in 3N dimensions is weak; the estimate is a lower bound too, and has to be reported as one."
+      "risk": "k-NN in 3N dimensions is weak; the estimate is a lower bound too, and has to be reported as one.",
+      "status": "DONE",
+      "evidence": [
+        "molmetal/scripts/wf_a109_conditional_mean_envelope.py",
+        "metrics/by_metric/wfa109_conditional_mean_envelope.json",
+        "molmetal/tests/test_m4_bayes_reference.py"
+      ]
     },
     {
       "id": "MOD8",
       "name": "DiversityAndNoveltySampler",
-      "addresses": ["D7"],
+      "addresses": [
+        "D7"
+      ],
       "where": "trainer diversity flags (6, all wired, all default OFF) + cfm_property_panel.py",
       "change": "Run a measured ablation over the six wired diversity knobs instead of leaving them off; add scaffold conditioning so a pool can be drawn per scaffold; produce a >=1000-molecule pool and score novelty against the training corpus with an n-matched control.",
       "done_when": "n>=1000 pool, novelty fraction >=0.90, IntDiv1 reported against an n-matched training-distribution control, not against MOSES.",
@@ -173,14 +232,15 @@
     {
       "id": "MOD9",
       "name": "MetalBlindAblation",
-      "addresses": ["D8"],
+      "addresses": [
+        "D8"
+      ],
       "where": "config-only: metal_conditioning=none with the metal atom type masked",
       "change": "Run the same protocol with metal identity removed from every input. This is the comparator the paper's claim needs: it isolates metal-awareness from everything else in the architecture.",
       "done_when": "paired comparison on >=3 seeds of (metal-aware, metal-blind) on single_fragment_rate, three_ring_share, metal retention and bond_type_macro_f1.",
       "risk": "A re-implementation of a published external generator is still missing and is not covered by this module."
     }
   ],
-
   "module_gates": [
     {
       "id": "M1",
@@ -210,10 +270,10 @@
       "id": "M4",
       "module": "output scale",
       "pass": "ratio in [0.5, 2.0] x bayes_ratio at every t, lower bound only where bayes_ratio >= 0.15",
-      "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
-      "measured": "ratio_over_bayes 0.98 / 1.18 / 4.53 / 0.24 / 0.47 at t = 0.05/0.25/0.50/0.75/0.95 on the checkpoint the run names (epoch 0). Epoch 17 of the same arm reads 0.80 / 0.98 / 4.02 / 0.73 / 0.79. Only t=0.50 leaves the band, on both checkpoints.",
-      "next": "MOD7 decides whether the band or the field is wrong; MOD6 is built only if the band survives."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa109_m4_peraxis_gcv36_last.json",
+      "measured": "ratio / per-axis linear-Gaussian reference at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.80 / 0.90 / 0.66 / 0.59 / 0.78 on the gcv36 epoch-35 checkpoint and 0.83 / 0.89 / 0.63 / 0.57 / 0.81 on budget36 epoch 35, all inside [0.5, 2.0]. The old shared-slope reference gave 0.80 / 0.98 / 4.02 / 0.73 / 0.79 and failed on t=0.50 alone.",
+      "next": null
     },
     {
       "id": "M5",
@@ -266,14 +326,15 @@
       "next": "T1's remaining half: a run written after the change must carry provenance.selection. Until then the degenerate-criterion path is covered by tests only, not by a live run."
     }
   ],
-
   "tasks": [
     {
       "id": "T1",
       "priority": 0,
       "title": "A selected checkpoint the criterion can actually rank",
       "what": "Three changes, each measured. (1) The criterion: the arm was configured with bond_exact_type, which is structurally 0.000, while bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over the same 36 epochs. Every config in this line now names bond_type_f1. (2) The chain: the gates loaded _last.pt while the artifact named seed0.pt, so M10 compared two epochs and reported the difference as a broken chain. The gates now load the artifact-named checkpoint (cfm_module_gates._artifact_named_ckpt). (3) The guard: resolve_selection selects the final epoch when a criterion's history holds one distinct value, and writes provenance.selection so the artifact says which case it is.",
-      "addresses": ["D10"],
+      "addresses": [
+        "D10"
+      ],
       "done_when": "M10 PASS on a run written after the change, whose per_epoch_metrics.json carries provenance.selection with either degenerate false or selected_checkpoint last, and whose declared sha equals the sha of the file it names.",
       "evidence": [
         "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
@@ -286,7 +347,9 @@
       "priority": 0,
       "title": "Find the retention inside FmOdeTerm",
       "what": "Find the retention inside FmOdeTerm. It holds 16 forward graphs per step, which is bounded, yet RSS grows monotonically to 42.5 GB. Instrument the term's lifetime across steps and fix the retainer; keep fm_ode_term_weight 0.0 in every arm until then.",
-      "addresses": ["D11"],
+      "addresses": [
+        "D11"
+      ],
       "done_when": "a 2-epoch run at fm_ode_term_weight 0.05 under an 8 GB RSS ceiling completes with the watchdog not firing, and the growth curve is an artifact.",
       "status": "PLANNED"
     },
@@ -295,10 +358,17 @@
       "priority": 0,
       "title": "The measurement arm every other task is scored on",
       "what": "One measurement arm that everything else is scored on: full corpus (26715 clouds), batch 64, 18 epochs, the c8 split, 3 seeds, FmOdeTerm off, gen_eval_n >= 1000 with the pool saved.",
-      "addresses": ["D7", "D8", "D9"],
+      "addresses": [
+        "D7",
+        "D8",
+        "D9"
+      ],
       "done_when": "3 checkpoints + per-epoch metrics + a >=1000-molecule pool per seed, each with the provenance block, and the same n_test fingerprint across seeds.",
       "status": "PLANNED",
-      "blocked_by": ["T1", "T2"],
+      "blocked_by": [
+        "T1",
+        "T2"
+      ],
       "blocked_note": "and the host must be checked with free -m and launched under an RSS ceiling."
     },
     {
@@ -306,19 +376,27 @@
       "priority": 1,
       "title": "Measure the conditional-mean envelope (decides MOD6)",
       "what": "MOD7: measure the nonparametric conditional-mean envelope at the five M4 t values on a held-out split. CPU only, no training.",
-      "addresses": ["D5"],
+      "addresses": [
+        "D5"
+      ],
       "done_when": "artifact with |E[v|x_t]|/|v| and the linear-Gaussian bayes_ratio side by side at all five t, plus the split fingerprint.",
-      "status": "PLANNED"
+      "status": "DONE",
+      "result": "Shared-slope reference is 7.09x too small at t=0.50; the per-axis optimum and a k-NN estimate agree to 12%. M4 re-gated PASS on both arms.",
+      "artifact": "metrics/by_metric/wfa109_conditional_mean_envelope.json"
     },
     {
       "id": "T5",
       "priority": 1,
       "title": "MOD1: typed edges, no new order head",
       "what": "MOD1: feed the predicted bond order into the EGNN as typed edge features, and prove the field's output depends on them. The order head is not rebuilt: it is already above the OpenBabel reference on the full corpus (0.618 vs 0.505 at c8 epoch 2).",
-      "addresses": ["D1"],
+      "addresses": [
+        "D1"
+      ],
       "done_when": "the on/off ablation moves the field's output by >= 1e-2 on identical inputs, single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 stays >= 0.618 on the c8 protocol.",
       "status": "PLANNED",
-      "blocked_by": ["T3"],
+      "blocked_by": [
+        "T3"
+      ],
       "blocked_note": "needs the measurement arm to be comparable."
     },
     {
@@ -326,7 +404,10 @@
       "priority": 2,
       "title": "MOD2 + MOD3: geometry consistency term",
       "what": "MOD2 + MOD3: geometry consistency term on the sampled x1_hat, with the per-metal M-L band as its third part. Code landed 2026-10-25 (molmetal/loss/geometry_consistency.py + four YAML weights + 8 unit tests). Remaining: a 3-point weight sweep on the 64-cloud arm with gen_eval on, then the >=1000-molecule pool.",
-      "addresses": ["D2", "D4"],
+      "addresses": [
+        "D2",
+        "D4"
+      ],
       "done_when": "single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A on a >=1000-molecule pool, with the sweep table as the evidence for the weight.",
       "evidence": [
         "molmetal/loss/geometry_consistency.py",
@@ -334,17 +415,24 @@
         "configs/wfa108l_geom_smoke_2026_10_25.yaml"
       ],
       "status": "IN_PROGRESS",
-      "blocked_by": ["T3"]
+      "blocked_by": [
+        "T3"
+      ],
+      "note": "MOD2/MOD3 are live: geometry_term 2.4686 -> 1.1543 over two epochs of the smoke arm, 7.7% -> 4.4% of train_loss, zero fallback warnings. The 3-point weight sweep is still open."
     },
     {
       "id": "T7",
       "priority": 3,
       "title": "MOD4: ring-size prior at decode",
       "what": "MOD4: ring-size prior at decode, trained with the spurious triangles as negatives.",
-      "addresses": ["D3"],
+      "addresses": [
+        "D3"
+      ],
       "done_when": "three_ring_share <= 0.10 and six_ring_share >= 0.45 with single_fragment_rate not below its T6 value.",
       "status": "PLANNED",
-      "blocked_by": ["T6"],
+      "blocked_by": [
+        "T6"
+      ],
       "blocked_note": "a cycle prior can only remove edges; connectivity has to be there first."
     },
     {
@@ -352,69 +440,140 @@
       "priority": 3,
       "title": "MOD5: metal/CN conditioning and guidance",
       "what": "MOD5: (metal, coordination number) conditioning, a CN head, classifier-free guidance, and a conditional-success metric.",
-      "addresses": ["D6"],
+      "addresses": [
+        "D6"
+      ],
       "done_when": ">=60% of samples match a requested (metal, CN), metal retention >=0.95, guidance scale reported with the number.",
       "status": "PLANNED",
-      "blocked_by": ["T3"]
+      "blocked_by": [
+        "T3"
+      ]
     },
     {
       "id": "T9",
       "priority": 4,
       "title": "MOD6: magnitude head, only if T4 says over-emission",
       "what": "MOD6, only if T4 says the field over-emits: magnitude head fitted to the measured envelope.",
-      "addresses": ["D5"],
+      "addresses": [
+        "D5"
+      ],
       "done_when": "M4 PASS at all five t, or a recorded decision that the band was wrong, citing T4's number.",
       "status": "BLOCKED",
-      "blocked_by": ["T4"]
+      "blocked_by": [
+        "T4"
+      ]
     },
     {
       "id": "T10",
       "priority": 4,
       "title": "MOD8: diversity ablation at n >= 1000",
       "what": "MOD8: ablation over the six diversity knobs, scaffold-conditioned pool, novelty against the training corpus at n>=1000.",
-      "addresses": ["D7"],
+      "addresses": [
+        "D7"
+      ],
       "done_when": "novelty >= 0.90 on a >=1000-molecule pool, IntDiv1 against an n-matched training control, all six knobs' ablation rows on disk including the nulls.",
       "status": "PLANNED",
-      "blocked_by": ["T3"]
+      "blocked_by": [
+        "T3"
+      ]
     },
     {
       "id": "T11",
       "priority": 5,
       "title": "MOD9: metal-blind ablation, paired over seeds",
       "what": "MOD9: metal-blind ablation on the same protocol, 3 seeds, paired comparison.",
-      "addresses": ["D8"],
+      "addresses": [
+        "D8"
+      ],
       "done_when": "paired deltas with a one-sided t-test over 3 seeds on single_fragment_rate, three_ring_share, metal retention and bond_type_macro_f1.",
       "status": "PLANNED",
-      "blocked_by": ["T3", "T6"]
+      "blocked_by": [
+        "T3",
+        "T6"
+      ]
     },
     {
       "id": "T12",
       "priority": 5,
       "title": "docs/CFM_RESULTS.md, machine-checked",
       "what": "Write docs/CFM_RESULTS.md as the machine-checked results document (the guarded test test_cfm_results_doc.py already exists and skips until the file lands).",
-      "addresses": ["D9"],
+      "addresses": [
+        "D9"
+      ],
       "done_when": "the document exists, every number in it is in the cfm-results block, and the test passes rather than skips.",
       "status": "PLANNED",
-      "blocked_by": ["T3", "T6", "T7"]
+      "blocked_by": [
+        "T3",
+        "T6",
+        "T7"
+      ]
     }
   ],
-
   "acceptance": {
     "note": "The pool-level bar a Tier-2 submission needs, stated before any of it is measured. Every row names the module that moves it.",
     "rows": [
-      {"metric": "single_fragment_rate", "target": ">= 0.80", "now": 0.2505, "module": "MOD2"},
-      {"metric": "bond_type_macro_f1", "target": ">= 0.60 (hold the c8 level; OpenBabel 0.505)", "now": 0.618, "module": "MOD1"},
-      {"metric": "three_ring_share", "target": "<= 0.10", "now": 0.6684, "module": "MOD4"},
-      {"metric": "six_ring_share", "target": ">= 0.45", "now": 0.0292, "module": "MOD4"},
-      {"metric": "metal_ligand_min", "target": "1.7-2.4 A", "now": 1.234, "module": "MOD2+MOD3"},
-      {"metric": "frac_pairs_hard_clash", "target": "<= 0.001", "now": 0.0148, "module": "MOD2"},
-      {"metric": "SA", "target": "<= 4.5", "now": 6.44, "module": "MOD1-4 (consequence)"},
-      {"metric": "QED", "target": ">= 0.30", "now": 0.094, "module": "MOD1-4 (consequence)"},
-      {"metric": "novelty", "target": ">= 0.90 at n>=1000", "now": null, "module": "MOD8"},
-      {"metric": "conditional success", "target": ">= 0.60", "now": null, "module": "MOD5"}
+      {
+        "metric": "single_fragment_rate",
+        "target": ">= 0.80",
+        "now": 0.2505,
+        "module": "MOD2"
+      },
+      {
+        "metric": "bond_type_macro_f1",
+        "target": ">= 0.60 (hold the c8 level; OpenBabel 0.505)",
+        "now": 0.618,
+        "module": "MOD1"
+      },
+      {
+        "metric": "three_ring_share",
+        "target": "<= 0.10",
+        "now": 0.6684,
+        "module": "MOD4"
+      },
+      {
+        "metric": "six_ring_share",
+        "target": ">= 0.45",
+        "now": 0.0292,
+        "module": "MOD4"
+      },
+      {
+        "metric": "metal_ligand_min",
+        "target": "1.7-2.4 A",
+        "now": 1.234,
+        "module": "MOD2+MOD3"
+      },
+      {
+        "metric": "frac_pairs_hard_clash",
+        "target": "<= 0.001",
+        "now": 0.0148,
+        "module": "MOD2"
+      },
+      {
+        "metric": "SA",
+        "target": "<= 4.5",
+        "now": 6.44,
+        "module": "MOD1-4 (consequence)"
+      },
+      {
+        "metric": "QED",
+        "target": ">= 0.30",
+        "now": 0.094,
+        "module": "MOD1-4 (consequence)"
+      },
+      {
+        "metric": "novelty",
+        "target": ">= 0.90 at n>=1000",
+        "now": null,
+        "module": "MOD8"
+      },
+      {
+        "metric": "conditional success",
+        "target": ">= 0.60",
+        "now": null,
+        "module": "MOD5"
+      }
     ]
   },
-
   "constraints": {
     "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
     "gpu": "GPU0 only",
@@ -425,7 +584,6 @@
     "numbers": "every number traces to an artifact path on disk; a number with no artifact is not written here",
     "seeds": "3 seeds for anything quoted as a result; 1 seed is a probe"
   },
-
   "pointer": {
     "history": "git log",
     "results": "docs/CFM_RESULTS.md",
