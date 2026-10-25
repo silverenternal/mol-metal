@@ -1,7 +1,7 @@
 {
-  "version": "9.0 (2026-10-25)",
+  "version": "10.0 (2026-10-25)",
   "rule": "This file is a TASK PLAN, not a log. Completed work and history live in git log and docs/HONEST_NEGATIVE_CATALOG.md; nothing finished stays here. Every task has a numeric done_when. Nothing is marked DONE without an artifact path.",
-  "scope": "CFM / generative line only. Predictive line: docs/PREDICTIVE_LINE_INDEX.md.",
+  "scope": "CFM / generative line only. Predictive line: docs/PREDICTIVE_LINE_INDEX.md. Results: docs/CFM_RESULTS.md.",
   "principle": "Do not iterate the model blindly. Gate each module on its own function, then gate the seams between modules. A module that cannot pass its own gate is a bug to fix, not a result to report. Fix order is by measured severity, not by convenience.",
 
   "module_gates": [
@@ -10,106 +10,120 @@
       "module": "data entry",
       "check": "For every training batch: x_t == (1-t)*x0 + t*x1 elementwise, v_target == x1 - x0, and x0's per-atom std matches flow.fm_noise_sigma.",
       "pass": "max |x_t - ((1-t)*x0 + t*x1)| < 1e-5 and max |v_target - (x1-x0)| == 0",
-      "status": "PLANNED"
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "identity residual 5.96e-07, both boundaries exact, sigma measured 2.525 against 2.485 declared (1.6%)"
     },
     {
       "id": "M2",
       "module": "conditioning path (metal / t / atom type)",
       "check": "Hold a fixed batch, perturb ONE conditioning input at a time, measure the relative change in the velocity output: swap the metal atom's identity, shift t by 0.25, swap an atom type.",
       "pass": "each of the three produces ||dv|| / ||v|| > 1e-2. A conditioning channel that moves the output by 0 is not connected.",
-      "status": "PLANNED",
-      "why": "The velocity field is called as fm_velocity(x, t, z, cloud_sizes, pocket_embed). Metal identity enters ONLY through the atomic-number embedding; there is no per-cloud metal descriptor and no metal id embedding. If that path is weak the field can only learn the metal marginal."
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2_v2.json",
+      "measured": "on c8 (radial, epoch 2): metal swap 0.74%, t shift 86%, atom-type swap 17.5%. Metal identity is the weakest input channel in the model by two orders of magnitude.",
+      "fix": "flow.metal_conditioning=embedding (Wf-A108j) takes the response to 65.8% on the same checkpoint. Needs a trained fixed arm to be judged under the same protocol."
     },
     {
       "id": "M3",
       "module": "velocity head capacity",
       "check": "One fixed batch, 2,000 optimizer steps, no regularisers. Measure train MSE against the v=0 baseline (mean-squared target norm) for velocity_head in {radial, vector_channels}.",
       "pass": "train MSE <= 10% of the v=0 baseline for the head we ship",
-      "status": "PLANNED",
-      "known": "Wf-A108a measured radial best-possible 5.783 against a v=0 baseline of 10.652 on one 8-cloud batch, i.e. radial's own ceiling is 54% of baseline and the trained model never reaches it."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "vector_channels: 0.0885 against a v=0 baseline of 11.7605, i.e. 0.75% of baseline and 1.4% of the radial ceiling 6.3179. radial on c8: 98.9% of baseline, CANNOT_FIT."
     },
     {
       "id": "M4",
       "module": "output scale",
-      "check": "On a held-out batch at several t, report ||v_pred|| / ||v_target|| and the regression slope of v_pred on v_target.",
-      "pass": "ratio in [0.5, 2.0] and slope in [0.5, 2.0]",
-      "status": "PLANNED",
-      "why": "Wf-A108h reported |v| = 0.116-0.159 across t on the readout cohort. If the target norm is O(3), the field is emitting a few percent of the required magnitude, which makes the MSE look like 'the prior' regardless of what the network learned. Highest-yield check in the list."
+      "check": "At several t, report ||v_pred|| / ||v_target|| against the magnitude the interpolant can actually support, bayes_ratio(t) = |E[x1-x0|x_t]| / |x1-x0|, measured by Monte Carlo from the batch.",
+      "pass": "ratio in [0.5, 2.0] x bayes_ratio(t), lower bound applied only where bayes_ratio >= 0.15",
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "5-epoch vector_channels: ratio 0.0211..0.0246 across t against bayes_ratio 0.6967 at t=0.05, 0.0721 at t=0.5, 0.6371 at t=0.95, i.e. the field emits 3-6% of what is achievable at the ends.",
+      "why": "The old band was a fixed [0.5, 2.0] on the raw ratio, which at t=0.5 demands ten times the achievable magnitude. The band is now relative to bayes_ratio (Wf-A108j)."
     },
     {
       "id": "M5",
       "module": "gradient path",
-      "check": "One backward from fm_term alone; per-parameter-block grad norm for vel_field.*, head.*, pocket_encoder.*.",
-      "pass": "no parameter block has grad norm 0, and none is more than 100x another block's",
-      "status": "PLANNED"
+      "check": "One backward from fm_term alone; per-parameter-block grad norm, and the name of every parameter in a judged block that receives no gradient.",
+      "pass": "every block in _FM_REACH_BLOCKS has a non-zero grad norm, and no judged block is more than 100x another's",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "vel_field 5.1293 with 54 of 62 parameters receiving gradient; the 8 that do not are atom_head, pocket_residue_embed and the 6 cross_attn tensors, none of which the FM path uses. head and pocket_encoder are reported at 0 and not judged: bond_ce trains the first and no config supplies pocket features."
     },
     {
       "id": "M6",
       "module": "time resolution",
       "check": "Fix x and z, sweep t over 101 points in [0,1], record the velocity.",
       "pass": "the output changes by more than 10% of its own norm across the sweep, smoothly. A field flat in t cannot represent a flow.",
-      "status": "PLANNED",
-      "why": "vel_field.time_mlp is Linear(1->128) -> SiLU -> Linear(128->128) on the RAW scalar t; the sinusoidal embedding (t_embedding_dim) is opt-in and defaults to 0."
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "5-epoch vector_channels: endpoint change 2.31% of the norm (smoothness 2.17e-06, so it is flat, not jumpy). c8 radial: 198.5%.",
+      "fix": "vc_head.t_gate (Wf-A108j) writes a t-dependence at init through the LSQ fit at 9 knots. Needs a trained fixed arm."
     },
     {
       "id": "M7",
       "module": "warm start",
       "check": "List which parameters tmQM pretraining does NOT transfer.",
       "pass": "no missing key may be an atom embedding, a time MLP, or a velocity head; those must be listed explicitly if they are",
-      "status": "PLANNED",
-      "known": "The load log reports 47/51 transferred, 4 missing, and the 4 have never been named."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2_v2.json",
+      "measured": "47 of 51 transfer. The 4 that do not are cross_attn.in_proj_weight and layers.{0,1,2}.update_mlp.linear1.weight, all named in the artifact. None is an atom embedding, a time MLP or a velocity head."
     },
     {
       "id": "M8",
       "module": "train / sample seam",
       "check": "Run the trainer's velocity call and the ODE sampler's velocity call on the same (x, t, z, cloud_sizes); compare bit-exactly.",
       "pass": "max |dv| == 0",
-      "status": "PLANNED"
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2_v2.json",
+      "measured": "max |dv| = 0 at pad width 56"
     },
     {
       "id": "M9",
       "module": "objective balance",
-      "check": "From loss_terms, each weighted term's share of the total, per epoch.",
-      "pass": "no single term above 90% of the total; every term declared in the config appears non-zero",
-      "status": "PLANNED",
-      "known": "c7 epoch 0: fm_term 12.6 of a 13.7 total (92%), bond_ce 1.0 (7%), everything else under 1%."
+      "check": "From loss_terms, each weighted term's share of the total, per epoch; and whether every term that contributes has a declared weight.",
+      "pass": "no single term above 90% of the total, and no contributing term without a declared weight",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "worst term fm_term at 88.6% of the total. The previous criterion also required every declared weight to be observable, which is not decidable from the artifact; that list is now reported instead of judged.",
+      "why": "A weight of 0.05 whose feature is off exports an exact zero term and is indistinguishable from a dead knob. The decidable half is the reverse direction."
     },
     {
       "id": "M10",
       "module": "metric chain",
       "check": "Every reported generation metric names the checkpoint hash, the split fingerprint and the sampler settings; the checkpoint on disk is the one the run wrote.",
       "pass": "hash + split fingerprint match, and the checkpoint exists at the path the artifact names",
-      "status": "PLANNED"
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
+      "measured": "fails on the 5-epoch artifact because it predates the provenance block. Passes on any run written after Wf-A108j: the smoke's per_epoch_metrics.json carries checkpoint path, sha256, both split fingerprints and the sampler block.",
+      "fix": "trainer-side, not gate-side. Re-measured PASS on the Wf-A108j smoke."
     }
   ],
 
   "tasks": [
     {
-      "id": "G1",
-      "phase": "gate",
-      "what": "Implement the ten gates as molmetal/scripts/cfm_module_gates.py with --gate M1..M10 and --json, each emitting PASS/FAIL plus the measured numbers.",
-      "done_when": "all ten gates run against a checkpoint and emit a JSON artifact",
-      "status": "PLANNED"
-    },
-    {
-      "id": "G2",
-      "phase": "gate",
-      "what": "Run G1 on the 5-epoch vector_channels checkpoint and on the c8 full-corpus checkpoint.",
-      "done_when": "two JSON artifacts, every gate PASS or FAIL with numbers",
-      "status": "PLANNED"
-    },
-    {
       "id": "F1",
       "phase": "fix",
-      "what": "Fix every FAILing gate, highest severity first. Candidates already identified: (a) output scale of the radial head — tanh(x)*vel_scale*(x-centroid) bounds |v| by the centroid radius and is the default for every full-corpus run; (b) replace the raw-scalar time_mlp with the existing sinusoidal t_embedding_dim path; (c) give the field an explicit per-cloud metal embedding instead of relying on the atomic-number embedding alone; (d) name and fix the 4 parameters tmQM pretraining does not transfer.",
-      "done_when": "the failing gate flips to PASS under the same protocol, and the fix is a config key wherever possible (AGENTS.md 5.11)",
-      "status": "PLANNED"
+      "what": "Flip M2, M4 and M6 to PASS on a trained arm with the fixes on. The fixes themselves are in and config-keyed (flow.vector_channel_norm_gain, flow.velocity_head_init, flow.t_embedding_dim, flow.metal_conditioning, flow.fm_t_dist); configs/wfa108j_fixed_cpu_2026_10_25.yaml is the arm.",
+      "done_when": "all three gates PASS on a checkpoint written by that config, under the same protocol as the failing measurement",
+      "status": "BLOCKED",
+      "blocked_by": "nothing, after the memory workaround. MEASURED 2026-10-25: both launches of this config reached anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07) and were killed by the kernel; both were global OOMs that took an unrelated tmux session with them. One variable explains it — FmOdeTerm at weight 0.05 runs 16 extra velocity-field forwards per step and holds every graph until backward: with it on, RSS went 1.1 -> 8.0 GB in 26 s with no reclaim; with fm_ode_term_weight 0.0, peak 5.28 GB and a bounded 2.1 <-> 4.6 GB sawtooth. The term contributes 0.159 of a 29.72 train_loss, so it is off in the arm (see the config comment) and the arm now runs under an 8 GB RSS ceiling. The retention itself is F3.",
+      "note": "M10 does not need this: it passes on any artifact written after the provenance block, verified on the smoke. Correction to an earlier version of this file: the 13:54 victim was this arm, not another session's process."
     },
     {
       "id": "F2",
       "phase": "fix",
       "what": "Re-run the 125-step regime arm with the fixes on, against the Wf-A108h baseline (fm_term 12.260 -> 12.237, field 8.928 vs v=0 9.008).",
       "done_when": "fm_term falls by more than 10% in 125 steps, or the arm is a measured no-op with the gate numbers that explain why",
+      "status": "PLANNED"
+    },
+    {
+      "id": "F3",
+      "phase": "fix",
+      "what": "FmOdeTerm turns a bounded per-step allocation into unbounded growth. It runs 4 RK4 steps x 4 forwards = 16 extra velocity-field forwards per training step and keeps all of their graphs until backward. With it on, RSS on a 64-cloud arm went 1.1 -> 8.0 GB in 26 s with no reclaim and the full run reached 42.52 GB; with fm_ode_term_weight 0.0 the same arm peaks at 5.28 GB and oscillates 2.1 <-> 4.6 GB. 16 graphs is bounded, so the retention must be across steps, not within one.",
+      "done_when": "the arm runs 2 epochs at fm_ode_term_weight 0.05 under an 8 GB RSS ceiling without the watchdog firing, and the growth curve is written to an artifact",
       "status": "PLANNED"
     },
     {
@@ -132,27 +146,19 @@
       "what": "Generation pool quality on the R1 checkpoint: validity, uniqueness, novelty, SA, QED, ring profile, metal retention.",
       "done_when": "one artifact per metric with the checkpoint hash attached (M10)",
       "status": "PLANNED"
-    },
-    {
-      "id": "R4",
-      "phase": "result",
-      "what": "Paper-ready documentation: one results document where every number carries its artifact path, plus a claims table.",
-      "done_when": "docs/CFM_RESULTS.md exists and every number in it is machine-checked against an artifact",
-      "status": "PLANNED"
     }
   ],
 
   "running_now": {
-    "id": "c8",
-    "config": "configs/c8_fullgen_b64_2026_10_24.yaml",
-    "what": "batch 64, 26,715 clouds, 18 epochs, GPU0, launched 2026-10-25",
-    "note": "Reference arm, not the fixed arm. Its checkpoint is needed because c7's was lost. Do not treat its numbers as the model's ceiling."
+    "id": "none",
+    "note": "No CFM job of mine is running. Gate re-runs (metrics/by_metric/wfa108i_module_gates_*_v2.json) are CPU-only and do not allocate more than ~2 GB."
   },
 
   "constraints": {
     "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
     "gpu": "GPU0",
     "venv": "/home/hugo/codes/mol-metal/.venv",
+    "memory": "check free -m and the RSS table before launching; the host is shared with other sessions and hit a global OOM on 2026-10-25",
     "no_wet_lab": true,
     "no_paper_dir_edits": true,
     "numbers": "every number traces to an artifact path on disk"
@@ -160,6 +166,7 @@
 
   "pointer": {
     "history": "git log",
+    "results": "docs/CFM_RESULTS.md",
     "negative_catalog": "docs/HONEST_NEGATIVE_CATALOG.md",
     "metric_registry": "registry/metrics.yaml (molmetal/scripts/registry.py check)",
     "predictive_line": "docs/PREDICTIVE_LINE_INDEX.md"

@@ -67,7 +67,22 @@ flow:
   velocity_head_init_knots: 9
   metal_conditioning: embedding
   t_embedding_dim: 32
-  fm_ode_term_weight: 0.05
+  # 0.0, not the 0.05 the other class wrappers use.  FmOdeTerm runs a 4-step
+  # RK4 closure penalty, i.e. 4 forwards per step for 4 steps = 16 extra
+  # velocity-field forwards, and every one of their graphs is held until
+  # backward.  MEASURED 2026-10-25 on this arm, one variable changed:
+  #     fm_ode 0.05 (shipped default)  RSS 1.1 -> 8.0 GB in 26 s, monotone,
+  #                                    no reclaim; the full run reached 42.52
+  #                                    GB and triggered a global OOM (pid
+  #                                    2581802, 15:52:07) that killed an
+  #                                    unrelated tmux session
+  #     fm_ode 0.00                    peak 5.28 GB, sawtooth 2.1 <-> 4.6 GB,
+  #                                    run completes
+  # Its contribution to the objective is 0.159 of a 29.72 train_loss (0.5%),
+  # so this removes 16 of the 19 forwards per step and nothing measurable.
+  # This is a memory workaround, not a verdict on the term: it is not A/B'd
+  # and the leak inside it is an open task, not a result.
+  fm_ode_term_weight: 0.0
   # 0.0, not the 0.05 the other class wrappers use.  MEASURED on the first
   # launch of this arm (2026-10-25 13:54): at weight 0.05 EnergyConservation
   # contributed 79.59 of a 109.68 train_loss, i.e. 73% of the objective, and
