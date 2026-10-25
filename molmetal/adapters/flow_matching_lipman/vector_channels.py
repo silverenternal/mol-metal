@@ -107,8 +107,38 @@ class VectorChannelLayer(nn.Module):
     edge_hidden : int, optional
         Width of the edge MLP.  Defaults to ``hidden_dim``.
     eps : float
-        RMS-normalisation floor.  Also keeps padded atoms (all-zero
-        channels) at exactly zero instead of ``0 / 0``.
+        Numerical floor inside the norm itself.  Retained for the
+        ``norms`` statistic; it is NOT the division floor (see
+        ``min_norm``).
+    min_norm : float, default 1e-3
+        A channel whose norm is at or below this is treated as carrying
+        no direction: its normalised output is zero and its gradient is
+        zero.
+
+        Before Wf-A108j the division floor was ``eps = 1e-6``, which made
+        the normalisation's Jacobian ``1/eps = 1e6``.  Two MEASURED
+        consequences on ``configs/smoke_wfa108j_lsq.yaml``:
+
+        1. A padded atom (all channels exactly zero) handed back a
+           ``1e6`` factor per layer.  The first backward pass of the smoke
+           put ``2.90e11`` into ``vc_layers.0.channel_mix.weight`` and
+           ``3.97e4`` into layer 1's, against ``O(10)`` for every other
+           tensor in the model.  The scaling law behind those numbers is
+           reproduced without a trainer by
+           ``molmetal/scripts/wfa108j_norm_floor_grad.py`` ->
+           ``metrics/by_metric/wfa108j_norm_floor_grad.json``: the pre-fix
+           gradient is ``1.61e-05`` at ``eps=1e-6`` and ``3.11`` at
+           ``eps=1.0``, i.e. ``1/eps``, against ``5.51e-07`` for the
+           shipped floor at every floor value tested.
+        2. Worse than the gradient: a channel with norm ``2.99e-08`` —
+           numerical cancellation, not a direction — was divided by its
+           own norm and emitted as a **unit** vector.  Unit-normalising
+           turns noise into a full-amplitude direction field, which is
+           the opposite of what this layer is for.
+
+        A floor of ``1e-3`` bounds the amplification at ``1e3`` and
+        zeroes anything below it.  Channels are unit-normalised by this
+        same layer, so a healthy channel sits at ``~1.0`` and is untouched.
     """
 
     def __init__(
@@ -117,6 +147,24 @@ class VectorChannelLayer(nn.Module):
         n_channels: int = 8,
         edge_hidden: Optional[int] = None,
         eps: float = 1e-6,
+        min_norm: float = 1e-3,
+        # Wf-A108j (2026-10-25) — magnitude ownership.
+        #
+        # ``True`` (default) keeps the pre-Wf-A108j behaviour: ``norm_gain``
+        # is a trainable per-channel scalar initialised to 1.
+        #
+        # ``False`` registers the same parameter NAME as a non-trainable
+        # buffer of ones, so every channel stays unit-norm and the only
+        # magnitude control left is ``VectorChannelHead``'s gate.
+        #
+        # Why the switch exists, MEASURED on
+        # results/wfa108_vector_channels/checkpoints/..._last.pt (epoch 4):
+        # ``norm_gain`` had moved 1.0 -> 0.0017 in three layers, i.e. the
+        # channel stack was scaled down 600x, and the head's output was
+        # ``|v| = 0.135`` against a target norm of ``5.325``.  The two
+        # magnitude controls multiply, so the optimiser had two ways to
+        # shrink the field and it used both.  A frozen gain removes one.
+        learnable_norm_gain: bool = True,
     ) -> None:
         super().__init__()
         if hidden_dim < 1:
@@ -127,6 +175,7 @@ class VectorChannelLayer(nn.Module):
         self.hidden_dim = int(hidden_dim)
         self.n_channels = int(n_channels)
         self.eps = float(eps)
+        self.min_norm = float(min_norm)
 
         # Edge input: h_src, h_dst, dist, dist^2, is_metal_edge.
         self.edge_mlp = nn.Sequential(
@@ -153,7 +202,13 @@ class VectorChannelLayer(nn.Module):
         nn.init.zeros_(self.channel_mix.weight)
 
         # Per-channel gain after RMS normalisation (MiDi's `set_weights`).
-        self.norm_gain = nn.Parameter(torch.ones(1, 1, self.n_channels, 1))
+        # Frozen when ``learnable_norm_gain=False``; the name is kept either
+        # way so a checkpoint's ``norm_gain`` key still resolves.
+        _gain = torch.ones(1, 1, self.n_channels, 1)
+        if learnable_norm_gain:
+            self.norm_gain = nn.Parameter(_gain)
+        else:
+            self.register_buffer("norm_gain", _gain, persistent=True)
 
         # Small phi init: the radial injection must be non-zero so channels
         # 1..C-1 can fill (they start at zero), but large enough values at
@@ -267,10 +322,20 @@ class VectorChannelLayer(nn.Module):
         # ceiling after 200 steps).  Unit-normalising each channel makes the
         # head a learned combination of C direction fields; the magnitude
         # lives entirely in ``VectorChannelHead``'s gate, which is
-        # unconstrained.  Padded atoms have all-zero channels, so
-        # ``0 / eps == 0`` and the mask needs no special case.
+        # unconstrained.  Padded atoms have all-zero channels, which the
+        # floor below turns into exactly zero output with zero gradient.
         norms = vec.norm(dim=-1, keepdim=True)  # (B, N, C, 1)
-        vec = vec * self.norm_gain / (norms + self.eps)
+        # A channel with no magnitude has no direction, and a channel whose
+        # magnitude is numerical cancellation has a *noise* direction.
+        # Dividing either by its own norm emits a full-amplitude unit vector
+        # built from nothing (MEASURED: a 2.99e-08 channel came out at unit
+        # length) and hands back a 1/norm Jacobian on the way out.  Both are
+        # wrong; the floor makes both exactly zero in value and gradient.
+        vec = torch.where(
+            norms > self.min_norm,
+            vec * self.norm_gain / norms.clamp_min(self.min_norm),
+            torch.zeros_like(vec),
+        )
         rms = norms.mean(dim=2)  # (B, N, 1) — the magnitude feature for h
 
         agg_scalar = scatter_sum(
@@ -299,7 +364,7 @@ class VectorChannelLayer(nn.Module):
 
 
 class VectorChannelHead(nn.Module):
-    """``u_i = sum_c w_c(h_i) * V_i^c`` with a zero-init per-atom gate.
+    """``u_i = sum_c w_c(h_i, t) * V_i^c`` with a zero-init per-atom gate.
 
     Zero-init means a freshly built field emits exactly zero velocity, which
     is the same contract the legacy ``vel_head`` has (``nn.init.zeros_`` at
@@ -307,15 +372,48 @@ class VectorChannelHead(nn.Module):
     vector channels of gradient: ``dL/dw_c = -2 * <target, V_c>`` is
     non-zero because ``V_c`` is non-zero, so the gate learns first and the
     channels refine afterwards.
+
+    Wf-A108j (2026-10-25) — two opt-in additions, both inert at their
+    defaults so an existing checkpoint rebuilds and runs bit-exactly:
+
+    * ``use_bias=True`` adds a per-channel bias to the gate.  This is what
+      makes a closed-form least-squares initialisation possible: with the
+      weight matrix still zero, ``w_c`` is a constant per channel and the
+      optimal constant is the solution of an 8x8 normal-equation system.
+    * ``t_dim > 0`` adds a second linear map from the sinusoidal time
+      embedding, so the gate can be a function of ``t``.  The map is
+      zero-init, so the head starts t-blind and only becomes t-conditioned
+      through ``t_gate``'s weights being set (by the LS initialisation) or
+      learned.
     """
 
-    def __init__(self, hidden_dim: int, n_channels: int = 8) -> None:
+    def __init__(
+        self,
+        hidden_dim: int,
+        n_channels: int = 8,
+        t_dim: int = 0,
+        use_bias: bool = False,
+    ) -> None:
         super().__init__()
-        self.channel_gate = nn.Linear(hidden_dim, n_channels, bias=False)
+        self.channel_gate = nn.Linear(hidden_dim, n_channels, bias=bool(use_bias))
         nn.init.zeros_(self.channel_gate.weight)
+        if use_bias:
+            nn.init.zeros_(self.channel_gate.bias)
+        self.t_gate = (
+            nn.Linear(int(t_dim), n_channels, bias=False) if int(t_dim) > 0 else None
+        )
+        if self.t_gate is not None:
+            nn.init.zeros_(self.t_gate.weight)
 
-    def forward(self, h_node: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        h_node: torch.Tensor,
+        vec: torch.Tensor,
+        t_emb: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         w = self.channel_gate(h_node)  # (B, N, C)
+        if self.t_gate is not None and t_emb is not None:
+            w = w + self.t_gate(t_emb).unsqueeze(1)  # (B, 1, C)
         return (w.unsqueeze(-1) * vec).sum(dim=2)  # (B, N, 3)
 
 

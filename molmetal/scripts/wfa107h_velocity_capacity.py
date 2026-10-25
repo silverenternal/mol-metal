@@ -139,6 +139,25 @@ def main() -> int:
         ),
     )
     ap.add_argument("--x1-denominator-floor", type=float, default=0.02)
+    # Wf-A108j — the two magnitude-ownership switches and the closed-form
+    # head initialiser.  Default None keeps the checkpoint's own values, so
+    # every pre-A108j arm reproduces bit-exactly.
+    ap.add_argument(
+        "--vector-channel-norm-gain",
+        choices=("learnable", "fixed"),
+        default=None,
+    )
+    ap.add_argument(
+        "--velocity-head-init",
+        choices=("zero", "lsq"),
+        default=None,
+    )
+    ap.add_argument("--velocity-head-init-knots", type=int, default=9)
+    ap.add_argument(
+        "--metal-conditioning",
+        choices=("none", "embedding"),
+        default=None,
+    )
     ap.add_argument(
         "--metal-frame-channels", action="store_true", default=False
     )
@@ -188,6 +207,13 @@ def main() -> int:
         ns.t_embedding_dim = int(args.t_embedding_dim)
     if args.prediction_target is not None:
         ns.prediction_target = str(args.prediction_target)
+    if args.vector_channel_norm_gain is not None:
+        ns.vector_channel_norm_gain = str(args.vector_channel_norm_gain)
+    if args.velocity_head_init is not None:
+        ns.velocity_head_init = str(args.velocity_head_init)
+    if args.metal_conditioning is not None:
+        ns.metal_conditioning = str(args.metal_conditioning)
+    ns.velocity_head_init_knots = int(args.velocity_head_init_knots)
     ns.x1_denominator_floor = float(args.x1_denominator_floor)
     model = build_joint_model(ns).to(dev)
     if fresh:
@@ -195,7 +221,14 @@ def main() -> int:
             f"[wfa107h] FRESH field (head={head}); checkpoint weights not loaded"
         )
     else:
-        model.load_state_dict(ck["model_state_dict"])
+        # A head built with the LSQ surface has a bias and a t-gate the
+        # checkpoint does not carry; strict loading would refuse the pair
+        # that the arm is meant to measure.
+        _strict = not (
+            str(getattr(ns, "velocity_head_init", "zero")) == "lsq"
+            and str(getattr(ns, "velocity_head", "")) == "vector_channels"
+        )
+        model.load_state_dict(ck["model_state_dict"], strict=_strict)
 
     _eval_seed = (
         int(args.val_seed) if args.eval_seed is None else int(args.eval_seed)
@@ -214,6 +247,18 @@ def main() -> int:
     g = torch.Generator(device=dev).manual_seed(int(args.noise_seed))
     x0 = torch.randn(x1.shape, generator=g, device=dev) * sigma
     tgt = x1 - x0
+    # Wf-A108j — closed-form head initialisation, before the first step.  This
+    # is what separates "the head cannot fit" from "the head starts at zero and
+    # 200 steps is not enough to climb out".
+    lsq_report = None
+    if str(getattr(ns, "velocity_head_init", "zero")) == "lsq":
+        lsq_report = model.init_velocity_head_lsq(
+            x0, x1, z, sizes, n_knots=int(args.velocity_head_init_knots)
+        )
+        print(
+            f"[wfa107h] LSQ head init applied={lsq_report.get('applied')} "
+            f"{lsq_report.get('post_init', lsq_report.get('reason'))}"
+        )
     t = float(args.t)
     xt = (1.0 - t) * x0 + t * x1
     t_col = torch.full((x1.shape[0],), t, device=dev)
@@ -348,6 +393,12 @@ def main() -> int:
         "device": str(dev),
         "zero_baseline_mse": zero_baseline,
         "radial_ceiling_mse": radial_ceiling,
+        "vector_channel_norm_gain": str(
+            getattr(ns, "vector_channel_norm_gain", "learnable")
+        ),
+        "velocity_head_init": str(getattr(ns, "velocity_head_init", "zero")),
+        "metal_conditioning": str(getattr(ns, "metal_conditioning", "none")),
+        "lsq_init": lsq_report,
         "trajectory": traj,
         "verdict": (
             "CANNOT_FIT"

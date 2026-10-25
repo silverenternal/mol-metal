@@ -1569,6 +1569,38 @@ class EGNNVelocityField(nn.Module):
         # Wf-A108e (2026-10-22) — "velocity" (default, bit-exact) or "x1".
         prediction_target: str = "velocity",
         x1_denominator_floor: float = 0.02,
+        # Wf-A108j (2026-10-25) — magnitude ownership and head initialisation.
+        #
+        # ``vector_channel_norm_gain``: "learnable" (default, bit-exact) keeps
+        # the per-channel gain trainable; "fixed" freezes it at 1 so the only
+        # magnitude control is the head's gate.  MEASURED motivation: on the
+        # epoch-4 vector_channels checkpoint the gain had collapsed 1.0 ->
+        # 0.0017 in three layers while the head needed |v| = 5.3 and produced
+        # 0.135 (cfm_module_gates M4).
+        #
+        # ``velocity_head_init``: "zero" (default, bit-exact) leaves the gate
+        # at zero; "lsq" builds the gate WITH a bias and with a sinusoidal-t
+        # branch, so ``CFMJointModel.init_velocity_head_lsq`` can set both by
+        # a closed-form least-squares solve on the first FM batch.  At the LS
+        # optimum the gradient with respect to every channel gain is zero, so
+        # the collapse above cannot start.
+        vector_channel_norm_gain: str = "learnable",
+        velocity_head_init: str = "zero",
+        # Wf-A108j (2026-10-25) — per-cloud metal identity as a first-class
+        # conditioning channel.
+        #
+        # "none" (default, bit-exact) leaves metal identity reachable only
+        # through ``atom_embed`` at the metal atom itself.  "embedding" adds a
+        # learned ``(n_metal + 1, H)`` table indexed by the cloud's metal and
+        # broadcasts it to every atom of that cloud.
+        #
+        # MEASURED motivation (cfm_module_gates M2 on the c8 epoch-2
+        # checkpoint, 8 tmQM clouds / 291 atoms): swapping the metal's atomic
+        # number moved the velocity by 0.74% while shifting t by 0.25 moved it
+        # by 86% and swapping one carbon for nitrogen moved it by 18%.  The
+        # channel the project is named after was the weakest input in the
+        # model.
+        metal_conditioning: str = "none",
     ) -> None:
         """Construct the velocity field.
 
@@ -1667,6 +1699,41 @@ class EGNNVelocityField(nn.Module):
             )
         self.velocity_head = _velocity_head
         self.vector_channels = int(vector_channels)
+        # Wf-A108j — capture slot used by ``fit_output_head_lsq``.  Always
+        # defined so the attribute check in ``forward`` never depends on the
+        # caller having set it first.
+        self._capture_head_inputs = False
+        self._head_capture = None
+        # Wf-A108j — per-cloud metal conditioning.  "none" registers no module
+        # and no buffer, so a pre-Wf-A108j checkpoint rebuilds bit-exactly.
+        _metal_cond = str(metal_conditioning).lower()
+        if _metal_cond not in {"none", "embedding"}:
+            raise ValueError(
+                "metal_conditioning must be 'none' or 'embedding', "
+                f"got {metal_conditioning!r}"
+            )
+        self.metal_conditioning = _metal_cond
+        if _metal_cond == "embedding":
+            # Index 0 means "no metal in this cloud", 1..K are the corpus
+            # metals in a fixed order.  The table is initialised at the same
+            # scale as a linear layer's weights (1/sqrt(H)) rather than at
+            # zero: a zero-init channel would repeat the exact failure this
+            # surface exists to fix -- a conditioning path that emits nothing
+            # until the optimiser pays for it step by step.
+            self.register_buffer(
+                "metal_z_order",
+                torch.tensor([78, 44, 77, 45, 76, 75, 46], dtype=torch.long),
+                persistent=False,
+            )
+            self.metal_embed = nn.Embedding(
+                int(self.metal_z_order.numel()) + 1, hidden_dim
+            )
+            nn.init.normal_(
+                self.metal_embed.weight, std=float(hidden_dim) ** -0.5
+            )
+            nn.init.zeros_(self.metal_embed.weight[0])
+        else:
+            self.metal_embed = None  # type: ignore[assignment]
         self.metal_frame_channels = bool(metal_frame_channels)
         self.radial_centroid_masked = bool(radial_centroid_masked)
         # Wf-A108e (2026-10-22) — what the coordinate stack is trained to emit.
@@ -1711,6 +1778,20 @@ class EGNNVelocityField(nn.Module):
                 VectorChannelLayer,
             )
 
+            _gain_mode = str(vector_channel_norm_gain).lower()
+            if _gain_mode not in {"learnable", "fixed"}:
+                raise ValueError(
+                    "vector_channel_norm_gain must be 'learnable' or 'fixed', "
+                    f"got {vector_channel_norm_gain!r}"
+                )
+            _head_init = str(velocity_head_init).lower()
+            if _head_init not in {"zero", "lsq"}:
+                raise ValueError(
+                    "velocity_head_init must be 'zero' or 'lsq', "
+                    f"got {velocity_head_init!r}"
+                )
+            self.vector_channel_norm_gain = _gain_mode
+            self.velocity_head_init = _head_init
             self.layers = nn.ModuleList([])
             self.vc_layers = nn.ModuleList(
                 [
@@ -1718,18 +1799,24 @@ class EGNNVelocityField(nn.Module):
                         hidden_dim=hidden_dim,
                         n_channels=self.vector_channels,
                         edge_hidden=edge_mlp_hidden,
+                        learnable_norm_gain=(_gain_mode == "learnable"),
                     )
                     for _ in range(n_layers)
                 ]
             )
             self.vc_head = VectorChannelHead(
-                hidden_dim=hidden_dim, n_channels=self.vector_channels
+                hidden_dim=hidden_dim,
+                n_channels=self.vector_channels,
+                t_dim=(int(t_embedding_dim) if _head_init == "lsq" else 0),
+                use_bias=(_head_init == "lsq"),
             )
             # ``vel_head`` / ``vel_scale`` are NOT constructed on this path:
             # a dead parameter is a knob nobody audits (§5.11 rationale).
             self.vel_head = None  # type: ignore[assignment]
             self.vel_scale = None  # type: ignore[assignment]
         else:
+            self.vector_channel_norm_gain = "learnable"
+            self.velocity_head_init = "zero"
             self.vc_layers = nn.ModuleList([])
             self.vc_head = None  # type: ignore[assignment]
             self.layers = nn.ModuleList(
@@ -1937,6 +2024,93 @@ class EGNNVelocityField(nn.Module):
             self.t_emb_per_layer = None  # type: ignore[assignment]
             self.t_to_h = None  # type: ignore[assignment]
 
+    @torch.no_grad()
+    def fit_output_head_lsq(
+        self,
+        x: torch.Tensor,
+        atom_types: torch.Tensor,
+        edge_index: torch.Tensor,
+        t: torch.Tensor,
+        target: torch.Tensor,
+        edge_mask: Optional[torch.Tensor] = None,
+        node_mask: Optional[torch.Tensor] = None,
+        ridge: float = 1e-6,
+    ) -> Dict[str, object]:
+        """Closed-form least-squares gate for ONE time value (Wf-A108j).
+
+        Solves ``min_w || sum_c w_c V^c - target ||^2`` over the real atoms of
+        one batch, where ``V^c`` are the vector channels this forward produced.
+        ``w`` has ``C`` entries, so the normal equations are ``C x C`` — small
+        enough to solve exactly and deterministic enough to reproduce.
+
+        Why the optimum matters beyond "a better start": at the LS solution the
+        residual is orthogonal to every channel, so ``dL/d(gain_c)`` is exactly
+        zero for every per-channel gain.  That is what stops the collapse
+        measured on the epoch-4 checkpoint, where a trainable ``norm_gain``
+        walked from 1.0 to 0.0017 because the field was outputting nothing and
+        shrinking the channels was the only loss-reducing direction available.
+
+        Returns the fitted ``w``, the time embedding at this ``t`` (so a caller
+        can regress ``w`` on it across knots), and the achieved MSE / cosine /
+        norm ratio for the record.  ``None`` values are returned when the head
+        was not built with ``velocity_head_init="lsq"``.
+        """
+        if self.vc_head is None:
+            return {"w": None, "t_emb": None, "reason": "not a vector_channels head"}
+        if getattr(self, "velocity_head_init", "zero") != "lsq":
+            return {"w": None, "t_emb": None, "reason": "velocity_head_init != lsq"}
+
+        self._capture_head_inputs = True
+        _was_training = self.training
+        self.eval()  # context dropout would randomise the fit
+        try:
+            self.forward(x, atom_types, edge_index, t, edge_mask=edge_mask)
+            h_cap, vec_cap, t_emb = self._head_capture
+        finally:
+            self._capture_head_inputs = False
+            self._head_capture = None
+            self.train(_was_training)
+        if h_cap is None or vec_cap is None:
+            return {"w": None, "t_emb": None, "reason": "capture produced nothing"}
+
+        if node_mask is None:
+            node_mask = atom_types > 0
+        node_mask = node_mask.to(torch.bool)
+        v = vec_cap[node_mask]  # (M, C, 3)
+        y = target[node_mask]  # (M, 3)
+        if v.shape[0] == 0:
+            return {"w": None, "t_emb": t_emb, "reason": "no real atoms"}
+
+        gram = torch.einsum("mcd,med->ce", v, v)
+        rhs = torch.einsum("mcd,md->c", v, y)
+        scale = float(gram.diagonal().mean())
+        lam = float(ridge) * max(scale, 1e-12)
+        eye = torch.eye(gram.shape[0], device=gram.device, dtype=gram.dtype)
+        w = torch.linalg.solve(gram + lam * eye, rhs)
+
+        pred = torch.einsum("c,mcd->md", w, v)
+        mse = float(((pred - y) ** 2).mean())
+        mse_zero = float((y ** 2).mean())
+        denom = float(pred.norm()) * float(y.norm())
+        cosine = float((pred * y).sum()) / max(denom, 1e-12)
+        return {
+            "w": w,
+            # One embedding per knot: every cloud in the batch shares ``t``,
+            # so the per-sample rows are identical.  Take the first rather
+            # than flattening, which would silently produce ``B * dim``
+            # features and a (K, B*dim) design matrix.
+            "t_emb": (
+                None
+                if t_emb is None
+                else t_emb.reshape(-1, t_emb.shape[-1])[0].detach()
+            ),
+            "mse": mse,
+            "mse_zero": mse_zero,
+            "cosine": cosine,
+            "ratio": float(pred.norm()) / max(float(y.norm()), 1e-12),
+            "ridge": lam,
+        }
+
     def _load_tmqm_checkpoint(
         self,
         path: str,
@@ -2098,8 +2272,10 @@ class EGNNVelocityField(nn.Module):
         # zero-init so a fresh random init folds the contribution to
         # zero — pre-existing checkpoints keep loading unchanged.
         t_per_layer_addend: Optional[torch.Tensor] = None
-        if self.t_emb_per_layer is not None and self.t_to_h is not None:
+        t_sin: Optional[torch.Tensor] = None
+        if self.t_emb_per_layer is not None:
             t_sin = self.t_emb_per_layer(t.squeeze(-1))  # (B, dim)
+        if self.t_emb_per_layer is not None and self.t_to_h is not None:
             t_per_layer_addend = self.t_to_h(t_sin).unsqueeze(1)  # (B, 1, H)
         # Wf-A32 (2026-10-14) step-1 — pre-compute pocket per-layer
         # addend.  When ``self.pocket_per_layer_injector is not None``
@@ -2155,14 +2331,33 @@ class EGNNVelocityField(nn.Module):
             t_per_layer_addend.expand(b, n, -1) if t_per_layer_addend is not None
             else 0
         )
+        # Wf-A108j — per-cloud metal identity, derived from ``atom_types`` so no
+        # caller has to thread a new tensor.  Index 0 is "no metal".
+        metal_bias = 0
+        if self.metal_embed is not None:
+            _hit = (
+                atom_types.unsqueeze(-1) == self.metal_z_order.view(1, 1, -1)
+            ).any(dim=1)  # (B, K)
+            _ids = torch.where(
+                _hit.any(dim=1),
+                _hit.to(torch.long).argmax(dim=1) + 1,
+                torch.zeros(b, dtype=torch.long, device=atom_types.device),
+            )
+            metal_bias = self.metal_embed(_ids).unsqueeze(1)  # (B, 1, H)
         if isinstance(_input_addend, int):
-            h = self.atom_embed(atom_types) + t_per_atom + pocket_bias
+            h = (
+                self.atom_embed(atom_types)
+                + t_per_atom
+                + pocket_bias
+                + metal_bias
+            )
         else:
             h = (
                 self.atom_embed(atom_types)
                 + t_per_atom
                 + pocket_bias
                 + _input_addend
+                + metal_bias
             )
         last_v = torch.zeros_like(x_t)
         if self.velocity_head == "vector_channels":
@@ -2316,7 +2511,17 @@ class EGNNVelocityField(nn.Module):
             # stack, not a scalar gate on the centroid ray.  ``vec`` is
             # RMS-normalised per atom, so ``vc_head``'s gate carries the
             # magnitude and the channels carry the direction.
-            vel = self.vc_head(h, vec)
+            #
+            # Wf-A108j — the LS initialiser needs the head's own inputs.  The
+            # flag is set only by ``fit_output_head_lsq`` and cleared by it, so
+            # the capture costs one attribute check per forward otherwise.
+            if getattr(self, "_capture_head_inputs", False):
+                self._head_capture = (
+                    h.detach(),
+                    vec.detach(),
+                    None if t_sin is None else t_sin.detach(),
+                )
+            vel = self.vc_head(h, vec, t_emb=t_sin)
         else:
             if self.radial_centroid_masked:
                 # Wf-A108 — the trainer pads every cloud in an FM batch to

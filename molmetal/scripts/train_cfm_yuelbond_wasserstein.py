@@ -1318,7 +1318,7 @@ def early_stop_hit_target(
 PCGRAD_FALLBACK_TASKS: Tuple[str, ...] = (
     "bond_ce",
     "wasserstein_weight*w2_val",
-    "0.05*cb_loss",
+    "cb_loss_term",
     "fm_term",
 )
 DEFAULT_LR = 3.0e-4
@@ -1647,6 +1647,37 @@ def _objective_weights(args: object) -> Dict[str, float]:
             continue
         out[key] = float(value)
     return out
+
+
+def _split_fingerprint(clouds: Sequence["AtomCloud"]) -> str:
+    """Stable hash of WHICH molecules a cohort contains (Wf-A108j, gate M10).
+
+    The project has been burned by comparing numbers across two runs that
+    called themselves "the same split" while holding different rows
+    (HONEST_NEGATIVE_CATALOG §6.197).  A run directory that does not name its
+    own rows cannot answer that question after the fact, so the hash is
+    written into ``per_epoch_metrics.json``.
+
+    The signature per cloud is ``(n_atoms, sum_z, centroid rounded to 3 dp)``:
+    invariant to atom ordering inside the cloud, sensitive to which molecule
+    it is, and cheap enough to compute on 26k clouds.  It is NOT a hash of the
+    raw coordinates — that would change under any coordinate jitter the
+    builder applies and would make two identical cohorts look different.
+    """
+    import hashlib as _hashlib
+
+    h = _hashlib.sha256()
+    for c in clouds:
+        z = c.atomic_numbers
+        pos = c.positions.float()
+        cen = pos.mean(dim=0) if pos.numel() else torch.zeros(3)
+        h.update(
+            (
+                f"{int(z.shape[0])}|{int(z.sum())}|"
+                f"{float(cen[0]):.3f},{float(cen[1]):.3f},{float(cen[2]):.3f};"
+            ).encode()
+        )
+    return h.hexdigest()
 
 
 def _block_diag_radius_edges(
@@ -2005,6 +2036,13 @@ class CFMJointModel(nn.Module):
         # ``x1_hat``; the sampler still consumes ``vel = u / max(1-t, floor)``.
         prediction_target: str = "velocity",
         x1_denominator_floor: float = 0.02,
+        # Wf-A108j (2026-10-25) — magnitude ownership + closed-form head init.
+        # Defaults reproduce the pre-Wf-A108j build exactly.
+        vector_channel_norm_gain: str = "learnable",
+        velocity_head_init: str = "zero",
+        # Wf-A108j — per-cloud metal identity as a first-class channel.
+        # "none" (default) is the pre-Wf-A108j path, bit-exact.
+        metal_conditioning: str = "none",
         # Wf-A108g (2026-10-23) — per-batch DATA volume, not model size.
         #
         # A batch pads every cloud to the largest member.  MEASURED on 64
@@ -2421,6 +2459,11 @@ class CFMJointModel(nn.Module):
                 radial_centroid_masked=bool(radial_centroid_masked),
                 prediction_target=str(prediction_target),
                 x1_denominator_floor=float(x1_denominator_floor),
+                # Wf-A108j — passed straight through; both default to the
+                # pre-Wf-A108j behaviour so existing checkpoints rebuild.
+                vector_channel_norm_gain=str(vector_channel_norm_gain),
+                velocity_head_init=str(velocity_head_init),
+                metal_conditioning=str(metal_conditioning),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -2773,6 +2816,180 @@ class CFMJointModel(nn.Module):
             x_t, t, atomic_numbers, cloud_sizes, pocket_embed
         )
         return out["x1_hat"][node_mask]
+
+    @torch.no_grad()
+    def init_velocity_head_lsq(
+        self,
+        x0: torch.Tensor,
+        x1: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+        cloud_sizes: Optional[Sequence[int]] = None,
+        n_knots: int = 9,
+    ) -> Dict[str, object]:
+        """Initialise the vector-channel gate by least squares (Wf-A108j).
+
+        WHY THIS EXISTS
+        ---------------
+        ``VectorChannelHead``'s gate is zero-initialised, so a fresh field emits
+        exactly ``v = 0``.  Every unit of output magnitude then has to be paid
+        for at ``lr * steps``.  MEASURED on
+        ``results/wfa108_vector_channels/checkpoints/..._last.pt`` (5 epochs,
+        125 steps): ``||v|| / ||v_target|| = 0.021`` and ``fm_term`` 12.17
+        against a ``v = 0`` baseline of about 9.4 — the field was WORSE than
+        predicting zero.
+
+        The same checkpoint showed the mechanism: the trainable per-channel
+        ``norm_gain`` had gone 1.0 -> 0.0017 in three layers.  With the output
+        near zero and the channel directions not yet useful, shrinking the
+        channels is the only move that reduces the loss, and it shrinks them
+        600x.
+
+        At the least-squares optimum the residual is orthogonal to every
+        channel, so ``dL/d(gain_c) == 0`` exactly.  Starting there removes the
+        gradient that drives the collapse, and it removes the 125-step climb
+        from zero.
+
+        WHAT IT DOES
+        ------------
+        For ``n_knots`` values of ``t`` on ``(0, 1)``: build ``x_t``, run the
+        field, solve the ``C x C`` normal equations for the gate, and record
+        the pair ``(sinusoidal_embedding(t), w(t))``.  Then fit
+        ``w(t) = w0 + W1 * phi(t)`` by least squares and write ``w0`` into
+        ``channel_gate.bias`` and ``W1`` into ``t_gate.weight``.
+
+        A constant gate would leave the field t-blind, which is exactly what
+        gate M6 measures and what a flow-matching field cannot afford: the
+        conditional mean reverses sign between ``t -> 0`` and ``t -> 1``.
+
+        Returns a report dict.  Writes nothing to disk; the caller prints it and
+        the run's metrics artifact carries the model's own numbers.
+        """
+        vf = getattr(self, "vel_field", None)
+        if vf is None:
+            return {"applied": False, "reason": "no vel_field (EGNN path is off)"}
+        if str(getattr(vf, "velocity_head", "")) != "vector_channels":
+            return {
+                "applied": False,
+                "reason": f"velocity_head={getattr(vf, 'velocity_head', None)!r}",
+            }
+        if str(getattr(vf, "velocity_head_init", "zero")) != "lsq":
+            return {"applied": False, "reason": "velocity_head_init != 'lsq'"}
+        head = getattr(vf, "vc_head", None)
+        if head is None or head.channel_gate.bias is None:
+            return {"applied": False, "reason": "head has no bias parameter"}
+
+        sizes = (
+            [int(x1.shape[0])]
+            if cloud_sizes is None
+            else [int(s) for s in cloud_sizes]
+        )
+        b = len(sizes)
+        n_max = max(sizes)
+        dev = x0.device
+        x0p = x0.new_zeros(b, n_max, 3)
+        x1p = x0.new_zeros(b, n_max, 3)
+        zp = atomic_numbers.new_zeros(b, n_max)
+        node_mask = torch.zeros(b, n_max, dtype=torch.bool, device=dev)
+        start = 0
+        for j, s in enumerate(sizes):
+            x0p[j, :s] = x0[start : start + s]
+            x1p[j, :s] = x1[start : start + s]
+            zp[j, :s] = atomic_numbers[start : start + s]
+            node_mask[j, :s] = True
+            start += s
+        target = x1p - x0p
+
+        ts = torch.linspace(0.02, 0.98, int(max(2, n_knots)), device=dev)
+        ws: List[torch.Tensor] = []
+        phis: List[Optional[torch.Tensor]] = []
+        knots: List[Dict[str, object]] = []
+        for tk in ts:
+            xt = (1.0 - float(tk)) * x0p + float(tk) * x1p
+            edge_index, edge_mask = _block_diag_radius_edges(
+                xt, node_mask, self.cutoff
+            )
+            t_b = torch.full((b,), float(tk), device=dev)
+            rep = vf.fit_output_head_lsq(
+                xt,
+                zp,
+                edge_index,
+                t_b,
+                target,
+                edge_mask=edge_mask,
+                node_mask=node_mask,
+            )
+            if rep.get("w") is None:
+                return {"applied": False, "reason": str(rep.get("reason")), "t": float(tk)}
+            ws.append(rep["w"])
+            phis.append(rep.get("t_emb"))
+            knots.append(
+                {
+                    "t": round(float(tk), 4),
+                    "mse": round(float(rep["mse"]), 6),
+                    "mse_zero": round(float(rep["mse_zero"]), 6),
+                    "ratio": round(float(rep["ratio"]), 6),
+                    "cosine": round(float(rep["cosine"]), 6),
+                }
+            )
+
+        W = torch.stack(ws, dim=0)  # (K, C)
+        fit: Dict[str, object] = {"n_knots": len(knots)}
+        if phis[0] is not None:
+            P = torch.stack([p.reshape(-1) for p in phis], dim=0)  # (K, d)
+            design = torch.cat(
+                [torch.ones(P.shape[0], 1, device=P.device, dtype=P.dtype), P], dim=1
+            )
+            sol = torch.linalg.lstsq(design, W).solution  # (d+1, C)
+            head.channel_gate.bias.copy_(sol[0])
+            if head.t_gate is not None:
+                head.t_gate.weight.copy_(sol[1:].transpose(0, 1))
+            resid = design @ sol - W
+            fit.update(
+                {
+                    "mode": "linear_in_t_embedding",
+                    "t_embedding_dim": int(P.shape[1]),
+                    "fit_residual_rms": float(resid.pow(2).mean().sqrt()),
+                    "gate_weight_rms": float(W.pow(2).mean().sqrt()),
+                }
+            )
+        else:
+            head.channel_gate.bias.copy_(W.mean(dim=0))
+            fit.update({"mode": "constant", "gate_weight_rms": float(W.pow(2).mean().sqrt())})
+
+        # Post-condition, measured after the write: the field must now emit a
+        # magnitude in the target's own range.  Recorded, not asserted -- the
+        # gate script is what decides PASS/FAIL.
+        post: List[Dict[str, float]] = []
+        for tv in (0.05, 0.5, 0.95):
+            xt = (1.0 - tv) * x0p + tv * x1p
+            edge_index, edge_mask = _block_diag_radius_edges(
+                xt, node_mask, self.cutoff
+            )
+            t_b = torch.full((b,), tv, device=dev)
+            v = vf(xt, zp, edge_index, t_b, edge_mask=edge_mask)["vel"]
+            pred = v[node_mask]
+            y = target[node_mask]
+            post.append(
+                {
+                    "t": tv,
+                    "ratio": round(float(pred.norm()) / max(float(y.norm()), 1e-12), 6),
+                    "cosine": round(
+                        float((pred * y).sum())
+                        / max(float(pred.norm()) * float(y.norm()), 1e-12),
+                        6,
+                    ),
+                    "mse": round(float(((pred - y) ** 2).mean()), 6),
+                    "mse_zero": round(float((y ** 2).mean()), 6),
+                }
+            )
+
+        return {
+            "applied": True,
+            "knots": knots,
+            "fit": fit,
+            "post_init": post,
+            "n_atoms": int(node_mask.sum()),
+        }
 
     def _compute_pocket_embed_from_batch(
         self,
@@ -4511,6 +4728,11 @@ def train_one_epoch(
     # Default OFF (0.0) preserves bit-for-bit backward compat with all
     # Wf-388-A3 / Wf-405-A2 / Wf-406-A2 / Wf-408-A2 / Wf-409-A1 baselines.
     gen_validity_weight: float = 0.0,
+    # Wf-A108j — the closure-bias nudge's multiplier.  Was the literal 0.05
+    # inline in the loss sum, exported as a column named "0.05*cb_loss"; a
+    # weight that is spelled out in a metric's NAME cannot be changed without
+    # renaming the column, so nobody changed it and nothing recorded it.
+    cb_loss_weight: float = 0.05,
     # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
     # Defaults preserve bit-for-bit backward compat with pre-Wf-A15.
     chem_loss_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A15 = chem loss inert)
@@ -5347,6 +5569,34 @@ def train_one_epoch(
             # message-passing neighbourhood therefore stops reshuffling
             # itself as the sample moves along the path.
             x0 = torch.randn_like(x1) * float(fm_noise_sigma)
+            # Wf-A108j (2026-10-25) — closed-form output-head initialisation.
+            # Runs ONCE, on the first FM batch and before any optimiser step,
+            # so the field starts at the least-squares optimum of its own
+            # channel stack instead of at v = 0.  Gated on the field's own
+            # attribute, which is set by ``build_joint_model`` from
+            # ``--velocity-head-init``, so a checkpoint rebuilt for inference
+            # never triggers it.
+            if (
+                getattr(model, "vel_field", None) is not None
+                and str(
+                    getattr(model.vel_field, "velocity_head_init", "zero")
+                )
+                == "lsq"
+                and not getattr(model, "_lsq_head_done", False)
+            ):
+                _lsq_rep = model.init_velocity_head_lsq(
+                    x0,
+                    x1,
+                    z_all,
+                    _cloud_sizes,
+                    n_knots=int(getattr(model, "_lsq_knots", 9)),
+                )
+                model._lsq_head_done = True
+                print(
+                    "[cfm-init] velocity head LSQ: "
+                    + json.dumps(_lsq_rep, default=str),
+                    flush=True,
+                )
             # Wf-A107g (2026-10-22) — measure the prior/data scale match ONCE,
             # on the first FM batch, and shout if the config forgot the key.
             # The check reads `x1` only (no RNG, no tensor written), so every
@@ -6229,7 +6479,7 @@ def train_one_epoch(
         loss = (
             bond_ce_term
             + wasserstein_weight * w2_val
-            + 0.05 * cb_loss
+            + cb_loss_weight * cb_loss
             + diversity_term
             + shortcut_distill_loss
             + consistency_term
@@ -6326,7 +6576,7 @@ def train_one_epoch(
                 # `bond_ce` at the default 1.0).
                 "bond_ce": bond_ce_term,
                 "wasserstein_weight*w2_val": wasserstein_weight * w2_val,
-                "0.05*cb_loss": 0.05 * cb_loss,
+                "cb_loss_term": cb_loss_weight * cb_loss,
                 "diversity_term": diversity_term,
                 "shortcut_distill_loss": shortcut_distill_loss,
                 "consistency_term": consistency_term,
@@ -11599,6 +11849,22 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--cb-loss-weight",
+        dest="cb_loss_weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Weight on the closure-bias nudge (``cb_loss``) added to the "
+            "objective.  Default 0.05 reproduces the hardcoded coefficient "
+            "that lived inline in the loss sum until Wf-A108j, so every "
+            "existing run is bit-exact.  The term was exported under the "
+            "literal key '0.05*cb_loss', i.e. the multiplier was part of the "
+            "metric's NAME and could not be changed without renaming a "
+            "column; it is now 'cb_loss_term' with the value declared here "
+            "(AGENTS.md §5.11)."
+        ),
+    )
+    p.add_argument(
         "--qed-loss-weight",
         dest="qed_loss_weight",
         type=float,
@@ -11944,6 +12210,61 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Wf-A108e: floor on (1 - t) when converting the x1 head's output "
             "into a sampler velocity.  Only read when --prediction-target x1."
+        ),
+    )
+    p.add_argument(
+        "--vector-channel-norm-gain",
+        dest="vector_channel_norm_gain",
+        choices=("learnable", "fixed"),
+        default="learnable",
+        help=(
+            "Wf-A108j: who owns the output magnitude under "
+            "--velocity-head vector_channels.  'learnable' (default, "
+            "bit-exact) keeps the per-channel norm_gain trainable; 'fixed' "
+            "freezes it at 1 so the head's gate is the only magnitude "
+            "control.  MEASURED on the epoch-4 vector_channels checkpoint: "
+            "norm_gain fell 1.0 -> 0.0017 in three layers while the field "
+            "emitted |v| = 0.135 against a target of 5.325."
+        ),
+    )
+    p.add_argument(
+        "--velocity-head-init",
+        dest="velocity_head_init",
+        choices=("zero", "lsq"),
+        default="zero",
+        help=(
+            "Wf-A108j: initialise the vector-channel gate to zero (default, "
+            "bit-exact) or by a closed-form least-squares solve on the first "
+            "FM batch.  'lsq' also builds a bias and a sinusoidal-t branch on "
+            "the gate, so the initial field is both correctly scaled and "
+            "t-dependent.  At the LS optimum dL/d(norm_gain) is exactly zero, "
+            "which is what stops the measured 600x gain collapse."
+        ),
+    )
+    p.add_argument(
+        "--metal-conditioning",
+        dest="metal_conditioning",
+        choices=("none", "embedding"),
+        default="none",
+        help=(
+            "Wf-A108j: how metal identity reaches the velocity field. "
+            "'none' (default, bit-exact) leaves it reachable only through the "
+            "metal atom's own atomic-number embedding. 'embedding' adds a "
+            "learned per-cloud metal table broadcast to every atom. MEASURED "
+            "on the c8 epoch-2 checkpoint: swapping the metal moved the "
+            "velocity by 0.74%, against 86%% for a 0.25 t shift and 18%% for "
+            "one C->N swap."
+        ),
+    )
+    p.add_argument(
+        "--velocity-head-init-knots",
+        dest="velocity_head_init_knots",
+        type=int,
+        default=9,
+        help=(
+            "Wf-A108j: number of t values the LSQ head initialiser fits "
+            "before regressing the gate on the sinusoidal time embedding.  "
+            "Only read when --velocity-head-init lsq."
         ),
     )
     p.add_argument(
@@ -12973,6 +13294,14 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         x1_denominator_floor=float(
             getattr(args, "x1_denominator_floor", 0.02)
         ),
+        # Wf-A108j (2026-10-25) — magnitude ownership + closed-form head init.
+        # Both default to the pre-Wf-A108j behaviour, so every existing
+        # checkpoint rebuilds and runs bit-exactly.
+        vector_channel_norm_gain=str(
+            getattr(args, "vector_channel_norm_gain", "learnable")
+        ),
+        velocity_head_init=str(getattr(args, "velocity_head_init", "zero")),
+        metal_conditioning=str(getattr(args, "metal_conditioning", "none")),
         # Wf-A108g — per-batch pad grouping.  Default 0.0 (one padded
         # forward) so every pre-Wf-A108g checkpoint rebuilds and runs
         # exactly as it did; opt in via ``flow.fm_batch_chunk_ratio``.
@@ -13001,6 +13330,10 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         bond_pair_chemistry=bool(getattr(args, "bond_pair_chemistry", False)),
         n_rbf=int(getattr(args, "n_rbf", 8)),
     )
+    # Wf-A108j — how many t knots the closed-form head initialiser fits.
+    # Stored on the model (not read from `args` inside the training loop) so a
+    # checkpoint rebuilt for inference carries the value its run used.
+    model._lsq_knots = int(getattr(args, "velocity_head_init_knots", 9))
     return model.to(device) if device is not None else model
 
 
@@ -15135,6 +15468,7 @@ def main() -> int:
             # default so an args namespace built elsewhere (tests, other
             # entry points) keeps the pre-flag objective exactly.
             bond_loss_weight=float(getattr(args, "bond_loss_weight", 1.0)),
+            cb_loss_weight=float(getattr(args, "cb_loss_weight", 0.05)),
             # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
             # All default to 0.0 → exact torch.zeros(()) in the sum, so the
             # objective is bit-for-bit identical to pre-Wf-A15.
@@ -16875,6 +17209,61 @@ def main() -> int:
         }
     )
     total_elapsed = time.time() - overall_start
+
+    def _provenance_block() -> Dict[str, object]:
+        """Which weights and which rows produced this artifact (gate M10)."""
+        import hashlib as _hashlib
+
+        _sel = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
+        _last = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}_last.pt"
+        out: Dict[str, object] = {
+            # The one path a reader should open, named before the two
+            # candidates so a consumer never has to choose.
+            "checkpoint": str(_sel if _sel.is_file() else _last),
+            "checkpoint_selected": str(_sel),
+            "checkpoint_selected_exists": _sel.is_file(),
+            "checkpoint_last": str(_last),
+            "checkpoint_last_exists": _last.is_file(),
+            "checkpoint_sha256": None,
+            "checkpoint_sha256_of": None,
+            "split_fingerprint": _split_fingerprint(train_clouds)
+            if train_clouds
+            else None,
+            "val_split_fingerprint": _split_fingerprint(val_clouds)
+            if val_clouds
+            else None,
+            "split_fingerprint_kind": "per-cloud (n_atoms, sum_z, centroid r3) sha256",
+            "n_train_clouds": len(train_clouds),
+            "n_val_clouds": len(val_clouds),
+            "sampler": {
+                "method": str(getattr(args, "method", "euler")),
+                "n_steps": int(getattr(args, "n_steps", 0) or 0),
+                "gen_eval_n": int(getattr(args, "gen_eval_n", 0) or 0),
+                "gen_eval_seeds": str(getattr(args, "gen_eval_seeds", "")),
+            },
+            "velocity_head": str(getattr(args, "velocity_head", "radial")),
+            "velocity_head_init": str(
+                getattr(args, "velocity_head_init", "zero")
+            ),
+            "vector_channel_norm_gain": str(
+                getattr(args, "vector_channel_norm_gain", "learnable")
+            ),
+            "t_embedding_dim": int(getattr(args, "t_embedding_dim", 0) or 0),
+        }
+        # Hash the file a reader is most likely to open: the gate-selected one
+        # when it exists, otherwise the periodic one.  Naming WHICH was hashed
+        # is the point -- two files can both be "the checkpoint".
+        for label, path in (("selected", _sel), ("last", _last)):
+            if path.is_file():
+                h = _hashlib.sha256()
+                with open(path, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                out["checkpoint_sha256"] = h.hexdigest()
+                out["checkpoint_sha256_of"] = label
+                break
+        return out
+
     # Per-epoch metrics JSON.
     metrics_payload = {
         "wf": "wf124_phase_2",
@@ -17128,6 +17517,14 @@ def main() -> int:
             "engine-tagged add-ons, NOT silent substitutes."
         ),
         "objective_integrity": _objective_integrity(),
+        # Wf-A108j (2026-10-25) — gate M10: a number without a referent is not
+        # a result.  §6.197 found c7's artifact outliving the weights it
+        # described, and nothing in the artifact could have detected it: no
+        # checkpoint path, no hash, no split fingerprint.  These three are
+        # written here, at the point where the checkpoints are already on
+        # disk, so the record is of files that exist rather than of files the
+        # run intended to write.
+        "provenance": _provenance_block(),
     }
     (out_dir / "per_epoch_metrics.json").write_text(
         json.dumps(metrics_payload, indent=2) + "\n"

@@ -1,0 +1,157 @@
+# configs/smoke_wfa108j_lsq.yaml — CPU wire-in smoke for the Wf-A108j head fix.
+#
+# WHAT IT IS FOR
+# --------------
+# AGENTS.md §5.7: a new trainer flag is not "wired" until a short CPU run
+# shows it reaching the trainer.  This config exists only for that check.  It
+# is 1 epoch on 32 clouds, which is enough to prove the wire and nowhere near
+# enough to measure anything.
+#
+# WHAT IT TURNS ON
+# ----------------
+#   flow.velocity_head              vector_channels
+#   flow.vector_channel_norm_gain   fixed     (freeze the per-channel gain at 1)
+#   flow.velocity_head_init         lsq       (closed-form gate on batch 1)
+#   flow.t_embedding_dim            16        (sinusoidal t, needed by t_gate)
+#   flow.metal_conditioning         embedding (per-cloud metal table)
+#
+# The three flags together are the Wf-A108j fix.  Without them the field
+# starts at exactly v = 0 and needs ~125 steps to emit 2% of the target
+# magnitude (measured: cfm_module_gates M4 ratio 0.021 on the epoch-4
+# checkpoint).
+#
+# WHAT IT DOES NOT DO
+# -------------------
+# No generation eval (gen_validity_samples 0), no early stopping, no
+# checkpoint selection worth reading.  Do not quote any number from this run
+# except "the LSQ line appeared in master.log" and "provenance landed in
+# per_epoch_metrics.json".
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+
+model:
+  hidden_dim: 64
+  n_layers: 2
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+
+flow:
+  use_fm_objective: true
+  fm_weight: 1.0
+  fm_noise_sigma: 2.485
+  fm_t_per_cloud: 1
+  prediction_target: velocity
+  velocity_head: vector_channels
+  vector_channels: 8
+  vector_channel_norm_gain: fixed
+  velocity_head_init: lsq
+  velocity_head_init_knots: 5
+  metal_conditioning: embedding
+  t_embedding_dim: 16
+  # The class-wrapper terms are default-ON at 0.05 in argparse; declare them
+  # here so the smoke exercises the same objective the full run would.
+  fm_ode_term_weight: 0.05
+  energy_conservation_weight: 0.0
+  sboo3_term_weight: 0.05
+  sboo3_n_rot: 1
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  dative_distance_cutoff: 2.6
+  metal_placement: legacy
+  use_metal_pair_features: true
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 4
+  method: euler
+  optimizer: adam
+  warmup_steps: 0
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  bond_length_guidance_weight: 0.0
+  ring_template_weight: 0.0
+
+protocol:
+  n_train: 32
+  n_val: 8
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 0
+  gen_eval_n: 0
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  epochs: 1
+  n_seeds_min: 1
+  scheduler:
+    type: none
+    warmup_epochs: 0
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+
+output:
+  base_dir: /tmp/wfa108j_smoke
+  log_master: /tmp/wfa108j_smoke/master.log
+  ckpt_dir: /tmp/wfa108j_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+
+compute:
+  gpu: cpu
+  device: cpu
+
+directives:
+  kill_then_adapt: true
+  time_budget: 20m
+  user_ok_required: false
+  user_ok_granted: "Wf-A108j CPU wire-in smoke (2026-10-25), 1 epoch, 32 clouds"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+
+honest_framing:
+  claims:
+  - "The three Wf-A108j flags reach the trainer: master.log carries a
+    [cfm-init] velocity head LSQ line with applied=true, and
+    per_epoch_metrics.json carries a provenance block naming the checkpoint,
+    its sha256 and the train/val split fingerprints."
+  do_not_claim:
+  - "Any quality number from this run. One epoch on 32 clouds measures the
+    wire, not the model."
+  deferred:
+  - "The full-corpus arm that measures the fix is R1 (configs/c9)."
