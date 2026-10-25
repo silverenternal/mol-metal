@@ -111,8 +111,8 @@
       "id": "MOD2",
       "name": "GeometryConsistencyTerm",
       "addresses": ["D2", "D4"],
-      "where": "molmetal/loss/regularization_losses.py + train_cfm_yuelbond_wasserstein.py",
-      "change": "One differentiable term evaluated on the SAMPLED x1_hat, not on the training x1, with three parts: non-bonded pairs below 0.7*(rcov_i+rcov_j) penalised (the clash metric turned into a loss); bonded pairs outside [0.85, 1.25] x equilibrium penalised; metal-ligand pairs outside the per-metal band from MOD3 penalised. Weights per part, default 0, enabled by config.",
+      "where": "molmetal/loss/geometry_consistency.py (new) + train_cfm_yuelbond_wasserstein.py (--geometry-consistency-weight)",
+      "change": "LANDED 2026-10-25. One differentiable term evaluated on x1_hat, not on the training x1, with three parts: non-bonded pairs below 0.7*(rcov_i+rcov_j); bonded pairs outside [0.85, 1.25] x (rcov_i+rcov_j); metal-ligand pairs outside the per-metal band from MOD3. Each part is a hinge-squared mean over the pairs that exist, so a satisfied pair contributes exactly zero. Master weight plus three part weights, all defaulting to 0.0/1.0 and therefore bit-exact for every existing config. Registered in _LAST_LOSS_TERMS as geometry_term so the liveness guard and the M9 share table see it.",
       "done_when": "on a >=1000-molecule pool: single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A.",
       "risk": "A strong attraction term collapses the cloud; the weight needs a 3-point budget sweep before any result is quoted."
     },
@@ -120,8 +120,8 @@
       "id": "MOD3",
       "name": "MetalGeometryPrior",
       "addresses": ["D4"],
-      "where": "new module in molmetal/adapters/flow_matching_lipman/, consumed by the field and by MOD2",
-      "change": "Predict a per-metal M-L distance distribution (mean, sd) from metal identity and coordination number, measured from the training corpus per metal rather than fitted. Emit it as a conditioning vector into the field and use it as the reference band for MOD2's third part.",
+      "where": "molmetal/loss/geometry_consistency.py (METAL_ML_BAND_A), consumed by MOD2's third part",
+      "change": "LANDED 2026-10-25 as the band table, not as a learned prior. MEASURED p10/p90 of the metal-ligand distance per metal from the REAL_DFT cohort in metrics/by_metric/cfm_metal_geometry.json: Pt 1.979-2.466 (n=3571), Ru 1.939-2.371 (5723), Ir 2.005-2.360 (3549), Rh 1.995-2.351 (2374), Os 1.870-2.439 (844), Re 1.938-2.427 (2457). MOD2 penalises an M-L pair outside its own metal's band, so the prior is metal-specific rather than one constant. Not yet fed into the field as a conditioning vector: that needs a CN head, which is MOD5.",
       "done_when": "median M-L distance within 0.15 A of the DFT per-metal median on the metals held out of the prior fit.",
       "risk": "Some metals have few rows; the per-metal median has to carry its own n and be reported with it."
     },
@@ -325,10 +325,15 @@
       "id": "T6",
       "priority": 2,
       "title": "MOD2 + MOD3: geometry consistency term",
-      "what": "MOD2 + MOD3: geometry consistency term on the sampled x1_hat, with the per-metal M-L band as its third part. Weight chosen by a 3-point budget sweep, never by the result.",
+      "what": "MOD2 + MOD3: geometry consistency term on the sampled x1_hat, with the per-metal M-L band as its third part. Code landed 2026-10-25 (molmetal/loss/geometry_consistency.py + four YAML weights + 8 unit tests). Remaining: a 3-point weight sweep on the 64-cloud arm with gen_eval on, then the >=1000-molecule pool.",
       "addresses": ["D2", "D4"],
       "done_when": "single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A on a >=1000-molecule pool, with the sweep table as the evidence for the weight.",
-      "status": "PLANNED",
+      "evidence": [
+        "molmetal/loss/geometry_consistency.py",
+        "molmetal/tests/test_geometry_consistency.py",
+        "configs/wfa108l_geom_smoke_2026_10_25.yaml"
+      ],
+      "status": "IN_PROGRESS",
       "blocked_by": ["T3"]
     },
     {

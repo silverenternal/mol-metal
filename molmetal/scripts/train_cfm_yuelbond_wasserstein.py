@@ -1321,7 +1321,10 @@ def resolve_selection(
     Returns the block written into the artifact's ``provenance.selection``.
     """
     keys = sorted({f"{float(v):.12g}" for _, v in gate_history})
-    degenerate = len(keys) <= 1 and bool(gate_history)
+    # One epoch cannot be ranked, but it is not degenerate either: there is
+    # nothing to compare.  Calling a 1-epoch run degenerate would put a
+    # "selecting epoch 0, not epoch 0" line in every smoke.
+    degenerate = len(keys) <= 1 and len(gate_history) >= 2
     out: Dict[str, object] = {
         "criterion": str(criterion),
         "n_epochs_recorded": len(gate_history),
@@ -4600,6 +4603,13 @@ def train_one_epoch(
     # 2026-10-08 §5.7 — --so3-averaged-fm-k wire-in.  K = number of SO(3)
     # rotations averaged by so3_average_loss; was hardcoded to 2 below.
     so3_averaged_fm_k: int = 2,  # SO(3) rotations averaged (default 2)
+    # Wf-A108l (2026-10-25) — geometry consistency of x1_hat (MOD2 + MOD3).
+    # Master weight 0.0 makes the term an exact zero, so every caller that
+    # does not pass these keeps the pre-Wf-A108l loss bit-for-bit.
+    geometry_consistency_weight: float = 0.0,
+    geometry_clash_weight: float = 1.0,
+    geometry_bond_weight: float = 1.0,
+    geometry_metal_weight: float = 1.0,
     log_normal_t: bool = False,  # False = uniform t-sampling (legacy)
     log_normal_t_mu: float = -0.5,  # Wf-340-A3 log-normal mu
     log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
@@ -5912,13 +5922,11 @@ def train_one_epoch(
                         "the two; silently ignoring stable_vm is exactly the "
                         "FLAG_ONLY class AGENTS.md §5.7 exists to catch."
                     )
-                fm_term = float(fm_weight) * F.mse_loss(
-                    model.fm_x1(
-                        x_t, t, z_all, cloud_sizes=_cloud_sizes,
-                        pocket_embed=_pocket_embed,
-                    ),
-                    x1,
+                _x1_pred = model.fm_x1(
+                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                    pocket_embed=_pocket_embed,
                 )
+                fm_term = float(fm_weight) * F.mse_loss(_x1_pred, x1)
             else:
                 # Wf-R38 — `--stable-vm` attaches HERE, to the velocity loss.
                 # `stable_vm_loss` is a multi-scale mixture of squared
@@ -5949,6 +5957,95 @@ def train_one_epoch(
                 else:
                     _vel_resid = F.mse_loss(_vel_pred, target_dx)
                 fm_term = float(fm_weight) * _vel_resid
+        # Wf-A108l (2026-10-25) — cfm_todo MOD2 + MOD3.  Geometry of the
+        # model's OWN endpoint, not of the training geometry.
+        #
+        # `clash_penalty_term` below already exists and is inert: it scores
+        # `cloud.positions` (data) and its per-cloud value is detached before
+        # it reaches the loss, so it can be logged and cannot be trained.  This
+        # term scores x1_hat, which is a differentiable function of the field,
+        # so a bad metal-ligand distance produces a gradient on the
+        # coordinates that produced it.
+        #
+        # MEASURED reasons each part exists (cfm_todo D2/D4):
+        #   * single_fragment_rate 0.2505 on the c8 pool;
+        #   * frac_pairs_hard_clash 0.0148;
+        #   * metal_ligand_min 1.234 A against a DFT p10 of 1.939-2.005 A.
+        #
+        # Default weight 0.0 -> exact zero, so every existing config is
+        # bit-exact.  The per-part weights are only read when the master
+        # weight is positive.
+        geometry_term = torch.zeros((), device=device)
+        _geom_stats = {"clash": 0.0, "bond": 0.0, "metal": 0.0}
+        _geom_n = {"clash": 0.0, "bond": 0.0, "metal": 0.0}
+        _geom_order_ok = True
+        if (
+            float(geometry_consistency_weight) > 0.0
+            and fm_objective
+            and x_t is not None
+        ):
+            # The OT / Bass coupling permutes the TARGET side within each cloud
+            # (x1 and z_all), and `batch.bonds` is not permuted with it.  When
+            # that happened the bond graph no longer describes the atoms the
+            # field sees, so the term would score the wrong pairs.  Compare the
+            # order instead of enumerating the flags that cause it.
+            _geom_order_ok = (
+                z_all.shape == batch.atomic_numbers.shape
+                and bool(torch.equal(z_all, batch.atomic_numbers))
+            )
+            if not _geom_order_ok:
+                warnings.warn(
+                    "[cfm-geom] geometry consistency skipped: the target side "
+                    "was permuted by the OT coupling, so batch.bonds no longer "
+                    "matches x1_hat. Set --geometry-consistency-weight 0 or "
+                    "turn the coupling off.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+        if (
+            float(geometry_consistency_weight) > 0.0
+            and fm_objective
+            and x_t is not None
+            and _geom_order_ok
+        ):
+            try:
+                from molmetal.loss.geometry_consistency import (
+                    geometry_consistency as _geom_consistency,
+                )
+
+                if str(prediction_target) == "x1":
+                    _geom_x = _x1_pred
+                else:
+                    # x_t = (1 - t) x0 + t x1  =>  x1 = x_t + (1 - t) * v.
+                    _geom_x = x_t + (1.0 - t_col) * _vel_pred
+                _geom = _geom_consistency(
+                    _geom_x,
+                    z_all,
+                    batch.batch_idx,
+                    batch.bonds,
+                    batch.atomic_radius,
+                    int(batch.n_clouds),
+                )
+                geometry_term = float(geometry_consistency_weight) * (
+                    float(geometry_clash_weight) * _geom["clash"]
+                    + float(geometry_bond_weight) * _geom["bond"]
+                    + float(geometry_metal_weight) * _geom["metal"]
+                )
+                _geom_stats = {
+                    k: float(_geom[k].detach()) for k in ("clash", "bond", "metal")
+                }
+                _geom_n = {
+                    "clash": float(_geom["n_clash_pairs"]),
+                    "bond": float(_geom["n_bond_pairs"]),
+                    "metal": float(_geom["n_metal_pairs"]),
+                }
+            except Exception as _geom_exc:  # noqa: BLE001 — warn, never hide
+                warnings.warn(
+                    f"[cfm-geom] geometry consistency fell back to 0: "
+                    f"{_geom_exc!r}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
         # (a) shortcut_distill — Frans 2024 teacher-student distillation.
         #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
         #     is available, the term collapses to zero (preserves Wf-380
@@ -6652,6 +6749,9 @@ def train_one_epoch(
             # ``--clash-penalty-weight=0.0`` ⇒ zero contribution; the
             # 19-term sum is bit-exact pre-Wf-A27 at the shipped default.
             + clash_penalty_term
+            # Wf-A108l — geometry of x1_hat (MOD2 + MOD3).  Exact zero at the
+            # default weight 0.0.
+            + geometry_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -6742,6 +6842,11 @@ def train_one_epoch(
                 # backward graph is local to the cloud loop, identical
                 # to the assemble_term / entropy_term convention.
                 "clash_penalty_term": clash_penalty_term,
+                # Wf-A108l — trainable geometry term on x1_hat.  Registered
+                # unconditionally like every other term so the liveness guard
+                # sees it; at weight 0.0 it is `torch.zeros(())` and therefore
+                # gradient-dead, which is what the default means.
+                "geometry_term": geometry_term,
             }
         )
         # Wf-A107f — epoch-mean side-channel.  Same tensors, same key names as
@@ -11936,7 +12041,57 @@ def parse_args() -> argparse.Namespace:
             "step-4).  Default 0.0 = no clash penalty in the 19-term "
             "sum → bit-exact pre-Wf-A27.  Internally imports "
             "molmetal.loss.prior_losses.ClashPenalty (the standalone "
-            "class) so the wire-in is structurally present."
+            "class) so the wire-in is structurally present.  NOTE: this "
+            "term scores ground-truth positions and is detached, so it "
+            "cannot train anything; --geometry-consistency-weight is the "
+            "trainable term."
+        ),
+    )
+    # Wf-A108l (2026-10-25) — cfm_todo MOD2 + MOD3.  Unlike
+    # --clash-penalty-weight this scores x1_hat (the model's own prediction),
+    # so the gradient reaches the coordinates.  Three parts, each with its own
+    # weight; the master weight gates all of them and defaults to 0.0, which
+    # keeps the loss sum bit-exact for every existing config.
+    p.add_argument(
+        "--geometry-consistency-weight",
+        dest="geometry_consistency_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Master weight on the geometry-consistency term evaluated on "
+            "x1_hat (cfm_todo MOD2/MOD3).  0.0 = term is an exact zero."
+        ),
+    )
+    p.add_argument(
+        "--geometry-clash-weight",
+        dest="geometry_clash_weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Share of --geometry-consistency-weight spent on non-bonded "
+            "pairs inside 0.7 x (r_i + r_j).  Only read when the master "
+            "weight is > 0."
+        ),
+    )
+    p.add_argument(
+        "--geometry-bond-weight",
+        dest="geometry_bond_weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Share of --geometry-consistency-weight spent on bonded pairs "
+            "outside [0.85, 1.25] x (r_i + r_j)."
+        ),
+    )
+    p.add_argument(
+        "--geometry-metal-weight",
+        dest="geometry_metal_weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Share of --geometry-consistency-weight spent on metal-ligand "
+            "pairs outside the per-metal band measured in "
+            "metrics/by_metric/cfm_metal_geometry.json (MOD3)."
         ),
     )
     p.add_argument(
@@ -15412,6 +15567,20 @@ def main() -> int:
             ),
             sboo3_term_weight=float(
                 getattr(args, "sboo3_term_weight", 0.05)
+            ),
+            # Wf-A108l — geometry consistency on x1_hat (MOD2 + MOD3).
+            # Master weight 0.0 keeps the term an exact zero.
+            geometry_consistency_weight=float(
+                getattr(args, "geometry_consistency_weight", 0.0)
+            ),
+            geometry_clash_weight=float(
+                getattr(args, "geometry_clash_weight", 1.0)
+            ),
+            geometry_bond_weight=float(
+                getattr(args, "geometry_bond_weight", 1.0)
+            ),
+            geometry_metal_weight=float(
+                getattr(args, "geometry_metal_weight", 1.0)
             ),
             # FIX-C11 — these three were function defaults with no dest before;
             # the getattr fallbacks keep a caller that passes nothing (every

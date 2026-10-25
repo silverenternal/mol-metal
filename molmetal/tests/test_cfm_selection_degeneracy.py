@@ -93,6 +93,19 @@ def test_eval_only_never_reselects():
     assert "eval-only" in sel["reason"]
 
 
+def test_a_single_epoch_is_not_called_degenerate():
+    """Nothing to rank is not the same as ranking nothing.
+
+    MEASURED on the T3 wiring smoke (1 epoch): the first version of this rule
+    printed "selecting epoch 0, not epoch 0", which is noise a reader would
+    have to learn to ignore.
+    """
+    sel = _trainer().resolve_selection("bond_type_f1", [(0, 0.0144)], best_epoch=0)
+    assert sel["degenerate"] is False
+    assert sel["selected_epoch"] == 0
+    assert sel["selected_checkpoint"] == "selected"
+
+
 def test_two_distinct_values_are_enough_to_select():
     """Near-flat is still a ranking; only a single value is no ranking."""
     history = [(0, 0.0), (1, 0.0), (2, 1e-9)]
