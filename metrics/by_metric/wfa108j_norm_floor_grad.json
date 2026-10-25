@@ -1,0 +1,247 @@
+{
+ "metric": "wfa108j_norm_floor_grad",
+ "tag": "MEASURED",
+ "date": "2026-10-25",
+ "what": "One backward from the FM MSE through a fresh vector-channel velocity field (8 clouds x 20 atoms, hidden 64, 2 layers), for the pre-fix normalisation and for the shipped floor. A negative floor reproduces the old |v|+eps denominator (see the module docstring); the only difference between arms is the floor.",
+ "script": "molmetal/scripts/wfa108j_norm_floor_grad.py",
+ "batch": {
+  "n_clouds": 8,
+  "n_atoms": 20,
+  "hidden": 64,
+  "n_layers": 2,
+  "channels": 8,
+  "sigma": 2.485
+ },
+ "arms": [
+  {
+   "min_norm": -1e-06,
+   "fm_loss": 11.73085880279541,
+   "global_grad_norm": 19.177248001098633,
+   "top_params": [
+    {
+     "name": "vc_head.channel_gate.weight",
+     "grad_norm": 19.177248001098633
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.bias",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.bias",
+     "grad_norm": 0.0
+    }
+   ],
+   "arm": "pre_fix_eps1e-6"
+  },
+  {
+   "min_norm": -0.0001,
+   "fm_loss": 11.73085880279541,
+   "global_grad_norm": 19.177248001098633,
+   "top_params": [
+    {
+     "name": "vc_head.channel_gate.weight",
+     "grad_norm": 19.177248001098633
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.bias",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.bias",
+     "grad_norm": 0.0
+    }
+   ],
+   "arm": "pre_fix_eps1e-4"
+  },
+  {
+   "min_norm": -0.01,
+   "fm_loss": 11.73085880279541,
+   "global_grad_norm": 19.177248001098633,
+   "top_params": [
+    {
+     "name": "vc_head.channel_gate.weight",
+     "grad_norm": 19.177248001098633
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.bias",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.bias",
+     "grad_norm": 0.0
+    }
+   ],
+   "arm": "pre_fix_eps1e-2"
+  },
+  {
+   "min_norm": 0.001,
+   "fm_loss": 11.73085880279541,
+   "global_grad_norm": 19.177248001098633,
+   "top_params": [
+    {
+     "name": "vc_head.channel_gate.weight",
+     "grad_norm": 19.177248001098633
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.bias",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.bias",
+     "grad_norm": 0.0
+    }
+   ],
+   "arm": "shipped_min_norm1e-3"
+  },
+  {
+   "min_norm": 0.01,
+   "fm_loss": 11.73085880279541,
+   "global_grad_norm": 19.177248001098633,
+   "top_params": [
+    {
+     "name": "vc_head.channel_gate.weight",
+     "grad_norm": 19.177248001098633
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.2.bias",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.weight",
+     "grad_norm": 0.0
+    },
+    {
+     "name": "vc_layers.1.update_mlp.0.bias",
+     "grad_norm": 0.0
+    }
+   ],
+   "arm": "shipped_min_norm1e-2"
+  }
+ ],
+ "pre_fix_layer": [
+  {
+   "eps": 1e-06,
+   "grad_norm": 1.608831007615663e-05,
+   "out_norm_at_zero_channel": 0.0
+  },
+  {
+   "eps": 0.0001,
+   "grad_norm": 0.0016626667929813266,
+   "out_norm_at_zero_channel": 0.0
+  },
+  {
+   "eps": 0.01,
+   "grad_norm": 0.16195659339427948,
+   "out_norm_at_zero_channel": 0.0
+  },
+  {
+   "eps": 1.0,
+   "grad_norm": 3.10745906829834,
+   "out_norm_at_zero_channel": 0.0
+  }
+ ],
+ "layer_arms": [
+  {
+   "min_norm": 1e-06,
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0,
+   "arm": "shipped_min_norm1e-6"
+  },
+  {
+   "min_norm": 0.001,
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0,
+   "arm": "shipped_min_norm1e-3"
+  },
+  {
+   "min_norm": 0.01,
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0,
+   "arm": "shipped_min_norm1e-2"
+  }
+ ],
+ "layer_by_arm": {
+  "shipped_min_norm1e-6": {
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0
+  },
+  "shipped_min_norm1e-3": {
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0
+  },
+  "shipped_min_norm1e-2": {
+   "grad_norm": 5.514798431249801e-07,
+   "out_norm_at_zero_channel": 0.0
+  }
+ },
+ "noise_amplification": [
+  {
+   "arm": "pre_fix_eps1e-6",
+   "min_norm": -1e-06,
+   "out_norm": 1.0
+  },
+  {
+   "arm": "shipped_min_norm1e-3",
+   "min_norm": 0.001,
+   "out_norm": 0.0
+  }
+ ],
+ "by_arm": {
+  "pre_fix_eps1e-6": {
+   "global_grad_norm": 19.177248001098633,
+   "fm_loss": 11.73085880279541
+  },
+  "pre_fix_eps1e-4": {
+   "global_grad_norm": 19.177248001098633,
+   "fm_loss": 11.73085880279541
+  },
+  "pre_fix_eps1e-2": {
+   "global_grad_norm": 19.177248001098633,
+   "fm_loss": 11.73085880279541
+  },
+  "shipped_min_norm1e-3": {
+   "global_grad_norm": 19.177248001098633,
+   "fm_loss": 11.73085880279541
+  },
+  "shipped_min_norm1e-2": {
+   "global_grad_norm": 19.177248001098633,
+   "fm_loss": 11.73085880279541
+  }
+ }
+}

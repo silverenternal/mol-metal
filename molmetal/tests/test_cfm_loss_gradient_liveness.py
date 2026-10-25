@@ -62,7 +62,7 @@ ALL_TERMS = frozenset(
     {
         "bond_ce",
         "wasserstein_weight*w2_val",
-        "0.05*cb_loss",
+        "cb_loss_term",
         "diversity_term",
         "shortcut_distill_loss",
         "consistency_term",
@@ -140,7 +140,7 @@ EXPECTED_LIVE = frozenset(
         # so the term was a constant.  ``closure_bounded: true`` is set in
         # cfm_full_retrain.yaml + cfm_real_decode_lift_p1.3.yaml, so it was
         # live-but-inert in 2 of the 3 CFM configs.
-        "0.05*cb_loss",
+        "cb_loss_term",
         # NEW 2026-10-04: the flow-matching objective.  Unlike every other
         # entry in this test, this one was never a placeholder -- it did not
         # exist before today.  It is the (x0, x1, x_t, t) path that the
@@ -327,6 +327,17 @@ _SMOKE_ARGS = [
     # OFF by default, so the smoke switches it on explicitly.
     "--entropy-reg-weight",
     "0.01",
+    # Wf-A108j (2026-10-25): same gating pattern again.  ``energy_class_term``
+    # is in EXPECTED_LIVE but ``--energy-conservation-weight`` defaults to
+    # 0.0, so EnergyConservation.compute() takes its disabled branch and
+    # returns an exact ``torch.zeros(())`` — measured: value 0.0,
+    # requires_grad False, with ``regularizer_fallback_reasons == {}`` (so it
+    # is the guard, not a swallowed exception).  This test was RED on clean
+    # HEAD because of it.  Turning the weight on is the assertion the table
+    # already makes; declaring the term dead would have hidden a working
+    # wire.
+    "--energy-conservation-weight",
+    "0.05",
 ]
 
 _PROBE = """

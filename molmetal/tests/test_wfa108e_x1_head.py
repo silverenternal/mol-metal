@@ -214,9 +214,9 @@ def test_epoch_record_carries_every_loss_term():
         decode_ratio_rdkit_strict=0.0, decode_ratio_val=0, decode_ratio_n=0,
         decoding_attempted=False, lr=0.0, grad_norm=0.0,
     )
-    m.loss_terms.update({"fm_term": 1.0, "0.05*cb_loss": 2.0})
+    m.loss_terms.update({"fm_term": 1.0, "cb_loss_term": 2.0})
     carried = dataclasses.asdict(m)["loss_terms"]
-    assert carried == {"fm_term": 1.0, "0.05*cb_loss": 2.0}
+    assert carried == {"fm_term": 1.0, "cb_loss_term": 2.0}
     assert sum(carried.values()) == pytest.approx(m.train_loss)
 
 

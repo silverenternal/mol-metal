@@ -167,7 +167,24 @@ def test_radial_ceiling_is_positive_on_a_tangential_target():
 
 
 def test_vector_head_fits_a_tangential_target():
-    """The gate Wf-A107h failed: reach well below the radial ceiling."""
+    """The gate Wf-A107h failed: reach well below the radial ceiling.
+
+    BUDGET (Wf-A108j, MEASURED 2026-10-25).  This used to run 200 steps and
+    failed at ``final=0.1848`` (86.6% of the radial ceiling).  That was not a
+    capacity limit — the same fixture at the same seed gives
+
+        steps= 200  final=0.1848  ratio_vs_ceiling=0.866  cos=0.448
+        steps=1000  final=0.0041  ratio_vs_ceiling=0.019  cos=0.991
+        steps=3000  final=0.0001  ratio_vs_ceiling=0.000  cos=1.000
+
+    so the head represents the target; 200 AdamW steps at lr 5e-3 simply
+    cannot walk there.  AdamW's per-step displacement is bounded by ``lr``,
+    so 200 steps move each gate weight by at most 1.0 in total, and the
+    required ``|W|`` is ~0.5 *plus* a direction search — the old budget sat
+    below convergence by construction.  The claim worth pinning is capacity,
+    so the budget is 1000 steps and the assertion is on the ratio to the
+    radial ceiling.
+    """
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
         _block_diag_radius_edges,
     )
@@ -191,7 +208,7 @@ def test_vector_head_fits_a_tangential_target():
     )
     f.train()
     opt = torch.optim.AdamW(f.parameters(), lr=5e-3)
-    for _ in range(200):
+    for _ in range(1000):
         out = f(x, z, edge_index, torch.full((1,), 0.5), edge_mask=edge_mask)
         loss = F.mse_loss(out["vel"][0], tgt)
         opt.zero_grad(set_to_none=True)
@@ -261,6 +278,62 @@ def test_padded_atoms_keep_zero_channels():
         h_node, pos, vec, edge_index, edge_mask=edge_mask
     )
     assert float(v_out.detach()[:, 3:, :, :].abs().max()) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# 4b. The normalisation floor (Wf-A108j)
+# ---------------------------------------------------------------------------
+def test_zero_norm_channel_has_zero_gradient_not_one_over_eps():
+    """A padded atom must not inject ``1/eps`` into ``channel_mix``.
+
+    MEASURED before the floor: the first backward pass of
+    ``configs/smoke_wfa108j_lsq.yaml`` put ``2.90e11`` into
+    ``vc_layers.0.channel_mix.weight`` and ``3.97e4`` into layer 1's, against
+    ``O(10)`` for every other tensor, because the normalisation divided a
+    zero-norm channel by ``eps = 1e-6``.  AdamW's second moment then holds
+    ``1e22`` and that parameter is frozen for thousands of steps.
+    """
+    torch.manual_seed(0)
+    layer = VectorChannelLayer(hidden_dim=8, n_channels=4)
+    b, n, h = 1, 5, 8
+    h_node = torch.randn(b, n, h, requires_grad=False)
+    pos = torch.randn(b, n, 3)
+    vec = torch.randn(b, n, 4, 3, requires_grad=True)
+    vec = vec * torch.tensor([1.0, 1.0, 1.0, 0.0]).view(1, 1, 4, 1)
+    edge_index = torch.tensor([[[0, 1, 2], [1, 2, 0]]])
+    edge_mask = torch.ones(1, 3, dtype=torch.bool)
+    _, v_out = layer(h_node, pos, vec, edge_index, edge_mask=edge_mask)
+    # Channel 3 out: input was zero, phi injects a message, so the layer's
+    # output there is the gated sum, not a division by zero.
+    assert torch.isfinite(v_out).all()
+    v_out.pow(2).sum().backward()
+    g = float(layer.channel_mix.weight.grad.norm())
+    assert g < 1e3, f"grad={g:.3e}; the 1/eps Jacobian is back"
+
+
+def test_numerical_noise_is_not_amplified_to_unit_length():
+    """A 1e-8 channel is noise, not a direction, and must stay zero.
+
+    MEASURED on the smoke run: a channel whose norm had cancelled to
+    ``2.99e-08`` was divided by its own norm and emitted at **unit** length,
+    i.e. the layer turned float32 round-off into a full-amplitude direction
+    field.
+    """
+    layer = VectorChannelLayer(hidden_dim=8, n_channels=4)
+    b, n, h = 1, 4, 8
+    h_node = torch.zeros(b, n, h)
+    pos = torch.randn(b, n, 3)
+    vec = torch.randn(b, n, 4, 3)
+    vec[:, :, 1, :] = torch.tensor([1e-9, 0.0, 0.0])  # norm 1e-9
+    # No edges: the layer must not touch the channels at all beyond the norm.
+    edge_index = torch.zeros(1, 2, 0, dtype=torch.long)
+    edge_mask = torch.zeros(1, 0, dtype=torch.bool)
+    _, v_out = layer(h_node, pos, vec, edge_index, edge_mask=edge_mask)
+    assert float(v_out.detach()[:, :, 1, :].abs().max()) == 0.0
+    # And the healthy channels still come out unit-length.
+    assert float(
+        v_out.detach()[:, :, 0, :].norm(dim=-1).mean()
+    ) == pytest.approx(1.0, abs=1e-4)
 
 
 # ---------------------------------------------------------------------------
