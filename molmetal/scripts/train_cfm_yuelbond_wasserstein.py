@@ -1290,6 +1290,68 @@ def resolve_early_stop_criterion(
     )
 
 
+def resolve_selection(
+    criterion: str,
+    gate_history: Sequence[Tuple[int, float]],
+    best_epoch: int,
+    *,
+    eval_only: bool = False,
+) -> Dict[str, object]:
+    """Decide whether the early-stop criterion actually selected anything.
+
+    A gate whose value never changes across epochs has not ranked them, so its
+    argmax is not a selection — it is whatever the comparison happened to reach
+    first.  ``_best_gate`` starts at ``-inf``, which makes that epoch 0 for
+    every constant gate, and epoch 0 holds the least-trained weights of the
+    run.  MEASURED on the gcv36 arm (results/wfa108j_gcv36/per_epoch_metrics.json):
+    ``bond_exact_type`` — the criterion the run was configured with — read
+    0.000 at all 36 epochs, ``best_epoch`` was 0, and M10 compared a hash of
+    the final-epoch file against a hash of epoch-0 weights.  The same run's
+    ``bond_type_macro_f1_pooled`` moved 0.018 -> 0.113 over those epochs, so
+    this is a criterion-selection defect, not an absence of signal.
+
+    The rule: when the history has one distinct value, select the FINAL epoch
+    — the most-trained weights, and the ones the periodic save already holds —
+    and say so.  ``best_epoch`` keeps the gate's arithmetic choice in
+    ``best_epoch_by_gate``, so nothing is lost by overriding the selection.
+
+    ``eval_only`` never re-selects: an eval pass must not claim that its
+    weights are the run's best (same reason it does not write a checkpoint).
+
+    Returns the block written into the artifact's ``provenance.selection``.
+    """
+    keys = sorted({f"{float(v):.12g}" for _, v in gate_history})
+    degenerate = len(keys) <= 1 and bool(gate_history)
+    out: Dict[str, object] = {
+        "criterion": str(criterion),
+        "n_epochs_recorded": len(gate_history),
+        "distinct_values": len(keys),
+        "value_set": keys[:5],
+        "degenerate": degenerate,
+        "best_epoch_by_gate": int(best_epoch),
+        "selected_epoch": int(best_epoch),
+        "selected_checkpoint": "selected",
+        "reason": "",
+    }
+    if not degenerate:
+        return out
+    if eval_only:
+        out["reason"] = (
+            f"{criterion} has {len(keys)} distinct value(s) over "
+            f"{len(gate_history)} epoch(s), but this is an eval-only run: the "
+            "selection is left as recorded and no checkpoint is written"
+        )
+        return out
+    out["selected_epoch"] = int(gate_history[-1][0])
+    out["selected_checkpoint"] = "last"
+    out["reason"] = (
+        f"{criterion} has {len(keys)} distinct value(s) over "
+        f"{len(gate_history)} epoch(s) ({keys[:5]}), so its argmax ranks "
+        "nothing; the final epoch is selected instead"
+    )
+    return out
+
+
 #: The `hit_target` bar for each gate name.  A name not listed falls back to
 #: _TARGET_EXACT_TYPE_RATE, which is the conservative direction (a wrong
 #: "miss" is reportable, a wrong "hit" is a claim).
@@ -15040,6 +15102,10 @@ def main() -> int:
     _es_name = str(getattr(args, "early_stop_metric", DEFAULT_EARLY_STOP_METRIC))
     _es_value = 0.0
     _es_note = ""
+    # Wf-A108k — every (epoch, gate value) the selection actually saw, so the
+    # run can tell afterwards whether the criterion ranked anything at all.
+    # See the degeneracy block after the loop for why that matters.
+    _gate_history: List[Tuple[int, float]] = []
     epochs_without_improve = 0
     overall_start = time.time()
     # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
@@ -17106,6 +17172,7 @@ def main() -> int:
         # at epoch 10 on a criterion the project documents as meaningless.
         _gate = _es_value
         _gate_name = _es_name
+        _gate_history.append((int(epoch), float(_gate)))
         # An explicit --patience wins for ANY criterion: a yaml that says
         # `patience: 3` means 3 whichever gate is running.  Unset, each
         # criterion carries its own default — the legacy decode_ratio gate
@@ -17192,6 +17259,50 @@ def main() -> int:
         # §3.3 documented alternative).
         if scheduler is not None:
             scheduler.step()
+
+    # Wf-A108k (2026-10-25) — a criterion that never moved ranked nothing.
+    #
+    # MEASURED on the gcv36 arm (results/wfa108j_gcv36/per_epoch_metrics.json):
+    # the configured criterion `bond_exact_type` read 0.000 at all 36 epochs,
+    # because it needs every bond in a ~45-bond complex to match the Wiberg
+    # truth. `_best_gate` starts at -inf, so epoch 0 improved by arithmetic and
+    # every later epoch tied; the file the artifact then named held the
+    # least-trained weights of the run. With `early_stop_patience: 999` the run
+    # did not stop early either, so nothing corrected it later. That is how M10
+    # came to compare a hash of `_last.pt` against a hash of epoch-0 weights.
+    #
+    # The same run's `bond_type_macro_f1_pooled` moved 0.018 -> 0.113, so the
+    # signal existed; the criterion was the defect. Both halves are needed:
+    # the run should choose a criterion that moves (the config's job), and when
+    # it does not, the selection must say so instead of keeping epoch 0.
+    #
+    # `resolve_selection` decides, from the gate's own history, whether its
+    # argmax selected anything at all. It is module-level so the rule can be
+    # tested without training a model.
+    _selection = resolve_selection(
+        _gate_name, _gate_history, int(best_epoch), eval_only=bool(_eval_only)
+    )
+    if str(_selection.get("selected_checkpoint")) == "last":
+        # The final epoch's weights are only on disk if the periodic save ran
+        # (checkpoint_interval > 0). When it did not, the selection has to name
+        # the file that exists rather than a path that does not.
+        _last_path = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}_last.pt"
+        if not _last_path.is_file():
+            _selection["selected_checkpoint"] = "selected"
+            _selection["reason"] = (
+                f"{_selection['reason']}; the periodic {_last_path.name} is not "
+                "on disk (checkpoint_interval), so the selected file is kept"
+            )
+    if str(_selection.get("selected_checkpoint")) == "last":
+        print(
+            f"[selection] {_gate_name} is degenerate "
+            f"({_selection['distinct_values']} distinct value over "
+            f"{_selection['n_epochs_recorded']} epochs: "
+            f"{_selection['value_set'][:3]}); selecting epoch "
+            f"{_selection['selected_epoch']}, not epoch {best_epoch}",
+            flush=True,
+        )
+
     # Round-4 E3 — the BEST bond epoch, over the epochs actually recorded.
     #
     # `best` below reports `_bond_acc`, which after the loop holds the LAST
@@ -17249,16 +17360,30 @@ def main() -> int:
 
         _sel = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
         _last = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}_last.pt"
+        # Wf-A108k — when the selection was degenerate the weights that matter
+        # are the final epoch's, which live in `_last.pt`; naming `_sel` there
+        # would point a reader (and gate M10) at epoch 0. The `selection` block
+        # below says which case this run is in, so the two never disagree.
+        _prefer_last = (
+            str(_selection.get("selected_checkpoint")) == "last" and _last.is_file()
+        )
+        if _prefer_last:
+            _primary, _primary_label = _last, "last"
+        elif _sel.is_file():
+            _primary, _primary_label = _sel, "selected"
+        else:
+            _primary, _primary_label = _last, "last"
         out: Dict[str, object] = {
             # The one path a reader should open, named before the two
             # candidates so a consumer never has to choose.
-            "checkpoint": str(_sel if _sel.is_file() else _last),
+            "checkpoint": str(_primary),
             "checkpoint_selected": str(_sel),
             "checkpoint_selected_exists": _sel.is_file(),
             "checkpoint_last": str(_last),
             "checkpoint_last_exists": _last.is_file(),
             "checkpoint_sha256": None,
             "checkpoint_sha256_of": None,
+            "selection": _selection,
             "split_fingerprint": _split_fingerprint(train_clouds)
             if train_clouds
             else None,
@@ -17283,18 +17408,18 @@ def main() -> int:
             ),
             "t_embedding_dim": int(getattr(args, "t_embedding_dim", 0) or 0),
         }
-        # Hash the file a reader is most likely to open: the gate-selected one
-        # when it exists, otherwise the periodic one.  Naming WHICH was hashed
-        # is the point -- two files can both be "the checkpoint".
-        for label, path in (("selected", _sel), ("last", _last)):
-            if path.is_file():
-                h = _hashlib.sha256()
-                with open(path, "rb") as fh:
-                    for chunk in iter(lambda: fh.read(1 << 20), b""):
-                        h.update(chunk)
-                out["checkpoint_sha256"] = h.hexdigest()
-                out["checkpoint_sha256_of"] = label
-                break
+        # Hash the file `checkpoint` names, and only that one. Hashing a
+        # different file than the one named is how M10 compared two hashes of
+        # two different epochs and called the difference a chain failure; the
+        # label records which file the hash belongs to, so a reader can still
+        # tell the two apart.
+        if _primary.is_file():
+            h = _hashlib.sha256()
+            with open(_primary, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(chunk)
+            out["checkpoint_sha256"] = h.hexdigest()
+            out["checkpoint_sha256_of"] = _primary_label
         return out
 
     # Per-epoch metrics JSON.

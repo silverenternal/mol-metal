@@ -1272,6 +1272,43 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _artifact_named_ckpt(run_dir: Optional[str]) -> Tuple[Optional[Path], str]:
+    """The checkpoint the run's own artifact says its numbers came from.
+
+    M10 asserts that a reported number traces back to a file.  If the gates
+    load a file the artifact does not name, that assertion can only fail, and
+    it fails for a bookkeeping reason rather than a measurement one.  MEASURED
+    2026-10-25 on the gcv36 arm: the operator passed ``_last.pt`` (sha
+    23d5be27) while the artifact named ``seed0.pt`` (sha 0550a84b), because
+    the early-stop criterion was identically zero so "best" was epoch 0.
+
+    So the artifact wins over ``--ckpt``, and ``--ckpt`` stays the fallback for
+    a run whose artifact names nothing.  Every path is returned with a reason,
+    so the caller can print which rule applied.
+    """
+    if not run_dir:
+        return None, "no --run-dir, so nothing names a checkpoint"
+    p = _resolve(str(run_dir)) / "per_epoch_metrics.json"
+    if not p.is_file():
+        return None, f"{p} is not on disk"
+    try:
+        doc = json.loads(p.read_text())
+    except Exception as exc:  # noqa: BLE001 - a corrupt artifact is a reason, not a crash
+        return None, f"{p} is not readable JSON ({type(exc).__name__})"
+    hits = _find_keys(doc, ("checkpoint", "checkpoint_path", "ckpt_path"))
+    named = (
+        hits.get("checkpoint")
+        or hits.get("checkpoint_path")
+        or hits.get("ckpt_path")
+    )
+    if not isinstance(named, str) or not named:
+        return None, "the artifact names no checkpoint"
+    q = _resolve(named)
+    if not q.is_file():
+        return None, f"the artifact names {q}, which is not on disk"
+    return q, "named by the artifact's own provenance.checkpoint"
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
     t0 = time.time()
@@ -1284,6 +1321,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ckpt_path = _resolve(args.ckpt)
     if not ckpt_path.is_file():
         raise SystemExit(f"--ckpt '{ckpt_path}' is not a file")
+
+    # Wf-A108k — the artifact decides which weights its numbers belong to.
+    # `--ckpt` is the operator's guess; gating the guess while the artifact
+    # names something else makes M10 compare two epochs and call it a chain
+    # failure. See _artifact_named_ckpt.
+    _named, _why = _artifact_named_ckpt(args.run_dir)
+    if _named is not None and _named.resolve() != ckpt_path.resolve():
+        print(
+            f"[gates] --ckpt {ckpt_path.name} overridden by the run artifact: "
+            f"{_named.name} ({_why})",
+            flush=True,
+        )
+        ckpt_path = _named
+    elif _named is None:
+        print(f"[gates] keeping --ckpt {ckpt_path.name}: {_why}", flush=True)
+
     sha = _sha256(ckpt_path)
     device = torch.device(args.device)
 

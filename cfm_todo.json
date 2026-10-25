@@ -7,10 +7,10 @@
   "diagnosis": [
     {
       "id": "D1",
-      "symptom": "The bond head predicts connectivity and not bond order.",
-      "measured": "c8 full corpus, epoch 2: bond_f1 0.9946 while bond_exact_type_rate 0.0104 and bond_type_macro_f1 0.000. Class counts 28350 / 719 / 77 / 10 / 913.",
-      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
-      "reading": "Every chemistry number downstream — ring composition, SA, QED, novelty — is computed from these labels. A decoder that emits the right edge set with the wrong orders cannot produce a molecule, so this outranks every quality metric.",
+      "symptom": "The velocity field never sees bond order, and the exact-type metric is structurally unreachable.",
+      "measured": "c8 full corpus, epochs 0/1/2: bond_f1 0.960/0.991/0.995, bond_type_macro_f1_pooled 0.475/0.632/0.618 against an OpenBabel reference of 0.505, exact_type_rate 0.005/0.031/0.010. Same run logs bond_features=OFF: the decoder reads raw distance plus is_short/is_long, so the EGNN velocity field receives no bond order at all.",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log",
+      "reading": "Corrected 2026-10-25. The earlier version of this entry said macro_f1 was 0.000 and blamed the bond head; that number came from the 64-cloud gcv36 arm (0.0182 at epoch 0, 0.1125 at epoch 33), where the bond head has almost no data. On the full corpus the head is above the OpenBabel reference by epoch 0. So the defect is not bond-order prediction — it is that the order the head does predict is never fed back into the geometry field, and that exact_type (every bond in a ~45-bond complex correct) sits at its floor by construction.",
       "addressed_by": ["MOD1"]
     },
     {
@@ -40,9 +40,9 @@
     {
       "id": "D5",
       "symptom": "M4 fails at t=0.50 only.",
-      "measured": "ratio / linear-Gaussian bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95 = 0.80 / 0.98 / 4.02 / 0.73 / 0.79 on the 36-epoch GCV arm. The epoch-0 value at t=0.50 is 5.12, so training walks it down and stops at 4.",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
-      "reading": "Either the field extracts more than a linear functional of x_t can (it also sees geometry), or it over-emits at the midpoint. A GCV-regularised initialiser changed 3.80 to 4.02, so the initialiser is not the lever. Not decidable without a nonparametric estimate of E[v|x_t].",
+      "measured": "ratio / linear-Gaussian bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.68 / 1.18 / 4.53 / 0.24 / 0.47 on epoch 0 and 0.80 / 0.98 / 4.02 / 0.73 / 0.79 on epoch 17 of the same 36-epoch arm. Only t=0.50 leaves the [0.5, 2.0] band, at both checkpoints and at initialisation (5.12 with a zero init).",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "reading": "Either the field extracts more than a linear functional of x_t can (it also sees geometry), or it over-emits at the midpoint. A GCV-regularised initialiser moved the epoch-17 value 3.80 to 4.02, and the epoch-0 value of the same arm is 4.53, so neither the initialiser nor the training budget is the lever. Not decidable without a nonparametric estimate of E[v|x_t].",
       "addressed_by": ["MOD7", "MOD6"]
     },
     {
@@ -82,9 +82,9 @@
     {
       "id": "D10",
       "symptom": "The measurement chain does not identify its own checkpoint.",
-      "measured": "M10 fails one check: the gates loaded _last.pt (sha 9fffb0eb) while per_epoch_metrics.json names seed0.pt (sha d5b22bcb). The trainer's 'best' is epoch 0 because the early-stop criterion degrades to bond_exact_type, which is 0.000 at every epoch.",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
-      "reading": "Every run in this line selects its checkpoint with a criterion that is identically zero, so 'best' means 'first'. That is why the hash does not match.",
+      "measured": "On the gcv36 arm the configured criterion bond_exact_type read 0.000 at all 36 epochs, so best_epoch was 0 while the run reached epoch 35; the gates then loaded _last.pt (sha 23d5be27) while per_epoch_metrics.json named seed0.pt (sha 0550a84b) and M10 failed the hash check. The same run's bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over those epochs, and its gen_validity_n was 0 (no generation eval), so the signal existed and the criterion did not use it.",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "reading": "Two defects wearing one symptom. The chain half: the gates loaded a file the artifact did not name, so the hash check compared two epochs. Fixed on 2026-10-25 — the gates now load the artifact-named checkpoint, and M10 passes on the re-gated run. The selection half: bond_exact_type cannot move, so 'best' meant 'first'. Fixed in three places — the config must name a criterion that moves (bond_type_f1, measured 0.018 to 0.113 on this arm), resolve_selection selects the final epoch when a criterion is constant and records provenance.selection, and the pool numbers are re-measured on whatever checkpoint the artifact names.",
       "addressed_by": ["T1"]
     },
     {
@@ -100,12 +100,12 @@
   "modules": [
     {
       "id": "MOD1",
-      "name": "BondOrderModule",
+      "name": "TypedEdgeField",
       "addresses": ["D1"],
-      "where": "molmetal/adapters/flow_matching_lipman/ (YuelBondDecoderHead) + new typed-edge path in EGNNVelocityField",
-      "change": "Split the 5-way candidate-pair softmax into (a) a connectivity head, unchanged, and (b) a bond-order head conditioned on the connectivity logit, over {single, double, triple, aromatic, dative}, with a class-balanced focal loss at the measured priors (28350/719/77/10/913). Feed the predicted order embedding back as a typed edge feature into the EGNN so the coordinate field sees bond order, which it currently does not.",
-      "done_when": "bond_type_macro_f1 >= 0.45 and bond_exact_type_rate >= 0.55 on the c8 val split at the same epoch budget, with connectivity bond_f1 >= 0.95.",
-      "risk": "The order classes are 0.03% triple bonds; a macro-F1 target may be unreachable and the honest fallback is per-class recall reported separately."
+      "where": "molmetal/adapters/flow_matching_lipman/ (EGNNVelocityField edge features) + the decode path that supplies the predicted order",
+      "change": "Feed the bond order the head already predicts back into the EGNN as a typed edge feature. No new order head: MEASURED on the c8 full corpus the head reaches macro-F1(type) 0.475/0.632/0.618 at epochs 0/1/2 against an OpenBabel reference of 0.505, while the same run logs bond_features=OFF, so the field reads raw distance plus is_short/is_long and the order never reaches the coordinates. The change is the edge-feature path, a checkpoint that declares whether it has it, and a decode step that uses the same order logits the metric scores.",
+      "done_when": "on the same c8 protocol: an on/off ablation of the typed-edge path changes the velocity field's output on identical inputs (M2-style perturbation, >= 1e-2), single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 does not fall below 0.618.",
+      "risk": "Typed edges change the EGNN's input width, so every existing checkpoint needs a fresh run or a migration. The effect may also be nil: if the ring and fragment errors come from the sampler rather than the field, giving the field order information changes nothing measurable."
     },
     {
       "id": "MOD2",
@@ -211,8 +211,8 @@
       "module": "output scale",
       "pass": "ratio in [0.5, 2.0] x bayes_ratio at every t, lower bound only where bayes_ratio >= 0.15",
       "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
-      "measured": "0.80 / 0.98 / 4.02 / 0.73 / 0.79 at t = 0.05/0.25/0.50/0.75/0.95. Only t=0.50 leaves the band.",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "measured": "ratio_over_bayes 0.98 / 1.18 / 4.53 / 0.24 / 0.47 at t = 0.05/0.25/0.50/0.75/0.95 on the checkpoint the run names (epoch 0). Epoch 17 of the same arm reads 0.80 / 0.98 / 4.02 / 0.73 / 0.79. Only t=0.50 leaves the band, on both checkpoints.",
       "next": "MOD7 decides whether the band or the field is wrong; MOD6 is built only if the band survives."
     },
     {
@@ -251,18 +251,19 @@
       "id": "M9",
       "module": "objective balance",
       "pass": "no single term above 90% of the total and no contributing term without a declared weight",
-      "status": "PASS",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
-      "measured": "worst term fm_term at 88.6%."
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "measured": "fm_term reaches 91.47% of the total at epoch 24 of 36, so no_term_above_90pct fails. The c8 arm peaked at 88.6% over its 3 recorded epochs, which is why this row read PASS before the 36-epoch series existed.",
+      "next": "T3's full-corpus arm decides whether this is a small-arm artefact: 64 clouds let bond_ce fall fast enough that the FM term dominates by epoch 24. If fm_term stays under 90% over 18 full-corpus epochs, this row returns to PASS citing that artifact; if it does not, the objective needs a weight schedule and that becomes a module."
     },
     {
       "id": "M10",
       "module": "metric chain",
       "pass": "the checkpoint the gates loaded is the one the artifact names, by hash",
-      "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
-      "measured": "4 of 5 checks pass; the hash check fails because the early-stop criterion is identically zero so 'best' is epoch 0 while the gates load the last epoch.",
-      "next": "T1."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "measured": "5 of 5 checks pass: the gates load the checkpoint the artifact names (seed0.pt, sha 0550a84b), the artifact declares that same sha, and the split fingerprint is recorded. Before the fix the gates loaded _last.pt (sha 23d5be27) and compared it against the artifact's 0550a84b.",
+      "next": "T1's remaining half: a run written after the change must carry provenance.selection. Until then the degenerate-criterion path is covered by tests only, not by a live run."
     }
   ],
 
@@ -270,11 +271,15 @@
     {
       "id": "T1",
       "priority": 0,
-      "title": "A selected checkpoint whose criterion is not identically zero",
-      "what": "Make the selected checkpoint non-degenerate. Set early_stop_metric to a criterion that moves (bond_type_f1) with early_stop_epsilon 0 so the epsilon gate does not negate it, and have the trainer refuse a 'best' epoch whose criterion is identically zero across all epochs.",
+      "title": "A selected checkpoint the criterion can actually rank",
+      "what": "Three changes, each measured. (1) The criterion: the arm was configured with bond_exact_type, which is structurally 0.000, while bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over the same 36 epochs. Every config in this line now names bond_type_f1. (2) The chain: the gates loaded _last.pt while the artifact named seed0.pt, so M10 compared two epochs and reported the difference as a broken chain. The gates now load the artifact-named checkpoint (cfm_module_gates._artifact_named_ckpt). (3) The guard: resolve_selection selects the final epoch when a criterion's history holds one distinct value, and writes provenance.selection so the artifact says which case it is.",
       "addresses": ["D10"],
-      "done_when": "M10 PASS on a run written after the change: the gates' checkpoint sha equals the artifact's declared sha.",
-      "status": "PLANNED"
+      "done_when": "M10 PASS on a run written after the change, whose per_epoch_metrics.json carries provenance.selection with either degenerate false or selected_checkpoint last, and whose declared sha equals the sha of the file it names.",
+      "evidence": [
+        "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+        "molmetal/tests/test_cfm_selection_degeneracy.py"
+      ],
+      "status": "IN_PROGRESS"
     },
     {
       "id": "T2",
@@ -308,10 +313,10 @@
     {
       "id": "T5",
       "priority": 1,
-      "title": "MOD1: bond-order head with typed edges",
-      "what": "MOD1: bond-order head with typed edges into the EGNN.",
+      "title": "MOD1: typed edges, no new order head",
+      "what": "MOD1: feed the predicted bond order into the EGNN as typed edge features, and prove the field's output depends on them. The order head is not rebuilt: it is already above the OpenBabel reference on the full corpus (0.618 vs 0.505 at c8 epoch 2).",
       "addresses": ["D1"],
-      "done_when": "bond_type_macro_f1 >= 0.45 and bond_exact_type_rate >= 0.55 on the c8 val split, connectivity bond_f1 >= 0.95.",
+      "done_when": "the on/off ablation moves the field's output by >= 1e-2 on identical inputs, single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 stays >= 0.618 on the c8 protocol.",
       "status": "PLANNED",
       "blocked_by": ["T3"],
       "blocked_note": "needs the measurement arm to be comparable."
@@ -393,7 +398,7 @@
     "note": "The pool-level bar a Tier-2 submission needs, stated before any of it is measured. Every row names the module that moves it.",
     "rows": [
       {"metric": "single_fragment_rate", "target": ">= 0.80", "now": 0.2505, "module": "MOD2"},
-      {"metric": "bond_type_macro_f1", "target": ">= 0.45", "now": 0.0, "module": "MOD1"},
+      {"metric": "bond_type_macro_f1", "target": ">= 0.60 (hold the c8 level; OpenBabel 0.505)", "now": 0.618, "module": "MOD1"},
       {"metric": "three_ring_share", "target": "<= 0.10", "now": 0.6684, "module": "MOD4"},
       {"metric": "six_ring_share", "target": ">= 0.45", "now": 0.0292, "module": "MOD4"},
       {"metric": "metal_ligand_min", "target": "1.7-2.4 A", "now": 1.234, "module": "MOD2+MOD3"},
