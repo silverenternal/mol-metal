@@ -2953,6 +2953,11 @@ class CFMJointModel(nn.Module):
                     "mse_zero": round(float(rep["mse_zero"]), 6),
                     "ratio": round(float(rep["ratio"]), 6),
                     "cosine": round(float(rep["cosine"]), 6),
+                    # Ridge chosen by GCV.  At 1e-6 the solve is the
+                    # unregularised fit, which at low SNR fits the draw rather
+                    # than the conditional mean.
+                    "ridge_relative": float(rep.get("ridge_relative", 0.0)),
+                    "gcv": round(float(rep.get("gcv", float("nan"))), 6),
                 }
             )
 
