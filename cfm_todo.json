@@ -3,7 +3,6 @@
   "rule": "This file is a TASK PLAN, not a log. Completed work and history live in git log and docs/HONEST_NEGATIVE_CATALOG.md; nothing finished stays here. Every task has a numeric done_when. Nothing is marked DONE without an artifact path.",
   "scope": "CFM / generative line only. Predictive line: docs/PREDICTIVE_LINE_INDEX.md. Results: docs/CFM_RESULTS.md.",
   "principle": "Do not iterate the model blindly. Gate each module on its own function, then gate the seams between modules. A module that cannot pass its own gate is a bug to fix, not a result to report. Fix order is by measured severity, not by convenience.",
-
   "module_gates": [
     {
       "id": "M1",
@@ -19,10 +18,9 @@
       "module": "conditioning path (metal / t / atom type)",
       "check": "Hold a fixed batch, perturb ONE conditioning input at a time, measure the relative change in the velocity output: swap the metal atom's identity, shift t by 0.25, swap an atom type.",
       "pass": "each of the three produces ||dv|| / ||v|| > 1e-2. A conditioning channel that moves the output by 0 is not connected.",
-      "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2_v2.json",
-      "measured": "on c8 (radial, epoch 2): metal swap 0.74%, t shift 86%, atom-type swap 17.5%. Metal identity is the weakest input channel in the model by two orders of magnitude.",
-      "fix": "flow.metal_conditioning=embedding (Wf-A108j) takes the response to 65.8% on the same checkpoint. Needs a trained fixed arm to be judged under the same protocol."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+      "measured": "on the Wf-A108j arm (vector_channels, epoch 5, 64 clouds): metal swap 12.8%, t shift 129.0%, atom-type swap 4.0%, all against the 1e-2 floor. The same three numbers on the pre-fix vector_channels checkpoint were 3.0%, 0.58% and 0.50%."
     },
     {
       "id": "M3",
@@ -30,8 +28,8 @@
       "check": "One fixed batch, 2,000 optimizer steps, no regularisers. Measure train MSE against the v=0 baseline (mean-squared target norm) for velocity_head in {radial, vector_channels}.",
       "pass": "train MSE <= 10% of the v=0 baseline for the head we ship",
       "status": "PASS",
-      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
-      "measured": "vector_channels: 0.0885 against a v=0 baseline of 11.7605, i.e. 0.75% of baseline and 1.4% of the radial ceiling 6.3179. radial on c8: 98.9% of baseline, CANNOT_FIT."
+      "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+      "measured": "vector_channels on the Wf-A108j arm: 0.0491 against a v=0 baseline of 11.7605, i.e. 0.42% of baseline and 0.8% of the radial ceiling 6.3179. radial on c8: 98.9% of baseline, CANNOT_FIT."
     },
     {
       "id": "M4",
@@ -39,9 +37,9 @@
       "check": "At several t, report ||v_pred|| / ||v_target|| against the magnitude the interpolant can actually support, bayes_ratio(t) = |E[x1-x0|x_t]| / |x1-x0|, measured by Monte Carlo from the batch.",
       "pass": "ratio in [0.5, 2.0] x bayes_ratio(t), lower bound applied only where bayes_ratio >= 0.15",
       "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
-      "measured": "5-epoch vector_channels: ratio 0.0211..0.0246 across t against bayes_ratio 0.6967 at t=0.05, 0.0721 at t=0.5, 0.6371 at t=0.95, i.e. the field emits 3-6% of what is achievable at the ends.",
-      "why": "The old band was a fixed [0.5, 2.0] on the raw ratio, which at t=0.5 demands ten times the achievable magnitude. The band is now relative to bayes_ratio (Wf-A108j)."
+      "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+      "measured": "Wf-A108j arm, ratio / bayes_ratio at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.94, 1.11, 4.64, 0.43, 0.56. Two points are outside the [0.5, 2.0] band: t=0.50 emits 4.6x what the interpolant makes achievable (bayes_ratio 0.072, so the lower bound is waived there and only the upper bound applies), t=0.75 emits 0.43x (bayes_ratio 0.393). Pre-fix the same checkpoint family emitted 0.021..0.025 raw, i.e. 3-6% of achievable at the ends.",
+      "why": "The old band was a fixed [0.5, 2.0] on the raw ratio, which at t=0.5 demands ten times the achievable magnitude. The band is now relative to bayes_ratio (Wf-A108j). The residual failure is a magnitude that has not shrunk to the conditional mean at the midpoint and slightly over-shrunk at t=0.75; a 36-epoch budget arm is running to separate that from a head defect."
     },
     {
       "id": "M5",
@@ -57,10 +55,9 @@
       "module": "time resolution",
       "check": "Fix x and z, sweep t over 101 points in [0,1], record the velocity.",
       "pass": "the output changes by more than 10% of its own norm across the sweep, smoothly. A field flat in t cannot represent a flow.",
-      "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
-      "measured": "5-epoch vector_channels: endpoint change 2.31% of the norm (smoothness 2.17e-06, so it is flat, not jumpy). c8 radial: 198.5%.",
-      "fix": "vc_head.t_gate (Wf-A108j) writes a t-dependence at init through the LSQ fit at 9 knots. Needs a trained fixed arm."
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+      "measured": "Wf-A108j arm: endpoint change 196.9% of the norm over 101 t points, smoothness 0.0045, minimum adjacent cosine 0.996. Pre-fix vector_channels: 2.31% (smoothness 2.17e-06, i.e. flat). c8 radial: 198.5%."
     },
     {
       "id": "M7",
@@ -96,21 +93,20 @@
       "check": "Every reported generation metric names the checkpoint hash, the split fingerprint and the sampler settings; the checkpoint on disk is the one the run wrote.",
       "pass": "hash + split fingerprint match, and the checkpoint exists at the path the artifact names",
       "status": "FAIL",
-      "artifact": "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json",
-      "measured": "fails on the 5-epoch artifact because it predates the provenance block. Passes on any run written after Wf-A108j: the smoke's per_epoch_metrics.json carries checkpoint path, sha256, both split fingerprints and the sampler block.",
-      "fix": "trainer-side, not gate-side. Re-measured PASS on the Wf-A108j smoke."
+      "artifact": "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+      "measured": "4 of 5 checks pass on the Wf-A108j arm: the artifact names a checkpoint, that checkpoint exists, and the split fingerprint is recorded. hash_recorded_and_matches fails because the gate was run on cfm_yuelbond_wasserstein_seed0_last.pt (epoch 5, sha 9fffb0eb) while per_epoch_metrics.json names cfm_yuelbond_wasserstein_seed0.pt (sha d5b22bcb). The trainer's 'selected' checkpoint is epoch 0 because the early-stop criterion degrades to bond_exact_type, which is 0.000 for every epoch, so 'best' is the first one.",
+      "fix": "Not a gate-side fix. Either the arm declares the last checkpoint as the one it ships, or the early-stop criterion is made non-degenerate so 'selected' is a real epoch. Tracked with the budget arm."
     }
   ],
-
   "tasks": [
     {
       "id": "F1",
       "phase": "fix",
       "what": "Flip M2, M4 and M6 to PASS on a trained arm with the fixes on. The fixes themselves are in and config-keyed (flow.vector_channel_norm_gain, flow.velocity_head_init, flow.t_embedding_dim, flow.metal_conditioning, flow.fm_t_dist); configs/wfa108j_fixed_cpu_2026_10_25.yaml is the arm.",
       "done_when": "all three gates PASS on a checkpoint written by that config, under the same protocol as the failing measurement",
-      "status": "BLOCKED",
-      "blocked_by": "nothing, after the memory workaround. MEASURED 2026-10-25: both launches of this config reached anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07) and were killed by the kernel; both were global OOMs that took an unrelated tmux session with them. One variable explains it — FmOdeTerm at weight 0.05 runs 16 extra velocity-field forwards per step and holds every graph until backward: with it on, RSS went 1.1 -> 8.0 GB in 26 s with no reclaim; with fm_ode_term_weight 0.0, peak 5.28 GB and a bounded 2.1 <-> 4.6 GB sawtooth. The term contributes 0.159 of a 29.72 train_loss, so it is off in the arm (see the config comment) and the arm now runs under an 8 GB RSS ceiling. The retention itself is F3.",
-      "note": "M10 does not need this: it passes on any artifact written after the provenance block, verified on the smoke. Correction to an earlier version of this file: the 13:54 victim was this arm, not another session's process."
+      "status": "PARTIAL",
+      "blocked_by": "nothing, after the memory workaround. MEASURED 2026-10-25: both launches of this config reached anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07) and were killed by the kernel; both were global OOMs that took an unrelated tmux session with them. One variable explains it \u2014 FmOdeTerm at weight 0.05 runs 16 extra velocity-field forwards per step and holds every graph until backward: with it on, RSS went 1.1 -> 8.0 GB in 26 s with no reclaim; with fm_ode_term_weight 0.0, peak 5.28 GB and a bounded 2.1 <-> 4.6 GB sawtooth. The term contributes 0.159 of a 29.72 train_loss, so it is off in the arm (see the config comment) and the arm now runs under an 8 GB RSS ceiling. The retention itself is F3.",
+      "note": "M2 and M6 PASS on the arm; M4 still fails at t=0.50 (4.64x achievable) and t=0.75 (0.43x). M10 fails on a checkpoint-identity mismatch, not on a missing provenance block."
     },
     {
       "id": "F2",
@@ -148,12 +144,10 @@
       "status": "PLANNED"
     }
   ],
-
   "running_now": {
     "id": "none",
     "note": "No CFM job of mine is running. Gate re-runs (metrics/by_metric/wfa108i_module_gates_*_v2.json) are CPU-only and do not allocate more than ~2 GB."
   },
-
   "constraints": {
     "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
     "gpu": "GPU0",
@@ -163,7 +157,6 @@
     "no_paper_dir_edits": true,
     "numbers": "every number traces to an artifact path on disk"
   },
-
   "pointer": {
     "history": "git log",
     "results": "docs/CFM_RESULTS.md",
