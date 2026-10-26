@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T03:05+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。",
+  "updated": "2026-10-27T05:20+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -14,10 +14,7 @@
     "publication_plan：二区评估的结论（三个故事、五个发散方向、四条风险、放弃判据），每条指向一个 task。",
     "diagnosis / modules / module_gates / tasks / acceptance：生成线的原 cfm_todo.json 结构，id 未改。",
     "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。",
-    "publication_plan：二区评估的结论（三个故事、五个发散方向、四条风险、放弃判据），每条指向一个 task。",
-    "diagnosis / modules / module_gates / tasks / acceptance：生成线的原 cfm_todo.json 结构，id 未改。",
-    "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。",
-    "self_audit：2026-10-27 的生成线自查表（SA-1..SA-6）。回答「为什么还没改完」，每条带证据、影响、状态与任务；reproduce 里的命令都可直接跑。"
+    "self_audit：2026-10-27 的生成线自查表（SA-1..SA-13）。回答「为什么还没改完」，每条带证据、影响、状态与任务；reproduce 里的命令都可直接跑。SA-1..SA-6 是实验矩阵与静默失败，SA-7..SA-13 是全链路代码审计新发现的七处（指标不可能失败、门不看采样输出、蒸馏项规格错误、权重表被字符串污染、唯一有池的 run 缺 artifact、pad_groups 等价性未测、radial 质心含 padding）。"
   ],
   "rules": {
     "truth": "§5.2 每个数字必须能追到 metrics/by_metric/*.json 的路径；没有 artifact 的数字只能标 PROJECTED。",
@@ -1261,6 +1258,117 @@
       "addressed_by": [
         "T30"
       ]
+    },
+    {
+      "id": "D28",
+      "symptom": "gen_validity 不可能失败：它把「一堆互不相连的原子被 RDKit 解析成功」算作生成成功。",
+      "measured": "metrics/by_metric/wfa107_ring_prior_ab.json 的 control/epoch 0：gen_validity=1.0，同时 gen_single_fragment_ratio=0.0、gen_largest_fragment_frac=0.0582、gen_rings_per_mol=0.0——每一个样本都「有效」，最大的片段只占 5.8% 的原子。c8 的 gen_validity 三个 epoch 全是 1.000（704/704），而 gen_single_fragment_ratio 只有 0.203/0.200/0.348；真实 tmQM 参考带是 chemistry_validity 0.998、single_fragment 0.8365（metrics/by_metric/cfm_panel_reference_band_real_tmqm.json）。生成侧的有效率高于真实语料，参考带文档写明这在真实生成里不可能出现。",
+      "artifact": "metrics/by_metric/wfa107_ring_prior_ab.json",
+      "reading": "判定在 train_cfm_yuelbond_wasserstein.py::_rdkit_strict_reason 返回 None 处发生，而该函数只问 RDKit 能否 sanitize，不问图是否连通；multi_fragment 桶只在调用方显式要求 strict_ok 时才产生。所以这个数测的是解码器的自洽性，不是采样几何。项目已经给 decode_ratio 写过同样的警告（per_epoch_metrics.json 的 decode_ratio_caveat：无键头能拿 0.977），但没有给 gen_validity 写。",
+      "addressed_by": [
+        "T31"
+      ]
+    },
+    {
+      "id": "D29",
+      "symptom": "十道模块门里没有一道看采样输出，所以一个只会产出原子汤的模型可以通过四道门。",
+      "measured": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json：M1/M6/M7/M8 PASS，M2/M3/M4/M5 FAIL，M9/M10 因缺 per_epoch_metrics.json 无法判。M10 只查 checkpoint 路径、sha256、split 指纹（cfm_module_gates.py::gate_m10 的五个 checks），不查指标本身是否有效；gen_single_fragment_ratio 在 events.jsonl 里每 epoch 都有，但没有任何 gate 读它。",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+      "reading": "门的集合覆盖了数据入口、条件路径、头容量、输出尺度、梯度、时间分辨、热启动、训练/采样接缝、目标平衡、溯源，唯独没有「采样出来的东西是不是一个分子」。因此 M1+M6+M7+M8 全过与 gen_single_fragment_ratio=0.203 可以同时为真，而 summary 只报前者。",
+      "addressed_by": [
+        "T32"
+      ]
+    },
+    {
+      "id": "D30",
+      "symptom": "shortcut 蒸馏项不是 Frans 2024 的式子，没有权重，却是目标函数里第二大的一项。",
+      "measured": "c8 三个 epoch 的 loss_terms：shortcut_distill_loss 11.5779/10.9638/10.5906 对 fm_term 11.5367/10.8346/10.3499，占总损失 25.02/23.32/22.34 的约 46%。实现是 MSE(v(x_s,s), v(x_t,t))（shortcut_distillation_wf380.py:130-134），没有 step-size 条件；shortcut_pair 用 x_s=(1-s)x_t+s*x1 造点，而真实流线是 (1-s)x0+s*x1，数值检查在单位尺度上平均绝对偏差 0.308（尺度 1.53，约 20%）。_objective_weights 只收 *_weight 且排除 bool，shortcut_distill 是 bool，所以 artifact 里根本不会出现它的乘数。",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+      "reading": "把一个「两个时刻的输出应当相等」的项加到 46% 的权重，等于要求速度场在时间上尽量不变，这和 FM 目标直接对抗；同时它每步多跑一次完整前向，是 c8 三个正则项 OOM 的合理贡献者。M9 的 every_contributing_term_has_a_declared_weight 会在 c8 上判 False（_TERM_TO_WEIGHTS 里没有 shortcut_distill_loss），但 c8 没有 per_epoch_metrics.json，所以这一条从未被执行。",
+      "addressed_by": [
+        "T33"
+      ]
+    },
+    {
+      "id": "D31",
+      "symptom": "M9 的权重反查表被一个字符串污染，wasserstein_pocket_term 永远查不到自己的权重。",
+      "measured": "cfm_module_gates.py:1017 写作 \"wasserstein_pocket_weight\": \"wasserstein_pocket_term\"（字符串，不是单元素 tuple）。_TERM_TO_WEIGHTS 的构建循环 for _t in _terms 于是逐字符迭代，生成 'w'/'a'/'s'/'e'/'r'/... 这些键，而 'wasserstein_pocket_term' 本身没有条目。",
+      "artifact": "molmetal/scripts/cfm_module_gates.py",
+      "reading": "后果有两个方向：如果 wasserstein_pocket_term 非零，M9 会把它报成 weightless（其实有权重）；同时反查表里多出 20 多个单字符键。c8 的 wasserstein_pocket_term 恰好是 0.0，所以没暴露。这是纯 CPU、可单测的缺陷。",
+      "addressed_by": [
+        "T34"
+      ]
+    },
+    {
+      "id": "D32",
+      "symptom": "唯一测了生成池的 run 没跑完，于是 M9/M10 在它身上只能报「文件不存在」。",
+      "measured": "molmetal/reports/cfm_c8_fullgen_2026_10_24/ 只有 events.jsonl、generated_smiles.csv、master.log 与两个 ckpt；per_epoch_metrics.json 的写入在训练结束处（train_cfm_yuelbond_wasserstein.py:18597），c8 在第 3 个 epoch（共 18）被停，所以从未执行。对比 results/wfa108j_budget36/ 有完整的 per_epoch_metrics.json。",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+      "reading": "所以「生成线唯一的池」与「目标平衡/溯源门」从未同时成立。M9 需要的数据其实每个 epoch 都写进了 events.jsonl 的 loss_terms，只是 gate 只读 json。把 gate 改成 events.jsonl 可读，是让已花的 GPU 时间产生证据的最便宜一步。 另有一处格式问题：events.jsonl 的 loss_terms 是 Python repr 字符串（不是 dict），回退读取时必须 ast.literal_eval，否则 json 层拿到的只是字符串。",
+      "addressed_by": [
+        "T34",
+        "T30"
+      ]
+    },
+    {
+      "id": "D33",
+      "symptom": "pad_groups 的「坐标级等价」从未被测过，而且在默认 radial 头下不成立。",
+      "measured": "metrics/by_metric/cfm_pad_groups_mcnemar.json 的 what_this_does_not_establish 第一条写着「Coordinates are NOT compared and cannot be: the two paths draw differently-shaped noise」；同一文件 decode_rate grouped 0.1927 vs padded 0.2708，63 个不一致格。而 generate_clouds_from_noise 的 docstring（:7880）、--gen-pad-groups 的 help（:10727）、tests/test_cfm_pad_groups_equivalence.py 的模块 docstring 三处都声称该测试比较生成坐标。测试实际只有四条断言：远距离 padding 不加边、mask 能删边、参数默认 False、BLK-C-PERF 记录仍在。",
+      "artifact": "metrics/by_metric/cfm_pad_groups_mcnemar.json",
+      "reading": "默认 radial 头的 centroid 是 x_t.mean(dim=1)，包含 padding 原子；_fm_padding_invariant() 自己在注释里写明这一点（:2832-2843）。所以 padded 路径对同一个 cloud 会给出不同的速度，除非 radial_centroid_masked=True 或换 vector_channels。要真做坐标级 A/B，必须先让每个 cloud 的噪声由它自己的 generator 抽，否则两次运行的 RNG 流形状不同，比较的是噪声不是 batching。",
+      "addressed_by": [
+        "T35"
+      ]
+    },
+    {
+      "id": "D34",
+      "symptom": "radial 头训练时的 centroid 把 padding 原子算进去，径向方向依赖同批的其它分子。",
+      "measured": "configs/c8_fullgen_b64_2026_10_24.yaml 没有 radial_centroid_masked 键，即默认 False；fm_velocity 走 _fm_field_forward，把每批 pad 到 batch max。EGNNVelocityField.forward 的注释（:2652-2660）给出实测：B=8 时 centroid 被 s/n_max 缩放，中位数 0.481，52% 的样本低于 0.5。只有 configs/wfa108_radial_masked_centroid.yaml 打开了它。",
+      "artifact": "configs/c8_fullgen_b64_2026_10_24.yaml",
+      "reading": "c8 是 10 行验收表的来源，也是唯一有池的 run；它的径向基向量对一半样本指向「到原点一半处」，而不是分子质心。这不是新发现的未知项——代码里写得很清楚——但没有任何 run 用它做过 A/B，所以「radial 头拟合不了」这个结论里混着一个本可以免费去掉的几何错误。",
+      "addressed_by": [
+        "T36"
+      ]
+    },
+    {
+      "id": "D35",
+      "symptom": "pad_groups 分支没有 torch.no_grad()，采样器为 50 步 ODE 建了一整张自动微分图。",
+      "measured": "generate_clouds_from_noise 的非 padded 分支在 :7974 有 with torch.no_grad()，padded 分支（:7932-7968）没有；model.eval() 不改变 requires_grad。用 nn.Linear 速度场 + ODESolver(midpoint, 5 步) 复现：不加 no_grad 时输出 requires_grad=True、grad_fn=AddBackward0；加 no_grad 后为 False。solver 的注释（_reference/solver/__init__.py::_integrate_inline）自己写着「the adapter already wraps the solver call in no_grad」——padded 分支没有。",
+      "artifact": "molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py",
+      "reading": "这是 :7908 把 92 GiB OOM 归因于 edge padding 的第二条、也可能更大的原因：显存随 n_steps 线性增长，而不是随 batch 的边数。修它不需要改任何数值（eval 模式下无 dropout），只需把 padded 分支包进 no_grad 并加一条断言 x1.requires_grad is False 的测试。",
+      "addressed_by": [
+        "T37"
+      ]
+    },
+    {
+      "id": "D36",
+      "symptom": "dative_source 在生成池上恒为 z_rule，因为它把「没有真值可比」编码成了「按规则猜的」。",
+      "measured": "bond_head.py::_dative_truth_pairs 在 cloud 没有 bonds / is_dative_pair 时返回 None；_classify_dative_source 对 None 返回 (\"z_rule\", 0)。生成云的 atomic_numbers 是模板拷贝、坐标是噪声，没有 bonds 字段，所以 704 个样本里 651 个被记成 dative_source:z_rule，同时 dative_manufactured=0。",
+      "artifact": "molmetal/models/bond_head.py",
+      "reading": "字段的注释说 z_rule「is reporting a guess」，但在生成池上它只表示「无法核对」。于是这个诊断在它最该起作用的地方（生成）没有信息量，而在有真值的解码路径上才有。要么加第三个值 no_truth，要么在生成池上不报这个 flag。",
+      "addressed_by": [
+        "T31"
+      ]
+    },
+    {
+      "id": "D37",
+      "symptom": "落盘的生成池只有 SMILES，没有 seed / 模板 id / 组成，无法与它的种子配对。",
+      "measured": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv 共 2,112 行（3 epoch x 704），列为 epoch,smiles,n_frags_raw,largest_frag_frac。没有 seed 列（每 epoch 6 个 seed x 128 云混在一起）、没有 template_offset、没有 cloud id、没有原子数或金属。per_cloud_out 在内存里是逐云对齐的，但没有写进文件。",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+      "reading": "任何事后分析都要回答「这条 SMILES 来自哪个组成/哪个 seed」。现在只能按 epoch 分桶，无法做配对比较、无法按金属分层、无法算 conditional success 的逐云命中。T29 的池如果沿用这个格式，同样的问题会再来一次。",
+      "addressed_by": [
+        "T38"
+      ]
+    },
+    {
+      "id": "D38",
+      "symptom": "验收表的 provenance 说明只点了 c8，但 10 行 now 至少来自 4 个不同 run，其中一行还是 24 云的 smoke。",
+      "measured": "single_fragment_rate 0.2505 = c8 三个 epoch 的均值 (0.2031+0.2003+0.3480)/3；three_ring_share 0.6684 与 six_ring_share 0.0292 来自 metrics/by_metric/c7_fullgen_pool_quality.json::overall；frac_pairs_hard_clash 0.0148 与 metal_ligand_min 1.234 来自 metrics/by_metric/cfm_generated_geometry_defect.json（24 clouds / 20 steps / 一个 seed，文件自述 SMOKE SCALE）；SA 6.44 与 QED 0.094 来自 metrics/by_metric/cfm_free_generation_panel_seed0.json（2026-10-12，fullcorpus epoch 10）。验收表每行没有 artifact 字段。",
+      "artifact": "metrics/by_metric/c7_fullgen_pool_quality.json",
+      "reading": "provenance_caveat 写的是「本表所有 now 值来自 c8 全量跑」，这与磁盘上的来源不符。后果不是学术洁癖：读者会以为 10 行描述同一个模型，实际上至少四行描述的是别的 checkpoint，其中两行是 24 云 smoke。§5.2 要求每个数字带路径，这张表是例外。",
+      "addressed_by": [
+        "T39"
+      ]
     }
   ],
   "modules": [
@@ -2081,6 +2189,207 @@
       "evidence": [
         "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log"
       ]
+    },
+    {
+      "id": "T31",
+      "priority": 0,
+      "title": "让 gen_validity 能失败：连通性进入成功判据",
+      "what": "在 _rdkit_strict_reason / decode_clouds_and_classify 里把「单片段」作为成功的前置条件，或新增一个 molecule_validity = 单片段 且 RDKit-strict 且 seed 金属存活，并把 gen_validity 重命名为 rdkit_parse_rate。历史 run 的 gen_validity 一律标注为 parse-rate，不得再当作生成质量。 同时给 dative_source 增加 no_truth 取值（生成云无 bonds 时），不再把「无真值」报成 z_rule。",
+      "addresses": [
+        "D28",
+        "D36"
+      ],
+      "done_when": "同一批 generated_smiles 上同时报 rdkit_parse_rate 与 molecule_validity，且 wfa107_ring_prior_ab control/epoch0 的 molecule_validity 读到 0.0（该 run 的 gen_validity 是 1.0）。",
+      "gate": {
+        "can_fail": "molecule_validity 在 wfa107 control/epoch0 上必须为 0.0",
+        "back_compat": "旧字段保留，只加新字段与 caveat"
+      },
+      "kill": "若 molecule_validity 与 gen_single_fragment_ratio 完全同值，说明新字段没有增量，删掉新字段只留 caveat。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/wfa107_ring_prior_ab.json",
+        "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json"
+      ]
+    },
+    {
+      "id": "T32",
+      "priority": 0,
+      "title": "新增 M11：采样输出门",
+      "what": "在 cfm_module_gates.py 增加 M11，读 events.jsonl 或 per_epoch_metrics.json 的 gen_* 字段，检查三件事：单片段率不低于真实参考带的 0.5 倍、raw ring_3_share 不高于真实图的 2 倍、每分子环数落在真实图的 [0.3x, 3x]。任一条不过即 FAIL，并写进 summary 的 failing 列表。",
+      "addresses": [
+        "D29"
+      ],
+      "done_when": "对 c8 epoch2 checkpoint 跑 M11 得 FAIL，measured 里能读到 0.203 / 0.924 / 5.71 与各自的参考值；对真实数据 decode 跑 M11 得 PASS。",
+      "gate": {
+        "c8_must_fail": "M11(c8) == FAIL",
+        "real_must_pass": "M11(real decode) == PASS"
+      },
+      "kill": "若真实参考带自身也不过门，说明阈值定错，改阈值而不是改门。",
+      "device": "cpu",
+      "cost": "CPU 1-2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+        "metrics/by_metric/wfa107_bond_graph_profile.json"
+      ]
+    },
+    {
+      "id": "T33",
+      "priority": 1,
+      "title": "重写或删除 shortcut_distill 项",
+      "what": "两条路二选一：(A) 按 Frans 2024 实现真正的 shortcut——模型以 step-size d 为条件，目标是一步跳与两步复合的一致，x_s 必须落在同一条流线上；(B) 删除该项，把 shortcut_distill 从 config 里去掉。无论哪条，都要给它一个显式 *_weight，并让 _objective_weights 能报出来。",
+      "addresses": [
+        "D30"
+      ],
+      "done_when": "c8 的 loss_terms 里不再出现无权重且 >10% 的项；若保留该项，shortcut_mse 在 epoch0 必须显著小于 fm_term（当前 23.16 vs 11.54）。",
+      "gate": {
+        "on_line": "x_s 与真实流线的平均绝对偏差 < 1e-5",
+        "weighted": "shortcut_distill_weight 出现在 _objective_weights 的输出里"
+      },
+      "kill": "若 A 路线在 288 步内 fm_term 不降，删掉该项，不再调 p_self。",
+      "device": "cpu",
+      "cost": "CPU 2 h（含一个 50 步 smoke）",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py",
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl"
+      ]
+    },
+    {
+      "id": "T34",
+      "priority": 1,
+      "title": "修 M9 的权重反查表，并让 M9/M10 读 events.jsonl",
+      "what": "把 _WEIGHT_TO_TERM 里 wasserstein_pocket_weight 的值改成单元素 tuple；给 _TERM_TO_WEIGHTS 的构建加一条断言（每个 value 必须是 tuple，否则 raise）。M9 在 per_epoch_metrics.json 缺失时回退到 events.jsonl 的 train_epoch 行，读其中的 loss_terms。",
+      "addresses": [
+        "D31",
+        "D32"
+      ],
+      "done_when": "新增单测：字符串值必须 raise；对 c8 的 events.jsonl 跑 M9 能给出 per_epoch 行与 worst_term，并报 shortcut_distill_loss 为 weightless。",
+      "gate": {
+        "unit": "反查表构建对非 tuple 值 raise",
+        "c8_readable": "M9 --run-dir molmetal/reports/cfm_c8_fullgen_2026_10_24 返回 source=events_jsonl"
+      },
+      "kill": "若 events.jsonl 的 loss_terms 与 per_epoch_metrics.json 的字段语义不同（加权 vs 原始），先统一语义再回退。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/scripts/cfm_module_gates.py",
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl"
+      ]
+    },
+    {
+      "id": "T35",
+      "priority": 2,
+      "title": "pad_groups：逐云 RNG + 真正的坐标级 A/B",
+      "what": "采样器改为每个 cloud 用 (seed, cloud_index) 派生自己的 generator，使噪声与批次组成无关；然后做 grouped vs padded 的坐标级配对比较（同一 cloud、同一噪声）。同时把三处声称「测试比较生成坐标」的注释改成事实，或补上真正的坐标断言。",
+      "addresses": [
+        "D33"
+      ],
+      "done_when": "同一 cloud 在 grouped 与 padded 两条路径上的坐标最大绝对差在 radial 头（默认）与 vector_channels 头下分别记录；注释与测试描述一致。",
+      "gate": {
+        "rng_invariant": "同一 cloud 单独跑与混批跑的噪声逐位相同",
+        "coord_ab": "两条路径的 max|Δx| 有数值，不再写 cannot be compared"
+      },
+      "kill": "若逐云 RNG 让 pad_groups 的加速消失（每云一个 solver 调用），只保留 RNG 改动并删掉 pad_groups。",
+      "device": "cpu",
+      "cost": "CPU 2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/cfm_pad_groups_mcnemar.json",
+        "molmetal/tests/test_cfm_pad_groups_equivalence.py"
+      ]
+    },
+    {
+      "id": "T36",
+      "priority": 2,
+      "title": "radial centroid 的 padding 依赖：A/B 或默认打开",
+      "what": "在 c8 的协议上做一个单因素 A/B：radial_centroid_masked False vs True，2 epoch、同 seed、同池，比较 fm_term 与 gen_raw_ring_3_share。若 True 不差，新 config 一律打开；若差，把差值写进 catalog，说明 radial 头的问题不只是容量。",
+      "addresses": [
+        "D34"
+      ],
+      "done_when": "两个 arm 的 per_epoch_metrics 都存在，fm_term 与 gen_raw_ring_3_share 成对可比，n_test 指纹一致。",
+      "gate": {
+        "comparable": "n_test 指纹一致",
+        "decidable": "两 arm 的 fm_term 差 > 2% 或 ring_3_share 差 > 0.05，否则判为无差别"
+      },
+      "kill": "若两 arm 无差别，结论是 padding 不是 radial 头的主因，写进 catalog 并不再改默认值。",
+      "device": "cuda:0",
+      "cost": "GPU0 1 h（2 epoch x 2 arm）",
+      "status": "PLANNED",
+      "evidence": [
+        "configs/c8_fullgen_b64_2026_10_24.yaml",
+        "configs/wfa108_radial_masked_centroid.yaml"
+      ]
+    },
+    {
+      "id": "T37",
+      "priority": 0,
+      "title": "pad_groups 分支补 no_grad",
+      "what": "把 generate_clouds_from_noise 的 padded 分支包进 torch.no_grad()，与非 padded 分支一致；新增单测断言 padded 采样输出 requires_grad is False，且 grouped 与 padded 在固定噪声下的坐标一致。",
+      "addresses": [
+        "D35"
+      ],
+      "done_when": "单测在 CPU 上通过：pad_groups=True 的返回张量 requires_grad False；同噪声下两条路径的 max|Δx| 有数值记录。",
+      "gate": {
+        "no_grad": "padded 输出 requires_grad is False",
+        "numerics": "eval 模式下坐标与改动前逐位相同"
+      },
+      "kill": "若坐标不逐位相同，说明某处依赖了梯度图（不应发生），停止并查 dropout/training 标志。",
+      "device": "cpu",
+      "cost": "CPU 30 min",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+        "molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py"
+      ]
+    },
+    {
+      "id": "T38",
+      "priority": 1,
+      "title": "生成池落盘时带上 seed / 模板 id / 组成",
+      "what": "给 generated_smiles.csv 增加 seed、template_offset、cloud_index、n_atoms、metal_z、seed_metal_present、requested_cn 七列；失败样本也写一行（smiles 为空 + reason），这样分母可复算。",
+      "addresses": [
+        "D37"
+      ],
+      "done_when": "新 run 的 CSV 行数等于 gen_eval_n x n_seeds x n_epochs（含失败行），且 (seed, template_offset, cloud_index) 唯一。",
+      "gate": {
+        "complete": "行数 == n_epochs x n_seeds x n_samples",
+        "joinable": "(seed, template_offset, cloud_index) 唯一且能回连 val_clouds_d"
+      },
+      "kill": "若失败行让 CSV 体积不可接受（>100 MB/run），改为单独写 parquet 或只写失败行的索引。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:17008"
+      ]
+    },
+    {
+      "id": "T39",
+      "priority": 1,
+      "title": "验收表逐行带 artifact / run_id / n，并从单一 run 重算",
+      "what": "给 acceptance.rows 每行加 artifact、run_id、n_clouds、checkpoint_epoch 四个字段；provenance_caveat 改成逐行说明；能在 c8 上重算的行（single_fragment、three_ring、six_ring）重算一遍，不能在 c8 上重算的行（SA、QED、metal_ligand_min）显式标成「来自别的 checkpoint」并写明是 smoke 还是全量。",
+      "addresses": [
+        "D38"
+      ],
+      "done_when": "每一行的 artifact 路径存在且该路径里能读到 now 值；provenance_caveat 不再出现「所有 now 值来自 c8」。",
+      "gate": {
+        "traceable": "每行 artifact 存在且可读到 now",
+        "honest": "smoke-scale 的行标 n 与 caveat"
+      },
+      "kill": "若某行的 now 在任何 artifact 里都读不到，删掉该行的 now 并标 UNMEASURED，不要保留一个无法追溯的数字。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/c7_fullgen_pool_quality.json",
+        "metrics/by_metric/cfm_generated_geometry_defect.json",
+        "metrics/by_metric/cfm_free_generation_panel_seed0.json"
+      ]
     }
   ],
   "acceptance": {
@@ -2456,10 +2765,18 @@
           "T23",
           "T24",
           "T20",
-          "T30"
+          "T30",
+          "T31",
+          "T32",
+          "T34",
+          "T33",
+          "T35",
+          "T37",
+          "T38",
+          "T39"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。"
       },
       {
         "wave": 3,
@@ -2467,10 +2784,11 @@
         "items": [
           "T29",
           "T17",
-          "T18"
+          "T18",
+          "T36"
         ],
         "device": "cuda:0",
-        "why": "T29 是生成线的决定臂（会学习的场 + 可测的池），必须先于一切换头之外的模块工作；T17/T18 是预测线的可比性臂。三条都是 GPU，合计约 4-5 h。"
+        "why": "T29 是生成线的决定臂（会学习的场 + 可测的池），必须先于一切换头之外的模块工作；T17/T18 是预测线的可比性臂。三条都是 GPU，合计约 4-5 h。 T36（radial 质心 padding A/B）与 T29 同批，因为它改的是同一个头的输入几何。"
       },
       {
         "wave": 4,
@@ -2552,7 +2870,7 @@
   "self_audit": {
     "created": "2026-10-27",
     "scope": "生成线（CFM）。回答的是「为什么到现在还没改完」，不是「该投什么」。",
-    "method": "按时间顺序读 git log、每个 run 的 per_epoch_metrics.csv / events.jsonl 与启动它的 config，不读 summary。理由是 summary 由同一批代码写，而这一轮的问题恰好是 summary 不报失败。",
+    "method": "按时间顺序读 git log、每个 run 的 per_epoch_metrics.csv / events.jsonl 与启动它的 config，不读 summary。理由是 summary 由同一批代码写，而这一轮的问题恰好是 summary 不报失败。 第二轮（2026-10-27T04:20）改为按数据链路逐段读代码：数据入口 -> 目标函数 -> 采样器 -> 解码 -> 指标 -> 门，每条新发现都带可复现命令，未跑任何 GPU 训练或验证。",
     "verdict": "不是模块没做，也不是模块做了没用。是实验矩阵缺了一格，而缺的那一格被创建了两次、都没跑完，且没有东西报告它没跑完。在 T29 完成之前，生成线没有任何一条指标是在「会学习的场 + 可测的池」上测的。",
     "findings": [
       {
@@ -2608,6 +2926,114 @@
         "impact": "如果坐标主要由蒸馏项驱动，那么「FM 目标在学什么」这个问题本身需要重问。",
         "status": "OPEN",
         "task": "T30"
+      },
+      {
+        "id": "SA-7",
+        "finding": "gen_validity 是一个不可能失败的数字，所以「积极信号」里最强的那条是假的。",
+        "evidence": "metrics/by_metric/wfa107_ring_prior_ab.json（control/epoch0）、metrics/by_metric/cfm_panel_reference_band_real_tmqm.json、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl、molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+        "measured": "wfa107 control/epoch0：gen_validity 1.0 而 single_fragment 0.0、largest_fragment_frac 0.058、rings_per_mol 0.0。c8 三 epoch：gen_validity 1.000/1.000/1.000（704/704），single_fragment 0.203/0.200/0.348，raw_ring_3_share 0.708/0.898/0.924。真实 tmQM：chemistry_validity 0.998、single_fragment 0.8365。 落盘池的重解析（前 500 行）：平均 2.56 个片段、单片段 21%、重原子均值 42.9；样例 `CCC(C)C(CC)C(C)C(CC(C)C)SC(C)N(C)[CH2][Ru].Cl`。c8 的 connectivity_prior 是 on（_as_on_flag），仍然只有 0.203 单片段。",
+        "impact": "这条数字在 c8 上从 0.0859 的预期跳到 1.000，没有任何东西把它判为异常；它同时高于真实语料，而参考带文档写明这在真实生成里不可能。用户记忆里的「很多积极信号」主要就是它。",
+        "status": "OPEN",
+        "task": "T31"
+      },
+      {
+        "id": "SA-8",
+        "finding": "十道门没有一道看采样输出，所以「门过了」不等于「生成了一个分子」。",
+        "evidence": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json、molmetal/scripts/cfm_module_gates.py::gate_m10",
+        "measured": "c8 epoch2：M1/M6/M7/M8 PASS，M2/M3/M4/M5 FAIL，M9/M10 缺文件。M10 的五个 checks 全是路径/sha/指纹，不含任何质量量。gen_single_fragment_ratio 每 epoch 都在 events.jsonl 里，没有任何 gate 读它。",
+        "impact": "一个只产出原子汤的模型可以拿到 4/10 PASS，而 summary 只报 PASS 的编号。这是「改完了没有」无法回答的结构性原因。",
+        "status": "OPEN",
+        "task": "T32"
+      },
+      {
+        "id": "SA-9",
+        "finding": "shortcut 蒸馏项规格错误、没有权重、占总损失 46%，并且在和 FM 目标对抗。",
+        "evidence": "molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py:130-134、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+        "measured": "c8 epoch0/1/2：shortcut_distill_loss 11.5779/10.9638/10.5906，fm_term 11.5367/10.8346/10.3499，total 25.02/23.32/22.34。shortcut_mse = 2 x 11.58 = 23.16，即 |v_s - v_t| RMS 4.81，而 |v| 约 1.4（M4）。x_s 用 (1-s)x_t+s*x1 构造，与真实流线 (1-s)x0+s*x1 在单位尺度上平均偏差 0.308（尺度 1.53）。",
+        "impact": "它把「两个时刻输出相等」当成目标，等价于压掉时间依赖；同时每步多一次完整前向，是三个正则项 OOM 的合理贡献者。M9 本该在 c8 上报它 weightless，但 c8 没有 per_epoch_metrics.json。",
+        "status": "OPEN",
+        "task": "T33"
+      },
+      {
+        "id": "SA-10",
+        "finding": "M9 的权重反查表被一个字符串污染。",
+        "evidence": "molmetal/scripts/cfm_module_gates.py:1017,1026-1029",
+        "measured": "_WEIGHT_TO_TERM[\"wasserstein_pocket_weight\"] 的值是字符串而非 tuple；for _t in _terms 逐字符迭代，反查表得到 'w'/'a'/'s'/... 等键，而 'wasserstein_pocket_term' 没有条目。",
+        "impact": "wasserstein_pocket_term 非零时会被误报为无权重；反查表里多出 20 多个无效键。c8 该项为 0.0，所以从未暴露。",
+        "status": "OPEN",
+        "task": "T34"
+      },
+      {
+        "id": "SA-11",
+        "finding": "唯一有池的 run 没跑完，所以目标平衡与溯源两道门从未在它身上执行过。",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/、molmetal/scripts/train_cfm_yuelbond_wasserstein.py:18597",
+        "measured": "c8 目录只有 events.jsonl / generated_smiles.csv / master.log / 2 ckpt，没有 per_epoch_metrics.json；写入点在训练结束处，c8 在 18 个 epoch 中的第 3 个被停。wfa108j_budget36 有完整 json。 并且 events.jsonl 的 loss_terms 是 repr 字符串，不是 dict。",
+        "impact": "M9 需要的数据每个 epoch 都在 events.jsonl 的 loss_terms 里，gate 却只读 json。这是已经花掉的 GPU 时间里最便宜的一块未采证据。",
+        "status": "OPEN",
+        "task": "T34"
+      },
+      {
+        "id": "SA-12",
+        "finding": "pad_groups 的坐标级等价从未被测过，且默认 radial 头下不成立。",
+        "evidence": "metrics/by_metric/cfm_pad_groups_mcnemar.json、molmetal/tests/test_cfm_pad_groups_equivalence.py、train_cfm_yuelbond_wasserstein.py:7880,10727",
+        "measured": "A/B 文件自述「Coordinates are NOT compared and cannot be」；grouped decode_rate 0.1927 vs padded 0.2708，63 个不一致格。测试只有四条断言，没有一条比较生成坐标。radial 头的 centroid 是 x_t.mean(dim=1)，包含 padding（_fm_padding_invariant 注释自述）。",
+        "impact": "三处注释/help 声称存在一个不存在的验证。任何用 pad_groups 跑出的池（cfm_property_panel.py:1255、wf_a53_eval_cfm_test_split.py:699 都硬编码 True）都可能带批次组成依赖。",
+        "status": "OPEN",
+        "task": "T35"
+      },
+      {
+        "id": "SA-13",
+        "finding": "c8 的 radial 头在训练时把 padding 原子算进质心，径向方向依赖同批其它分子。",
+        "evidence": "configs/c8_fullgen_b64_2026_10_24.yaml、molmetal/adapters/flow_matching_lipman/__init__.py:2652-2660",
+        "measured": "c8 没有 radial_centroid_masked 键（默认 False）；代码注释给出 B=8 时 centroid 缩放中位数 0.481、52% 样本低于 0.5。只有 configs/wfa108_radial_masked_centroid.yaml 打开。",
+        "impact": "这是唯一有池的 run 的训练路径：一半样本的径向基向量指向「到原点一半处」。它不解释全部失败，但它是「radial 头拟合不了」结论里一个本可免费去掉的混淆项，且从未 A/B。",
+        "status": "OPEN",
+        "task": "T36"
+      },
+      {
+        "id": "SA-14",
+        "finding": "pad_groups 路径为 50 步 ODE 建了完整的自动微分图。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7932-7968、molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py::_integrate_inline",
+        "measured": "非 padded 分支 :7974 有 with torch.no_grad()，padded 分支没有；toy 复现：不加 no_grad 时输出 requires_grad=True（AddBackward0），加 no_grad 后 False。solver 注释自称调用方已包 no_grad。",
+        "impact": "显存随 n_steps 线性增长。这是 pad_groups 在 92 GiB 上 OOM 的第二条原因，且修它不改数值。任何用 pad_groups 跑池的脚本（cfm_property_panel.py:1255、wf_a53_eval_cfm_test_split.py:699）都在付这个代价。",
+        "status": "OPEN",
+        "task": "T37"
+      },
+      {
+        "id": "SA-15",
+        "finding": "dative_source 在生成池上恒为 z_rule，它是「无真值」哨兵，不是「猜的」证据。",
+        "evidence": "molmetal/models/bond_head.py:355-413、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+        "measured": "_dative_truth_pairs 在无 bonds 时返回 None；_classify_dative_source 对 None 返回 (\"z_rule\", 0)。c8 的 decode_flags 为 {dative_source:z_rule: 651}，manufactured 恒 0。",
+        "impact": "这个字段在生成侧没有信息量，却被当成「dative 键是怎么来的」的审计结果打印。它让「金属配位是模型生成的还是规则补的」这个问题在生成池上无法回答。",
+        "status": "OPEN",
+        "task": "T31"
+      },
+      {
+        "id": "SA-16",
+        "finding": "生成池的落盘格式丢掉了配对键。",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv、train_cfm_yuelbond_wasserstein.py:17008",
+        "measured": "2,112 行、4 列（epoch,smiles,n_frags_raw,largest_frag_frac）；无 seed / template_offset / cloud_index / n_atoms / metal。前 500 行重解析：平均 2.56 个片段，单片段 21%，重原子均值 42.9。",
+        "impact": "「哪一类金属/哪个组成失败」这个问题在磁盘上无法回答；两个 arm 的配对比较也只能靠重跑。T29 会重复这个缺口。",
+        "status": "OPEN",
+        "task": "T38"
+      },
+      {
+        "id": "SA-17",
+        "finding": "解码率与连通性在跨 run 时反向：解码率从 0.344 涨到 1.000，单片段率从 0.636 掉到 0.203。",
+        "evidence": "metrics/by_metric/cfm_l3_guidance_sweep.json、metrics/by_metric/cfm_free_generation_panel_seed0.json、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+        "measured": "2026-10-12（patience10 ep24，64 clouds，50 步，seed 1234）：decode_rate 0.344，single_fragment 0.636，QED 0.2358。同日 fullcorpus ep10：gen_validity 0.344，single_fragment 0.970，QED 0.0944，SA 6.44。2026-10-24 c8：gen_validity 1.000，single_fragment 0.203/0.200/0.348，raw_ring_3_share 0.708/0.898/0.924。",
+        "impact": "c8 的「解码率 1.000」与两周前 0.344 的 run 相比，唯一变好的是解码率本身；连通性、环分布、QED 全部更差。L3 sweep 当时已经写过「The decode gain is NOT a quality gain」（QED 0.2358 -> 0.1327），c8 是同一模式在更大规模上的重演。这就是「数据越来越差、积极信号很多」的来源。",
+        "status": "OPEN",
+        "task": "T32"
+      },
+      {
+        "id": "SA-18",
+        "finding": "验收表的 provenance 说明与磁盘不符：10 行 now 至少来自 4 个 run。",
+        "evidence": "todo.json::acceptance、metrics/by_metric/c7_fullgen_pool_quality.json、metrics/by_metric/cfm_generated_geometry_defect.json、metrics/by_metric/cfm_free_generation_panel_seed0.json",
+        "measured": "见 D38。three_ring/six_ring 来自 c7 的 overall；hard_clash 与 metal_ligand_min 来自 24 云 smoke（文件自述 SMOKE SCALE）；SA/QED 来自 fullcorpus ep10；single_fragment 是 c8 三 epoch 均值。每行无 artifact 字段。",
+        "impact": "读者会把 10 行当成同一个模型的读数。实际至少四行是别的 checkpoint，两行是 smoke。这是计划文件自身的 §5.2 违规。",
+        "status": "OPEN",
+        "task": "T39"
       }
     ],
     "reproduce": [
@@ -2615,7 +3041,13 @@
       "grep -c velocity_head configs/c8_fullgen_b64_2026_10_24.yaml   # 期望 0 次匹配",
       "ls results/wfa108b_budget20_vector_channels/ | wc -l           # 期望 0",
       "wc -l results/wfa108h_b64_chunk2_vector_channels/events.jsonl  # 期望 5",
-      "python -c \"import json;[print(json.loads(l)['fm_term']) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log') if 'train_epoch' in l]\""
+      "python -c \"import json;[print(json.loads(l)['fm_term']) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log') if 'train_epoch' in l]\"",
+      "python - <<'EOF'\nimport json;d=json.load(open('metrics/by_metric/wfa107_ring_prior_ab.json'));r=d['arms']['control']['rows'][0];print(r['gen_validity'],r['gen_single_fragment_ratio'],r['gen_largest_fragment_frac'],r['gen_rings_per_mol'])\nEOF\n# 期望 1.0 0.0 0.058 0.0",
+      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch':\n    lt=ast.literal_eval(r['loss_terms']) if isinstance(r['loss_terms'],str) else r['loss_terms']\n    print(r['epoch'],r['gen_validity'],r['gen_single_fragment_ratio'],r['gen_raw_ring_3_share'],lt['shortcut_distill_loss'],lt['fm_term'])\nEOF\n# 期望 3 行；注意 loss_terms 在 events.jsonl 里是 repr 字符串，不是 dict",
+      "python -c \"import json;d=json.load(open('metrics/by_metric/cfm_pad_groups_mcnemar.json'));print(d['decode_rate'],d['what_this_does_not_establish'][1])\"",
+      "ls molmetal/reports/cfm_c8_fullgen_2026_10_24/per_epoch_metrics.json   # 期望 No such file",
+      "python - <<'EOF'\nimport torch, torch.nn as nn\nfrom molmetal.adapters.flow_matching_lipman._reference.solver import ODESolver\nm=nn.Sequential(nn.Linear(3,3)).eval()\nx=torch.randn(2,5,3)\ny=ODESolver(velocity_model=lambda a,b: m(a)*float(b), method='midpoint', n_steps=5).sample(x, method='midpoint', n_steps=5)\nprint(y.requires_grad)\nEOF\n# 期望 True（证明未包 no_grad 时会建图）",
+      "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/c7_fullgen_pool_quality.json'))['overall'];print(d['single_fragment_rate'],d['three_ring_share'],d['six_ring_share'])\ne=json.load(open('metrics/by_metric/cfm_generated_geometry_defect.json'));print(e['cohort']['caveat'],e['generated_vs_real']['metal_ligand_min']['generated_mean'])\nEOF"
     ]
   }
 }
