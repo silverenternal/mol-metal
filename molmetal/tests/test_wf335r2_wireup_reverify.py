@@ -92,35 +92,57 @@ def _parse_args(argv: Optional[List[str]] = None):
     [
         ("W1", "--torch-compile"),
         ("W2", "--cpu-num-workers"),
-        ("W3", "--no-bf16"),
         ("W4", "--tf32"),
         ("W5", "--w2-gradient-mode"),
-        ("W6", "--num-workers"),
-        ("W7", "--dmpnn-backend"),
-        ("W8", "--cuda-graph"),
-        ("W9", "--triton-edge-update"),
         ("W10", "--max-joint-rows"),
     ],
 )
 def test_wire_up_still_wired(w_id: str, flag: str) -> None:
-    """Every Wf-328 W* wire-up flag is present in the trainer argparse.
+    """The Wf-328 wire-ups that survive in the shipped trainer are present.
 
-    This is the post-R1+R3 reverify of the Wf-330-B2 9/10 wire-up
-    gate + Wf-334-U1 W7 closure.  Each parametrize assertion covers
-    one wire-up.
-
-    R1+R3 must NOT have removed any existing flags.  Only:
-      * changed default mode of ``--torch-compile-mode``,
-      * added ``--torch-compile-mode-v2`` alias,
-      * added ``--no-cuda-graphs`` / ``--cudagraphs`` safety lever.
-
-    None of these changes touch the 10 Wf-328 W* wire-up flags
-    themselves, so all 10 must still be wired.
+    This used to cover ten. MEASURED 2026-10-27: af84a545 restored
+    ``train_dmpnn_multitask_wasserstein.py`` from a pre-Wf-328 snapshot, so
+    W3 (``--no-bf16``), W6 (``--num-workers``), W7 (``--dmpnn-backend``),
+    W8 (``--cuda-graph``) and W9 (``--triton-edge-update``) are gone. They
+    are not silently dropped from the record — see
+    ``test_wire_ups_removed_by_the_m21_revert``.
     """
     src = _load_trainer_source()
     assert (
         f'"{flag}"' in src or f"'{flag}'" in src
-    ), f"Wf-328-{w_id} flag {flag} missing from trainer argparse post-R1+R3"
+    ), f"Wf-328-{w_id} flag {flag} missing from trainer argparse"
+
+
+@pytest.mark.parametrize(
+    "w_id,flag",
+    [
+        ("W3", "--no-bf16"),
+        ("W6", "--num-workers"),
+        ("W7", "--dmpnn-backend"),
+        ("W8", "--cuda-graph"),
+        ("W9", "--triton-edge-update"),
+    ],
+)
+def test_wire_ups_removed_by_the_m21_revert(w_id: str, flag: str) -> None:
+    """These five wire-ups are absent, and that is a recorded gap.
+
+    af84a545 ("m21 selective Wf-A17 revert") did a whole-file
+    ``git checkout`` to recover model performance — A2780cis had dropped
+    0.7278 → 0.3356 — and took the Wf-328 wire-ups with it.  Asserting they
+    are present (as this file did until 2026-10-27) is a test that can only
+    be satisfied by re-porting the reverted code, which needs GPU
+    revalidation.  Asserting their absence keeps the gap visible: if a
+    future wave restores one, this test fails and forces the record to be
+    updated rather than quietly drifting.
+    """
+    src = _load_trainer_source()
+    assert (
+        f'"{flag}"' not in src and f"'{flag}'" not in src
+    ), (
+        f"Wf-328-{w_id} flag {flag} is declared again. That is fine — but it "
+        f"means the m21 revert has been (partly) undone: move this case back "
+        f"to test_wire_up_still_wired and note the GPU revalidation."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -160,14 +182,11 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
         "--device",
         "cpu",
         "--torch-compile",
-        "--no-bf16",
         "--tf32",
         "--w2-gradient-mode",
         "sort",
-        "--num-workers",
+        "--cpu-num-workers",
         "4",
-        "--dmpnn-backend",
-        "pyg",
         "--data-csv",
         str(DEFAULT_CSV),
         "--metals",
@@ -180,6 +199,8 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
         "32",
         "--depth",
         "2",
+        "--out-dir",
+        str(SMOKE_OUT_DIR),
     ]
     t0 = time.time()
     proc = subprocess.run(
@@ -193,10 +214,11 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
     wall_s = time.time() - t0
     out = (proc.stdout or "") + (proc.stderr or "")
 
-    # R1+R3 fix active
+    # The compile path is live and it selected the safe mode.  MEASURED
+    # 2026-10-27: this smoke finishes in ~21 s on CPU.
     assert (
-        "torch_compile_mode=max-autotune-no-cudagraphs" in out
-    ), f"banner missing R1+R3 post-fix mode marker; tail:\n{out[-400:]}"
+        "[compute] --torch-compile ENABLED (max-autotune-no-cudagraphs)" in out
+    ), f"compile banner missing the safe mode; tail:\n{out[-600:]}"
     # No CUDAGraphs RuntimeError substring
     assert (
         "CUDAGraphs" not in out or "overwritten" not in out
@@ -211,52 +233,35 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
 # Test 3 — torch.compile mode default is max-autotune-no-cudagraphs
 # ---------------------------------------------------------------------------
 def test_torch_compile_mode_default_is_max_autotune_no_cudagraphs() -> None:
-    """Wf-335-R1 MEASURED: torch.compile mode default flipped from
-    ``reduce-overhead`` to ``max-autotune-no-cudagraphs``.
+    """The compile mode is ``max-autotune-no-cudagraphs``, and it is read.
 
-    Asserts both the function default (``train_one_metal_one_seed``
-    signature) and the CLI argparse default are
-    ``max-autotune-no-cudagraphs`` post-R1.  Per the harness-brief
-    explicit framing: ``args.torch_compile_mode ==
-    'max-autotune-no-cudagraphs'`` after a bare ``parse_args`` call
-    without explicit ``--torch-compile-mode`` / ``--torch-compile-mode-v2``.
+    Rewritten 2026-10-27: the old version looked for an argparse
+    ``choices=(...)`` tuple plus ``default="max-autotune-no-cudagraphs"``, and
+    for ``torch_compile_mode: str = "max-autotune-no-cudagraphs"`` in the
+    trainer signature.  Neither exists — af84a545 removed the flag and the
+    kwarg.  What remains, and what actually decides the mode, is
+    ``DEFAULT_TORCH_COMPILE_MODE`` at the call site.
     """
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+    )
+
+    assert DEFAULT_TORCH_COMPILE_MODE == "max-autotune-no-cudagraphs", (
+        f"expected DEFAULT_TORCH_COMPILE_MODE='max-autotune-no-cudagraphs' "
+        f"(Wf-335-R1 fix), got {DEFAULT_TORCH_COMPILE_MODE!r}"
+    )
+
     src = _load_trainer_source()
-
-    # CLI default — argparse choices tuple + default kwarg
-    # Line 2028: ``default="max-autotune-no-cudagraphs",``
-    # We look for the post-fix default line.
-    pattern_cli = re.compile(
-        r"choices=\(\s*"
-        r'"default",\s*"reduce-overhead",\s*"max-autotune",\s*'
-        r'"max-autotune-no-cudagraphs",?\s*\),\s*'
-        r'\s*default="max-autotune-no-cudagraphs"',
-        re.MULTILINE,
-    )
-    matches_cli = pattern_cli.findall(src)
-    assert len(matches_cli) >= 1, (
-        "expected CLI default='max-autotune-no-cudagraphs' (Wf-335-R1 "
-        "fix); pattern not found in trainer source"
+    assert "model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)" in src, (
+        "the compile call site no longer reads DEFAULT_TORCH_COMPILE_MODE; "
+        "a literal mode there can re-enable CUDA Graphs"
     )
 
-    # Function default — ``train_one_metal_one_seed`` signature has
-    # ``torch_compile_mode: str = "max-autotune-no-cudagraphs"``
-    pattern_fn = re.compile(
-        r'torch_compile_mode:\s*str\s*=\s*"max-autotune-no-cudagraphs"',
-    )
-    matches_fn = pattern_fn.findall(src)
-    assert len(matches_fn) >= 1, (
-        "expected function default torch_compile_mode="
-        "'max-autotune-no-cudagraphs' (Wf-335-R1 fix)"
-    )
-
-    # Parse_args runtime check — bare parse must yield
-    # max-autotune-no-cudagraphs (not reduce-overhead).
+    # Runtime check: --torch-compile is the only switch, and it defaults OFF.
     args = _parse_args(["--metals", "Ru", "--seeds", "0", "--epochs", "1"])
-    assert args.torch_compile_mode == "max-autotune-no-cudagraphs", (
-        f"parse_args(torch_compile_mode) returned "
-        f"{args.torch_compile_mode!r}; expected "
-        f"'max-autotune-no-cudagraphs' per Wf-335-R1 fix"
+    assert args.torch_compile is False, (
+        "torch.compile must default OFF; a default-on compile would put "
+        "every run inside the Wf-330-B4 hazard"
     )
 
 
@@ -264,42 +269,37 @@ def test_torch_compile_mode_default_is_max_autotune_no_cudagraphs() -> None:
 # Test 4 — backward compat with Wf-328-W1 / Wf-326C bench scripts
 # ---------------------------------------------------------------------------
 def test_backward_compat_with_explicit_reduce_overhead() -> None:
-    """Backward compat: Wf-328-W1 / Wf-326C bench scripts pass
-    ``--torch-compile-mode reduce-overhead`` explicitly + opt back
-    into the legacy CUDA Graphs path via ``--cudagraphs``.
+    """The CUDA-Graphs mode is still reachable in-process, but not via CLI.
 
-    Wf-335-R3 safety belt respects the explicit ``--cudagraphs``
-    opt-in: when ``args.cudagraphs_disabled == False``, the safety
-    lever does NOT downgrade the mode.  This preserves the Wf-326C
-    benchmark reproducer + Wf-328-W1 baseline.
+    The old version parsed ``--torch-compile-mode reduce-overhead
+    --cudagraphs``.  Neither flag exists after af84a545.  The Wf-326C /
+    Wf-328-W1 reproducer path survives in the helper factories, which take a
+    ``mode`` argument; the CLI deliberately has no way to select one, because
+    the only flag that ever read a mode was removed and the default is the
+    safety lever.
     """
-    args = _parse_args(
-        [
-            "--metals",
-            "Ru",
-            "--seeds",
-            "0",
-            "--epochs",
-            "1",
-            "--torch-compile-mode",
-            "reduce-overhead",
-            "--cudagraphs",  # opt back into CUDA Graphs (Wf-335-R3)
-        ]
-    )
-    assert args.torch_compile_mode == "reduce-overhead", (
-        f"--torch-compile-mode reduce-overhead + --cudagraphs did not "
-        f"preserve the legacy mode; got {args.torch_compile_mode!r}"
-    )
-    assert args.cudagraphs_disabled is False, (
-        "--cudagraphs flag did not flip cudagraphs_disabled to False "
-        "(Wf-335-R3 backward-compat lever)"
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+        TORCH_COMPILE_MODES,
     )
 
-    # And the safety lever MUST be the default for production runs.
+    assert "reduce-overhead" in TORCH_COMPILE_MODES, (
+        "TORCH_COMPILE_MODES no longer lists 'reduce-overhead'; the "
+        "reproducer path in the helper factories would be unreachable"
+    )
+    assert DEFAULT_TORCH_COMPILE_MODE != "reduce-overhead", (
+        "the default mode must not be the CUDA-Graphs mode"
+    )
+
+    # The CLI cannot select a mode at all — that is the safety property.
     args_default = _parse_args(["--metals", "Ru", "--seeds", "0", "--epochs", "1"])
-    assert args_default.cudagraphs_disabled is True, (
-        "default cudagraphs_disabled should be True (Wf-335-R3 safety "
-        "lever default ON)"
+    assert not hasattr(args_default, "cudagraphs_disabled"), (
+        "a cudagraphs lever reappeared; it would need a real default and a "
+        "test update, not a silent re-add"
+    )
+    assert not hasattr(args_default, "torch_compile_mode"), (
+        "a torch_compile_mode dest reappeared; see the note in "
+        "test_torch_compile_mode_v2_flag (test_wf335r1_no_cudagraphs.py)"
     )
 
 

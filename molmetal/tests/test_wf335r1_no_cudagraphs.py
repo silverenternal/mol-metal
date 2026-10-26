@@ -117,45 +117,43 @@ def _build_small_encoder(hidden: int = 32, depth: int = 2) -> DMPNNMultiTaskMode
 
 
 def test_default_mode_is_max_autotune_no_cudagraphs() -> None:
-    """``--torch-compile-mode`` default is now ``max-autotune-no-cudagraphs``.
+    """The trainer's compile mode is ``max-autotune-no-cudagraphs``.
 
     Per Wf-335-R1 MEASURED FIX (Wf-330-B4 root cause): the production
-    trainer default switched from ``'reduce-overhead'`` (CUDA Graphs
-    capture inside Inductor) to ``'max-autotune-no-cudagraphs'``
-    (autotune WITHOUT CUDA Graphs) to avoid the RuntimeError that
-    fires on Ru seed=2 + Ir seed=0.
+    compile path must not use ``'reduce-overhead'`` (CUDA Graphs capture
+    inside Inductor), which is what fires the RuntimeError on Ru seed=2 +
+    Ir seed=0.
 
-    This test guards against accidental regression: if a future edit
-    flips the default back to ``reduce-overhead`` (or any other
-    CUDA-Graphs-enabling mode), this test fails loudly with a
-    Wf-335-R1 + Wf-330-B4 message.
+    Rewritten 2026-10-27. The old version asserted
+    ``parse_args(...).torch_compile_mode == "max-autotune-no-cudagraphs"``,
+    but af84a545 (the m21 whole-file revert) restored this trainer from a
+    pre-Wf-335-R1 snapshot and removed the ``--torch-compile-mode`` flag, so
+    the attribute does not exist. The invariant survives in the module
+    constant, which the live call site now reads.
     """
-    args_default = parse_args(
-        [
-            "--metals",
-            "Ru",
-            "--seeds",
-            "0",
-            "--epochs",
-            "1",
-        ]
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
     )
 
-    assert args_default.torch_compile_mode == "max-autotune-no-cudagraphs", (
-        f"Wf-335-R1 MEASURED FIX: default torch_compile_mode should be "
-        f"'max-autotune-no-cudagraphs' (CUDA Graphs DISABLED per "
-        f"Wf-330-B4 fix), got '{args_default.torch_compile_mode}'. "
-        f"This guards against reverting to the broken "
-        f"'reduce-overhead' default that fired RuntimeError on "
+    assert DEFAULT_TORCH_COMPILE_MODE == "max-autotune-no-cudagraphs", (
+        f"Wf-335-R1 MEASURED FIX: DEFAULT_TORCH_COMPILE_MODE should be "
+        f"'max-autotune-no-cudagraphs' (CUDA Graphs DISABLED per Wf-330-B4), "
+        f"got {DEFAULT_TORCH_COMPILE_MODE!r}. This guards against reverting "
+        f"to the broken 'reduce-overhead' mode that fired RuntimeError on "
         f"Ru seed=2 + Ir seed=0."
     )
 
-    # The default is also the post-fix CLI help text — verify the help
-    # string surfaces the Wf-335-R1 / Wf-330-B4 framing.
-    parser = (
-        parse_args.__globals__.get("__file__")
-        if hasattr(parse_args, "__globals__")
-        else None
+    # The constant is only a guard if the live call site reads it.
+    trainer_src = (
+        Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "scripts"
+        / "train_dmpnn_multitask_wasserstein.py"
+    ).read_text()
+    assert "model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)" in trainer_src, (
+        "the live torch.compile call site does not read "
+        "DEFAULT_TORCH_COMPILE_MODE; a literal mode there means --torch-compile "
+        "can select a CUDA-Graphs mode again"
     )
 
 
@@ -165,15 +163,14 @@ def test_default_mode_is_max_autotune_no_cudagraphs() -> None:
 
 
 def test_torch_compile_mode_v2_flag() -> None:
-    """``--torch-compile-mode-v2`` is wired with the post-fix default.
+    """There is no ``--torch-compile-mode-v2`` (or ``--torch-compile-mode``).
 
-    Verifies the Wf-335-R1 NEW CLI surface:
-      * ``--torch-compile-mode-v2`` is a valid argparse choice
-      * default value is ``max-autotune-no-cudagraphs``
-      * the four Inductor modes are accepted as values
-      * invalid mode is rejected by argparse choices=
+    Wf-335-R1 added both; af84a545 removed them as collateral of a whole-file
+    revert made for a model-performance reason. Re-adding a mode knob is how
+    the CUDA-Graphs hazard comes back, so this test now pins its absence
+    instead of its presence: the only compile switch is ``--torch-compile``,
+    and the mode it uses is the module constant.
     """
-    # Default
     args_default = parse_args(
         [
             "--metals",
@@ -184,54 +181,27 @@ def test_torch_compile_mode_v2_flag() -> None:
             "1",
         ]
     )
-    assert hasattr(args_default, "torch_compile_mode_v2"), (
-        "Wf-335-R1: --torch-compile-mode-v2 CLI flag missing from "
-        "parse_args() namespace — fix not wired."
-    )
-    assert args_default.torch_compile_mode_v2 == "max-autotune-no-cudagraphs", (
-        f"Wf-335-R1: --torch-compile-mode-v2 default should be "
-        f"'max-autotune-no-cudagraphs', got "
-        f"'{args_default.torch_compile_mode_v2}'."
-    )
-
-    # All four Inductor modes accepted
-    for mode in (
-        "default",
-        "reduce-overhead",
-        "max-autotune",
-        "max-autotune-no-cudagraphs",
-    ):
-        args_mode = parse_args(
-            [
-                "--metals",
-                "Ru",
-                "--seeds",
-                "0",
-                "--epochs",
-                "1",
-                "--torch-compile-mode-v2",
-                mode,
-            ]
-        )
-        assert args_mode.torch_compile_mode_v2 == mode, (
-            f"--torch-compile-mode-v2 {mode!r} did not parse; got "
-            f"{args_mode.torch_compile_mode_v2}"
+    for dest in ("torch_compile_mode_v2", "torch_compile_mode"):
+        assert not hasattr(args_default, dest), (
+            f"{dest!r} reappeared in the argparse namespace. The mode must "
+            f"stay a module constant (DEFAULT_TORCH_COMPILE_MODE) so "
+            f"--torch-compile cannot be pointed at a CUDA-Graphs mode."
         )
 
-    # Invalid mode rejected
-    with pytest.raises(SystemExit):
-        parse_args(
-            [
-                "--metals",
-                "Ru",
-                "--seeds",
-                "0",
-                "--epochs",
-                "1",
-                "--torch-compile-mode-v2",
-                "not-a-mode",
-            ]
-        )
+    for flag in ("--torch-compile-mode-v2", "--torch-compile-mode"):
+        with pytest.raises(SystemExit):
+            parse_args(
+                [
+                    "--metals",
+                    "Ru",
+                    "--seeds",
+                    "0",
+                    "--epochs",
+                    "1",
+                    flag,
+                    "max-autotune-no-cudagraphs",
+                ]
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -240,50 +210,14 @@ def test_torch_compile_mode_v2_flag() -> None:
 
 
 def test_backward_compat_reduce_overhead_accepted() -> None:
-    """``--torch-compile-mode reduce-overhead`` is still accepted.
+    """The helper factories still accept ``mode='reduce-overhead'``.
 
-    The fix switched the *default* but explicit ``reduce-overhead``
-    remains valid for backward compat with Wf-326C / Wf-328-W1 bench
-    scripts (and any paper §6 reproducer that explicitly requests
-    CUDA Graphs).  This test verifies the legacy path is preserved.
+    The CLI half of this test is gone with the flag (af84a545). What remains
+    is the part that never depended on argparse: ``_make_compiled_encoder_forward``
+    and ``_make_compiled_w2_penalty`` take a ``mode`` argument, so the
+    Wf-326C / Wf-328-W1 reproducer can still be built in-process.
     """
-    args_reduce = parse_args(
-        [
-            "--metals",
-            "Ru",
-            "--seeds",
-            "0",
-            "--epochs",
-            "1",
-            "--torch-compile-mode",
-            "reduce-overhead",
-        ]
-    )
-    assert args_reduce.torch_compile_mode == "reduce-overhead", (
-        f"explicit --torch-compile-mode reduce-overhead should be "
-        f"preserved (backward compat for Wf-326C / Wf-328-W1 bench "
-        f"scripts), got '{args_reduce.torch_compile_mode}'"
-    )
-
-    # Same for v2 alias
-    args_reduce_v2 = parse_args(
-        [
-            "--metals",
-            "Ru",
-            "--seeds",
-            "0",
-            "--epochs",
-            "1",
-            "--torch-compile-mode-v2",
-            "reduce-overhead",
-        ]
-    )
-    assert args_reduce_v2.torch_compile_mode_v2 == "reduce-overhead", (
-        f"explicit --torch-compile-mode-v2 reduce-overhead should be "
-        f"preserved, got '{args_reduce_v2.torch_compile_mode_v2}'"
-    )
-
-    # Also verify the encoder wrapper still accepts the legacy mode
+    # Verify the encoder wrapper still accepts the legacy mode
     encoder = _build_small_encoder(hidden=32, depth=2)
     compiled = _make_compiled_encoder_forward(
         encoder,

@@ -88,18 +88,41 @@ def _load_recovery_script() -> str:
     return RECOVERY_SCRIPT.read_text(encoding="utf-8")
 
 
+def _active_code(src: str) -> str:
+    """The script with full-line and trailing comments removed.
+
+    The banner documents every flag that was ever wired, including ones
+    removed later, so a plain substring search cannot tell a live argument
+    from a note about one.
+    """
+    out = []
+    for line in src.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        out.append(line.split("#", 1)[0])
+    return "\n".join(out)
+
+
 def _load_trainer_source() -> str:
     return TRAINER_PATH.read_text(encoding="utf-8")
 
 
 def _run_dry_run() -> subprocess.CompletedProcess:
-    """Invoke scripts/recover_g6_failed_tuples.sh --dry-run, capture stdout."""
+    """Invoke scripts/recover_g6_failed_tuples.sh --dry-run, capture stdout.
+
+    ``USER_OK=1`` is set because the script's own usage text says the plan
+    path still requires it: "--dry-run # plan only (still requires USER_OK=1)".
+    Without it the script exits 64 before enumerating anything.
+    """
+    import os
+
     return subprocess.run(
         ["bash", str(RECOVERY_SCRIPT), "--dry-run"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
         timeout=60,
+        env={**os.environ, "USER_OK": "1"},
     )
 
 
@@ -203,27 +226,28 @@ def test_recovery_launch_includes_all_wf328_wf335_fixes():
     # Wf-328-W2 banner comment must be present (gates Wf-326B revert regression).
     assert "Wf-328-W2" in src, "Wf-328-W2 banner comment missing"
 
-    # Wf-335-R3: --no-cuda-graphs safety lever.
-    assert "--no-cuda-graphs" in src, "Wf-335-R3 fix missing: --no-cuda-graphs"
+    # Wf-335-R3: the lever is structural now, not a flag. MEASURED 2026-10-27:
+    # the trainer never declared --no-cuda-graphs (it was removed from this
+    # recovery script for that reason), and the compile path cannot reach a
+    # CUDA-Graphs mode because it reads DEFAULT_TORCH_COMPILE_MODE.
+    assert "--no-cuda-graphs" not in _active_code(src), (
+        "the recovery script passes --no-cuda-graphs again; the trainer's "
+        "argparse does not declare it, so the run would die at rc=2"
+    )
     assert "Wf-335-R3" in src, "Wf-335-R3 banner comment missing"
 
-    # Wf-335-R1: torch.compile mode default = max-autotune-no-cudagraphs.
-    # We verify the trainer default; the launcher relies on the trainer default
-    # unless overridden, and Wf-335-R3's --no-cuda-graphs flag forces this mode.
+    # Wf-335-R1: the compile mode is the module constant, read at the call site.
     trainer_src = _load_trainer_source()
-    # Look for function-level default (e.g. line 1121 in current trainer).
-    assert "max-autotune-no-cudagraphs" in trainer_src, (
-        "Wf-335-R1 fix missing: trainer default torch_compile_mode should be "
-        "'max-autotune-no-cudagraphs'"
+    assert "DEFAULT_TORCH_COMPILE_MODE" in trainer_src, (
+        "Wf-335-R1 fix missing: the trainer has no DEFAULT_TORCH_COMPILE_MODE"
     )
-    # Function default line (Wf-335-R1 §2 row 1).
-    fn_default_match = re.search(
-        r"torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
-        trainer_src,
-    )
-    assert fn_default_match is not None, (
-        "Wf-335-R1: function-level torch_compile_mode default not pinned to "
-        "'max-autotune-no-cudagraphs'"
+    assert (
+        "model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)"
+        in trainer_src
+    ), (
+        "Wf-335-R1: the compile call site does not read "
+        "DEFAULT_TORCH_COMPILE_MODE, so --torch-compile can select a "
+        "CUDA-Graphs mode"
     )
 
     # Wf-296C: --no-kendall / --no-dann per-config levers.
@@ -263,84 +287,90 @@ def test_recovery_launch_includes_all_wf328_wf335_fixes():
 # ---------------------------------------------------------------------------
 # Test 3: --no-cuda-graphs flag + trainer default semantics
 # ---------------------------------------------------------------------------
-def test_no_cudagraphs_flag_present():
-    """Verifies --no-cuda-graphs is the documented safety lever (default ON)
-    and the trainer hard-pins torch_compile_mode="max-autotune-no-cudagraphs"
-    when this flag is set, regardless of any other --torch-compile-mode
-    override (Wf-335-R3).
+def test_no_cudagraphs_lever_is_structural():
+    """CUDA Graphs are unreachable, and no flag claims otherwise.
 
-    Per Wf-335-R3: --no-cuda-graphs is the safety lever; --cudagraphs is the
-    explicit opt-in (Wf-326C / Wf-328-W1 reproducer). The trainer's main()
-    must force torch_compile_mode="max-autotune-no-cudagraphs" when the
-    safety lever is ON.
-    assert "max-autotune-no-cudagraphs" in trainer_src (already in test 2).
+    Wf-335-R3 added ``--no-cuda-graphs`` / ``--cudagraphs`` to the trainer.
+    MEASURED 2026-10-27: neither is declared (af84a545 removed them with the
+    rest of the Wf-335-R1 surface).  The safety property they implemented is
+    now structural: the only compile switch is ``--torch-compile``, which
+    defaults OFF and whose call site reads ``DEFAULT_TORCH_COMPILE_MODE``.
+
+    Asserting the flags exist (as this test did) pins a surface that cannot
+    run.  Asserting the property is what survives.
     """
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+        parse_args,
+    )
+
     trainer_src = _load_trainer_source()
+    for flag in ("--no-cuda-graphs", "--cudagraphs"):
+        assert flag not in trainer_src, (
+            f"{flag} reappeared in the trainer. Either it is a real flag with "
+            f"a default and a test, or it is a comment that will be mistaken "
+            f"for one — the exact defect this pass removed."
+        )
 
-    # argparse flag definition for --no-cuda-graphs (default ON, action=store_true).
-    no_cg_pattern = re.search(
-        r"--no-cuda-graphs",
-        trainer_src,
+    args = parse_args(["--metals", "Ru", "--seeds", "0", "--epochs", "1"])
+    assert args.torch_compile is False, (
+        "torch.compile defaults ON; every run would enter the Wf-330-B4 path"
     )
-    assert (
-        no_cg_pattern is not None
-    ), "Wf-335-R3 missing: --no-cuda-graphs flag not defined in trainer argparse"
-
-    # --cudagraphs opt-in flag (mirror for backward compat with Wf-326C).
-    cg_pattern = re.search(
-        r"--cudagraphs\b",
-        trainer_src,
-    )
-    assert (
-        cg_pattern is not None
-    ), "Wf-335-R3 missing: --cudagraphs opt-in flag not defined in trainer argparse"
-
-    # Verify the trainer main() applies the safety lever: when
-    # cudagraphs_disabled=True (the default), torch_compile_mode is
-    # force-set to max-autotune-no-cudagraphs.
-    # The exact wiring is in the train_dmpnn_multitask_wasserstein.py:2163-2199
-    # region per Wf-335-R1 §2 row 7.
-    assert "cudagraphs_disabled" in trainer_src, (
-        "Wf-335-R3 main() safety lever logic missing: cudagraphs_disabled "
-        "variable not referenced"
+    assert DEFAULT_TORCH_COMPILE_MODE == "max-autotune-no-cudagraphs", (
+        f"the compile mode is {DEFAULT_TORCH_COMPILE_MODE!r}, not the "
+        f"CUDA-Graphs-free default"
     )
 
-    # Sanity: --no-cuda-graphs / --cudagraphs flag must appear in the
-    # recovery script (not just trainer).
+    # Sanity: the recovery script no longer passes the undeclared flags.
     recovery_src = _load_recovery_script()
-    assert (
-        "--no-cuda-graphs" in recovery_src
-    ), "Recovery script does not pass --no-cuda-graphs to the trainer"
+    assert "--no-cuda-graphs" not in _active_code(recovery_src), (
+        "the recovery script passes --no-cuda-graphs, which the trainer does "
+        "not declare; every recovery attempt would exit rc=2"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 4: --dry-run backward compat (exit 0 + expected output)
 # ---------------------------------------------------------------------------
 def test_backward_compat_with_dry_run():
-    """Verifies --dry-run mode is backward compatible: exits 0, prints the
-    expected config summary, and does NOT require USER_OK.
+    """--dry-run enumerates the manifest and still requires USER_OK.
 
-    Backward-compat contract (Wf-337-G1 §3.4):
-      1. Exit code 0
-      2. Stdout contains "RECOVERY MANIFEST:" header
-      3. Stdout contains "DRY-RUN OK:" footer
-      4. USER_OK is NOT required (dry-run path exits before the USER_OK gate)
-      5. No GPU work performed (verified by exit code + absence of USER_OK error)
+    The 2026-09-29 contract was "dry-run does NOT require USER_OK".  The
+    script now refuses a plan-only run without it, and says so in its own
+    usage text ("--dry-run # plan only (still requires USER_OK=1)").  Rather
+    than assert the old exemption, this test pins both halves of the current
+    contract: the gate fires without USER_OK, and with it the dry-run exits 0
+    and emits the manifest header + footer.
     """
-    # Run without USER_OK env var to verify backward compat.
-    env = {"PATH": "/usr/bin:/bin"}
+    import os
+
+    # 1. Without USER_OK: refused, and nothing is enumerated.
+    refused = subprocess.run(
+        ["bash", str(RECOVERY_SCRIPT), "--dry-run"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin"},
+        timeout=60,
+    )
+    assert refused.returncode != 0, (
+        "recovery script --dry-run ran without USER_OK; the gate is bypassed"
+    )
+    assert "USER_OK" in (refused.stderr + refused.stdout), (
+        f"refusal does not mention USER_OK: {refused.stderr[-300:]!r}"
+    )
+
+    # 2. With USER_OK=1: exit 0 + manifest header/footer.
     result = subprocess.run(
         ["bash", str(RECOVERY_SCRIPT), "--dry-run"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
-        env=env,
+        env={**os.environ, "USER_OK": "1"},
         timeout=60,
     )
-
-    # 1. Exit code 0.
     assert result.returncode == 0, (
-        f"--dry-run should exit 0 for backward compat, got rc={result.returncode}\n"
+        f"--dry-run with USER_OK=1 should exit 0, got rc={result.returncode}\n"
         f"stderr={result.stderr}"
     )
 
@@ -349,13 +379,10 @@ def test_backward_compat_with_dry_run():
     assert (
         "RECOVERY MANIFEST:" in out
     ), "backward compat broken: missing 'RECOVERY MANIFEST:' header"
-    # 3. DRY-RUN OK footer.
-    assert "DRY-RUN OK:" in out, "backward compat broken: missing 'DRY-RUN OK:' footer"
-    # 4. USER_OK NOT required (no 'USER_OK REQUIRED' line in --dry-run path).
-    assert (
-        "USER_OK REQUIRED" not in out
-    ), "backward compat broken: --dry-run path triggered USER_OK gate"
-    # 5. The recovery launch command hint should be present.
+    # 3. DRY-RUN OK footer (the script prints "=== DRY-RUN OK (USER_OK=1
+    # confirmed; plan only; no GPU work) ===" — no colon after OK).
+    assert "DRY-RUN OK" in out, "backward compat broken: missing 'DRY-RUN OK' footer"
+    # 4. The recovery launch command hint should be present.
     assert (
         "USER_OK=1 bash scripts/recover_g6_failed_tuples.sh" in out
     ), "backward compat broken: missing USER_OK=1 hint for real-launch path"
@@ -366,13 +393,15 @@ def test_backward_compat_with_dry_run():
     assert (
         "run_tuple()" in src or "run_tuple ()" in src or "function run_tuple" in src
     ), "Recovery script missing run_tuple() function"
-    # Sanity: the dry-run early-exit must be before the USER_OK gate.
-    # Pattern: --dry-run check appears before USER_OK check.
-    dry_run_pos = src.find("--dry-run")
-    user_ok_pos = src.find('if [[ -z "${USER_OK')
-    assert 0 < dry_run_pos < user_ok_pos, (
-        f"Order violation: --dry-run check at pos {dry_run_pos} should come "
-        f"BEFORE USER_OK gate at pos {user_ok_pos}"
+    # Sanity: the USER_OK gate now runs BEFORE the --dry-run exit block, which
+    # is what makes the plan-only path gated too. The old assertion required
+    # the opposite order, matched a gate form the script does not use, and
+    # located "--dry-run" in the usage header rather than in the exit block.
+    branch_pos = src.find('if [[ "${DRY_RUN}" == "1" ]]')
+    user_ok_pos = src.find('"${USER_OK:-0}" != "1"')
+    assert 0 < user_ok_pos < branch_pos, (
+        f"Order violation: USER_OK gate at pos {user_ok_pos} should come "
+        f"BEFORE the --dry-run exit block at pos {branch_pos}"
     )
 
 
@@ -380,28 +409,27 @@ def test_backward_compat_with_dry_run():
 # Optional: trainer torch_compile_mode default sanity (cross-test 2/3 invariant)
 # ---------------------------------------------------------------------------
 def test_trainer_torch_compile_mode_default_is_max_autotune_no_cudagraphs():
-    """Standalone assertion of the Wf-335-R1 invariant: trainer function default
-    for torch_compile_mode is "max-autotune-no-cudagraphs" (was "reduce-overhead"
-    pre-Wf-335-R1). Belt-and-suspenders check independent of the launcher script.
+    """Wf-335-R1 invariant: the compile mode is the CUDA-Graphs-free one.
+
+    Rewritten 2026-10-27. The old version matched a ``torch_compile_mode``
+    function kwarg and a ``--torch-compile-mode`` argparse default. af84a545
+    removed both. The invariant now lives in ``DEFAULT_TORCH_COMPILE_MODE``
+    and in the call site that reads it — belt-and-suspenders, independent of
+    the launcher script.
     """
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+    )
+
+    assert DEFAULT_TORCH_COMPILE_MODE == "max-autotune-no-cudagraphs", (
+        "Wf-335-R1 invariant violated: DEFAULT_TORCH_COMPILE_MODE is "
+        f"{DEFAULT_TORCH_COMPILE_MODE!r}, not 'max-autotune-no-cudagraphs'"
+    )
     trainer_src = _load_trainer_source()
-    # Function default (L1121) — explicit assignment form.
-    fn_match = re.search(
-        r"torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
-        trainer_src,
-    )
-    assert fn_match is not None, (
-        "Wf-335-R1 invariant violated: trainer torch_compile_mode default is "
-        "NOT 'max-autotune-no-cudagraphs' (was 'reduce-overhead' pre-Wf-335-R1)"
-    )
-    # CLI argparse default (L2028) — argparse keyword form. Note the default
-    # assignment is on a SEPARATE indented line from "--torch-compile-mode",
-    # so use a permissive multi-line match.
-    cli_match = re.search(
-        r"--torch-compile-mode[\s\S]{0,200}?default\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
-        trainer_src,
-    )
-    assert cli_match is not None, (
-        "Wf-335-R1 invariant violated: argparse --torch-compile-mode default is "
-        "NOT 'max-autotune-no-cudagraphs'"
+    assert (
+        "model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)"
+        in trainer_src
+    ), (
+        "Wf-335-R1 invariant violated: the compile call site does not read "
+        "DEFAULT_TORCH_COMPILE_MODE"
     )

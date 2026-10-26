@@ -76,10 +76,15 @@ def _invoke_trainer(extra_flags: list[str], capture_metrics: bool = True):
     """Run the trainer via subprocess + return (returncode, stdout, stderr)."""
     import subprocess
 
-    # Clean stale metrics so the smoke re-emits them.
-    metrics_file = Path(SMOKE_METRICS_PATH)
-    if metrics_file.exists():
-        metrics_file.unlink()
+    # Remove the whole out-dir, not just the metrics file. MEASURED
+    # 2026-10-27: the trainer resumes from ``checkpoints/`` when the out-dir
+    # already has one, so by the third invocation in a session it resumed at
+    # the final epoch, ran zero epochs, and never wrote
+    # per_epoch_metrics.json — the test then failed on a missing file rather
+    # than on anything the trainer did. Each smoke must start clean.
+    import shutil
+
+    shutil.rmtree(SMOKE_OUT_DIR, ignore_errors=True)
 
     cmd = [
         "/home/hugo/codes/mol-metal/.venv/bin/python",
@@ -92,7 +97,12 @@ def _invoke_trainer(extra_flags: list[str], capture_metrics: bool = True):
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
-        timeout=120,
+        # MEASURED 2026-10-27: this 3-epoch CPU smoke takes ~10 s standalone
+        # but ~120 s when the suite is under load, and the old 120 s cap
+        # killed it mid-run — the test then failed on a missing metrics file
+        # rather than on the trainer. 300 s leaves headroom without hiding a
+        # genuine hang.
+        timeout=300,
     )
     return completed.returncode, completed.stdout, completed.stderr
 

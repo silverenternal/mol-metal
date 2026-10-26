@@ -233,8 +233,12 @@ class TestWf264RunOnceLauncher(unittest.TestCase):
         assert (
             "launch_wf264_cfm_property_panel.sh" in src
         ), "full Wf-264 launcher reference missing from run-once"
-        assert (
-            "pre_flight_check.py --pipeline all" in src
+        # The launcher writes the gate as
+        #   "${PY}" "${SCRIPTS_DIR}/pre_flight_check.py" --pipeline all
+        # so a literal "pre_flight_check.py --pipeline all" substring does not
+        # match even though the gate is there. Match across the closing quote.
+        assert re.search(
+            r"pre_flight_check\.py\"?\s+--pipeline all", src
         ), "pre_flight_check.py --pipeline all invocation missing"
         # USER_OK re-enforcement at invocation site (orchestration determinism)
         assert (

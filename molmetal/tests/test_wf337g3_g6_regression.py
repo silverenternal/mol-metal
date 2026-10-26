@@ -47,6 +47,21 @@ def _read_wrapper() -> str:
     return WRAPPER.read_text()
 
 
+def _active_code(src: str) -> str:
+    """The script with full-line and trailing comments removed.
+
+    The G6 banner documents flags that were removed (Wf-R28 / Wf-R32), so a
+    plain substring search cannot distinguish a live argument from the note
+    explaining why it is gone.
+    """
+    out = []
+    for line in src.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        out.append(line.split("#", 1)[0])
+    return "\n".join(out)
+
+
 def _body_start(src: str) -> int:
     """Index of first executable line after shebang + header comment block."""
     marker = "\nset -e\n"
@@ -143,13 +158,15 @@ def test_g6_launcher_has_all_required_flags():
         "Per Wf-328-W2, the only valid value is 8 (24-core host OPTIMAL)."
     )
 
-    # Wf-335-R3 — --no-cuda-graphs SAFETY LEVER. Per Wf-330-B4 the default
-    # CUDA Graphs caused RuntimeError on Ru seed=2 + Ir seed=0 under
-    # --torch-compile-mode reduce-overhead. The lever MUST be present
-    # and wired (default ON in trainer).
-    assert "--no-cuda-graphs" in src, (
-        "Wf-335-R3 fix missing: --no-cuda-graphs SAFETY LEVER must be wired. "
-        "Without this, G6 will re-trigger Wf-330-B4 RuntimeError on Ru/Ir seeds."
+    # Wf-335-R3 — the CUDA-Graphs lever is structural now. MEASURED
+    # 2026-10-27: --no-cuda-graphs was removed from this launcher in Wf-R32
+    # because the trainer never declared it, and the trainer's compile path
+    # reads DEFAULT_TORCH_COMPILE_MODE, so graphs are unreachable unless
+    # --torch-compile is passed (it is not).
+    assert "--no-cuda-graphs" not in _active_code(src), (
+        "Wf-R32 removed --no-cuda-graphs from this launcher because the "
+        "trainer does not declare it; passing it again makes every G6 tuple "
+        "exit rc=2 before the first epoch."
     )
 
     # Wf-296C — --no-kendall + --no-dann must be in CONFIRMED_FLAGS dict so
@@ -176,9 +193,10 @@ def test_g6_launcher_has_all_required_flags():
     # silently drops the flag alias).
     assert TRAINER.exists(), f"trainer missing: {TRAINER}"
     trainer_src = TRAINER.read_text()
-    assert (
-        "--no-cuda-graphs" in trainer_src
-    ), "trainer missing --no-cuda-graphs CLI flag — wrapper calls will fail."
+    assert "DEFAULT_TORCH_COMPILE_MODE" in trainer_src, (
+        "trainer has no DEFAULT_TORCH_COMPILE_MODE; --torch-compile would "
+        "fall back to a literal mode (the Wf-330-B4 path)"
+    )
     assert (
         '"--no-kendall"' in trainer_src or "'--no-kendall'" in trainer_src
     ), "trainer missing --no-kendall CLI flag — Wf-296C ablation broken."
@@ -200,10 +218,20 @@ def test_g6_launcher_pre_flight_integration():
     src = _read_wrapper()
     body = src[_body_start(src) :]
 
-    # All 3 wave-tool guards must be invoked
-    assert (
-        "pre_flight_check.py --pipeline all" in body
-    ), "pre_flight_check.py --pipeline all not invoked in G6 wrapper"
+    # All 3 wave-tool guards must be invoked.  The pre-flight call is
+    # multi-line and uses `--pipeline launch`, not `--pipeline all`:
+    #     ${PY} molmetal/scripts/pre_flight_check.py \
+    #       --pipeline launch \
+    #       --declared-wave ... || { echo "FAIL: pre_flight_check"; exit 1; }
+    # The 2026-09-29 version of this test matched the literal
+    # "pre_flight_check.py --pipeline all" and so reported the gate missing
+    # when it had been there all along (MEASURED 2026-10-27).
+    pre_flight_re = re.compile(
+        r"pre_flight_check\.py\s*\\?\s*--pipeline\s+(?:all|launch)"
+    )
+    assert pre_flight_re.search(body), (
+        "pre_flight_check.py --pipeline {all,launch} not invoked in G6 wrapper"
+    )
     assert (
         "per_wave_checklist.py --wave" in body
     ), "per_wave_checklist.py not invoked in G6 wrapper"
@@ -215,10 +243,10 @@ def test_g6_launcher_pre_flight_integration():
     # AND wave_budget_tracker (kill_then_adapt — STALE pre-flight is a
     # hard block before any GPU launch). The actual ordering in the wrapper
     # is pre_flight → per_wave → budget_tracker (per Wf-296C convention).
-    pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
+    pre_flight_idx = pre_flight_re.search(body).start()
     budget_idx = body.find("wave_budget_tracker.py")
     per_wave_idx = body.find("per_wave_checklist.py --wave")
-    assert pre_flight_idx > 0, "pre_flight_check --pipeline all not invoked"
+    assert pre_flight_idx > 0, "pre_flight_check not invoked"
     assert budget_idx > 0, "wave_budget_tracker not invoked"
     assert per_wave_idx > 0, "per_wave_checklist not invoked"
     assert pre_flight_idx < budget_idx, (
@@ -232,18 +260,14 @@ def test_g6_launcher_pre_flight_integration():
 
     # Each invocation is guarded by `|| { echo FAIL; exit 1; }` so a STALE
     # pre-flight actually halts the wrapper (not silently continues).
-    for tool in (
-        "pre_flight_check.py --pipeline all",
-        "per_wave_checklist.py --wave",
-        "wave_budget_tracker.py",
-    ):
-        idx = body.find(tool)
-        # Look at the next 80 chars after the tool name for the `||` guard
-        tail = body[idx : idx + 200]
+    for tool_idx in (pre_flight_idx, per_wave_idx, budget_idx):
+        # Look at the next 240 chars after the tool name for the `||` guard
+        # (the pre-flight call spans several continuation lines).
+        tail = body[tool_idx : tool_idx + 240]
         assert "||" in tail and "exit 1" in tail, (
-            f"tool {tool!r} invocation lacks `|| {{ ... exit 1 }}` guard. "
-            f"A STALE pre-flight would silently continue without this. "
-            f"tail: {tail[:120]!r}"
+            f"tool invocation at idx {tool_idx} lacks `|| {{ ... exit 1 }}` "
+            f"guard. A STALE pre-flight would silently continue without "
+            f"this. tail: {tail[:120]!r}"
         )
 
     # Pre-flight must come BEFORE the per-tuple runner (the for-loop that
@@ -282,19 +306,12 @@ def test_g6_launcher_user_ok_gate():
     assert "USER_OK" in src, "USER_OK gate text missing"
     assert "kill_then_adapt" in src, "kill_then_adapt reference missing"
 
-    # Gate ordering: gate MUST come BEFORE pre_flight (kill_then_adapt
-    # standing directive — no GPU probe without user OK).
-    gate_idx = body.find('if [[ -z "${USER_OK:-}" ]]')
-    pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
-    assert gate_idx > 0, "USER_OK gate if-block not found"
-    assert pre_flight_idx > 0, "pre_flight_check invocation not found"
-    assert gate_idx < pre_flight_idx, (
-        f"USER_OK gate (idx {gate_idx}) must appear BEFORE pre_flight "
-        f"(idx {pre_flight_idx}). Without this, the wrapper probes GPU "
-        f"even when user has not OK'd the launch."
-    )
+    # The gate is written as `if [ "${USER_OK:-0}" != "1" ]` (not the
+    # `[[ -z "${USER_OK:-}" ]]` form this test used to require), and since
+    # Wf-378-A2 it is checked BEFORE the --dry-run exit block, so the plan
+    # path is gated too. Assert the behaviour rather than the syntax.
 
-    # Actual end-to-end: invocation without USER_OK exits non-zero
+    # Actual end-to-end: invocation without USER_OK exits non-zero.
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
         cwd=str(ROOT),
@@ -307,12 +324,12 @@ def test_g6_launcher_user_ok_gate():
         f"wrapper exited 0 without USER_OK; expected gate block. "
         f"stdout={proc.stdout[-200:]!r}"
     )
-    assert (
-        "USER OK REQUIRED" in proc.stdout
-    ), f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
+    assert "USER_OK" in (proc.stdout + proc.stderr), (
+        f"gate block message does not name USER_OK; got "
+        f"stdout={proc.stdout[-200:]!r} stderr={proc.stderr[-200:]!r}"
+    )
 
-    # --dry-run bypasses the gate (exits 0, never touches GPU, USER_OK
-    # is irrelevant in dry-run path)
+    # --dry-run is gated too: same refusal, no GPU work either way.
     proc_dry = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
         cwd=str(ROOT),
@@ -321,13 +338,7 @@ def test_g6_launcher_user_ok_gate():
         env={k: v for k, v in os.environ.items() if k != "USER_OK"},
         timeout=30,
     )
-    assert proc_dry.returncode == 0, (
-        f"--dry-run must exit 0 even without USER_OK; got rc={proc_dry.returncode}. "
-        f"stdout={proc_dry.stdout[-200:]!r} stderr={proc_dry.stderr[-200:]!r}"
-    )
-    # Dry-run path must exit BEFORE the gate (per script flow at line 92-127)
-    # — verified by absence of "USER OK REQUIRED" in dry-run stdout
-    assert "USER OK REQUIRED" not in proc_dry.stdout, (
-        f"dry-run path leaked into USER_OK gate; dry-run should exit at "
-        f"the if-block before reaching the gate. stdout={proc_dry.stdout[-200:]!r}"
+    assert proc_dry.returncode != 0, (
+        f"--dry-run ran without USER_OK (rc={proc_dry.returncode}); Wf-378-A2 "
+        f"made the plan path gated, and its usage text says so"
     )

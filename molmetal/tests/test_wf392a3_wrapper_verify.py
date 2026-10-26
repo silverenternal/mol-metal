@@ -48,7 +48,7 @@ LOMO_WRAPPER = REPO_ROOT / "scripts" / "launch_wf119_p1_4_chemprop_v3_lomo.sh"
 DRUGOOD_WRAPPER = (
     REPO_ROOT / "scripts" / "launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh"
 )
-WF299_WRAPPER = REPO_ROOT / "molmetal" / "scripts" / "launch_wf299_cfm_main.sh"
+WF299_WRAPPER = REPO_ROOT / "scripts" / "launch_wf299_cfm_main.sh"
 CHEMPROP_TRAINER = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
 CFM_TRAINER = REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 WF185_TRAINER = REPO_ROOT / "molmetal" / "scripts" / "wf185_chemprop_v2_drugood_full.py"
@@ -132,16 +132,17 @@ class TestLomoWrapperFlags(unittest.TestCase):
             f"bash -n on LOMO wrapper failed: {report['summary'].get('bash_n_evidence')}",
         )
 
-    def test_lomo_specific_levers_gap(self) -> None:
-        """Honest-negative: LOMO wrapper expects chemprop-mode / min-epochs /
-        lomo-init-scale but trainer argparse does NOT define them today.
+    def test_lomo_specific_levers_are_wired(self) -> None:
+        """The LOMO levers are now declared by the chemprop trainer.
 
-        This surfaces the gap so a future workflow (Wf-392-B3 or similar)
-        can wire them into train_chemprop_v2_v3.py. CPU-only; static scan.
+        This test used to be ``test_lomo_specific_levers_gap`` and asserted
+        all three came back ``GAP-TRAINER-MISSING``.  MEASURED 2026-10-27:
+        ``train_chemprop_v2_v3.py`` declares ``--chemprop-mode``,
+        ``--chemprop-min-epochs`` and ``--chemprop-lomo-init-scale``, so the
+        gap the old test documented no longer exists.  Asserting a gap that
+        has closed is a test that fails on improvement; this version pins the
+        wired state instead.
         """
-        # The wrapper hard-codes these tokens in its --dry-run sanity check
-        # (lines 89-96). Verify they are NOT defined in the trainer, which
-        # is the source of the honest-negative.
         lomo_levers = [
             "--chemprop-mode",
             "--chemprop-min-epochs",
@@ -152,14 +153,18 @@ class TestLomoWrapperFlags(unittest.TestCase):
             trainer=CHEMPROP_TRAINER,
             expected=lomo_levers,
         )
-        # All 3 should be GAP-TRAINER-MISSING (trainer doesn't define them)
-        gap_trainer = [
-            v for v in report["verdicts"] if v["status"] == "GAP-TRAINER-MISSING"
-        ]
+        gaps = [v for v in report["verdicts"] if v["status"].startswith("GAP-")]
         self.assertEqual(
-            len(gap_trainer),
+            gaps,
+            [],
+            f"LOMO levers are no longer fully wired: "
+            f"{[(g['flag'], g['status']) for g in gaps]}",
+        )
+        passed = [v for v in report["verdicts"] if v["status"] == "PASSED"]
+        self.assertEqual(
+            len(passed),
             len(lomo_levers),
-            f"Expected {len(lomo_levers)} GAP-TRAINER-MISSING verdicts, got {len(gap_trainer)}; "
+            f"Expected {len(lomo_levers)} PASSED verdicts, got {len(passed)}; "
             f"verdicts={[(v['flag'], v['status']) for v in report['verdicts']]}",
         )
 

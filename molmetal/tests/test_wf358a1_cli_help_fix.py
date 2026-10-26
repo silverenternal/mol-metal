@@ -61,16 +61,20 @@ def test_subprocess_help_exit_zero_with_new_flags() -> None:
         f"--help crashed: rc={result.returncode}\n"
         f"stdout={result.stdout}\nstderr={result.stderr}"
     )
-    assert "--gradient-checkpointing" in result.stdout, (
-        f"--gradient-checkpointing missing from --help (Wf-350-C3 flag "
-        f"should appear now that the +~30% literal is gone):\n"
-        f"{result.stdout}"
-    )
-    assert "--torch-compile-dynamic" in result.stdout, (
-        f"--torch-compile-dynamic missing from --help (Wf-358-A3 flag "
-        f"should appear now that the 5-15% literal is gone):\n"
-        f"{result.stdout}"
-    )
+    # Wf-358-A1 pinned "--gradient-checkpointing" and
+    # "--torch-compile-dynamic" here, because those were the two flags whose
+    # help strings carried the literal '%' that crashed the formatter.
+    # MEASURED 2026-10-27: af84a545 removed both flags, so they are no longer
+    # in --help and asserting them pins a surface that does not exist. The
+    # crash contract is what matters; any declared flag proves the formatter
+    # rendered the whole block.
+    for flag in ("--torch-compile", "--tf32", "--channels-last", "--w2-gradient-mode"):
+        assert flag in result.stdout, (
+            f"{flag} missing from --help. The bug this file guards is "
+            f"argparse's 'must be real number, not dict' crash on a literal "
+            f"'%' in help text; if --help renders at all, these declared "
+            f"flags must be listed.\n{result.stdout}"
+        )
 
 
 @pytest.mark.skipif(not VENV_PY.exists(), reason="vlm venv not on disk")
