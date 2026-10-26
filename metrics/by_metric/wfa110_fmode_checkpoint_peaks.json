@@ -1,0 +1,48 @@
+{
+  "script": "molmetal/scripts/wfa109_fmode_graph_retention.py --only {arm}",
+  "addresses": [
+    "D11",
+    "T2"
+  ],
+  "measured_at": "2026-10-26T09:37:26",
+  "config": "configs/wfa108j_fixed_cpu_2026_10_25.yaml",
+  "why_separate_processes": "RSS is a high-water mark and glibc keeps freed arenas mapped, so a second arm in the same process starts from the first arm's peak and cannot show a reduction.  Each arm here ran in its own process.",
+  "n_atoms": 405,
+  "steps": 12,
+  "arms": {
+    "control": {
+      "inside_step_peak_mb": 1381.0,
+      "base_rss_mb": 986.4,
+      "steps": 12,
+      "n_atoms": 405,
+      "live_tensors_slope_per_step": 0.0,
+      "rss_slope_mb_per_step": -0.274
+    },
+    "plain": {
+      "inside_step_peak_mb": 5099.1,
+      "base_rss_mb": 985.5,
+      "steps": 12,
+      "n_atoms": 405,
+      "live_tensors_slope_per_step": 0.0,
+      "rss_slope_mb_per_step": 76.479
+    },
+    "ckpt": {
+      "inside_step_peak_mb": 2500.8,
+      "base_rss_mb": 985.5,
+      "steps": 12,
+      "n_atoms": 405,
+      "live_tensors_slope_per_step": 0.0,
+      "rss_slope_mb_per_step": 0.0
+    }
+  },
+  "term_cost_over_control_mb": {
+    "plain": 3718.1,
+    "checkpointed": 1119.8
+  },
+  "checkpoint_reduction_factor": 3.32,
+  "per_graph_mb": {
+    "plain": 232.4,
+    "checkpointed": 70.0
+  },
+  "reading": "FmOdeTerm is a per-step budget, not a leak: over 160 steps the live-tensor count is constant at 382 and the RSS slope decays from 17.7 MB/step (40 steps) to 4.76 (160), which is an arena reaching its working-set size.  The 16 graphs cost 232 MB each at 405 atoms, i.e. 3.6 GB per step, and that is the 42.5 GB peak at the full-corpus batch.  Checkpointing the stage forwards cuts it 3.3x to 1.1 GB per step."
+}

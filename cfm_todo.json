@@ -114,9 +114,9 @@
     {
       "id": "D11",
       "symptom": "A 64-cloud arm reaches 42.5 GB and OOMs the host.",
-      "measured": "anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07). With fm_ode_term_weight 0.0 the same arm peaks at 5.28 GB and oscillates 2.1-4.6 GB.",
-      "artifact": "configs/wfa108j_fixed_cpu_2026_10_25.yaml",
-      "reading": "FmOdeTerm runs 16 extra velocity-field forwards per step and keeps all their graphs. Bounded at 16 graphs, so the retention is across steps.",
+      "measured": "anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07). With fm_ode_term_weight 0.0 the same arm peaks at 5.28 GB and oscillates 2.1-4.6 GB. MEASURED 2026-10-25 (metrics/by_metric/wfa109_fmode_graph_retention_long.json, 160 steps at 405 atoms): the live-tensor count is constant at 382 and the RSS slope decays from 17.7 MB/step over 40 steps to 4.76 over 160, so nothing accumulates. The 16 graphs cost 232 MB each at 405 atoms (3.72 GB per step, metrics/by_metric/wfa110_fmode_checkpoint_peaks.json), which at the 2,957-atom batch is ~27 GB on top of a 5.28 GB base - the observed peak.",
+      "artifact": "metrics/by_metric/wfa110_fmode_checkpoint_peaks.json",
+      "reading": "The reading in v11.0 ('bounded at 16 graphs, so the retention is across steps') was wrong, and the measurement says so. There is no leak: the live-tensor count is flat over 160 steps and the RSS slope decays as the allocator's arena reaches its working-set size. The term is a per-step budget that scales with atom count, and the only lever is to stop storing the stage activations. Checkpointing them cuts the added peak 3.3x (3.72 GB -> 1.12 GB per step at 405 atoms).",
       "addressed_by": [
         "T2"
       ]
@@ -132,7 +132,18 @@
       "where": "molmetal/adapters/flow_matching_lipman/ (EGNNVelocityField edge features) + the decode path that supplies the predicted order",
       "change": "Feed the bond order the head already predicts back into the EGNN as a typed edge feature. No new order head: MEASURED on the c8 full corpus the head reaches macro-F1(type) 0.475/0.632/0.618 at epochs 0/1/2 against an OpenBabel reference of 0.505, while the same run logs bond_features=OFF, so the field reads raw distance plus is_short/is_long and the order never reaches the coordinates. The change is the edge-feature path, a checkpoint that declares whether it has it, and a decode step that uses the same order logits the metric scores.",
       "done_when": "on the same c8 protocol: an on/off ablation of the typed-edge path changes the velocity field's output on identical inputs (M2-style perturbation, >= 1e-2), single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 does not fall below 0.618.",
-      "risk": "Typed edges change the EGNN's input width, so every existing checkpoint needs a fresh run or a migration. The effect may also be nil: if the ring and fragment errors come from the sampler rather than the field, giving the field order information changes nothing measurable."
+      "risk": "Typed edges change the EGNN's input width, so every existing checkpoint needs a fresh run or a migration. The effect may also be nil: if the ring and fragment errors come from the sampler rather than the field, giving the field order information changes nothing measurable.",
+      "status": "IN_PROGRESS",
+      "evidence": [
+        "models/velocity_net.py",
+        "molmetal/adapters/flow_matching_lipman/vector_channels.py",
+        "molmetal/adapters/flow_matching_lipman/__init__.py",
+        "molmetal/tests/test_typed_edges.py",
+        "molmetal/scripts/wfa110_typed_edge_ablation.py",
+        "metrics/by_metric/wfa110_typed_edge_ablation_ep20.json"
+      ],
+      "result": "The path is wired, opt-in, and trains: a zero-initialised rank-5 projection per layer, added to the edge input, with a per-cloud presence mask so a withheld order is the untyped field exactly. MEASURED ablation on the smoke arm (64 clouds, CPU): the projection leaves zero and the order moves the velocity by 0.22% at 2 epochs, 0.39% at 8, 0.50% at 20 - below the 1e-2 bar, and sublinear, so the training budget is not the lever at this scale.",
+      "open_question": "Whether the channel is weak by construction or unused by a 64-cloud fit. The 20-epoch projection norm is 0.002 against an Adam step of 1e-3 over 160 steps, i.e. the gradient is mostly cancelled: the FM regression does not need the order to fit 64 clouds. The full-corpus arm is where the question is answerable."
     },
     {
       "id": "MOD2",
@@ -351,7 +362,10 @@
         "D11"
       ],
       "done_when": "a 2-epoch run at fm_ode_term_weight 0.05 under an 8 GB RSS ceiling completes with the watchdog not firing, and the growth curve is an artifact.",
-      "status": "PLANNED"
+      "status": "IN_PROGRESS",
+      "result": "The leak hypothesis is refuted. FmOdeTerm.compute now checkpoints its four stage forwards (use_checkpoint=True, default), which is numerically exact including under dropout (6 tests in molmetal/tests/test_fmode_checkpoint.py) and cuts the term's added peak 3.3x: 3,718 MB -> 1,120 MB at 405 atoms, measured in three separate processes because RSS is a high-water mark.",
+      "artifact": "metrics/by_metric/wfa110_fmode_checkpoint_peaks.json",
+      "note": "done_when asks for a 2-epoch run at 0.05 under an 8 GB ceiling. The checkpoint fix alone does not get the 64-cloud batch there: the term still costs 1.12 GB per 405 atoms, i.e. ~8 GB at 2,957 atoms on top of a 5.28 GB base. The remaining levers are n_steps (16 forwards is n_steps^2) and the term's 0.5% share of the objective."
     },
     {
       "id": "T3",
@@ -393,11 +407,13 @@
         "D1"
       ],
       "done_when": "the on/off ablation moves the field's output by >= 1e-2 on identical inputs, single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 stays >= 0.618 on the c8 protocol.",
-      "status": "PLANNED",
+      "status": "IN_PROGRESS",
       "blocked_by": [
         "T3"
       ],
-      "blocked_note": "needs the measurement arm to be comparable."
+      "blocked_note": "needs the measurement arm to be comparable.",
+      "result": "Typed edges implemented and ablated. The ablation does NOT reach the done_when threshold at smoke scale: 0.0050 against 1e-2 at 20 epochs.",
+      "artifact": "metrics/by_metric/wfa110_typed_edge_ablation_ep20.json"
     },
     {
       "id": "T6",

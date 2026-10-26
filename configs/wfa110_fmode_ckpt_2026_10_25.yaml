@@ -1,0 +1,199 @@
+# configs/wfa110_fmode_ckpt_2026_10_25.yaml — T2 verification, CPU.
+#
+# D11's question was whether FmOdeTerm leaks across steps.  MEASURED
+# (metrics/by_metric/wfa109_fmode_graph_retention_long.json): it does not —
+# the live-tensor count is constant at 382 over 160 steps and the RSS slope
+# decays from 17.7 MB/step (40 steps) to 4.76 (160), which is glibc growing
+# its arena to a working-set size.  The 16 graphs the term asks for cost
+# ~232 MB each at 405 atoms (3.7 GB per step) and that is the 42.5 GB peak
+# at the full-corpus batch.
+#
+# This arm turns the term back ON at the shipped 0.05 with the stage
+# forwards checkpointed, to measure what that costs now.
+#
+# WHAT THIS IS
+# ------------
+# The evidence arm for cfm_todo.json task F1: run the module gates on a model
+# that has the fixes ON and see the failing ones flip.  It is deliberately
+# small (64 train clouds, 6 epochs, CPU) because F1 is a gate task, not a
+# result task — R1 is the full-corpus arm.
+#
+# WHAT IT TURNS ON, AND WHY EACH ONE EXISTS
+# -----------------------------------------
+#   flow.velocity_head              vector_channels   the coordinate head that
+#                                                     can emit a tangential
+#                                                     field (M4/M6)
+#   flow.vector_channel_norm_gain   fixed             stop the 600x gain
+#                                                     collapse (M4)
+#   flow.velocity_head_init         lsq               closed-form gate on the
+#                                                     first batch, so the field
+#                                                     starts at the achievable
+#                                                     magnitude instead of v=0
+#   flow.t_embedding_dim            32                sinusoidal t into the
+#                                                     gate (M6)
+#   flow.metal_conditioning         embedding         per-cloud metal identity
+#                                                     (M2)
+#   flow.fm_t_dist                  log_normal        keep the sampler out of
+#                                   mu 0.0            the t ~ 0.5 dead zone
+#                                   sigma 3.0         (MEASURED: 10.6% of
+#                                                     steps below 5% signal,
+#                                                     against 20.1% uniform)
+#
+# WHAT IT IS NOT
+# --------------
+# Not a quality claim.  64 clouds and 6 epochs measure the gates, not the
+# model.  Any number from this run is quoted with the run path attached.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+
+flow:
+  use_fm_objective: true
+  fm_weight: 1.0
+  fm_noise_sigma: 2.485
+  fm_t_per_cloud: 1
+  fm_t_dist: log_normal
+  fm_log_normal_mu: 0.0
+  fm_log_normal_sigma: 3.0
+  prediction_target: velocity
+  velocity_head: vector_channels
+  vector_channels: 8
+  vector_channel_norm_gain: fixed
+  velocity_head_init: lsq
+  velocity_head_init_knots: 9
+  metal_conditioning: embedding
+  t_embedding_dim: 32
+  # 0.0, not the 0.05 the other class wrappers use.  FmOdeTerm runs a 4-step
+  # RK4 closure penalty, i.e. 4 forwards per step for 4 steps = 16 extra
+  # velocity-field forwards, and every one of their graphs is held until
+  # backward.  MEASURED 2026-10-25 on this arm, one variable changed:
+  #     fm_ode 0.05 (shipped default)  RSS 1.1 -> 8.0 GB in 26 s, monotone,
+  #                                    no reclaim; the full run reached 42.52
+  #                                    GB and triggered a global OOM (pid
+  #                                    2581802, 15:52:07) that killed an
+  #                                    unrelated tmux session
+  #     fm_ode 0.00                    peak 5.28 GB, sawtooth 2.1 <-> 4.6 GB,
+  #                                    run completes
+  # Its contribution to the objective is 0.159 of a 29.72 train_loss (0.5%),
+  # so this removes 16 of the 19 forwards per step and nothing measurable.
+  # This is a memory workaround, not a verdict on the term: it is not A/B'd
+  # and the leak inside it is an open task, not a result.
+  fm_ode_term_weight: 0.05
+  # 0.0, not the 0.05 the other class wrappers use.  MEASURED on the first
+  # launch of this arm (2026-10-25 13:54): at weight 0.05 EnergyConservation
+  # contributed 79.59 of a 109.68 train_loss, i.e. 73% of the objective, and
+  # drove grad_norm to 17329.99.  The term is an unnormalised squared drift of
+  # KE + a 1/r^12 LJ potential, so its magnitude is a property of the batch
+  # size, not of the model.  Leaving it at 0.05 would make this arm a test of
+  # the energy penalty.
+  energy_conservation_weight: 0.0
+  sboo3_term_weight: 0.05
+  geometry_consistency_weight: 0.0
+  geometry_clash_weight: 1.0
+  geometry_bond_weight: 1.0
+  geometry_metal_weight: 1.0
+  sboo3_n_rot: 1
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  dative_distance_cutoff: 2.6
+  metal_placement: legacy
+  use_metal_pair_features: true
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 4
+  method: euler
+  optimizer: adam
+  warmup_steps: 0
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  bond_length_guidance_weight: 0.0
+  ring_template_weight: 0.0
+
+protocol:
+  n_train: 64
+  n_val: 32
+  batch_size: 8
+  lr: 0.001
+  gen_validity_samples: 0
+  gen_eval_n: 0
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  epochs: 2
+  n_seeds_min: 1
+  scheduler:
+    type: none
+    warmup_epochs: 0
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+  early_stop_patience: 999
+
+output:
+  base_dir: results/wfa110_fmode_ckpt_2026_10_25
+  log_master: results/wfa110_fmode_ckpt_2026_10_25/master.log
+  ckpt_dir: results/wfa110_fmode_ckpt_2026_10_25/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+
+compute:
+  gpu: cpu
+  device: cpu
+
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  user_ok_granted: "Wf-A108l geometry-term smoke (2026-10-25), CPU, 64 clouds x 2 epochs"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+
+honest_framing:
+  claims:
+  - "The five Wf-A108j flags reach the trainer and the gates are re-run on a
+    checkpoint that has them ON."
+  do_not_claim:
+  - "Any quality number. 64 clouds and 6 epochs measure the gates."
+  deferred:
+  - "The full-corpus arm that measures the fix is R1."

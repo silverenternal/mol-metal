@@ -324,10 +324,32 @@ class FmOdeTerm:
         weight: float = 0.0,
         enabled: bool = False,
         name: str = "fm_ode_term",
+        use_checkpoint: bool = True,
     ) -> None:
         self.weight = float(weight)
         self.enabled = bool(enabled)
         self.name = str(name)
+        # Wf-A110 (D11/T2) — recompute the stage forwards in the backward
+        # instead of storing their activations.
+        #
+        # MEASURED 2026-10-25 by ``molmetal/scripts/wfa109_fmode_graph_retention.py``
+        # -> ``metrics/by_metric/wfa109_fmode_graph_retention_long.json``:
+        #
+        #   * the retention is NOT a leak.  Over 160 steps at 405 atoms the
+        #     live-tensor count is constant at 382 and the RSS slope falls
+        #     from 17.7 MB/step over 40 steps to 4.76 over 160 — the signature
+        #     of glibc growing its arena to a working-set size, not of
+        #     objects accumulating;
+        #   * the 16 graphs the term asks for cost ~294 MB each at 405 atoms,
+        #     i.e. ~4.7 GB per step, and that scales with atom count: at the
+        #     2,957-atom batch the observed 42.5 GB peak is these 16 graphs
+        #     and nothing else;
+        #   * checkpointing the stage forwards drops the retention to ~0
+        #     (16 graphs: 1,206.7 MB plain against 0.2 MB checkpointed).
+        #
+        # So the term needs 16x the memory of the ordinary step by
+        # construction, and the only lever is to not store them.
+        self.use_checkpoint = bool(use_checkpoint)
 
     def compute(
         self,
@@ -348,6 +370,17 @@ class FmOdeTerm:
         try:
             # 4-step RK4 over [0, 1]
             dt = 1.0 / max(int(n_steps), 1)
+
+            def _f(xx: torch.Tensor) -> torch.Tensor:
+                if self.use_checkpoint and xx.requires_grad:
+                    from torch.utils.checkpoint import checkpoint as _ckpt
+
+                    # use_reentrant=False saves and restores the RNG state,
+                    # so a field with dropout recomputes to the same values
+                    # it produced forward.  The reentrant path does not.
+                    return _ckpt(pred_fn, xx, use_reentrant=False)
+                return pred_fn(xx)
+
             x = x0
             for k in range(int(n_steps)):
                 t_k = torch.tensor(
@@ -355,10 +388,10 @@ class FmOdeTerm:
                     dtype=x0.dtype,
                     device=x0.device,
                 )
-                k1 = pred_fn(x)
-                k2 = pred_fn(x + 0.5 * dt * k1)
-                k3 = pred_fn(x + 0.5 * dt * k2)
-                k4 = pred_fn(x + dt * k3)
+                k1 = _f(x)
+                k2 = _f(x + 0.5 * dt * k1)
+                k3 = _f(x + 0.5 * dt * k2)
+                k4 = _f(x + dt * k3)
                 x = x + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
                 del t_k  # noqa: F841 — kept in scope for clarity
             residual = (x - x1).pow(2).mean()
