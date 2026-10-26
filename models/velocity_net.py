@@ -148,6 +148,7 @@ class EGNNLayer(nn.Module):
         hidden_dim: int,
         edge_mlp_hidden: int | None = None,
         update_mlp_hidden: int | None = None,
+        typed_edge_classes: int = 0,
     ) -> None:
         super().__init__()
         if hidden_dim < 1:
@@ -169,6 +170,27 @@ class EGNNLayer(nn.Module):
             edge_mlp_hidden,
             edge_mlp_hidden,
         )
+
+        # Wf-A110 (MOD1) — typed edges.  ``edge_in`` is
+        # ``[h_i || h_j || dist || dist^2]``: the layer reads how far apart
+        # two atoms are and nothing about what the pair *is*.  MEASURED on
+        # the c8 full corpus: the bond head reaches macro-F1(type) 0.618
+        # while the same run logs ``bond_features=OFF``, so a bond order the
+        # model already predicts never reaches the coordinates.
+        #
+        # ``typed_edge_classes > 0`` adds a projection of the per-edge
+        # one-hot class into the edge-input width, ADDED to ``edge_in``.
+        # Zero-initialised, so a freshly built layer emits exactly the
+        # untyped output and a checkpoint without this module still loads
+        # with ``strict=True`` (the module does not exist unless the flag is
+        # on — see ``EGNNVelocityField``).
+        self.edge_type_mlp: nn.Linear | None = None
+        if int(typed_edge_classes) > 0:
+            self.edge_type_mlp = nn.Linear(
+                int(typed_edge_classes), 2 * hidden_dim + 2
+            )
+            nn.init.zeros_(self.edge_type_mlp.weight)
+            nn.init.zeros_(self.edge_type_mlp.bias)
 
         # Two heads from the edge embedding: a scalar for the node
         # update and a scalar that scales the displacement vector.
@@ -195,6 +217,8 @@ class EGNNLayer(nn.Module):
         edge_index: torch.Tensor,
         cond_per_node: torch.Tensor | None = None,
         edge_mask: torch.Tensor | None = None,
+        edge_type: torch.Tensor | None = None,
+        edge_type_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply one EGNN-style layer.
 
@@ -213,6 +237,10 @@ class EGNNLayer(nn.Module):
         edge_mask : optional ``(B, E)`` bool tensor
             Real-edge mask.  Padded edges are skipped in the scatter
             aggregation.  When ``None`` every edge is treated as real.
+        edge_type : optional ``(B, E, K)`` float tensor
+            Per-edge one-hot bond class.  Only consulted when the layer was
+            built with ``typed_edge_classes=K > 0``; otherwise the argument is
+            ignored, which keeps untyped layers' signatures interchangeable.
 
         Returns
         -------
@@ -246,6 +274,22 @@ class EGNNLayer(nn.Module):
         # activation.  Trailing SiLU runs in PyTorch (negligible cost —
         # it's a single elementwise over the (B, E, edge_hidden) tensor).
         edge_in = torch.cat([h_src, h_dst, dist, dist * dist], dim=-1)
+        if self.edge_type_mlp is not None and edge_type is not None:
+            # One-hot class -> edge-input space.  The projection is
+            # zero-initialised, so an untrained typed layer is the untyped
+            # layer exactly; the typed path only starts to matter once its
+            # gradient has moved it, which is the point (a randomly
+            # initialised addend would perturb every existing run).
+            #
+            # ``edge_type_mask`` (B, 1, 1) selects per cloud whether the
+            # order is known.  It multiplies the PROJECTION, not the
+            # one-hot, because the projection has a bias: zeroing the input
+            # would still emit that bias and the "absent" state would not be
+            # the untyped path.
+            _typed = self.edge_type_mlp(edge_type.to(edge_in.dtype))
+            if edge_type_mask is not None:
+                _typed = _typed * edge_type_mask.to(_typed.dtype)
+            edge_in = edge_in + _typed
         edge_emb = self.edge_mlp_fused(edge_in)
         edge_emb = torch.nn.functional.silu(edge_emb)  # (B, E, edge_hidden)
 

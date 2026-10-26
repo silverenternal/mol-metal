@@ -1,0 +1,66 @@
+{
+  "script": "molmetal/scripts/wfa110_typed_edge_ablation.py",
+  "module": "MOD1",
+  "task": "T5",
+  "addresses": [
+    "D1"
+  ],
+  "measured_at": "2026-10-26T09:31:23",
+  "checkpoint": "/home/hugo/codes/mol-metal/results/wfa110_typed_edges_smoke8/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "checkpoint_sha256": "a5e130e5537f1d90209bb67e9591098426f904c9abfe81d15d4498584b090a41",
+  "run_dir": "results/wfa110_typed_edges_smoke8",
+  "device": "cpu",
+  "n_clouds": 32,
+  "n_atoms": 1557,
+  "typed_edge_classes": 5,
+  "migrated_keys": {},
+  "projection_norm_per_layer": {
+    "vel_field.vc_layers.0.edge_type_mlp.weight": 0.004238107707351446,
+    "vel_field.vc_layers.1.edge_type_mlp.weight": 0.00419726362451911,
+    "vel_field.vc_layers.2.edge_type_mlp.weight": 0.0053019276820123196
+  },
+  "projection_left_zero_during_training": true,
+  "per_t": [
+    {
+      "t": 0.05,
+      "rel_change_typed_vs_none": 0.00032760799513198435,
+      "rel_change_masked_vs_none": 0.0,
+      "v_none_norm": 137.30323791503906,
+      "v_typed_norm": 137.2953338623047
+    },
+    {
+      "t": 0.25,
+      "rel_change_typed_vs_none": 0.00045897712698206306,
+      "rel_change_masked_vs_none": 0.0,
+      "v_none_norm": 114.13603210449219,
+      "v_typed_norm": 114.13688659667969
+    },
+    {
+      "t": 0.5,
+      "rel_change_typed_vs_none": 0.0008793993038125336,
+      "rel_change_masked_vs_none": 0.0,
+      "v_none_norm": 71.74443817138672,
+      "v_typed_norm": 71.76850891113281
+    },
+    {
+      "t": 0.75,
+      "rel_change_typed_vs_none": 0.003861889475956559,
+      "rel_change_masked_vs_none": 0.0,
+      "v_none_norm": 56.727115631103516,
+      "v_typed_norm": 56.67462921142578
+    },
+    {
+      "t": 0.95,
+      "rel_change_typed_vs_none": 0.002550715347751975,
+      "rel_change_masked_vs_none": 0.0,
+      "v_none_norm": 97.5634765625,
+      "v_typed_norm": 97.61573791503906
+    }
+  ],
+  "max_rel_change": 0.003861889475956559,
+  "max_rel_change_masked_control": 0.0,
+  "threshold": 0.01,
+  "ablation_passes": false,
+  "reading": "The typed path is present but does not steer the field above the 1% threshold (max 0.39%), or its projection never left zero.  Either the training budget was too small to move a zero-init projection, or the order carries nothing the field can use.",
+  "wall_time_s": 33.79
+}

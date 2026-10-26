@@ -165,6 +165,13 @@ class VectorChannelLayer(nn.Module):
         # magnitude controls multiply, so the optimiser had two ways to
         # shrink the field and it used both.  A frozen gain removes one.
         learnable_norm_gain: bool = True,
+        # Wf-A110 (MOD1) — typed edges, the same opt-in as
+        # ``models.velocity_net.EGNNLayer``.  ``edge_in`` is
+        # ``[h_src || h_dst || dist || dist^2 || is_metal_edge]``, so this
+        # layer also knows nothing about what a pair IS.  Zero-initialised
+        # projection added to ``edge_in``; the module is only constructed
+        # when the flag is on, so an existing checkpoint still loads.
+        typed_edge_classes: int = 0,
     ) -> None:
         super().__init__()
         if hidden_dim < 1:
@@ -184,6 +191,14 @@ class VectorChannelLayer(nn.Module):
             nn.Linear(edge_hidden, edge_hidden),
             nn.SiLU(),
         )
+        self.edge_type_mlp: Optional[nn.Linear] = None
+        if int(typed_edge_classes) > 0:
+            self.edge_type_mlp = nn.Linear(
+                int(typed_edge_classes), 2 * self.hidden_dim + 3
+            )
+            nn.init.zeros_(self.edge_type_mlp.weight)
+            nn.init.zeros_(self.edge_type_mlp.bias)
+
         self.gate_head = nn.Linear(edge_hidden, self.n_channels)
         self.phi_head = nn.Linear(edge_hidden, self.n_channels)
         self.msg_scalar_head = nn.Linear(edge_hidden, self.hidden_dim)
@@ -226,6 +241,8 @@ class VectorChannelLayer(nn.Module):
         cond_per_node: Optional[torch.Tensor] = None,
         edge_mask: Optional[torch.Tensor] = None,
         metal_mask: Optional[torch.Tensor] = None,
+        edge_type: Optional[torch.Tensor] = None,
+        edge_type_mask: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply one vector-channel layer.
 
@@ -269,6 +286,11 @@ class VectorChannelLayer(nn.Module):
             is_metal_edge = (m_src + m_dst).clamp(max=1.0).unsqueeze(-1)
 
         edge_in = torch.cat([h_src, h_dst, dist, dist * dist, is_metal_edge], dim=-1)
+        if self.edge_type_mlp is not None and edge_type is not None:
+            _typed = self.edge_type_mlp(edge_type.to(edge_in.dtype))
+            if edge_type_mask is not None:
+                _typed = _typed * edge_type_mask.to(_typed.dtype)
+            edge_in = edge_in + _typed
         edge_emb = self.edge_mlp(edge_in)  # (B, E, edge_hidden)
 
         gate = torch.sigmoid(self.gate_head(edge_emb))  # (B, E, C) in (0, 1)

@@ -1788,6 +1788,68 @@ def _block_diag_radius_edges(
     return radius_edge_index(coords_pad, node_mask, cutoff)
 
 
+def build_bond_type_lut(
+    batch: "Batch", n_clouds: int
+) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    """Per-cloud dense bond-class lookup for the typed-edge path (MOD1).
+
+    Returns ``(lut, present)``:
+
+    * ``lut`` — ``(n_clouds, A_max, A_max)`` int64 class index per
+      intra-cloud atom pair, in FLAT per-cloud local coordinates (the same
+      frame ``_fm_field_forward_padded`` fills ``x_pad`` from, so a lookup
+      needs no remapping).  Class 0 is "no bond", which is also what every
+      non-bonded radius-graph edge reads, so the field can distinguish
+      "these two atoms are close" from "these two atoms are bonded".
+    * ``present`` — ``(n_clouds,)`` float, 1 where the batch actually carried
+      bond types.  It is not decoration: a cloud whose bonds are unknown must
+      read as the UNTYPED field, and the layer applies this mask after the
+      projection (whose bias would otherwise leak a contribution).
+
+    Returns ``(None, None)`` when the batch carries no bond types, which is
+    the case for every synthetic cohort and for any loader that does not
+    populate the field.
+    """
+    bonds = getattr(batch, "bonds", None)
+    types = getattr(batch, "bond_types", None)
+    if bonds is None or types is None or bonds.numel() == 0:
+        return None, None
+    if types.numel() != bonds.shape[1]:
+        return None, None
+
+    dev = bonds.device
+    n_atoms = int(batch.atomic_numbers.shape[0])
+    batch_idx = batch.batch_idx
+    offsets = batch.cloud_offsets.to(dev)
+    orig_n = batch.orig_n_atoms.to(dev)
+    a_max = int(orig_n.max().item()) if orig_n.numel() else 0
+    if a_max <= 0:
+        return None, None
+
+    src, dst = bonds[0].long(), bonds[1].long()
+    ok = (src >= 0) & (src < n_atoms) & (dst >= 0) & (dst < n_atoms)
+    if not bool(ok.any()):
+        return None, None
+    src, dst = src[ok], dst[ok]
+    cls = types.long()[ok]
+
+    # Cross-cloud bonds would index into the wrong cloud's square, so they
+    # are dropped rather than silently written somewhere plausible.
+    c_src = batch_idx[src]
+    c_dst = batch_idx[dst]
+    same = c_src == c_dst
+    src, dst, cls, c_src = src[same], dst[same], cls[same], c_src[same]
+
+    lut = torch.zeros((int(n_clouds), a_max, a_max), dtype=torch.long, device=dev)
+    i_loc = (src - offsets[c_src]).clamp(0, a_max - 1)
+    j_loc = (dst - offsets[c_src]).clamp(0, a_max - 1)
+    lut[c_src, i_loc, j_loc] = cls
+    lut[c_src, j_loc, i_loc] = cls
+
+    present = torch.ones(int(n_clouds), dtype=torch.float32, device=dev)
+    return lut, present
+
+
 class _DropoutLinear(nn.Module):
     """``nn.Linear`` preceded by dropout on its input.
 
@@ -2132,6 +2194,20 @@ class CFMJointModel(nn.Module):
         # Wf-A108j — per-cloud metal identity as a first-class channel.
         # "none" (default) is the pre-Wf-A108j path, bit-exact.
         metal_conditioning: str = "none",
+        # Wf-A110 (MOD1) — typed edges.  The EGNN reads distance and nothing
+        # about what a pair IS; the bond head already predicts the order
+        # (macro-F1(type) 0.618 on the c8 full corpus) and it never reaches
+        # the coordinates.  ``typed_edge_features=True`` adds a
+        # zero-initialised per-edge class projection to every layer.
+        typed_edge_features: bool = False,
+        typed_edge_classes: int = 5,
+        # Fraction of CLOUDS whose order is withheld during training.  The
+        # sampler has no order to supply, so the field must also work with
+        # the order absent; withholding is how that branch is trained.  The
+        # mask multiplies the projection (not its input), so a withheld
+        # cloud is the untyped field exactly.  1.0 turns the typed path into
+        # a no-op and 0.0 never trains the unconditional branch.
+        typed_edge_dropout: float = 0.5,
         # Wf-A108g (2026-10-23) — per-batch DATA volume, not model size.
         #
         # A batch pads every cloud to the largest member.  MEASURED on 64
@@ -2553,6 +2629,11 @@ class CFMJointModel(nn.Module):
                 vector_channel_norm_gain=str(vector_channel_norm_gain),
                 velocity_head_init=str(velocity_head_init),
                 metal_conditioning=str(metal_conditioning),
+                # Wf-A110 (MOD1) — typed edges.  Default False constructs no
+                # new module, so every existing checkpoint still loads with
+                # ``strict=True``.
+                typed_edge_features=bool(typed_edge_features),
+                typed_edge_classes=int(typed_edge_classes),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -2612,6 +2693,8 @@ class CFMJointModel(nn.Module):
         # receives ``pocket_embed``; the legacy ``fm_vel_head`` probe has
         # never consumed a conditioning tensor and continues to ignore it.
         pocket_embed: Optional[torch.Tensor] = None,
+        bond_type_lut: Optional[torch.Tensor] = None,
+        bond_type_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
 
@@ -2653,7 +2736,8 @@ class CFMJointModel(nn.Module):
             )
         if self.use_egnn_velocity:
             out, node_mask = self._fm_field_forward(
-                x_t, t, atomic_numbers, cloud_sizes, pocket_embed
+                x_t, t, atomic_numbers, cloud_sizes, pocket_embed,
+                bond_type_lut=bond_type_lut, bond_type_mask=bond_type_mask,
             )
             vel = out["vel"]  # (B, n_max, 3)
             return vel[node_mask]  # (N, 3) flat, cloud-major
@@ -2743,6 +2827,8 @@ class CFMJointModel(nn.Module):
         atomic_numbers: torch.Tensor,
         cloud_sizes: Optional[Sequence[int]] = None,
         pocket_embed: Optional[torch.Tensor] = None,
+        bond_type_lut: Optional[torch.Tensor] = None,
+        bond_type_mask: Optional[torch.Tensor] = None,
     ):
         """Run ``vel_field`` over a flat cloud batch, in size-homogeneous groups.
 
@@ -2809,7 +2895,8 @@ class CFMJointModel(nn.Module):
 
         if len(groups) == 1:
             out, node_mask = self._fm_field_forward_padded(
-                x_t, atomic_numbers, sizes, offsets, t_b, groups[0], pocket_embed
+                x_t, atomic_numbers, sizes, offsets, t_b, groups[0],
+                pocket_embed, bond_type_lut, bond_type_mask,
             )
             # Keep the historical (B, N, ...) contract for the single-group
             # path so nothing downstream of the default configuration moves.
@@ -2818,7 +2905,8 @@ class CFMJointModel(nn.Module):
         per_cloud: Dict[int, Dict[str, torch.Tensor]] = {}
         for g in groups:
             chunk, _chunk_mask = self._fm_field_forward_padded(
-                x_t, atomic_numbers, sizes, offsets, t_b, g, pocket_embed
+                x_t, atomic_numbers, sizes, offsets, t_b, g,
+                pocket_embed, bond_type_lut, bond_type_mask,
             )
             # chunk[k] is (len(g), n_max, ...); cloud j owns its first
             # sizes[ci] rows, the rest is the group's pad.
@@ -2840,6 +2928,8 @@ class CFMJointModel(nn.Module):
         t_b: torch.Tensor,
         group: Sequence[int],
         pocket_embed: Optional[torch.Tensor],
+        bond_type_lut: Optional[torch.Tensor] = None,
+        bond_type_mask: Optional[torch.Tensor] = None,
     ):
         """One padded ``vel_field`` call over the clouds listed in ``group``.
 
@@ -2865,10 +2955,34 @@ class CFMJointModel(nn.Module):
             x_pad, node_mask, self.cutoff
         )
         _idx = torch.as_tensor(list(group), device=dev)
+
+        # Wf-A110 (MOD1) — typed edges.  ``bond_type_lut`` is
+        # ``(n_clouds, A_max, A_max)`` class indices in FLAT per-cloud local
+        # coordinates, i.e. the same frame ``x_pad[j, :s]`` was filled from,
+        # so a lookup needs no remapping.  Padded slots stay class 0 ("no
+        # bond"), and every padded edge is masked out of the aggregation
+        # anyway.
+        edge_type = None
+        edge_type_mask = None
+        _k = int(getattr(self.vel_field, "_typed_edge_k", 0) or 0)
+        if bond_type_lut is not None and _k > 0:
+            lut = bond_type_lut[_idx][:, :n_max, :n_max]
+            _src = edge_index[:, 0].clamp(0, n_max - 1)
+            _dst = edge_index[:, 1].clamp(0, n_max - 1)
+            _b = torch.arange(len(group), device=dev).unsqueeze(1).expand_as(_src)
+            _cls = lut[_b, _src, _dst].clamp(0, _k - 1)
+            edge_type = torch.nn.functional.one_hot(_cls, num_classes=_k).to(
+                x_pad.dtype
+            )
+            if bond_type_mask is not None:
+                edge_type_mask = bond_type_mask[_idx].reshape(-1, 1, 1)
+
         out = self.vel_field(
             x_pad, z_pad, edge_index, t_b[_idx],
             edge_mask=edge_mask,
             pocket_embed=None if pocket_embed is None else pocket_embed[_idx],
+            edge_type=edge_type,
+            edge_type_mask=edge_type_mask,
         )
         return out, node_mask
 
@@ -2879,6 +2993,8 @@ class CFMJointModel(nn.Module):
         atomic_numbers: torch.Tensor,
         cloud_sizes: Optional[Sequence[int]] = None,
         pocket_embed: Optional[torch.Tensor] = None,
+        bond_type_lut: Optional[torch.Tensor] = None,
+        bond_type_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Absolute-position prediction ``x1_hat`` (Wf-A108e).
 
@@ -2902,7 +3018,8 @@ class CFMJointModel(nn.Module):
                 " — build with --prediction-target x1."
             )
         out, node_mask = self._fm_field_forward(
-            x_t, t, atomic_numbers, cloud_sizes, pocket_embed
+            x_t, t, atomic_numbers, cloud_sizes, pocket_embed,
+            bond_type_lut=bond_type_lut, bond_type_mask=bond_type_mask,
         )
         return out["x1_hat"][node_mask]
 
@@ -4610,6 +4727,10 @@ def train_one_epoch(
     geometry_clash_weight: float = 1.0,
     geometry_bond_weight: float = 1.0,
     geometry_metal_weight: float = 1.0,
+    # Wf-A110 (MOD1) — fraction of clouds whose bond order is withheld.
+    # Only read when the field was built with typed edges; 0.0 keeps the
+    # typed path always-on, 1.0 makes it a no-op.
+    typed_edge_dropout: float = 0.5,
     log_normal_t: bool = False,  # False = uniform t-sampling (legacy)
     log_normal_t_mu: float = -0.5,  # Wf-340-A3 log-normal mu
     log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
@@ -5914,6 +6035,41 @@ def train_one_epoch(
             #       objective while reporting an x1 number.
             # `stable_vm` is a velocity-space loss, so combining it with x1 is
             # refused rather than silently ignored.
+            # Wf-A110 (MOD1) — typed edges.  Built once per step, only when
+            # the field actually has the path, so the default config pays
+            # nothing.  The per-cloud mask is what trains the unconditional
+            # branch: the sampler has no order to supply, so a field that only
+            # ever saw truth orders would be tested off-distribution.
+            _bond_lut = None
+            _bond_mask = None
+            if bool(getattr(model, "typed_edge_features", False)) or int(
+                getattr(getattr(model, "vel_field", None), "_typed_edge_k", 0) or 0
+            ) > 0:
+                _bond_lut, _bond_mask = build_bond_type_lut(
+                    batch, int(batch.n_clouds)
+                )
+                if _bond_mask is not None:
+                    # OT / Bass coupling permutes the target side within each
+                    # cloud and batch.bonds is not permuted with it.  Same
+                    # check the geometry term uses: compare the order rather
+                    # than enumerating the flags that cause it.  A permuted
+                    # batch trains the UNTYPED branch, which is correct
+                    # behaviour rather than a skip.
+                    if not (
+                        z_all.shape == batch.atomic_numbers.shape
+                        and bool(torch.equal(z_all, batch.atomic_numbers))
+                    ):
+                        _bond_mask = torch.zeros_like(_bond_mask)
+                    _p_drop = float(typed_edge_dropout)
+                    if _p_drop > 0.0:
+                        _keep = (
+                            torch.rand(
+                                _bond_mask.shape[0], device=_bond_mask.device
+                            )
+                            >= _p_drop
+                        ).to(_bond_mask.dtype)
+                        _bond_mask = _bond_mask * _keep
+
             if str(prediction_target) == "x1":
                 if stable_vm:
                     raise SystemExit(
@@ -5925,6 +6081,7 @@ def train_one_epoch(
                 _x1_pred = model.fm_x1(
                     x_t, t, z_all, cloud_sizes=_cloud_sizes,
                     pocket_embed=_pocket_embed,
+                    bond_type_lut=_bond_lut, bond_type_mask=_bond_mask,
                 )
                 fm_term = float(fm_weight) * F.mse_loss(_x1_pred, x1)
             else:
@@ -5939,6 +6096,7 @@ def train_one_epoch(
                 _vel_pred = model.fm_velocity(
                     x_t, t, z_all, cloud_sizes=_cloud_sizes,
                     pocket_embed=_pocket_embed,
+                    bond_type_lut=_bond_lut, bond_type_mask=_bond_mask,
                 )
                 if stable_vm:
                     try:
@@ -12488,6 +12646,44 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--typed-edge-features",
+        dest="typed_edge_features",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A110 (MOD1): add a zero-initialised per-edge bond-class "
+            "projection to every EGNN layer's edge input. The field otherwise "
+            "reads [h_i || h_j || dist || dist^2] and nothing about what a pair "
+            "IS; MEASURED on the c8 full corpus the bond head reaches "
+            "macro-F1(type) 0.618 while the same run logs bond_features=OFF. "
+            "Default off: no module is constructed, so every existing "
+            "checkpoint still loads with strict=True."
+        ),
+    )
+    p.add_argument(
+        "--typed-edge-classes",
+        dest="typed_edge_classes",
+        type=int,
+        default=5,
+        help=(
+            "Wf-A110: bond classes fed as typed edges. 5 matches "
+            "NUM_BOND_CLASSES = [no-bond, single, double, triple, aromatic]."
+        ),
+    )
+    p.add_argument(
+        "--typed-edge-dropout",
+        dest="typed_edge_dropout",
+        type=float,
+        default=0.5,
+        help=(
+            "Wf-A110: fraction of CLOUDS whose bond order is withheld per "
+            "step. The sampler has no order to supply, so the unconditional "
+            "branch has to be trained; the mask multiplies the projection, so "
+            "a withheld cloud is the untyped field exactly. 1.0 makes the "
+            "typed path a no-op, 0.0 never trains the unconditional branch."
+        ),
+    )
+    p.add_argument(
         "--metal-conditioning",
         dest="metal_conditioning",
         choices=("none", "embedding"),
@@ -13548,6 +13744,11 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         ),
         velocity_head_init=str(getattr(args, "velocity_head_init", "zero")),
         metal_conditioning=str(getattr(args, "metal_conditioning", "none")),
+        # Wf-A110 (MOD1) — typed edges.
+        typed_edge_features=bool(
+            getattr(args, "typed_edge_features", False)
+        ),
+        typed_edge_classes=int(getattr(args, "typed_edge_classes", 5)),
         # Wf-A108g — per-batch pad grouping.  Default 0.0 (one padded
         # forward) so every pre-Wf-A108g checkpoint rebuilds and runs
         # exactly as it did; opt in via ``flow.fm_batch_chunk_ratio``.
@@ -15581,6 +15782,9 @@ def main() -> int:
             ),
             geometry_metal_weight=float(
                 getattr(args, "geometry_metal_weight", 1.0)
+            ),
+            typed_edge_dropout=float(
+                getattr(args, "typed_edge_dropout", 0.5)
             ),
             # FIX-C11 — these three were function defaults with no dest before;
             # the getattr fallbacks keep a caller that passes nothing (every

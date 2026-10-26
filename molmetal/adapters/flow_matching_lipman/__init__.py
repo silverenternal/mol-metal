@@ -1601,6 +1601,19 @@ class EGNNVelocityField(nn.Module):
         # channel the project is named after was the weakest input in the
         # model.
         metal_conditioning: str = "none",
+        # Wf-A110 (MOD1) — typed edges.  The EGNN reads
+        # ``[h_i || h_j || dist || dist^2]``, i.e. how far apart two atoms
+        # are and nothing about what the pair is.  MEASURED on the c8 full
+        # corpus: the bond head reaches macro-F1(type) 0.618 while the same
+        # run logs ``bond_features=OFF``, so an order the model already
+        # predicts never reaches the coordinates.
+        #
+        # ``True`` adds a zero-initialised per-edge class projection to
+        # every layer's edge input.  Default ``False`` constructs no new
+        # module at all, so every existing checkpoint still loads with
+        # ``strict=True`` and the forward is bit-exact.
+        typed_edge_features: bool = False,
+        typed_edge_classes: int = 5,
     ) -> None:
         """Construct the velocity field.
 
@@ -1698,6 +1711,11 @@ class EGNNVelocityField(nn.Module):
                 f"got {velocity_head!r}"
             )
         self.velocity_head = _velocity_head
+        self.typed_edge_features = bool(typed_edge_features)
+        self.typed_edge_classes = int(typed_edge_classes)
+        self._typed_edge_k = (
+            int(typed_edge_classes) if bool(typed_edge_features) else 0
+        )
         self.vector_channels = int(vector_channels)
         # Wf-A108j — capture slot used by ``fit_output_head_lsq``.  Always
         # defined so the attribute check in ``forward`` never depends on the
@@ -1800,6 +1818,7 @@ class EGNNVelocityField(nn.Module):
                         n_channels=self.vector_channels,
                         edge_hidden=edge_mlp_hidden,
                         learnable_norm_gain=(_gain_mode == "learnable"),
+                        typed_edge_classes=self._typed_edge_k,
                     )
                     for _ in range(n_layers)
                 ]
@@ -1821,7 +1840,11 @@ class EGNNVelocityField(nn.Module):
             self.vc_head = None  # type: ignore[assignment]
             self.layers = nn.ModuleList(
                 [
-                    EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=edge_mlp_hidden)
+                    EGNNLayer(
+                        hidden_dim=hidden_dim,
+                        edge_mlp_hidden=edge_mlp_hidden,
+                        typed_edge_classes=self._typed_edge_k,
+                    )
                     for _ in range(n_layers)
                 ]
             )
@@ -2263,6 +2286,8 @@ class EGNNVelocityField(nn.Module):
         pocket_atom_embed: Optional[torch.Tensor] = None,  # (B, P, max_atomic_number)
         pocket_atom_mask: Optional[torch.Tensor] = None,  # (B, P) bool
         batch_ctx: Optional[dict] = None,  # Track-A L3b — chemistry context dict
+        edge_type: Optional[torch.Tensor] = None,  # (B, E, K) one-hot bond class
+        edge_type_mask: Optional[torch.Tensor] = None,  # (B, 1, 1) 1 = known
     ) -> dict:
         """Predict per-atom velocity (B, N, 3) AND atom-type logits (B, N, max_z).
 
@@ -2480,6 +2505,8 @@ class EGNNVelocityField(nn.Module):
                 edge_index,
                 cond_per_node=_layer_cond,
                 edge_mask=edge_mask,
+                edge_type=edge_type,
+                edge_type_mask=edge_type_mask,
             )
         if self.velocity_head == "vector_channels":
             # Same three-way conditioning gate as the radial loop above, so
@@ -2501,6 +2528,8 @@ class EGNNVelocityField(nn.Module):
                     cond_per_node=_layer_cond,
                     edge_mask=edge_mask,
                     metal_mask=metal_mask,
+                    edge_type=edge_type,
+                    edge_type_mask=edge_type_mask,
                 )
         # WF-CFM-Phase-2 (P1.3) — cross-attention pocket conditioning.
         # When ``pocket_atom_embed`` and ``pocket_atom_mask`` are
