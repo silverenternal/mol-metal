@@ -207,7 +207,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "typed_edge_classes": k,
         "migrated_keys": migrated,
         "projection_norm_per_layer": proj_norm,
-        "projection_left_zero_during_training": projection_moved,
+        # Named for what it holds.  Until 2026-10-26 this key was
+        # ``projection_left_zero_during_training`` while storing
+        # ``projection_moved`` -- True meant "left zero", so a reader taking the
+        # name at face value concluded the opposite of the measurement.
+        "projection_moved_off_zero_during_training": projection_moved,
         "per_t": rows,
         "max_rel_change": best,
         "max_abs_change_per_atom": max(r["abs_change_per_atom"] for r in rows),

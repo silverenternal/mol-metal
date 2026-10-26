@@ -1,66 +1,66 @@
 {
-  "script": "molmetal/scripts/wfa110_typed_edge_ablation.py",
-  "module": "MOD1",
-  "task": "T5",
+  "ablation_passes": false,
   "addresses": [
     "D1"
   ],
-  "measured_at": "2026-10-26T09:24:26",
   "checkpoint": "/home/hugo/codes/mol-metal/results/wfa110_typed_edges_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
   "checkpoint_sha256": "b648a7aefefb3b291f54c8ef42469fa813e740e1abc6a5aa5a1c5b3f3de12c28",
-  "run_dir": "results/wfa110_typed_edges_smoke",
   "device": "cpu",
-  "n_clouds": 32,
-  "n_atoms": 1557,
-  "typed_edge_classes": 5,
+  "max_rel_change": 0.0021759201772511005,
+  "max_rel_change_masked_control": 0.0,
+  "measured_at": "2026-10-26T09:24:26",
   "migrated_keys": {},
+  "module": "MOD1",
+  "n_atoms": 1557,
+  "n_clouds": 32,
+  "per_t": [
+    {
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0002816947235260159,
+      "t": 0.05,
+      "v_none_norm": 144.9093780517578,
+      "v_typed_norm": 144.90341186523438
+    },
+    {
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0003897639981005341,
+      "t": 0.25,
+      "v_none_norm": 123.44013977050781,
+      "v_typed_norm": 123.43812561035156
+    },
+    {
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0005507757887244225,
+      "t": 0.5,
+      "v_none_norm": 73.86083984375,
+      "v_typed_norm": 73.8735122680664
+    },
+    {
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0021759201772511005,
+      "t": 0.75,
+      "v_none_norm": 60.6071891784668,
+      "v_typed_norm": 60.58687210083008
+    },
+    {
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0020755857694894075,
+      "t": 0.95,
+      "v_none_norm": 87.4459228515625,
+      "v_typed_norm": 87.49966430664062
+    }
+  ],
+  "projection_moved_off_zero_during_training": true,
   "projection_norm_per_layer": {
     "vel_field.vc_layers.0.edge_type_mlp.weight": 0.0017519625835120678,
     "vel_field.vc_layers.1.edge_type_mlp.weight": 0.001801099511794746,
     "vel_field.vc_layers.2.edge_type_mlp.weight": 0.001993056619539857
   },
-  "projection_left_zero_during_training": true,
-  "per_t": [
-    {
-      "t": 0.05,
-      "rel_change_typed_vs_none": 0.0002816947235260159,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 144.9093780517578,
-      "v_typed_norm": 144.90341186523438
-    },
-    {
-      "t": 0.25,
-      "rel_change_typed_vs_none": 0.0003897639981005341,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 123.44013977050781,
-      "v_typed_norm": 123.43812561035156
-    },
-    {
-      "t": 0.5,
-      "rel_change_typed_vs_none": 0.0005507757887244225,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 73.86083984375,
-      "v_typed_norm": 73.8735122680664
-    },
-    {
-      "t": 0.75,
-      "rel_change_typed_vs_none": 0.0021759201772511005,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 60.6071891784668,
-      "v_typed_norm": 60.58687210083008
-    },
-    {
-      "t": 0.95,
-      "rel_change_typed_vs_none": 0.0020755857694894075,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 87.4459228515625,
-      "v_typed_norm": 87.49966430664062
-    }
-  ],
-  "max_rel_change": 0.0021759201772511005,
-  "max_rel_change_masked_control": 0.0,
-  "threshold": 0.01,
-  "ablation_passes": false,
   "reading": "The typed path is present but does not steer the field above the 1% threshold (max 0.22%), or its projection never left zero.  Either the training budget was too small to move a zero-init projection, or the order carries nothing the field can use.",
+  "run_dir": "results/wfa110_typed_edges_smoke",
+  "script": "molmetal/scripts/wfa110_typed_edge_ablation.py",
+  "task": "T5",
+  "threshold": 0.01,
+  "typed_edge_classes": 5,
   "wall_time_s": 33.48
 }

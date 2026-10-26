@@ -1,72 +1,72 @@
 {
-  "script": "molmetal/scripts/wfa110_typed_edge_ablation.py",
-  "module": "MOD1",
-  "task": "T5",
+  "ablation_passes": false,
   "addresses": [
     "D1"
   ],
-  "measured_at": "2026-10-26T09:36:59",
   "checkpoint": "/home/hugo/codes/mol-metal/results/wfa110_typed_edges_smoke20/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
   "checkpoint_sha256": "b148026dd1458fbf8fb92e86bc6bd721889c2edabb96366d5dc9b0ff9c7e83d0",
-  "run_dir": "results/wfa110_typed_edges_smoke20",
   "device": "cpu",
-  "n_clouds": 32,
-  "n_atoms": 1557,
-  "typed_edge_classes": 5,
+  "max_abs_change_per_atom": 0.0002362479479096988,
+  "max_rel_change": 0.0050300187431275845,
+  "max_rel_change_masked_control": 0.0,
+  "measured_at": "2026-10-26T09:36:59",
   "migrated_keys": {},
+  "module": "MOD1",
+  "n_atoms": 1557,
+  "n_clouds": 32,
+  "per_t": [
+    {
+      "abs_change_per_atom": 5.468861101220339e-05,
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0006254240870475769,
+      "t": 0.05,
+      "v_none_norm": 136.14788818359375,
+      "v_typed_norm": 136.14791870117188
+    },
+    {
+      "abs_change_per_atom": 4.6529923789992725e-05,
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0006587301031686366,
+      "t": 0.25,
+      "v_none_norm": 109.97993469238281,
+      "v_typed_norm": 109.96288299560547
+    },
+    {
+      "abs_change_per_atom": 2.2598271310214593e-05,
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0005712280981242657,
+      "t": 0.5,
+      "v_none_norm": 61.596248626708984,
+      "v_typed_norm": 61.58498001098633
+    },
+    {
+      "abs_change_per_atom": 0.0002362479479096988,
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0050300187431275845,
+      "t": 0.75,
+      "v_none_norm": 73.1285629272461,
+      "v_typed_norm": 73.1523666381836
+    },
+    {
+      "abs_change_per_atom": 0.00012308224203039917,
+      "rel_change_masked_vs_none": 0.0,
+      "rel_change_typed_vs_none": 0.0016100273933261633,
+      "t": 0.95,
+      "v_none_norm": 119.0284423828125,
+      "v_typed_norm": 119.03095245361328
+    }
+  ],
+  "projection_moved_off_zero_during_training": true,
   "projection_norm_per_layer": {
     "vel_field.vc_layers.0.edge_type_mlp.weight": 0.008040336892008781,
     "vel_field.vc_layers.1.edge_type_mlp.weight": 0.007741926237940788,
     "vel_field.vc_layers.2.edge_type_mlp.weight": 0.010048550553619862
   },
-  "projection_left_zero_during_training": true,
-  "per_t": [
-    {
-      "t": 0.05,
-      "rel_change_typed_vs_none": 0.0006254240870475769,
-      "abs_change_per_atom": 5.468861101220339e-05,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 136.14788818359375,
-      "v_typed_norm": 136.14791870117188
-    },
-    {
-      "t": 0.25,
-      "rel_change_typed_vs_none": 0.0006587301031686366,
-      "abs_change_per_atom": 4.6529923789992725e-05,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 109.97993469238281,
-      "v_typed_norm": 109.96288299560547
-    },
-    {
-      "t": 0.5,
-      "rel_change_typed_vs_none": 0.0005712280981242657,
-      "abs_change_per_atom": 2.2598271310214593e-05,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 61.596248626708984,
-      "v_typed_norm": 61.58498001098633
-    },
-    {
-      "t": 0.75,
-      "rel_change_typed_vs_none": 0.0050300187431275845,
-      "abs_change_per_atom": 0.0002362479479096988,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 73.1285629272461,
-      "v_typed_norm": 73.1523666381836
-    },
-    {
-      "t": 0.95,
-      "rel_change_typed_vs_none": 0.0016100273933261633,
-      "abs_change_per_atom": 0.00012308224203039917,
-      "rel_change_masked_vs_none": 0.0,
-      "v_none_norm": 119.0284423828125,
-      "v_typed_norm": 119.03095245361328
-    }
-  ],
-  "max_rel_change": 0.0050300187431275845,
-  "max_abs_change_per_atom": 0.0002362479479096988,
-  "max_rel_change_masked_control": 0.0,
-  "threshold": 0.01,
-  "ablation_passes": false,
   "reading": "The typed path is present but does not steer the field above the 1% threshold (max 0.50%), or its projection never left zero.  Either the training budget was too small to move a zero-init projection, or the order carries nothing the field can use.",
+  "run_dir": "results/wfa110_typed_edges_smoke20",
+  "script": "molmetal/scripts/wfa110_typed_edge_ablation.py",
+  "task": "T5",
+  "threshold": 0.01,
+  "typed_edge_classes": 5,
   "wall_time_s": 31.18
 }
