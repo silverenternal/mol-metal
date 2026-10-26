@@ -1,0 +1,115 @@
+{
+  "metric": "wfa111_ring_prior_smoke",
+  "tag": "MEASURED",
+  "date": "2026-10-26",
+  "what": "Wf-A111 (MOD4/T7) wire-in smoke for the decode-time ring prior, per the standing 50-step rule. Three flags are new: --ring-prior, --ring-prior-min-ring-size, --ring-prior-max-ring-size.",
+  "checks": {
+    "1_parse_args_accepts_the_flags": {
+      "how": "YAML round-trip: a copy of the smoke config with `ring_prior: true` and `ring_prior_min_ring_size: 5` under `flow:`, then parse_args() with --config only.",
+      "measured": {
+        "ring_prior": true,
+        "ring_prior_min_ring_size": 5,
+        "ring_prior_max_ring_size": null
+      },
+      "types": {
+        "ring_prior": "bool",
+        "ring_prior_min_ring_size": "int"
+      },
+      "verdict": "PASS"
+    },
+    "2_trainer_initialises_and_the_decoder_reports_the_knob": {
+      "stdout_line": "[cfm-decoder] decision=threshold @ threshold=0.500 (metrics and decode now share this rule) | connectivity_prior=on @ min_logit=0.000 (D2 postprocess, no retrain needed) | ring_prior=on @ min=5, max=None | dative_max_distance=2.60 A",
+      "verdict": "PASS"
+    },
+    "3_decode_ratio_gt_0": {
+      "decode_ratio_val_per_epoch": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "decode_ratio_n_per_epoch": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "verdict": "PASS"
+    },
+    "4_loss_decreases_over_the_smoke": {
+      "n_epochs": 7,
+      "steps_per_epoch": 8,
+      "loss_curve": [
+        29.165897,
+        24.473519,
+        20.186703,
+        17.158855,
+        13.863064,
+        11.215818,
+        11.440657
+      ],
+      "first": 29.165897250175476,
+      "last": 11.440656661987305,
+      "verdict": "PASS"
+    },
+    "5_the_prior_does_not_enter_the_objective": {
+      "why": "The prior is decode-time only. A flag that also reaches the loss would be the duplicate-loss-path defect; the check is that the training quantities are unchanged with the flag on.",
+      "epoch0_on": {
+        "train_loss": 29.165897250175476,
+        "fm_term": 10.02772319316864,
+        "grad_norm": 585.046049118042
+      },
+      "epoch0_off": {
+        "train_loss": 29.165897250175476,
+        "fm_term": 10.02772319316864,
+        "grad_norm": 585.0460338592529
+      },
+      "train_loss_abs_diff": 0.0,
+      "fm_term_abs_diff": 0.0,
+      "grad_norm_abs_diff": 1.52587890625e-05,
+      "verdict": "PASS"
+    }
+  },
+  "wiring_effect_on_a_1_epoch_model": {
+    "note": "NOT a quality result. This model is one epoch old on 64 clouds and its geometry is a blob (single_fragment_ratio 0.000 in both arms). The numbers are here because they show the prior reaching the trainer's OWN per-epoch report (gen_ring_*), not because they say anything about generated chemistry.",
+    "prior_off_epoch0": {
+      "gen_ring_3_share": 0.7701149425287356,
+      "gen_ring_5_6_share": 0.05747126436781609,
+      "gen_rings_per_mol": 8.15625,
+      "gen_ring_size_distribution": "{\"3\": 201, \"4\": 43, \"5\": 11, \"6\": 4, \"7\": 1, \"8\": 1}",
+      "gen_single_fragment_ratio": 0.0,
+      "gen_validity": 1.0
+    },
+    "prior_on_min5_epoch0": {
+      "gen_ring_3_share": 0.0,
+      "gen_ring_5_6_share": 0.9855072463768116,
+      "gen_rings_per_mol": 6.46875,
+      "gen_ring_size_distribution": "{\"5\": 197, \"6\": 7, \"7\": 1, \"8\": 2}",
+      "gen_single_fragment_ratio": 0.0,
+      "gen_validity": 1.0
+    },
+    "prior_on_min5_epoch6": {
+      "gen_ring_3_share": 0.0,
+      "gen_ring_5_6_share": 0.8818181818181818,
+      "gen_rings_per_mol": 3.4375,
+      "gen_single_fragment_ratio": 0.0,
+      "gen_validity": 1.0
+    },
+    "reading": "On a blob the prior converts a triangle mesh into a pentagon mesh: the 5+6 share goes 0.057 -> 0.986 while single_fragment_ratio stays 0.000. The share reached the right value for the wrong reason, which is why the effect is measured on a trained checkpoint in wfa111_ring_prior_ab.json and why rings/mol and fragment rate are reported beside it."
+  },
+  "runs": {
+    "prior_on_min5_7ep": "results/wfa111_ring_prior_smoke_7ep_2026_10_26",
+    "prior_off_1ep": "results/wfa111_ring_prior_smoke_off_2026_10_26"
+  },
+  "config": "configs/wfa110_typed_edges_smoke_2026_10_25.yaml",
+  "honest_limits": [
+    "The 7-epoch arm trains on 64 clouds with 8 steps per epoch; it is a wire-in smoke, not a training result.",
+    "The epoch-0 on/off comparison is one seed. train_loss and fm_term are bit-identical, which is the claim; grad_norm differs by 1.5e-05 (2.6e-08 relative), which is float reduction noise inside the same epoch, not a flag effect."
+  ]
+}

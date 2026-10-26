@@ -54,7 +54,7 @@ that follows in Wf-124 P1.3.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import torch
 import torch.nn as nn
@@ -73,6 +73,7 @@ from molmetal.models.bond_head import (
     _dative_truth_pairs,
 )
 
+from molmetal.molmetal_lam.lam_chem.ring_prior import RingSizePrior
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondDecoder,
     YuelBondDecoderHead,
@@ -573,6 +574,18 @@ class YuelBondBondDecoder:
         class_logit_bias: Optional[Sequence[float]] = None,
         connectivity_prior: bool = True,
         connectivity_prior_min_logit: float = 0.0,
+        # Wf-A111 (MOD4) — ring-size prior at decode.  Default OFF: the
+        # shipped decode rule is unchanged unless a caller asks for it.
+        #
+        # MEASURED (cfm_todo D3): 66.8% of the c7 pool's rings are
+        # three-membered and 2.9% six-membered, against 0.01-0.49% in the two
+        # real references this repo carries (they disagree; see
+        # ring_prior.py).  The selector is greedy and sequential, so before
+        # committing a pair it can ask what ring that pair would close,
+        # exactly.  See molmetal/molmetal_lam/lam_chem/ring_prior.py.
+        ring_prior: bool = False,
+        ring_prior_min_ring_size: int = 4,
+        ring_prior_max_ring_size: Optional[int] = None,
         # Wf-A49 (2026-10-16) arch_fix_10 — let the caller pin the
         # valence cap for atomic numbers NOT in the table.  The prior
         # form silently fell back to 4 (carbon), which is the same
@@ -706,6 +719,23 @@ class YuelBondBondDecoder:
         #: makes the prior defer to the head's confidence; it is a PRIOR, not
         #: a tuned value, and the flag is the honest control.
         self.connectivity_prior_min_logit = float(connectivity_prior_min_logit)
+        # Wf-A111 (MOD4) — ring-size prior.  ``None`` when off, so the accept
+        # loop pays one attribute test and nothing else.
+        self.ring_prior = (
+            RingSizePrior(
+                min_ring_size=int(ring_prior_min_ring_size),
+                max_ring_size=(
+                    None
+                    if ring_prior_max_ring_size is None
+                    else int(ring_prior_max_ring_size)
+                ),
+            )
+            if bool(ring_prior)
+            else None
+        )
+        #: The last decode's ring-prior counters, so a caller can report what
+        #: the prior did rather than only its effect on the final metric.
+        self.last_ring_prior_stats: Dict[str, object] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -870,6 +900,12 @@ class YuelBondBondDecoder:
         # in which case the Z+distance rule below decides and the decode is
         # labelled ``dative_source="z_rule"``.
         dative_truth = _dative_truth_pairs(cloud)
+        # Wf-A111 (MOD4) — connectivity of the bonds accepted SO FAR, which is
+        # what makes the ring test exact: a pair's shortest path in this graph
+        # plus one is the only ring the pair can close.
+        _ring_adj: Optional[List[Set[int]]] = (
+            [set() for _ in range(n_atoms)] if self.ring_prior is not None else None
+        )
         for _, i, j, order in pairs:
             # 2026-10-04 — the VALENCE cost of a class is not its class index.
             #
@@ -927,7 +963,18 @@ class YuelBondBondDecoder:
                 if bonds_at_metal >= gc.max_bonds:
                     n_overvalent += 1
                     continue
+            # Wf-A111 (MOD4) — ring-size gate.  AFTER valence and geometry
+            # (so it never weakens a correctness cap), BEFORE the bond is
+            # committed.  Refusing here declines to close a cycle; the path
+            # that made the ring possible stays, so nothing is disconnected.
+            if self.ring_prior is not None and _ring_adj is not None:
+                _accept, _ring_size = self.ring_prior.should_accept(_ring_adj, i, j)
+                if not _accept:
+                    continue
             bond_orders.append((i, j, order))
+            if _ring_adj is not None:
+                _ring_adj[i].add(j)
+                _ring_adj[j].add(i)
             remaining[i] -= cost
             remaining[j] -= cost
             n_kept += 1
@@ -951,6 +998,8 @@ class YuelBondBondDecoder:
                     dative_bonds.append((j, i))
                 else:
                     dative_bonds.append((i, j))
+        if self.ring_prior is not None:
+            self.last_ring_prior_stats = self.ring_prior.stats.as_dict()
         return bond_orders, dative_bonds, n_kept, n_overvalent
 
     # ------------------------------------------------------------------

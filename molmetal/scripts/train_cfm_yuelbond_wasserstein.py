@@ -12646,6 +12646,43 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--ring-prior",
+        dest="ring_prior",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A111 (MOD4): refuse bond closures that would create an "
+            "implausible ring size. MEASURED (cfm_todo D3): 66.8%% of the c7 "
+            "pool's rings are three-membered against 0.01-0.49%% in the real "
+            "corpora this repo carries (two references disagree, see "
+            "molmetal/molmetal_lam/lam_chem/ring_prior.py). The selector is "
+            "greedy and sequential, so the ring a pair would close is exact: "
+            "shortest path between its endpoints in the bonds accepted so "
+            "far, plus one. Decode-time only; no retrain."
+        ),
+    )
+    p.add_argument(
+        "--ring-prior-min-ring-size",
+        dest="ring_prior_min_ring_size",
+        type=int,
+        default=4,
+        help=(
+            "Wf-A111: smallest ring a closure may create. 4 refuses "
+            "three-membered rings, which is the measured defect."
+        ),
+    )
+    p.add_argument(
+        "--ring-prior-max-ring-size",
+        dest="ring_prior_max_ring_size",
+        type=int,
+        default=None,
+        help=(
+            "Wf-A111: largest ring a closure may create. Unset leaves it "
+            "unbounded: macrocycles are rare but real, and the measured defect "
+            "is at the small end."
+        ),
+    )
+    p.add_argument(
         "--typed-edge-features",
         dest="typed_edge_features",
         action="store_true",
@@ -14887,6 +14924,25 @@ def main() -> int:
         dative_max_distance=float(
             getattr(args, "dative_distance_cutoff", 2.6)
         ),
+        # Wf-A111 (MOD4) — ring-size prior.  Decode-time postprocess, so an
+        # existing checkpoint changes behaviour the moment it is on, with no
+        # retrain; off is the pre-MOD4 decode exactly.
+        #
+        # ``0`` (or any non-positive) means unbounded, the same convention
+        # ``--ring-prior-max-ring-size``'s help describes as "unset".  Passing
+        # it through raw would build ``RingSizePrior(max_ring_size=0)``, which
+        # raises because 0 is below min_ring_size — a config author writing
+        # the obvious "0 = off" would get a crash instead of a no-op.
+        ring_prior=bool(getattr(args, "ring_prior", False)),
+        ring_prior_min_ring_size=int(
+            getattr(args, "ring_prior_min_ring_size", 4)
+        ),
+        ring_prior_max_ring_size=(
+            None
+            if not getattr(args, "ring_prior_max_ring_size", None)
+            or int(args.ring_prior_max_ring_size) <= 0
+            else int(args.ring_prior_max_ring_size)
+        ),
     )
     print(
         f"[cfm-decoder] decision={decoder.decision} "
@@ -14896,6 +14952,12 @@ def main() -> int:
         f"{'on' if decoder.connectivity_prior else 'off'} "
         f"@ min_logit={decoder.connectivity_prior_min_logit:.3f} "
         f"(D2 postprocess, no retrain needed) | "
+        # Wf-A111 — a decode-time knob that is not printed is a knob nobody
+        # can confirm was on.  MEASURED (wfa111_ring_prior_ab.json): at
+        # min_ring_size 5 the 5+6 ring share goes 0.148 -> 0.476 on the same
+        # generated pool; at 4 the freed valence lands on four-rings instead.
+        f"ring_prior="
+        f"{('on @ min=' + str(decoder.ring_prior.min_ring_size) + ', max=' + str(decoder.ring_prior.max_ring_size)) if decoder.ring_prior is not None else 'off'} | "
         f"dative_max_distance={decoder.dative_max_distance:.2f} A",
         flush=True,
     )

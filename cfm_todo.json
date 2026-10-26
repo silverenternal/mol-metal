@@ -440,16 +440,24 @@
       "id": "T7",
       "priority": 3,
       "title": "MOD4: ring-size prior at decode",
-      "what": "MOD4: ring-size prior at decode, trained with the spurious triangles as negatives.",
+      "what": "MOD4: ring-size prior at decode, trained with the spurious triangles as negatives. Built as a DECODE-TIME gate instead: the selector is greedy and sequential, so the ring a candidate pair would close is exact (shortest path between its endpoints in the bonds accepted so far, plus one) and a closure below min_ring_size is refused. No retrain, no loss term.",
       "addresses": [
         "D3"
       ],
       "done_when": "three_ring_share <= 0.10 and six_ring_share >= 0.45 with single_fragment_rate not below its T6 value.",
-      "status": "PLANNED",
+      "status": "IN_PROGRESS",
       "blocked_by": [
         "T6"
       ],
-      "blocked_note": "a cycle prior can only remove edges; connectivity has to be there first."
+      "blocked_note": "a cycle prior can only remove edges; connectivity has to be there first.",
+      "result": "MEASURED (3 pools x 256 clouds, one 20-epoch smoke checkpoint, prior-on vs prior-off on the same generated geometry). Prior off: ring_3 0.291, ring_6 0.082, ring_5_6 0.148, 1.45 rings/mol, single_fragment 0.038, decode_ratio 1.000. min_ring_size=5: ring_3 0.000, ring_6 0.259, ring_5_6 0.476, 0.85 rings/mol, single_fragment 0.064, decode_ratio 1.000. min_ring_size=4: ring_3 0.000, ring_6 0.111, ring_5_6 0.217, 1.17 rings/mol. Per-seed 5+6 share at min=5: 0.516 / 0.457 / 0.464. The prior refused 674 of 18,245 considered candidates in 350 of 768 clouds; no cloud gained a three-ring (226 fell, 0 rose); five-rings 74 -> 142 and six-rings 91 -> 169.",
+      "artifact": "metrics/by_metric/wfa111_ring_prior_ab.json",
+      "evidence": [
+        "molmetal/molmetal_lam/lam_chem/ring_prior.py",
+        "molmetal/tests/test_ring_prior.py",
+        "molmetal/scripts/wfa111_ring_prior_ab.py"
+      ],
+      "note": "The gate is HALF met: three_ring_share 0.000 (<=0.10) and single_fragment rose rather than fell, but six_ring_share 0.259 is below 0.45, and rings/mol falls to 0.85 against real tmQM's 4.19. Both misses are the pool's: this checkpoint gives 1.45 rings/mol to begin with, and the prior can only keep the rings the geometry offers. The full-corpus c7 checkpoint that produced the 66.8% three-ring share is no longer on disk, so the magnitude is not transferable and the gate has to be re-run on T3's pool. min_ring_size=5 dominates 4: at 4 the freed valence lands on four-rings (369 -> 418), and the OPT-2 tmQM reference has four-rings at 0.50% against 0.49% for three-rings -- the same pathology at a different size."
     },
     {
       "id": "T8",
