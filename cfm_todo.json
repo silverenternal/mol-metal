@@ -363,9 +363,9 @@
       ],
       "done_when": "a 2-epoch run at fm_ode_term_weight 0.05 under an 8 GB RSS ceiling completes with the watchdog not firing, and the growth curve is an artifact.",
       "status": "IN_PROGRESS",
-      "result": "The leak hypothesis is refuted. FmOdeTerm.compute now checkpoints its four stage forwards (use_checkpoint=True, default), which is numerically exact including under dropout (6 tests in molmetal/tests/test_fmode_checkpoint.py) and cuts the term's added peak 3.3x: 3,718 MB -> 1,120 MB at 405 atoms, measured in three separate processes because RSS is a high-water mark.",
-      "artifact": "metrics/by_metric/wfa110_fmode_checkpoint_peaks.json",
-      "note": "done_when asks for a 2-epoch run at 0.05 under an 8 GB ceiling. The checkpoint fix alone does not get the 64-cloud batch there: the term still costs 1.12 GB per 405 atoms, i.e. ~8 GB at 2,957 atoms on top of a 5.28 GB base. The remaining levers are n_steps (16 forwards is n_steps^2) and the term's 0.5% share of the objective."
+      "result": "The leak hypothesis is refuted and the memory is bounded. FmOdeTerm checkpoints its four stage forwards (use_checkpoint=True), which is numerically exact including under dropout (6 tests) and cuts the term's added peak 3.3x at 405 atoms (3,718 -> 1,120 MB, three separate processes). MEASURED end to end: the 64-cloud, 2-epoch arm at 0.05 now completes at a 9,747 MB peak against the 42.52 GB that OOMed the host, with the term live at 0.50% of the loss.",
+      "artifact": "metrics/by_metric/wfa110_fmode_ckpt_run.json",
+      "note": "done_when's 8 GB ceiling is missed by 1.7 GB at 64 clouds (4,510 MB of term on a 5,237 MB base) and met at 8 clouds (2,501 MB). Getting under 8 GB at 64 clouds needs n_steps below 4 - 16 forwards is n_steps squared - which changes the term, or a smaller batch. Not done: that decision is the user's, because the term is only 0.5-0.7% of the objective."
     },
     {
       "id": "T3",

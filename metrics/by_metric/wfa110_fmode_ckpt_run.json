@@ -1,0 +1,53 @@
+{
+  "script": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+  "addresses": [
+    "D11",
+    "T2"
+  ],
+  "measured_at": "2026-10-26T09:45:52",
+  "purpose": "Does a 64-cloud arm at fm_ode_term_weight 0.05 complete now that FmOdeTerm checkpoints its stage forwards?  D11 records the same arm reaching 42.52 GB and OOMing the host.",
+  "n_clouds": 64,
+  "n_atoms": 2957,
+  "epochs": 2,
+  "device": "cpu",
+  "threads": "OMP_NUM_THREADS=4",
+  "peak_rss_mb": {
+    "with_fm_ode_0.05_checkpointed": 9747,
+    "control_fm_ode_0.0": 5237
+  },
+  "term_cost_mb": 4510,
+  "term_share_of_loss": {
+    "epoch_0": 0.004970611120459712,
+    "epoch_1": 0.007157076803673953
+  },
+  "epochs_with_term": [
+    {
+      "epoch": 0,
+      "train_loss": 29.732752084732056,
+      "fm_ode_class_term": 0.14778994815424085
+    },
+    {
+      "epoch": 1,
+      "train_loss": 25.392264246940613,
+      "fm_ode_class_term": 0.18173438543453813
+    }
+  ],
+  "control_epochs": [
+    {
+      "epoch": 0,
+      "train_loss": 29.584981203079224,
+      "fm_ode_class_term": 0.0
+    },
+    {
+      "epoch": 1,
+      "train_loss": 25.214197635650635,
+      "fm_ode_class_term": 0.0
+    }
+  ],
+  "wall_time_s": {
+    "with_term": 256.6,
+    "control": 28.8
+  },
+  "eight_gb_ceiling_met": false,
+  "reading": "The arm completes: exit 0, 2 epochs, peak 9,747 MB against the 42.52 GB that OOMed the host.  The term is live (fm_ode_class_term 0.148 at epoch 0, 0.50% of the loss) and costs 4,510 MB on a 5,237 MB base at this batch.  T2's done_when asks for an 8 GB ceiling, so this misses it by 1.7 GB at 64 clouds; the same arm peaks at 2,501 MB at 8 clouds, where the ceiling is met.  Getting under 8 GB at 64 clouds needs n_steps below 4 (16 forwards is n_steps squared), which changes the term, or a smaller batch."
+}
