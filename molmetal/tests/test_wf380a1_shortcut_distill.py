@@ -58,3 +58,61 @@ def test_module_importable():
     import molmetal.adapters.flow_matching_lipman.shortcut_distillation_wf380 as mod
 
     assert hasattr(mod, "shortcut_distillation_loss")
+
+
+def test_v_pred_t_is_not_recomputed():
+    """Passing the caller's own prediction must skip the first forward.
+
+    The trainer already evaluates ``pred_fn(x_time, t)`` as its main FM term.
+    Recomputing it here costs a full velocity-field pass and, because the
+    field carries dropout, fits the two terms to two different noise draws.
+    """
+    torch.manual_seed(0)
+    b, d = 4, 3
+    x_t = torch.randn(b, d, dtype=torch.float32)
+    t = torch.rand(b, dtype=torch.float32)
+    target = torch.randn(b, d, dtype=torch.float32)
+    calls = []
+
+    def pred_fn(x, t_):
+        calls.append(int(x.shape[0]))
+        return x * 0.5
+
+    v_pred_t = pred_fn(x_t, t)
+    calls.clear()
+    shortcut_distillation_loss(
+        pred_fn, x_t, t, target, p_self=0.5, v_pred_t=v_pred_t,
+    )
+    assert calls == [b], f"expected only the shortcut pass, got {calls}"
+
+
+def test_include_fm_term_false_drops_the_duplicate_objective():
+    """``include_fm_term=False`` returns only the shortcut MSE.
+
+    With the FM regression already in the total, returning
+    ``fm_loss + p_self * shortcut_mse`` would count the same MSE twice and
+    make ``fm_weight`` mean something other than what it says.
+    """
+    torch.manual_seed(0)
+    b, d = 4, 3
+    x_t = torch.randn(b, d, dtype=torch.float32)
+    t = torch.rand(b, dtype=torch.float32)
+    target = torch.randn(b, d, dtype=torch.float32)
+
+    def pred_fn(x, t_):
+        return x * 0.25
+
+    v_pred_t = pred_fn(x_t, t)
+    torch.manual_seed(7)
+    full = shortcut_distillation_loss(pred_fn, x_t, t, target, p_self=0.5)
+    torch.manual_seed(7)
+    addon = shortcut_distillation_loss(
+        pred_fn, x_t, t, target, p_self=0.5,
+        v_pred_t=v_pred_t, include_fm_term=False,
+    )
+    fm_only = ((v_pred_t - target) ** 2).mean()
+    assert addon.item() < full.item(), "the add-on form must be smaller"
+    assert torch.allclose(full, fm_only + addon), (
+        f"full {full.item():.6f} != fm_only {fm_only.item():.6f} + "
+        f"addon {addon.item():.6f}"
+    )

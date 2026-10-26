@@ -319,6 +319,12 @@ def test_gate_does_not_alter_the_eval_return_shape(trainer):
         "per_cloud_out",
         "pad_groups",
         "pad_group_bucket",
+        # Wf-A112 (MOD5) — the two kwargs that carry the CN request and the
+        # classifier-free-guidance scale into the generation eval.  The
+        # tripwire fired again on 2026-10-26, which is what it is for: the
+        # caller WAS updated in the same change, this list was not.
+        "cn_cfg_scale",
+        "cn_request_override",
     ]
     src = inspect.getsource(trainer.evaluate_generation_validity)
     # The function body must never branch on the gate verdict.

@@ -108,6 +108,10 @@ _wf130_cvd()
 del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 # --- end CUDA default --------------------------------------------
 
+# The bootstrap above deletes its own aliases, so any later code that needs the
+# environment had none to use.  One plain import, not an alias.
+import os
+
 import argparse
 import csv
 import json
@@ -2737,6 +2741,11 @@ class CFMJointModel(nn.Module):
         # Wf-A112 (MOD5) — requested coordination number per cloud, ``0`` =
         # the null token.  ``None`` is the pre-MOD5 forward bit-for-bit.
         cond_cn: Optional[torch.Tensor] = None,
+        # Attribution only, never conditioning: which loss term issued this
+        # forward.  It reaches no tensor, so it cannot change the model, and
+        # it is how the per-step forward count becomes a breakdown instead of
+        # a single number nobody can act on.
+        _caller: str = "main",
     ) -> torch.Tensor:
         """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
 
@@ -2776,6 +2785,10 @@ class CFMJointModel(nn.Module):
                 "fm_objective=True — the head does not exist.  Pass "
                 "--use-fm-objective (or fm_objective=True) to build it."
             )
+        if _STEP_TIMING_ON:
+            global _FM_VELOCITY_CALLS
+            _FM_VELOCITY_CALLS += 1
+            _FM_VELOCITY_CALLS_BY[_caller] = _FM_VELOCITY_CALLS_BY.get(_caller, 0) + 1
         if self.use_egnn_velocity:
             out, node_mask = self._fm_field_forward(
                 x_t, t, atomic_numbers, cloud_sizes, pocket_embed,
@@ -4476,6 +4489,16 @@ def apply_closure_bounded_mask(
 # to any value on the loss path.
 _STEP_TIMING: Dict[str, float] = {}
 _STEP_TIMING_ON: bool = False
+# How many full velocity-field evaluations one optimiser step actually
+# costs.  MEASURED reason this exists: the CFM step runs the EGNN once
+# for the main term and once more per regulariser, and nothing on the
+# loss path said how many that was, so a 3x-slow step looked like a
+# slow card rather than a forward count.
+_FM_VELOCITY_CALLS: int = 0
+# Same count, split by the term that asked for it.  A total of 11 tells you a
+# step is expensive; "main 1, shortcut 2, consistency 1, so3 4, fm_ode 4" tells
+# you which knob to turn.  Only populated while ``_STEP_TIMING_ON``.
+_FM_VELOCITY_CALLS_BY: dict = {}
 
 
 def _stage_tick() -> float:
@@ -5038,7 +5061,17 @@ def train_one_epoch(
     (mean_train_loss, mean_bond_ce, mean_w2, mean_grad_norm, catherine_pass_rate) : floats
     """
     model.train()
+    global _FM_VELOCITY_CALLS
     bond_losses, w2_losses, total_losses, grad_norms = [], [], [], []
+    # The per-stage timer and the forward counter are process-wide, so they are
+    # reset HERE, at the top of the epoch, rather than after the print.  The
+    # dict has to still hold the epoch's numbers when the caller reads it back
+    # via ``get_step_timing()`` — ``wf_cfm_step_stage_profile.py`` does exactly
+    # that, and clearing at the end made it report an empty measurement.
+    if _STEP_TIMING_ON:
+        _STEP_TIMING.clear()
+        _FM_VELOCITY_CALLS_BY.clear()
+        _FM_VELOCITY_CALLS = 0
     # Wf-A107f — per-term accumulation for `_LAST_EPOCH_TERM_MEANS`.  Filled
     # from the SAME tensors that go into `_LAST_LOSS_TERMS`, one dict store per
     # term per batch, so the number reported is the term's epoch mean and not
@@ -5817,6 +5850,13 @@ def train_one_epoch(
         t: Optional[torch.Tensor] = None
         z_all: Optional[torch.Tensor] = None
         target_dx: Optional[torch.Tensor] = None
+        # The main velocity prediction and the conditioning it was issued
+        # with, declared here so the regularisers below can ask "is the main
+        # pass reusable?" without depending on the branch above having run.
+        _vel_pred: Optional[torch.Tensor] = None
+        _bond_lut: Optional[torch.Tensor] = None
+        _bond_mask: Optional[torch.Tensor] = None
+        _cond_cn: Optional[torch.Tensor] = None
         if fm_objective and batch_clouds:
             # Wf-A11 (2026-10-13) — site 1 of 3 inlined collate sites collapsed
             # to ``Batch.collate_fn(clouds).to(device)``. The flat view is
@@ -6188,6 +6228,14 @@ def train_one_epoch(
                 else:
                     _cond_cn = _cn_true
 
+            # Three of the velocity-field evaluations this step used to run were
+            # exact recomputations of `_vel_pred`: the consistency term's clean
+            # pass, EDM's `pred_raw`, and shortcut distillation's first term.
+            # They are identical only when the main call carried no extra
+            # conditioning, so the reuse is gated on that (see
+            # `_can_reuse_vel_pred`).  `_vel_pred` stays None on the x1 path,
+            # where the main term is `fm_x1` and there is nothing to reuse.
+            _vel_pred = None
             if str(prediction_target) == "x1":
                 if stable_vm:
                     raise SystemExit(
@@ -6235,6 +6283,20 @@ def train_one_epoch(
                 else:
                     _vel_resid = F.mse_loss(_vel_pred, target_dx)
                 fm_term = float(fm_weight) * _vel_resid
+        # Is the main velocity prediction reusable as the "clean" evaluation
+        # the regularisers below ask for?  Only when the main call carried no
+        # extra conditioning: `fm_velocity` with a typed-edge LUT, a typed-edge
+        # mask or a CN vector is a different function from the bare call the
+        # regularisers close over.  Three terms used to recompute it — the
+        # consistency clean pass, EDM's `pred_raw`, and shortcut's first term —
+        # and since the field carries dropout, each recomputation returned a
+        # different sample than the one the main term was fitted to.
+        _can_reuse_vel_pred = (
+            _vel_pred is not None
+            and _bond_lut is None
+            and _bond_mask is None
+            and _cond_cn is None
+        )
         # Wf-A108l (2026-10-25) — cfm_todo MOD2 + MOD3.  Geometry of the
         # model's OWN endpoint, not of the training geometry.
         #
@@ -6345,13 +6407,21 @@ def train_one_epoch(
                 shortcut_distill_loss = _sd.shortcut_distillation_loss(
                     pred_fn=lambda x, tt: model.fm_velocity(
                         x, tt, z_all, cloud_sizes=_cloud_sizes,
-                        pocket_embed=_pocket_embed,
+                        pocket_embed=_pocket_embed, _caller="shortcut",
                     ),
                     x_time=x_t,
                     t=t,
                     target_dx=target_dx,
                     # Wf-353-A2 §1 spec.
                     p_self=0.5,
+                    # The adapter's first term IS the main FM regression.  It
+                    # used to be recomputed here and added again, so with
+                    # shortcut_distill on the FM MSE entered the total at
+                    # 2 x fm_weight while `fm_weight` still read as 1.0.
+                    # Reuse the step's own prediction and contribute only the
+                    # shortcut term.
+                    v_pred_t=_vel_pred if _can_reuse_vel_pred else None,
+                    include_fm_term=not _can_reuse_vel_pred,
                 )
             except Exception as _sd_exc:  # noqa: BLE001 — warned, not hidden
                 # WARN, do not silently zero.  A swallowed exception here is
@@ -6383,10 +6453,15 @@ def train_one_epoch(
                 consistency_term = _cr.consistency_loss_fn(
                     pred_fn=lambda x: model.fm_velocity(
                         x, t, z_all, cloud_sizes=_cloud_sizes,
-                        pocket_embed=_pocket_embed,
+                        pocket_embed=_pocket_embed, _caller="consistency",
                     ),
                     x_t=x_t,
                     weight=float(consistency_weight),
+                    # Reuse the step's own forward instead of recomputing it:
+                    # the field carries dropout, so a second pass at the same
+                    # x_t returns a DIFFERENT sample and the two terms were
+                    # fitted to different draws.
+                    v_clean=_vel_pred if _can_reuse_vel_pred else None,
                 )
             except Exception as _cr_exc:  # noqa: BLE001 — warned, not hidden
                 warnings.warn(
@@ -6429,7 +6504,7 @@ def train_one_epoch(
                 so3_term = float(so3_average_weight) * _so3.so3_average_loss(
                     pred_fn=lambda x: model.fm_velocity(
                         x, t, z_all, cloud_sizes=_cloud_sizes,
-                        pocket_embed=_pocket_embed,
+                        pocket_embed=_pocket_embed, _caller="so3",
                     ),
                     x_t=x_t,
                     target=target_dx,
@@ -6482,9 +6557,17 @@ def train_one_epoch(
                     device=device,
                 )
                 edm_term = _edm.preconditioned_loss(
-                    pred_raw=model.fm_velocity(
-                        x_t, t, z_all, cloud_sizes=_cloud_sizes,
-                        pocket_embed=_pocket_embed,
+                    # Same x_t, same t, same conditioning as the main term:
+                    # this was a byte-identical second forward.  Reusing the
+                    # step's own prediction also keeps the two terms fitted to
+                    # one dropout draw instead of two.
+                    pred_raw=(
+                        _vel_pred
+                        if _can_reuse_vel_pred
+                        else model.fm_velocity(
+                            x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                            pocket_embed=_pocket_embed, _caller="edm",
+                        )
                     ),
                     x_t=x_t,
                     target_dx=target_dx,
@@ -6906,7 +6989,7 @@ def train_one_epoch(
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
                 x, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
+                pocket_embed=_pocket_embed, _caller="fm_ode",
             )) if (fm_objective and x_t is not None) else None,
             x0=x_t,  # current flow state as integration seed
             x1=(batch.positions if (fm_objective and x_t is not None) else None),
@@ -6920,10 +7003,11 @@ def train_one_epoch(
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
                 x, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
+                pocket_embed=_pocket_embed, _caller="energy",
             )) if (fm_objective and x_t is not None) else None,
             x_t=x_t,
             device=device,
+            v_x_t=_vel_pred if _can_reuse_vel_pred else None,
         )
         # Term 4 — SBOO3Term (step 8).  SBO × O(3) joint variance.
         sboo3_class_term = SBOO3Term(
@@ -6936,10 +7020,11 @@ def train_one_epoch(
             per_sample_loss=(bond_ce if 'bond_ce' in locals() else None),
             pred_fn=(lambda x: model.fm_velocity(
                 x, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
+                pocket_embed=_pocket_embed, _caller="sboo3",
             )) if (fm_objective and x_t is not None) else None,
             x_t=x_t,
             device=device,
+            v_x_t=_vel_pred if _can_reuse_vel_pred else None,
         )
 
         loss = (
@@ -7403,6 +7488,31 @@ def train_one_epoch(
     _LAST_EPOCH_TERM_MEANS.update(
         {k: float(np.mean(v)) for k, v in _term_acc.items() if v}
     )
+    # The per-stage timer has existed since the 940 ms/step mis-attribution
+    # (see ``_stage_tick``) but had no caller, so it could not be switched on
+    # from outside.  WFA_STEP_TIMING=1 turns it on for a profiling run and
+    # prints the breakdown here; the drain it adds is paid only in that mode.
+    if _STEP_TIMING_ON:
+        _nb = max(_STEP_TIMING.get("n_batches", 1.0), 1.0)
+        _by = ", ".join(
+            f"{k}={v / _nb:.1f}"
+            for k, v in sorted(
+                _FM_VELOCITY_CALLS_BY.items(), key=lambda kv: -kv[1]
+            )
+        )
+        print(
+            "[step-timing] per batch, ms: "
+            + ", ".join(
+                f"{k[:-2]}={v / _nb * 1000:.1f}"
+                for k, v in sorted(_STEP_TIMING.items())
+                if k.endswith("_s") and k != "batch_total_s"
+            )
+            + f" | batch_total={_STEP_TIMING.get('batch_total_s', 0.0) / _nb * 1000:.1f}"
+            f" over {int(_nb)} batch(es)"
+            f" | fm_velocity_calls/step={_FM_VELOCITY_CALLS / _nb:.1f}"
+            f" [{_by}]",
+            flush=True,
+        )
     return (
         float(np.mean(total_losses) if total_losses else 0.0),
         float(np.mean(bond_losses) if bond_losses else 0.0),
@@ -14417,6 +14527,13 @@ def main() -> int:
         _EMPTY_CACHE_EVERY = int(args.empty_cache_every)
     if bool(getattr(args, "mem_trace", False)):
         _MEM_TRACE_ON = True
+    # WFA_STEP_TIMING=1 enables the per-stage timer.  Deliberately an env var
+    # and not a YAML key: it is a profiler, not a hyperparameter, it changes
+    # no value on the loss path, and it inserts a `cuda.synchronize()` per
+    # stage, so it must never be on for a run whose wall clock or throughput
+    # is being quoted.  A result run that used it would be slower, not wrong.
+    if os.environ.get("WFA_STEP_TIMING", "0") == "1":
+        set_step_timing(True)
     # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
     # by argparse but has NO live consumer in this trainer, so a non-default
     # value would be a silent no-op.  Fail loudly instead of pretending the

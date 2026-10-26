@@ -1,0 +1,102 @@
+{
+  "metric": "wfa114_velocity_forward_count",
+  "date": "2026-10-26",
+  "tag": "MEASURED",
+  "task": "T3 / T2 — the per-step cost of the CFM objective, not of the card",
+  "what": "One optimiser step of the T3 protocol evaluated the velocity field 11 times. Only one of those was the main FM term. This records what the other ten were, which of them were byte-identical recomputations of the main pass, and the count after removing those. It produces no quality metric.",
+  "why_it_matters": "The 2026-10-26 T3 seed-0 launch ran 55 min without finishing epoch 0 against a c8 record of 872 s/epoch, and the first reading of that was 'the CPU is slow'. The CPU was slow, but the step was also doing 11x the model work it needed to, and nothing on the loss path reported that. A slow card and a 11-forward step look identical from outside.",
+  "instrumentation_added": {
+    "WFA_STEP_TIMING": "The per-stage timer (set_step_timing) existed since the 940 ms/step mis-attribution but had no caller, so it could not be switched on. WFA_STEP_TIMING=1 now turns it on. This needed a plain `import os` after the CUDA bootstrap block, which deletes its own aliases (NameError: _wf130_os).",
+    "fm_velocity_calls": "A counter incremented inside CFMVelocityField.fm_velocity, printed per epoch. A total of 11 says the step is expensive; it does not say which knob to turn, so the counter is split by the term that issued the call (`_caller`), which reaches no tensor.",
+    "reset": "Both accumulators are process-wide, so they are cleared at the TOP of each epoch. Clearing after the print was the first attempt and it broke wf_cfm_step_stage_profile.py, which reads the dict back via get_step_timing() after the call and got an empty measurement."
+  },
+  "measured": {
+    "protocol": "configs/wfa113_t3_profile_cpu_2026_10_26.yaml — one batch of 64, CPU only, gen_eval off, consistency_weight 0.05, shortcut_distill true, so3_average true, sboo3_n_rot 1, energy_conservation_weight 0.05, sboo3_term_weight 0.05, fm_ode_term_weight 0.0, edm_preconditioning off",
+    "before": {
+      "fm_velocity_calls_per_step": 11.0,
+      "breakdown": "not attributable: the counter was a single total, which is why the per-caller split was added",
+      "batch_total_ms": 13354.3,
+      "backward_ms": 9097.2,
+      "model_fwd_ms": 241.0,
+      "bond_target_ms": 3.1,
+      "clip_plus_step_ms": 6.1
+    },
+    "after_consistency_edm_shortcut": {
+      "fm_velocity_calls_per_step": 9.0,
+      "by_caller": {"main": 5.0, "so3": 2.0, "shortcut": 1.0, "consistency": 1.0},
+      "note": "main=5 is 1 main term + 2 EnergyConservation + 2 SBOO3Term, which were not yet tagged when this run was made.",
+      "batch_total_ms": 33159.1,
+      "backward_ms": 20778.7
+    },
+    "after_energy_sboo3": {
+      "fm_velocity_calls_per_step": 7.0,
+      "by_caller": {"so3": 2.0, "main": 1.0, "shortcut": 1.0, "consistency": 1.0, "energy": 1.0, "sboo3": 1.0},
+      "batch_total_ms": 32918.2,
+      "backward_ms": 18897.3
+    },
+    "confirmation_after_the_counter_reset_moved_to_the_top_of_the_epoch": {
+      "fm_velocity_calls_per_step": 7.0,
+      "by_caller": {"so3": 2.0, "main": 1.0, "shortcut": 1.0, "consistency": 1.0, "energy": 1.0, "sboo3": 1.0},
+      "batch_total_ms": 22588.7,
+      "backward_ms": 14030.2,
+      "model_fwd_ms": 291.8,
+      "note": "Same work, same count, 22589 ms against 32918 ms in the previous run. Four runs of strictly DECREASING work measured 13354, 33159, 32918 and 22589 ms."
+    }
+  },
+  "what_was_a_duplicate": [
+    {
+      "term": "consistency (EDM Karras temporal consistency)",
+      "calls_before": 2,
+      "calls_after": 1,
+      "why": "consistency_loss_fn evaluated pred_fn(x_t) as its 'clean' reference. The trainer had already evaluated exactly that. The adapter now takes v_clean."
+    },
+    {
+      "term": "edm_preconditioning",
+      "calls_before": 1,
+      "calls_after": 0,
+      "why": "pred_raw was pred_fn(x_t) with the same t and no extra conditioning — a byte-identical second forward. Now reuses the main prediction. Zero calls at the shipped default (edm_preconditioning off)."
+    },
+    {
+      "term": "shortcut_distillation",
+      "calls_before": 2,
+      "calls_after": 1,
+      "why": "Its first term IS the main FM regression. It was recomputed and then ADDED again, so with shortcut_distill on the FM MSE entered the total at 2 x fm_weight while fm_weight still read 1.0. The adapter now takes v_pred_t and include_fm_term."
+    },
+    {
+      "term": "EnergyConservation",
+      "calls_before": 2,
+      "calls_after": 1,
+      "why": "v0 = pred_fn(x_t) is the main pass. Now takes v_x_t."
+    },
+    {
+      "term": "SBOO3Term",
+      "calls_before": 2,
+      "calls_after": 1,
+      "why": "pred_fn(x_t) sat INSIDE the rotation loop, so the term cost n_rot + n_rot forwards for n_rot rotations and averaged n_rot different draws of a quantity that does not depend on the rotation. Hoisted out of the loop and made available to the caller as v_x_t. At the profile's n_rot=1 this saves 1; at the class default n_rot=4 it saves 4."
+    }
+  ],
+  "not_a_duplicate": [
+    "so3_average (2 forwards at so3_averaged_fm_k=2): every call is on a rotated state, so none of them is the main pass.",
+    "shortcut's second term (x_s, s): a different state and a different time.",
+    "consistency's perturbed pass: a different state by construction.",
+    "FmOdeTerm RK4 (4 forwards when enabled): different states along an integration path. It is off in T3 (weight 0.0), so it costs 0 there."
+  ],
+  "second_effect": "The field carries dropout, so every one of these recomputations returned a DIFFERENT sample than the one the main term was being fitted to. The regulariser and the objective were optimising two different functions of the same weights. The reuse fixes that as well as the cost, and it is the same defect class as the CN-dropout RNG leak fixed earlier today (a NULL arm that was not bit-exact).",
+  "objective_change": "shortcut_distill_loss no longer contributes its FM term when the caller already optimises the FM regression. For any config with shortcut_distill: true this changes the objective from 2 x FM + shortcut to FM + shortcut. No run has been made under the old form that T3 would be compared against; T3 has never completed an epoch. The T3 config's header says 'nothing else changes' and this now does, so the change is recorded here and in the config rather than left implicit.",
+  "what_this_does_establish": [
+    "One optimiser step went from 11 velocity-field evaluations to 7, a 36% cut in model work per step, and every one of the 4 removed calls was an exact recomputation of a tensor the step already had.",
+    "Each remaining call belongs to a term that asks for a different state: so3 2, main 1, shortcut 1, consistency 1, energy 1, sboo3 1."
+  ],
+  "what_this_does_not_establish": [
+    "Any wall-clock speedup. The CPU host is shared and the same one-batch profile measured batch_total 13354 ms, then 33159 ms, then 32918 ms with strictly less work in the later runs. backward moved 9097 -> 20779 -> 18897 ms over the same interval. The host was 2.5x slower by the third run, so the millisecond columns are not an A/B and only the call count is.",
+    "That 7 is the floor. so3_average at so3_averaged_fm_k=2 costs 2 and is a real term; whether T3 needs so3_average and sboo3 at all is a separate ablation, not a code fix.",
+    "That T3 now fits in a sensible time. 22,572 optimiser steps x 7 forwards is still 22,572 x 7 field evaluations, and no completed epoch has been measured on this host."
+  ],
+  "tests": [
+    "molmetal/tests/test_wfa114_velocity_reuse.py — 6 tests: the reuse removes the forward, the value is unchanged, SBOO3 costs n_rot + 1 not 2 x n_rot, disabled terms still cost nothing",
+    "molmetal/tests/test_wf380a1_shortcut_distill.py — 6 tests, incl. v_pred_t is not recomputed and include_fm_term=False returns only the shortcut MSE",
+    "molmetal/tests/test_cfm_loss_gradient_liveness.py — 3 tests, GREEN after geometry_term was declared in ALL_TERMS and EXPECTED_LIVE; it had been RED on clean HEAD since Wf-A108l added the term to the sum without adding it to the guard"
+  ],
+  "configs": ["configs/wfa113_t3_profile_cpu_2026_10_26.yaml"],
+  "caveat": "The profile logs are in /tmp (/tmp/wfa114_prof.log, /tmp/wfa114_prof2.log) and will not survive a reboot; the numbers above are the durable record."
+}

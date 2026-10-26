@@ -284,7 +284,35 @@ def test_sampling_generator_matches_the_tensor_device():
         if not ln.lstrip().startswith("#")
     ]
     code = "\n".join(code_lines)
-    assert 'torch.Generator(device="cpu")' not in code, (
+    # The ban is scoped to the two functions that seed a DEVICE-side draw.
+    # A file-wide ban was the original form, and on 2026-10-26 it fired on a
+    # legitimate CPU generator: MOD5's per-step CN dropout draws its mask with
+    # `torch.rand(..., generator=_cn_drop_gen, device="cpu")` and then moves
+    # the mask to the device, so the generator and the tensor are on the same
+    # device by construction.  A text search cannot tell that apart from the
+    # 2026-10-04 bug, which was a CPU generator handed to a CUDA `randn`.
+    # Scoping keeps the guard exact instead of teaching it to ignore a string.
+    import ast
+
+    tree = ast.parse(src)
+    _seeding = {
+        "generate_clouds_from_noise",
+        "evaluate_generation_validity",
+    }
+    lines = src.splitlines()
+    sampling = "\n".join(
+        ln
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and n.name in _seeding
+        for ln in lines[n.lineno - 1: n.end_lineno]
+        if not ln.lstrip().startswith("#")
+    )
+    assert sampling, (
+        "neither sampling function was found by name; the scoped guard would "
+        "pass vacuously"
+    )
+    assert 'torch.Generator(device="cpu")' not in sampling, (
         "a CPU generator is being handed to a CUDA randn again; the "
         "generation eval will silently report 0/0"
     )

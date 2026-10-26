@@ -62,6 +62,7 @@ def consistency_loss_fn(
     weight: float = 1.0,
     sigma_min: float = 0.002,
     sigma_max: float = 80.0,
+    v_clean: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """EDM consistency regulariser.
 
@@ -75,10 +76,17 @@ def consistency_loss_fn(
         Multiplier on the consistency loss.  Default 1.0.
     sigma_min, sigma_max : float
         EDM σ range.
+    v_clean : (B, ..., D), optional
+        The field evaluated at ``x_t``, when the caller already has it.
 
-    Returns
-    -------
-    Scalar tensor — the consistency regulariser.
+        MEASURED reason this exists (2026-10-26): the CFM step evaluates the
+        velocity field 11 times, and this function's ``pred_fn(x_t)`` was one
+        of two EXACT recomputations of a value the step had already computed
+        from the same ``x_t`` and the same ``t``.  Beyond the wasted forward,
+        the field carries dropout, so in ``train()`` the two passes return
+        different samples: the main velocity loss was fitted to one draw and
+        the consistency term to another.  Passing the existing tensor makes
+        the step see ONE draw and removes the forward.
     """
     b = int(x_t.shape[0])
     # 2026-10-20 (FIX-C8) — sigma must live on x_t's device. It defaulted to
@@ -91,7 +99,7 @@ def consistency_loss_fn(
     noise = torch.randn_like(x_t)
     sigma_b = sigma.view(-1, *([1] * (x_t.dim() - 1)))
     x_perturbed = x_t + sigma_b * noise
-    v_clean = pred_fn(x_t)
+    v_clean = pred_fn(x_t) if v_clean is None else v_clean
     v_perturbed = pred_fn(x_perturbed)
     return weight * ((v_perturbed - v_clean) ** 2).mean()
 

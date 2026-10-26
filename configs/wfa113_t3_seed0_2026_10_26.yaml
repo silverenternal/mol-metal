@@ -3,7 +3,7 @@
 # WHAT THIS IS
 # ------------
 # The c8 full-corpus protocol (26,715 clouds, batch 64, 18 epochs, scaffold
-# split, lr 3.0e-4) with exactly TWO changes from
+# split, lr 3.0e-4) with exactly THREE changes from
 # configs/c8_fullgen_b64_2026_10_24.yaml:
 #
 #   1. fm_ode_term_weight 0.05 -> 0.0.  T3 requires FmOdeTerm off; it is the
@@ -16,6 +16,14 @@
 #   2. metal_conditioning: embedding, DECLARED.  The c8 config omits the key
 #      and its argparse default is `none`, so the c8 reference is metal-blind.
 #      This is the one architectural difference and it is the paper's claim.
+#
+#   3. The SHORTCUT TERM ITSELF changed, 2026-10-26 (Wf-A114).  This file
+#      still says shortcut_distill: true, but the adapter no longer adds its
+#      own copy of the FM regression: the trainer passes its main prediction
+#      and takes only the shortcut MSE.  Before the fix the FM objective
+#      entered the total at 2 x fm_weight whenever this key was true, while
+#      fm_weight still read 1.0.  MEASURED and recorded in
+#      metrics/by_metric/wfa114_velocity_forward_count.json.
 #
 # NOTHING ELSE CHANGES.  In particular typed_edge_features stays at c8's
 # value, the geometry term stays at c8's weights, and cn_conditioning stays

@@ -429,6 +429,7 @@ class EnergyConservation:
         pred_fn=None,
         x_t: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
+        v_x_t: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         if (
             not self.enabled
@@ -440,7 +441,11 @@ class EnergyConservation:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
         try:
             dt = 0.5
-            v0 = pred_fn(x_t)
+            # ``v_x_t`` is the caller's own ``pred_fn(x_t)``.  The trainer
+            # already evaluates exactly this as its main FM term, and the
+            # field carries dropout, so recomputing it here costs a forward
+            # and returns a different sample than the one being trained.
+            v0 = pred_fn(x_t) if v_x_t is None else v_x_t
             v1 = pred_fn(x_t + dt * v0)
 
             def _ke(v: torch.Tensor) -> torch.Tensor:
@@ -507,6 +512,7 @@ class SBOO3Term:
         pred_fn=None,
         x_t: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
+        v_x_t: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         if (
             not self.enabled
@@ -530,6 +536,13 @@ class SBOO3Term:
                 perm_var = torch.stack(samples).var(unbiased=False)
 
             # O(3): ||R·v(x) - v(R·x)||² averaged over n_rot random rotations.
+            #
+            # ``v(x_t)`` does not depend on the rotation, so it is evaluated
+            # ONCE outside the loop.  It used to sit inside, which made the
+            # term cost n_rot + n_rot forwards for n_rot rotations, and — with
+            # dropout on — averaged n_rot different draws of the same quantity.
+            # ``v_x_t`` lets the caller hand over the main term's own pass.
+            v_x = pred_fn(x_t) if v_x_t is None else v_x_t
             rot_resids = []
             for _ in range(max(self.n_rot, 1)):
                 # Haar-uniform random 3x3 rotation via QR of randn.
@@ -540,7 +553,7 @@ class SBOO3Term:
                     q[:, 0] = -q[:, 0]
                 x_rot = x_t @ q.T
                 v_rot_x = pred_fn(x_rot)
-                v_x_rot = (pred_fn(x_t) @ q.T)
+                v_x_rot = v_x @ q.T
                 rot_resids.append((v_rot_x - v_x_rot).pow(2).mean())
             o3_resid = torch.stack(rot_resids).mean() if rot_resids else torch.zeros((), device=x_t.device)
 

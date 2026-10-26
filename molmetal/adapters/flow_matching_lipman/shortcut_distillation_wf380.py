@@ -28,7 +28,7 @@ Honest framing: SCAFFOLD-only; no GPU launches.
 
 from __future__ import annotations
 
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import torch
 
@@ -89,6 +89,8 @@ def shortcut_distillation_loss(
     t: torch.Tensor,
     target_dx: torch.Tensor,
     p_self: float = 0.5,
+    v_pred_t: Optional[torch.Tensor] = None,
+    include_fm_term: bool = True,
 ) -> torch.Tensor:
     """Shortcut distillation loss (Frans 2024 §3.2).
 
@@ -104,18 +106,32 @@ def shortcut_distillation_loss(
         The conditional velocity ``x_1 − x_0``.
     p_self : float
         Probability of using the shortcut distillation term.  Default 0.5.
+    v_pred_t : (B, ..., D), optional
+        ``pred_fn(x_time, t)`` already evaluated by the caller.  The trainer
+        computes this as its main FM term, so passing it here avoids a second
+        forward — and, because the field carries dropout, avoids fitting the
+        two terms to two different noise draws.
+    include_fm_term : bool
+        Whether to return ``fm_loss + p_self * shortcut_mse`` (the paper's
+        standalone objective) or only ``p_self * shortcut_mse`` (the
+        add-on form).  A caller that already optimises the FM regression as
+        its main term must pass ``False``: otherwise the same MSE enters the
+        total twice and ``fm_weight`` stops meaning what it says.
 
     Returns
     -------
-    Scalar tensor — combined FM MSE + shortcut MSE.
+    Scalar tensor — combined FM MSE + shortcut MSE, or the shortcut MSE alone.
     """
     # First term: standard FM regression at the original (x_t, t).
-    v_pred_t = pred_fn(x_time, t)
+    if v_pred_t is None:
+        v_pred_t = pred_fn(x_time, t)
     fm_loss = ((v_pred_t - target_dx) ** 2).mean()
     # Second term: shortcut consistency at the second sample (x_s, s).
     x_s, s = shortcut_pair(x_time, t, target_dx, p_self=p_self)
     v_pred_s = pred_fn(x_s, s)
     shortcut_mse = ((v_pred_s - v_pred_t) ** 2).mean()
+    if not include_fm_term:
+        return p_self * shortcut_mse
     return fm_loss + p_self * shortcut_mse
 
 

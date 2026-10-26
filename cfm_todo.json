@@ -394,10 +394,12 @@
       "blocked_note": "and the host must be checked with free -m and launched under an RSS ceiling.",
       "probe": "2026-10-26 memory probe (metrics/by_metric/wfa113_t3_memory_probe.json). With FmOdeTerm off, the 26,715-cloud cohort loads into 3.66 GB of host RSS and batch 64 reaches 23.6 GB of VRAM on a card already holding 31 GB of another user's work: it does not OOM. Both probes were stopped before completing an epoch, so 23.6 GB is a floor and no wall clock was measured. The observed step time was >40x the c8 record, on a contended card.",
       "open_decision": "T3's config must also declare metal_conditioning. The c8 reference does not, and the argparse default is `none`, so that reference and every acceptance.rows[].now number come from a METAL-BLIND model. Building T3 from c8 unchanged yields a third metal-blind arm and leaves MOD9/T11's metal-aware arm missing. T3 is also 22,572 optimiser steps (418 x 18 x 3 seeds), which is a multi-day launch on a shared card, not a 4.5-hour one.",
+      "per_step_cost": "2026-10-26 (Wf-A114, metrics/by_metric/wfa114_velocity_forward_count.json). The '>40x the c8 record' reading above was half an explanation. One optimiser step evaluated the velocity field 11 times and only 1 was the main FM term: shortcut_distillation recomputed it (its first term IS the FM regression, and it was ADDED again on top of fm_term, so the FM MSE entered the total at 2 x fm_weight while fm_weight still read 1.0), consistency recomputed it as its clean pass, EDM recomputed it as pred_raw, EnergyConservation recomputed it as v0, and SBOO3Term recomputed it inside the rotation loop. All five are exact recomputations of a tensor the step already had; the field carries dropout, so each also returned a different sample than the one the main loss was fitted to. After the fix the step costs 7 forwards (main 1, so3 2, shortcut 1, consistency 1, energy 1, sboo3 1). Wall clock could not be A/B'd: the same one-batch CPU profile measured batch_total 13354 -> 33159 -> 32918 ms over the same interval while doing strictly less work, so the host was 2.5x slower by the third run.",
       "evidence": [
         "configs/wfa113_t3_probe_2026_10_26.yaml",
         "configs/wfa113_t3_probe_small_2026_10_26.yaml",
-        "metrics/by_metric/wfa113_t3_memory_probe.json"
+        "metrics/by_metric/wfa113_t3_memory_probe.json",
+        "metrics/by_metric/wfa114_velocity_forward_count.json"
       ]
     },
     {

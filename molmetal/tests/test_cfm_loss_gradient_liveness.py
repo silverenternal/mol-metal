@@ -127,6 +127,11 @@ ALL_TERMS = frozenset(
         # from the side-channel, so this guard could not see them.
         "bond_aux_mse_term",
         "ring_prior_term",
+        # Wf-A108l (MOD2/MOD3) — geometry of the model's own endpoint.  It
+        # was added to the sum without being added here, so this guard went
+        # RED on clean HEAD: the failure it reported was real, and the
+        # answer was to declare the term, not to silence the guard.
+        "geometry_term",
     }
 )
 
@@ -197,6 +202,13 @@ EXPECTED_LIVE = frozenset(
         "fm_ode_class_term",
         "energy_class_term",
         "sboo3_class_term",
+        # Wf-A108l (MOD2/MOD3) — geometry of the model's OWN endpoint.  It
+        # scores `x1_hat`, a differentiable function of the field, rather
+        # than the training geometry, which is what makes it trainable at
+        # all; `clash_penalty_term` beside it is the version that scores
+        # `cloud.positions` and is detached.  LIVE only when
+        # --geometry-consistency-weight > 0, so the smoke turns it on.
+        "geometry_term",
     }
 )
 
@@ -338,6 +350,14 @@ _SMOKE_ARGS = [
     # wire.
     "--energy-conservation-weight",
     "0.05",
+    # Wf-A108l (2026-10-25) added `geometry_term` to the loss sum and this
+    # guard was not updated, so it went RED on clean HEAD with the term
+    # reported as "undeclared ... cannot train anything".  Same gating
+    # pattern as the three above: the weight defaults to 0.0, so without
+    # the flag the measurement cannot distinguish a working wire from a
+    # dead one.
+    "--geometry-consistency-weight",
+    "1.0",
 ]
 
 _PROBE = """
