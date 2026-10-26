@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T05:20+08:00",
+  "updated": "2026-10-27T05:40+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -1282,7 +1282,7 @@
     {
       "id": "D30",
       "symptom": "shortcut 蒸馏项不是 Frans 2024 的式子，没有权重，却是目标函数里第二大的一项。",
-      "measured": "c8 三个 epoch 的 loss_terms：shortcut_distill_loss 11.5779/10.9638/10.5906 对 fm_term 11.5367/10.8346/10.3499，占总损失 25.02/23.32/22.34 的约 46%。实现是 MSE(v(x_s,s), v(x_t,t))（shortcut_distillation_wf380.py:130-134），没有 step-size 条件；shortcut_pair 用 x_s=(1-s)x_t+s*x1 造点，而真实流线是 (1-s)x0+s*x1，数值检查在单位尺度上平均绝对偏差 0.308（尺度 1.53，约 20%）。_objective_weights 只收 *_weight 且排除 bool，shortcut_distill 是 bool，所以 artifact 里根本不会出现它的乘数。",
+      "measured": "c8 三个 epoch 的 loss_terms：shortcut_distill_loss 11.5779/10.9638/10.5906 对 fm_term 11.5367/10.8346/10.3499，占总损失 25.02/23.32/22.34 的约 46%。实现是 MSE(v(x_s,s), v(x_t,t))（shortcut_distillation_wf380.py:130-134），没有 step-size 条件；shortcut_pair 用 x_s=(1-s)x_t+s*x1 造点，而真实流线是 (1-s)x0+s*x1，数值检查在单位尺度上平均绝对偏差 0.308（尺度 1.53，约 20%）。_objective_weights 只收 *_weight 且排除 bool，shortcut_distill 是 bool，所以 artifact 里根本不会出现它的乘数。 反解 RMS||v_s-v_t||=6.8（|target|~5.8）；无 dropout，故有效权重 p_self²=0.25。",
       "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
       "reading": "把一个「两个时刻的输出应当相等」的项加到 46% 的权重，等于要求速度场在时间上尽量不变，这和 FM 目标直接对抗；同时它每步多跑一次完整前向，是 c8 三个正则项 OOM 的合理贡献者。M9 的 every_contributing_term_has_a_declared_weight 会在 c8 上判 False（_TERM_TO_WEIGHTS 里没有 shortcut_distill_loss），但 c8 没有 per_epoch_metrics.json，所以这一条从未被执行。",
       "addressed_by": [
@@ -1368,6 +1368,16 @@
       "reading": "provenance_caveat 写的是「本表所有 now 值来自 c8 全量跑」，这与磁盘上的来源不符。后果不是学术洁癖：读者会以为 10 行描述同一个模型，实际上至少四行描述的是别的 checkpoint，其中两行是 24 云 smoke。§5.2 要求每个数字带路径，这张表是例外。",
       "addressed_by": [
         "T39"
+      ]
+    },
+    {
+      "id": "D39",
+      "symptom": "so3_average 项与 fm_term 恒等（只差 0.1 的权重），却每步多跑 2 次完整前向。",
+      "measured": "c8 三个 epoch：so3_term 1.1536706/1.0834642/1.0349942，fm_term 11.5367057/10.8346422/10.3499416，比值 0.1000000026/0.1000000020/0.1000000020。EGNN 按构造等变，so3_average_loss 的 mean_k MSE(v(R_k x_t) - R_k target) 与 MSE(v(x_t), target) 数学上相等，所以导出值只能是 so3_average_weight(0.1) x fm。n_rotations 取 --so3-averaged-fm-k 的默认 2，即每步多两次完整前向。",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+      "reading": "这不是正则项，是把 fm_weight 从 1.0 改成 1.1 的一种昂贵写法：梯度方向与 fm 完全相同，代价是每步 2 次前向。它同时污染 M9 的份额统计（fm 家族因此占约 56%）。config 的注释把 97,286 MiB 的 OOM 归因于六个正则项 x n_rot 4，这个项是其中零信息的那一个。 20 个 config 开着它。",
+      "addressed_by": [
+        "T40"
       ]
     }
   ],
@@ -2390,6 +2400,27 @@
         "metrics/by_metric/cfm_generated_geometry_defect.json",
         "metrics/by_metric/cfm_free_generation_panel_seed0.json"
       ]
+    },
+    {
+      "id": "T40",
+      "priority": 1,
+      "title": "删掉 so3_average，或证明它不是 fm 的复制",
+      "what": "先在 c8 的 checkpoint 上测 so3_average_loss 与 fm MSE 的比值（不训练，纯前向）：若逐 epoch 恒为 so3_average_weight，则该项无信息，从所有新 config 删除并把 so3_average_weight 并入 fm_weight；若不等，记录差值来源（哪一层破坏等变）。",
+      "addresses": [
+        "D39"
+      ],
+      "done_when": "ratio 的逐 epoch 标准差 < 1e-6 判为复制并删除；否则给出破坏等变的层。新 config 不再出现 so3_average: true 且权重被并入 fm。",
+      "gate": {
+        "decisive": "ratio 恒定 => 删除；ratio 波动 => 保留并记录"
+      },
+      "kill": "若删除后 fm_term 轨迹在 288 步内变化 > 2%（说明 0.1 的权重确实改变了优化路径），保留该项但把权重写进 _objective_weights 并在 M9 里合并计份额。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+        "molmetal/adapters/flow_matching_lipman/so3_average.py"
+      ]
     }
   ],
   "acceptance": {
@@ -2773,10 +2804,11 @@
           "T35",
           "T37",
           "T38",
-          "T39"
+          "T39",
+          "T40"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。"
       },
       {
         "wave": 3,
@@ -2949,8 +2981,8 @@
         "id": "SA-9",
         "finding": "shortcut 蒸馏项规格错误、没有权重、占总损失 46%，并且在和 FM 目标对抗。",
         "evidence": "molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py:130-134、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
-        "measured": "c8 epoch0/1/2：shortcut_distill_loss 11.5779/10.9638/10.5906，fm_term 11.5367/10.8346/10.3499，total 25.02/23.32/22.34。shortcut_mse = 2 x 11.58 = 23.16，即 |v_s - v_t| RMS 4.81，而 |v| 约 1.4（M4）。x_s 用 (1-s)x_t+s*x1 构造，与真实流线 (1-s)x0+s*x1 在单位尺度上平均偏差 0.308（尺度 1.53）。",
-        "impact": "它把「两个时刻输出相等」当成目标，等价于压掉时间依赖；同时每步多一次完整前向，是三个正则项 OOM 的合理贡献者。M9 本该在 c8 上报它 weightless，但 c8 没有 per_epoch_metrics.json。",
+        "measured": "c8 epoch0/1/2：shortcut_distill_loss 11.5779/10.9638/10.5906，fm_term 11.5367/10.8346/10.3499，total 25.02/23.32/22.34。shortcut_mse = 2 x 11.58 = 23.16，即 |v_s - v_t| RMS 4.81，而 |v| 约 1.4（M4）。x_s 用 (1-s)x_t+s*x1 构造，与真实流线 (1-s)x0+s*x1 在单位尺度上平均偏差 0.308（尺度 1.53）。 由 shortcut_distill_loss=11.58 反解：shortcut_mse=23.16；被 mask 选中的一半样本贡献全部误差，故 mean||v_s-v_t||²=46.3，RMS 范数 6.8，与 |target|~5.8 同量级——两个时刻的预测方向不一致。速度场无 dropout，被 mask 掉的一半误差恰为 0，所以有效权重是 p_self²=0.25，不是 0.5。",
+        "impact": "它把「两个时刻输出相等」当成目标，等价于压掉时间依赖；同时每步多一次完整前向，是三个正则项 OOM 的合理贡献者。M9 本该在 c8 上报它 weightless，但 c8 没有 per_epoch_metrics.json。 另外，conditional FM 的目标 x1-x0 在给定 x_t 下的后验均值随 t 强烈变化（t→0 时约为 -x0，t→1 时约为 x1），因此「让两个时刻输出相等」与 FM 目标在数学上冲突，不是无害的正则。",
         "status": "OPEN",
         "task": "T33"
       },
@@ -3030,10 +3062,19 @@
         "id": "SA-18",
         "finding": "验收表的 provenance 说明与磁盘不符：10 行 now 至少来自 4 个 run。",
         "evidence": "todo.json::acceptance、metrics/by_metric/c7_fullgen_pool_quality.json、metrics/by_metric/cfm_generated_geometry_defect.json、metrics/by_metric/cfm_free_generation_panel_seed0.json",
-        "measured": "见 D38。three_ring/six_ring 来自 c7 的 overall；hard_clash 与 metal_ligand_min 来自 24 云 smoke（文件自述 SMOKE SCALE）；SA/QED 来自 fullcorpus ep10；single_fragment 是 c8 三 epoch 均值。每行无 artifact 字段。",
+        "measured": "见 D38。three_ring/six_ring 来自 c7 的 overall；hard_clash 与 metal_ligand_min 来自 24 云 smoke（文件自述 SMOKE SCALE）；SA/QED 来自 fullcorpus ep10；single_fragment 是 c8 三 epoch 均值。每行无 artifact 字段。 bond_type_macro_f1 0.618 来自 c8 master.log 的 epoch=2 行，同一行写着 classes=4 与 exact_type_rate=0.010；验收表没有带这两个限定词。",
         "impact": "读者会把 10 行当成同一个模型的读数。实际至少四行是别的 checkpoint，两行是 smoke。这是计划文件自身的 §5.2 违规。",
         "status": "OPEN",
         "task": "T39"
+      },
+      {
+        "id": "SA-19",
+        "finding": "so3_average 是 fm_term 的复制品：比值恒为 0.1，却每步多跑 2 次前向。",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl、molmetal/adapters/flow_matching_lipman/so3_average.py:93-129、train_cfm_yuelbond_wasserstein.py:6500-6522",
+        "measured": "三个 epoch 的 so3/fm = 0.1000000026 / 0.1000000020 / 0.1000000020。n_rotations 默认 2。EGNN 等变 => so3_average_loss ≡ fm MSE。",
+        "impact": "每步 2 次完整前向换来的只是把 fm_weight 从 1.0 抬到 1.1；同时让 M9 的份额统计把 fm 家族算成约 56%。c8 的 OOM 归因里它是零信息的那一项。 configs/ 里有 20 个文件开着 so3_average: true、20 个开着 shortcut_distill: true，所以这不是 c8 单次的问题，而是这批 config 的默认形状。",
+        "status": "OPEN",
+        "task": "T40"
       }
     ],
     "reproduce": [
@@ -3047,7 +3088,8 @@
       "python -c \"import json;d=json.load(open('metrics/by_metric/cfm_pad_groups_mcnemar.json'));print(d['decode_rate'],d['what_this_does_not_establish'][1])\"",
       "ls molmetal/reports/cfm_c8_fullgen_2026_10_24/per_epoch_metrics.json   # 期望 No such file",
       "python - <<'EOF'\nimport torch, torch.nn as nn\nfrom molmetal.adapters.flow_matching_lipman._reference.solver import ODESolver\nm=nn.Sequential(nn.Linear(3,3)).eval()\nx=torch.randn(2,5,3)\ny=ODESolver(velocity_model=lambda a,b: m(a)*float(b), method='midpoint', n_steps=5).sample(x, method='midpoint', n_steps=5)\nprint(y.requires_grad)\nEOF\n# 期望 True（证明未包 no_grad 时会建图）",
-      "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/c7_fullgen_pool_quality.json'))['overall'];print(d['single_fragment_rate'],d['three_ring_share'],d['six_ring_share'])\ne=json.load(open('metrics/by_metric/cfm_generated_geometry_defect.json'));print(e['cohort']['caveat'],e['generated_vs_real']['metal_ligand_min']['generated_mean'])\nEOF"
+      "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/c7_fullgen_pool_quality.json'))['overall'];print(d['single_fragment_rate'],d['three_ring_share'],d['six_ring_share'])\ne=json.load(open('metrics/by_metric/cfm_generated_geometry_defect.json'));print(e['cohort']['caveat'],e['generated_vs_real']['metal_ligand_min']['generated_mean'])\nEOF",
+      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch':\n    lt=ast.literal_eval(r['loss_terms']); print(r['epoch'], lt['so3_term']/lt['fm_term'])\nEOF\n# 期望三个 0.1000000x"
     ]
   }
 }
