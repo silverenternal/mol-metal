@@ -122,8 +122,12 @@ def test_measurements_underlying_the_optimisation_are_recorded():
     from pathlib import Path
 
     repo = Path(__file__).resolve().parent.parent.parent
-    blocker = repo / "cfm_todo.json"
-    assert blocker.is_file(), f"cfm_todo.json disappeared from {repo}"
+    # 2026-10-27 — the CFM plan moved from cfm_todo.json into todo.json (one plan
+    # for both lines; the CFM ids are unchanged).  todo.json carries a
+    # legacy_identifiers block precisely so ids like BLK-C-PERF stay resolvable
+    # after the merge.
+    blocker = repo / "todo.json"
+    assert blocker.is_file(), f"todo.json disappeared from {repo}"
     # 2026-10-19 — cfm_todo.json was rewritten without a top-level "blockers"
     # array (verified: the key is absent at HEAD, so the old assertion failed
     # on a schema change, not on a lost measurement).  The finding now lives
@@ -133,7 +137,7 @@ def test_measurements_underlying_the_optimisation_are_recorded():
     status_doc = repo / "docs" / "CFM_STATUS_2026_10_12.md"
     assert status_doc.is_file(), f"{status_doc} disappeared from {repo}"
     assert "BLK-C-PERF" in text or "BLK-C-PERF" in status_doc.read_text(), (
-        "BLK-C-PERF is in neither cfm_todo.json nor "
+        "BLK-C-PERF is in neither todo.json nor "
         "docs/CFM_STATUS_2026_10_12.md; the launch-bound finding and its "
         "measured scaling numbers must stay on disk"
     )

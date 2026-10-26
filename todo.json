@@ -1,16 +1,22 @@
 {
-  "schema": "molmetal-todo-v6",
+  "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-23T06:55+08:00",
-  "rewritten": "2026-10-23T05:30+08:00 molmetal-todo-v5。第五轮 UP-33..UP-37 全部关闭（1 PARTIAL / 2 FAIL / 2 PASS），已完成的包从本文件删除，结论压进 closed_decisions R22-R25 与 current_position。第六轮只留 5 个未完成的包。",
-  "supersedes": "molmetal-todo-v5（第五轮 UP-33..UP-37，已全部关闭）",
-  "purpose": "第六轮强化。第五轮把「用目标域自己的少量标签做经验贝叶斯校准」推到三个推论上，结果：区间宽度兑现（2.0073 → 1.4478）、金属水平不可估（kill）、少样本适配不可行（kill，LOMO 永久关闭）。第六轮问三个不同的问题：①同一篇论文里未被使用的预测值能不能降小样本方差（PPI，n=1/2）；②常数偏移是不是 DOI 线的天花板（每论文斜率，ComBat 的 scale 参数，n=10）；③MoleculeNet 的 0.0503 缺口里，划分、预算、实现各占多少。外加一个修复项：组条件分位数的有限样本修正。已关闭的四条线（metal_out 水平、LOMO 少样本、排序、表示）与已测死的 DrugOOD 预算路线都不重开。",
+  "updated": "2026-10-27T02:26+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。",
+  "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
+  "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
     "north_star：为什么第六轮打协议项而不是再换一次模型。",
     "current_position.baseline_facts：本轮所有门槛的分母，全部有 artifact。",
     "metric_gap_analysis：四个靶子，每行给 current（MEASURED）、target、lever、artifact。",
     "work_packages：code_points 是落地位置；gate 在看到结果前写死；kill 触发即关闭该线。",
-    "closed_decisions：R1-R26 是前五轮的压缩结论，不要再重新试同一根杠杆。"
+    "closed_decisions：R1-R26 是前五轮的压缩结论，不要再重新试同一根杠杆。",
+    "publication_plan：二区评估的结论（三个故事、五个发散方向、四条风险、放弃判据），每条指向一个 task。",
+    "diagnosis / modules / module_gates / tasks / acceptance：生成线的原 cfm_todo.json 结构，id 未改。",
+    "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。",
+    "publication_plan：二区评估的结论（三个故事、五个发散方向、四条风险、放弃判据），每条指向一个 task。",
+    "diagnosis / modules / module_gates / tasks / acceptance：生成线的原 cfm_todo.json 结构，id 未改。",
+    "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。"
   ],
   "rules": {
     "truth": "§5.2 每个数字必须能追到 metrics/by_metric/*.json 的路径；没有 artifact 的数字只能标 PROJECTED。",
@@ -27,13 +33,23 @@
     "benchmark_protocol": "基准数字必须报「同划分、同预算、同 seed 数」的三元组；换划分的臂单独报，不得混进同一个均值。"
   },
   "north_star": {
-    "thesis": "第五轮把假设检验完了：可学的确实只有「目标域自己的标签」。把它用在区间上有效（宽度 −27.9%），用在金属水平上无效（oracle 上界 0.0092），用在少样本训练上无效（k=50 只买到 +0.0053）。第六轮不再问「还能学什么」，而问「现有信息用完了没有」：同一篇论文的未标注预测值（PPI）从来没进过估计量；ComBat 的尺度参数从来没进过校准；MoleculeNet 的 0.05 缺口从来没被拆成划分/预算/实现。这三项都不换模型、不换数据，只换「用多少信息、用哪个参数、用哪个划分」，因此与已关闭的四条线机制不同，且每一项都能先量天花板再决定要不要建估计器。",
-    "phase": "协议审计阶段（2026-10-23 起，第六轮）",
+    "thesis": "两条线在 2026-10-27 合并成一个判断。生成线：10 行验收表只过 1 行（bond_type_macro_f1 0.618），其余 9 行是结构性失败（没有环先验、没有金属几何先验、键级不进速度场），现在不能支撑二区。预测线：能，但头条必须是校准而不是跨金属迁移——给新论文 10 行实测，跨论文 R² 从 0.377 到 0.684（5% 分位 0.676），拿到常数偏移上界 0.735 的 93%，且 +0.3165 里只有 +0.0331 来自评估行构成。整条线最强的资产不是模型而是测量纪律：40+ 个预注册实验、冻结的 kill 规则、一周撤回 5 个头条。第七轮要做的不是再训一个模型，是把「数据能支持什么、不能支持什么」做成一篇可投的测量论文，并且先用一个实验决定这篇论文该不该写。",
+    "phase": "发表准备阶段（2026-10-27 起，第七轮）",
     "current_goal": [
       "用同一篇论文的未标注行把 n_cal=1/2 的论文均值估得更准，测 0.5559 / 0.6094 能不能到 0.60 / 0.64。",
       "量出每论文斜率的天花板，测 n_cal=10 的 0.6839 能不能到 0.70；若天花板 <0.72 则宣布常数偏移是终点。",
       "把 MoleculeNet 的 0.0503 缺口分解成划分 / 预算 / 实现三项，测均值 0.8330 能不能到 0.86。",
-      "给组条件覆盖加有限样本修正，测五个金属能不能同时 ≥0.87 且中位宽 ≤1.55。"
+      "给组条件覆盖加有限样本修正，测五个金属能不能同时 ≥0.87 且中位宽 ≤1.55。",
+      "先跑决定臂：同一批 10 行，校准 vs 重训；若重训 ≥ 校准，故事 A 不写（T13）。",
+      "把池化 R² 换成池化 + 逐论文两版，并证明头条不是被几篇大论文拉起来的（T14）。",
+      "把 203 条 ACTIVE 负结果压成 4 个机制，UNEXPLAINED 占比必须报出（T15）。",
+      "补齐可比性：chemprop v2 在 DOI 折上、第二终点、第二语料（T17/T18/T19）。",
+      "故事 A 与故事 B 合成一篇（JCIM / J Cheminform）；故事 C 等 MOD2+MOD3+MOD4（T25/T26/T27）。",
+      "先跑决定臂：同一批 10 行，校准 vs 重训；若重训 ≥ 校准，故事 A 不写（T13）。",
+      "把池化 R² 换成池化 + 逐论文两版，并证明头条不是被几篇大论文拉起来的（T14）。",
+      "把 203 条 ACTIVE 负结果压成 4 个机制，UNEXPLAINED 占比必须报出（T15）。",
+      "补齐可比性：chemprop v2 在 DOI 折上、第二终点、第二语料（T17/T18/T19）。",
+      "故事 A 与故事 B 合成一篇（JCIM / J Cheminform）；故事 C 等 MOD2+MOD3+MOD4（T25/T26/T27）。"
     ],
     "decision_rule": {
       "one_lever_per_metric": "每个指标本轮只允许一个杠杆；杠杆必须是协议层面的（信息使用 / 预算 / 划分 / 分位数），不是超参。",
@@ -41,15 +57,28 @@
       "learner_match": "绝对门槛只在同代码路径复现历史基线后才可用于 kill；否则只报配对差。",
       "attribution_before_verdict": "基准类包必须先跑「同预算、同划分」的对照臂，再判断差距来自哪里；只有主臂没有对照臂时不得下结论。",
       "gates_frozen_at": "2026-10-23T05:30+08:00",
-      "gate_author": "agent 预注册；用户指令为「不接受现状、要更强」，未参与设定数值。"
+      "gate_author": "agent 预注册；用户指令为「不接受现状、要更强」，未参与设定数值。",
+      "boundary_paper_rule": "§1 记分牌 4 条里过 2 条 → 边界论文。这是 2026-10-21 定的口径，docs/PREDICTIVE_LINE_INDEX.md:19 引用它；2026-10-27 评估没有改它，只补了publication_rule：边界论文的『边界』必须写成领域约束（数据支持什么），不能写成模型不足。",
+      "publication_rule": "论文主张必须先通过决定臂（T13）：同一批 10 行，重训 ≥ 校准 ⇒ 贡献退化成『用少量数据适配』这一已知结论，故事 A 不写。这条规则在看到 T13 结果之前写死。",
+      "publication_gates_frozen_at": "2026-10-27T02:26+08:00",
+      "gate_author_publication": "agent 预注册，依据 2026-10-27 评估；数值门槛只在能从已有 artifact 推导时给出，其余写成「必须报告什么」而不是「必须达到什么」。"
     },
     "not_this_round": [
       "metal_out 金属水平（UP-34 kill）、LOMO 少样本（UP-35 kill）、排序（DP-8/9）、表示（UP-28）：四条线已关闭，本轮不重开。",
       "DrugOOD OOD 基准：不投入。理由是已测的——chemprop v2 20 epoch（5 seed）在三个轴上分别是 0.7137 / 0.6707 / 0.6757，全部低于现有 1 epoch Morgan-MLP 的 0.7304 / 0.6902 / 0.6763（molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json）。「补预算 + 换 GNN」在这个基准上是负向的，所以 1 epoch 不是问题所在；该跑法还有 eval_max_samples=4000 的截断，不可直接比。",
       "Tier-2 抗癌线的 MetalCytoToxDB 合并 R² −0.284 是另一个 tier 的指标，不在预测线内，本轮不碰。",
       "外部独立 cohort（B1）仍被方法学问题挡住：IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%，不能当独立验证。",
-      "Pt 第六金属（17,735 行已在盘上）会作废全部现有 headline，属于换协议，留给 DP-15 由用户决定。"
-    ]
+      "Pt 第六金属（17,735 行已在盘上）会作废全部现有 headline，属于换协议，留给 DP-15 由用户决定。",
+      "不给生成线加新模块：MOD2/MOD3/MOD4 未落地前，故事 C 不投入 GPU（T27 BLOCKED）。",
+      "不投纯方法学 perspective（预注册 + kill 规则）：降级为故事 A 的一节（T24）。",
+      "不在 n<500 的池子上做键级基准（T20 的门槛就是 n≥500 且每类 ≥30）。",
+      "不在决定臂（T13）出结果之前写任何 paper/* 文件。",
+      "不给生成线加新模块：MOD2/MOD3/MOD4 未落地前，故事 C 不投入 GPU（T27 BLOCKED）。",
+      "不投纯方法学 perspective（预注册 + kill 规则）：降级为故事 A 的一节（T24）。",
+      "不在 n<500 的池子上做键级基准（T20 的门槛就是 n≥500 且每类 ≥30）。",
+      "不在决定臂（T13）出结果之前写任何 paper/* 文件。"
+    ],
+    "round6_thesis": "两条线在 2026-10-27 合并成一个判断。生成线：10 行验收表只过 1 行（bond_type_macro_f1 0.618），其余 9 行是结构性失败（没有环先验、没有金属几何先验、键级不进速度场），现在不能支撑二区。预测线：能，但头条必须是校准而不是跨金属迁移——给新论文 10 行实测，跨论文 R² 从 0.377 到 0.684（5% 分位 0.676），拿到常数偏移上界 0.735 的 93%，且 +0.3165 里只有 +0.0331 来自评估行构成。整条线最强的资产不是模型而是测量纪律：40+ 个预注册实验、冻结的 kill 规则、一周撤回 5 个头条。第七轮要做的不是再训一个模型，是把「数据能支持什么、不能支持什么」做成一篇可投的测量论文，并且先用一个实验决定这篇论文该不该写。"
   },
   "current_position": {
     "baseline_facts": [
@@ -67,7 +96,21 @@
       "小样本区间：n_cal=1 只有 0.5559。当前估计量只用了该论文的 k 行残差，同一篇论文其余行的预测值完全没用。",
       "DOI 天花板未知：0.6839 距常数偏移 oracle 0.7353 差 0.0514，但每论文斜率版本的上界从未量过，所以不知道这 0.05 是估计误差还是终点。",
       "基准对齐：MoleculeNet 均值比文献低 0.0503，但划分（scaffold vs random）与预算（50 epoch、无 early stop、无 ensemble）从未分解过。",
-      "组条件覆盖：Mondrian 修好了 Os，但 n_cal=10 的经验分位数在小组上偏乐观，修正后的代价未测。"
+      "组条件覆盖：Mondrian 修好了 Os，但 n_cal=10 的经验分位数在小组上偏乐观，修正后的代价未测。",
+      "决定臂缺失：所有 n_cal 数字都是「用 k 行估偏移」，没有一个「用 k 行重训」的对照（D12）。",
+      "逐论文分布缺失：池化 R² 21,309 行、抽样分位 0.676，1,784 个 DOI 组的分布从未报过（D13）。",
+      "可比性缺失：DOI 协议上没有 chemprop v2，只有自研 D-MPNN 0.3282 对指纹树 0.3767（D16）。",
+      "单语料单终点：21,404 行 / 5 金属 / 1 个 potency 终点，第二终点与第二语料都没跑（D17/D18）。",
+      "决定臂缺失：所有 n_cal 数字都是「用 k 行估偏移」，没有一个「用 k 行重训」的对照（D12）。",
+      "逐论文分布缺失：池化 R² 21,309 行、抽样分位 0.676，1,784 个 DOI 组的分布从未报过（D13）。",
+      "可比性缺失：DOI 协议上没有 chemprop v2，只有自研 D-MPNN 0.3282 对指纹树 0.3767（D16）。",
+      "单语料单终点：21,404 行 / 5 金属 / 1 个 potency 终点，第二终点与第二语料都没跑（D17/D18）。"
+    ],
+    "cfm_baseline_facts": [
+      "生成线池级验收表 10 行过 1 行：bond_type_macro_f1 0.618 ≥0.60（OpenBabel 0.505）；single_fragment_rate 0.2505（目标 ≥0.80）、three_ring_share 0.6684（≤0.10）、six_ring_share 0.0292（≥0.45）、metal_ligand_min 1.234 A（1.7-2.4）、frac_pairs_hard_clash 0.0148（≤0.001）、SA 6.44（≤4.5）、QED 0.094（≥0.30）全部未过；novelty 与 conditional success 未测。",
+      "全语料自由生成池 SA≤4.5 = 0.28%（36/12,668），联合闸（SA≤4.5 且 novelty≥0.90）0/10,190（metrics/by_metric/c7_scale_matched_pools.json）。",
+      "typed edge 在 8/20/40 epoch 的 max rel change 是 0.39% / 0.50% / 0.22%，1e-2 阈值三个都不过（metrics/by_metric/wfa110_typed_edge_ablation_ep{8,20}.json）。",
+      "M9 是唯一 FAIL 门：fm_term 在第 24/36 epoch 占总损失 91.47%，超过 90% 线；T3 的全语料臂决定它是小样本伪影还是真的需要权重调度。"
     ]
   },
   "metric_gap_analysis": {
@@ -200,7 +243,8 @@
         ],
         "why": "我们现在的 50 epoch、无 early stop、无 ensemble 与文献配置不同，这是 UP-40 要分解的第一项。"
       }
-    ]
+    ],
+    "pending": "2026-10-27 新增方向（键级基准、数据描述符、预注册方法学）尚未检索文献。按 §5.2 不写未核对的引用；T20/T23/T24 各自的第一步是检索并逐条核对 id，核对结果写进本段，不写进 entries 直到 id_verified=true。"
   },
   "blockers": [
     {
@@ -224,6 +268,54 @@
       "status": "CLOSED",
       "measured": "观测 −0.0034，MDE 0.050。",
       "impact_on_round6": "不碰决策曲线。"
+    },
+    {
+      "id": "B4",
+      "what": "第二语料",
+      "status": "BLOCKED-ON-ACQUISITION",
+      "measured": "RuCytoToxDB 报 12,439 值 / 3,247 配合物 / 921 论文（2025, ChemRxiv）；本地没有该文件，也没有可机器读取的 SMILES 列。C9 已测 IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%，所以第二个语料必须是 RuCytoToxDB 或更早的独立来源，不是 IrCytoToxDB。",
+      "unblock": "拿到 RuCytoToxDB 的补充文件；拿不到就人工整理 ≥60 化合物 / ≥3 金属 / ≥8 篇。",
+      "impact_on_round7": "T19 是唯一依赖它的任务；故事 A 不依赖第二语料就能写，但审稿人会要。"
+    },
+    {
+      "id": "B5",
+      "what": "标签偏移的第二个领域",
+      "status": "BLOCKED-ON-DATA-SELECTION",
+      "measured": "MSRS 上密度比分类器 AUC 0.5678、ESS 94.5%、加权只把宽度挪 -0.0022（metrics/by_metric/msrs_conformal_shift.json）。第二领域（临床 / 材料 / 光谱）尚未选定，也没有可公开获取的「批次随机效应」回归集。",
+      "unblock": "选一个有批次/中心随机效应的公开回归集，重跑同一个密度比分类器。",
+      "impact_on_round7": "只影响方向 2（T22）；不阻塞故事 A。"
+    },
+    {
+      "id": "B6",
+      "what": "金属配合物键级真值",
+      "status": "OPEN",
+      "measured": "tmQM 有 bond-order 字段，但金属-配体键的级数在源数据里不是实验值；CFM 的 0.618 是对生成云的池化 macro-F1，不是基准集上的数。",
+      "unblock": "从 tmQM 抽 n≥500 且每类 ≥30 的子集，做 ≥90% 人工抽查一致率。",
+      "impact_on_round7": "只影响方向 3（T20）。"
+    },
+    {
+      "id": "B4",
+      "what": "第二语料",
+      "status": "BLOCKED-ON-ACQUISITION",
+      "measured": "RuCytoToxDB 报 12,439 值 / 3,247 配合物 / 921 论文（2025, ChemRxiv）；本地没有该文件，也没有可机器读取的 SMILES 列。C9 已测 IrCytoToxDB 与 MSRS 的 DOI 重叠 99.55%，所以第二个语料必须是 RuCytoToxDB 或更早的独立来源，不是 IrCytoToxDB。",
+      "unblock": "拿到 RuCytoToxDB 的补充文件；拿不到就人工整理 ≥60 化合物 / ≥3 金属 / ≥8 篇。",
+      "impact_on_round7": "T19 是唯一依赖它的任务；故事 A 不依赖第二语料就能写，但审稿人会要。"
+    },
+    {
+      "id": "B5",
+      "what": "标签偏移的第二个领域",
+      "status": "BLOCKED-ON-DATA-SELECTION",
+      "measured": "MSRS 上密度比分类器 AUC 0.5678、ESS 94.5%、加权只把宽度挪 -0.0022（metrics/by_metric/msrs_conformal_shift.json）。第二领域（临床 / 材料 / 光谱）尚未选定，也没有可公开获取的「批次随机效应」回归集。",
+      "unblock": "选一个有批次/中心随机效应的公开回归集，重跑同一个密度比分类器。",
+      "impact_on_round7": "只影响方向 2（T22）；不阻塞故事 A。"
+    },
+    {
+      "id": "B6",
+      "what": "金属配合物键级真值",
+      "status": "OPEN",
+      "measured": "tmQM 有 bond-order 字段，但金属-配体键的级数在源数据里不是实验值；CFM 的 0.618 是对生成云的池化 macro-F1，不是基准集上的数。",
+      "unblock": "从 tmQM 抽 n≥500 且每类 ≥30 的子集，做 ≥90% 人工抽查一致率。",
+      "impact_on_round7": "只影响方向 3（T20）。"
     }
   ],
   "closed_decisions": [
@@ -356,6 +448,36 @@
       "id": "R26",
       "from": "第五轮收口",
       "conclusion": "第五轮 5 包：UP-33 PARTIAL、UP-34/UP-35 FAIL（kill）、UP-36/UP-37 PASS。DP-13 = NO（UP-34 未过门，metal_out 维持 −0.0734）、DP-14 = YES。catalog 累计 247 / ACTIVE 203。"
+    },
+    {
+      "id": "R27",
+      "from": "2026-10-27 二区评估（生成线）",
+      "conclusion": "生成线现在不能支撑二区：10 行验收表 1 过 / 9 不过，typed edge 三个 epoch 全部低于 1e-2。不是「再跑几个 epoch」的问题，缺的是环先验、金属几何先验、键级进速度场三个模块。故事 C 等 MOD2+MOD3+MOD4。"
+    },
+    {
+      "id": "R28",
+      "from": "2026-10-27 二区评估（预测线）",
+      "conclusion": "预测线能投，但必须按测量论文投：头条从「跨金属迁移」（负结果）换成「论文级校准」（0.377→0.684，下界 0.676，上界 0.735，宽度 -27.9%）。创新点是四件套（量化论文偏移 / 证明是标签偏移 / 给它定价 / 与 conformal 串起来），不是新架构——C1 自己写了增益来自输入里有金属。"
+    },
+    {
+      "id": "R29",
+      "from": "2026-10-27 二区评估（放弃判据）",
+      "conclusion": "故事 A 的致命判据：若「10 行重训」≥「10 行校准」，贡献退化成「用少量数据适配」这一已知结论，这篇不写。判据在看到 T13 结果之前写死，写入 north_star.decision_rule.publication_rule。"
+    },
+    {
+      "id": "R27",
+      "from": "2026-10-27 二区评估（生成线）",
+      "conclusion": "生成线现在不能支撑二区：10 行验收表 1 过 / 9 不过，typed edge 三个 epoch 全部低于 1e-2。不是「再跑几个 epoch」的问题，缺的是环先验、金属几何先验、键级进速度场三个模块。故事 C 等 MOD2+MOD3+MOD4。"
+    },
+    {
+      "id": "R28",
+      "from": "2026-10-27 二区评估（预测线）",
+      "conclusion": "预测线能投，但必须按测量论文投：头条从「跨金属迁移」（负结果）换成「论文级校准」（0.377→0.684，下界 0.676，上界 0.735，宽度 -27.9%）。创新点是四件套（量化论文偏移 / 证明是标签偏移 / 给它定价 / 与 conformal 串起来），不是新架构——C1 自己写了增益来自输入里有金属。"
+    },
+    {
+      "id": "R29",
+      "from": "2026-10-27 二区评估（放弃判据）",
+      "conclusion": "故事 A 的致命判据：若「10 行重训」≥「10 行校准」，贡献退化成「用少量数据适配」这一已知结论，这篇不写。判据在看到 T13 结果之前写死，写入 north_star.decision_rule.publication_rule。"
     }
   ],
   "decision_points": [
@@ -377,9 +499,57 @@
       "after": "UP-40",
       "if_yes": "主表保留 scaffold 数字（更保守），同时列出 random 臂作为「文献可比」列，两列都标划分。",
       "if_no": "主表只保留 scaffold 数字，random 臂作为归因证据留在 artifact。"
+    },
+    {
+      "id": "DP-17",
+      "question": "故事 A 与故事 B 是合并成一篇，还是 B 单独投",
+      "owner": "用户",
+      "status": "OPEN",
+      "after": "T16",
+      "if_yes": "合并：故事 B 的污染审计成为故事 A 的 §2，一篇 JCIM / J Cheminform。",
+      "if_no": "分开：B 单独投 Digital Discovery（短、刺人），A 保留 C9 一行。",
+      "why_deferred": "取决于 T16 扩到 3 对之后的结果：若 3 对全部 >90% 重叠，B 单独成篇太薄；若有一对 <20%，B 单独成篇且改写 C9。"
+    },
+    {
+      "id": "DP-18",
+      "question": "第二语料（T19）是否在决定臂（T13）之前投入",
+      "owner": "agent（有实测依据即可裁定）",
+      "status": "OPEN",
+      "after": "T13",
+      "if_yes": "T13 的 verdict 是 FINETUNE_WINS 时，仍用第二语料抢救「少样本适配」这条线。",
+      "if_no": "T13 出结果前不碰第二语料；它只影响审稿人，不影响论文该不该写。",
+      "why_deferred": "T13 是唯一能推翻整篇论文的实验，任何别的投入都应该排在它后面。"
+    },
+    {
+      "id": "DP-17",
+      "question": "故事 A 与故事 B 是合并成一篇，还是 B 单独投",
+      "owner": "用户",
+      "status": "OPEN",
+      "after": "T16",
+      "if_yes": "合并：故事 B 的污染审计成为故事 A 的 §2，一篇 JCIM / J Cheminform。",
+      "if_no": "分开：B 单独投 Digital Discovery（短、刺人），A 保留 C9 一行。",
+      "why_deferred": "取决于 T16 扩到 3 对之后的结果：若 3 对全部 >90% 重叠，B 单独成篇太薄；若有一对 <20%，B 单独成篇且改写 C9。"
+    },
+    {
+      "id": "DP-18",
+      "question": "第二语料（T19）是否在决定臂（T13）之前投入",
+      "owner": "agent（有实测依据即可裁定）",
+      "status": "OPEN",
+      "after": "T13",
+      "if_yes": "T13 的 verdict 是 FINETUNE_WINS 时，仍用第二语料抢救「少样本适配」这条线。",
+      "if_no": "T13 出结果前不碰第二语料；它只影响审稿人，不影响论文该不该写。",
+      "why_deferred": "T13 是唯一能推翻整篇论文的实验，任何别的投入都应该排在它后面。"
     }
   ],
   "sequence": {
+    "wave_0_contract": {
+      "items": [
+        "T28"
+      ],
+      "note": "启动契约卫生，已完成（ba1933d6 / adda43e4）：argv 能力门 + 两个 trainer 的 compile mode + 27 个红测试重定标。199 passed / 0 failed。",
+      "depends_on": [],
+      "status": "DONE"
+    },
     "wave_1_estimators": {
       "items": [
         "UP-38",
@@ -410,7 +580,56 @@
       ],
       "status": "PLANNED"
     },
-    "status": "PLANNED"
+    "status": "PLANNED",
+    "wave_4_paper_deciders": {
+      "items": [
+        "T13",
+        "T14",
+        "T15",
+        "T21"
+      ],
+      "note": "全部 CPU，互不依赖，可并发；合计约 3 hr。T13 出结果之前不写任何 paper 文本。",
+      "depends_on": [],
+      "status": "PLANNED"
+    },
+    "wave_5_comparability": {
+      "items": [
+        "T16",
+        "T17",
+        "T18",
+        "T20",
+        "T23",
+        "T24"
+      ],
+      "note": "T16/T23/T24 纯 CPU 文档与审计；T17/T18 各需 GPU0 1-2 hr；T20 主要 CPU。",
+      "depends_on": [
+        "wave_4_paper_deciders"
+      ],
+      "status": "PLANNED"
+    },
+    "wave_6_second_corpus": {
+      "items": [
+        "T19",
+        "T22"
+      ],
+      "note": "两者都被获取问题挡着（B4 / B5）；拿不到就标 BLOCKED，不跑小样本凑数。",
+      "depends_on": [
+        "wave_5_comparability"
+      ],
+      "status": "PLANNED"
+    },
+    "wave_7_manuscripts": {
+      "items": [
+        "T25",
+        "T26",
+        "T27"
+      ],
+      "note": "T25 在 T13/T14/T15 之后；T26 在 T16 之后；T27 在 T6/T7 之后。",
+      "depends_on": [
+        "wave_6_second_corpus"
+      ],
+      "status": "PLANNED"
+    }
   },
   "work_packages": [
     {
@@ -682,12 +901,22 @@
     "不要用评估行去调 PPI 的 lambda——lambda 只能用 cal 行估（UP-38 的泄漏点）。",
     "不要在 DrugOOD 上自划 split 报 OOD AUC；只有官方 ood_test 分区算数（UP-39）。",
     "不要把 random split 与 scaffold split 的数字混进同一个均值（UP-40 的 no_mixing）。",
-    "不要再用 1 epoch 或 3 seed 的基准当能力证据。"
+    "不要再用 1 epoch 或 3 seed 的基准当能力证据。",
+    "不要引用 decode_ratio 0.9647-0.998 或 gen_validity 1.0 当生成质量——前者数的是「RDKit 能解析这个字符串」，而 75% 的池子是多片段；后者是松散原子假象（sa_scored=0）。",
+    "不要在决定臂（T13）出结果前把 0.6839 写成「模型能力」；它是「10 行校准后的读数」。",
+    "不要把逐论文 R² 与池化 R² 混进同一张表而不标估计目标（T14 的输出必须两版并列）。",
+    "不要把 40+ 条负结果并列成清单当贡献；没有机制归属的条目要标 UNEXPLAINED 并计数（T15）。",
+    "不要在 n<500 的池子上报键级 macro-F1 作为基准成绩（T20）。",
+    "不要引用 decode_ratio 0.9647-0.998 或 gen_validity 1.0 当生成质量——前者数的是「RDKit 能解析这个字符串」，而 75% 的池子是多片段；后者是松散原子假象（sa_scored=0）。",
+    "不要在决定臂（T13）出结果前把 0.6839 写成「模型能力」；它是「10 行校准后的读数」。",
+    "不要把逐论文 R² 与池化 R² 混进同一张表而不标估计目标（T14 的输出必须两版并列）。",
+    "不要把 40+ 条负结果并列成清单当贡献；没有机制归属的条目要标 UNEXPLAINED 并计数（T15）。",
+    "不要在 n<500 的池子上报键级 macro-F1 作为基准成绩（T20）。"
   ],
   "paper_freeze": {
     "directive": "TODO-84 active。",
     "frozen": true,
-    "unfreeze_condition": "DP-3 由用户重新裁定；2026-10-22 已裁定保持冻结。",
+    "unfreeze_condition": "DP-3 由用户重新裁定；2026-10-22 已裁定保持冻结。2026-10-27 评估没有解冻：T25/T26/T27 产出的是 docs/ 下的骨架与图表目录，不是 paper/* 正文。",
     "hard_rule": "冻结期间只允许写 metrics/by_metric/*.json 与 docs/*，不写 paper/*。"
   },
   "resolved_decision_points": [
@@ -717,7 +946,7 @@
       "UP-40",
       "UP-42"
     ],
-    "note": "第六轮 5 个包，三波。门槛冻结于 2026-10-23T05:30+08:00，早于任何结果。",
+    "note": "第六轮 5 个包，三波。门槛冻结于 2026-10-23T05:30+08:00，早于任何结果。第七轮不新增 UP 编号：发表准备的工作用 T13-T28 记，因为它们多数不是「再测一个估计器」。",
     "gate_frozen_at": "2026-10-23T05:30+08:00",
     "wave_1_verdicts": {
       "UP-38": "FAIL (kill) — PPI 未标注项在本队列增加方差，v_ratio 1.04-1.26",
@@ -725,6 +954,1527 @@
       "UP-41": "FAIL (kill) — bonferroni 买到 0.8793 下界但宽度 2.3370；另两臂下界 0.746/0.739"
     },
     "wave_2_verdicts": {},
-    "wave_3_verdicts": {}
+    "wave_3_verdicts": {},
+    "round7_scope": [
+      "决定臂 T13（唯一能推翻论文的实验）",
+      "逐论文分布 T14",
+      "机制归并 T15",
+      "污染审计 T16",
+      "chemprop DOI 基线 T17",
+      "第二终点 T18 / 第二语料 T19",
+      "键级基准 T20 / 价值曲线 T21 / 跨领域标签偏移 T22",
+      "数据描述符 T23 / 预注册方法学 T24",
+      "手稿骨架 T25 / 故事 B T26 / 故事 C T27"
+    ]
+  },
+  "diagnosis": [
+    {
+      "id": "D1",
+      "symptom": "The velocity field never sees bond order, and the exact-type metric is structurally unreachable.",
+      "measured": "c8 full corpus, epochs 0/1/2: bond_f1 0.960/0.991/0.995, bond_type_macro_f1_pooled 0.475/0.632/0.618 against an OpenBabel reference of 0.505, exact_type_rate 0.005/0.031/0.010. Same run logs bond_features=OFF: the decoder reads raw distance plus is_short/is_long, so the EGNN velocity field receives no bond order at all.",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log",
+      "reading": "Corrected 2026-10-25. The earlier version of this entry said macro_f1 was 0.000 and blamed the bond head; that number came from the 64-cloud gcv36 arm (0.0182 at epoch 0, 0.1125 at epoch 33), where the bond head has almost no data. On the full corpus the head is above the OpenBabel reference by epoch 0. So the defect is not bond-order prediction — it is that the order the head does predict is never fed back into the geometry field, and that exact_type (every bond in a ~45-bond complex correct) sits at its floor by construction.",
+      "addressed_by": [
+        "MOD1"
+      ]
+    },
+    {
+      "id": "D2",
+      "symptom": "Generated pools are fragments, not molecules.",
+      "measured": "single_fragment_rate 0.2505 on the c8 pool (n=2112); 0.0851 on the c7 pool (n=12669). Real tmQM reference 1.0.",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+      "reading": "Three quarters of the pool is two or more disconnected pieces. No sampling-side fix can recover a molecule that was never connected.",
+      "addressed_by": [
+        "MOD2"
+      ]
+    },
+    {
+      "id": "D3",
+      "symptom": "The ring system is wrong even where the molecule is connected.",
+      "measured": "three_ring_share 0.6684 and six_ring_share 0.0292 on c7 (n=12669); real tmQM 0.0001 and 0.8753.",
+      "artifact": "metrics/by_metric/c7_fullgen_pool_quality.json",
+      "reading": "67% of all rings are three-membered. That is the signature of a decoder closing triangles among atoms that happen to be near each other, not of a learned ring prior.",
+      "addressed_by": [
+        "MOD4"
+      ]
+    },
+    {
+      "id": "D4",
+      "symptom": "The metal-ligand geometry is not physical.",
+      "measured": "sampled metal_ligand_min 1.234 A against a real 1.953; min_pair_distance 0.570 against 1.172; frac_pairs_hard_clash 0.0148 against 0.0; 143 hard-clash pairs across 24 clouds. SMOKE SCALE: 24 clouds, 20 steps, one checkpoint.",
+      "artifact": "metrics/by_metric/cfm_generated_geometry_defect.json",
+      "reading": "A 1.23 A metal-ligand distance is shorter than any Pt/Ru/Ir donor bond. The field has no per-metal geometry prior, so nothing in the objective prefers 2.0 A over 1.2 A.",
+      "addressed_by": [
+        "MOD2",
+        "MOD3"
+      ]
+    },
+    {
+      "id": "D5",
+      "symptom": "M4 fails at t=0.50 only, because its reference is a single shared slope.",
+      "measured": "The old reference, cfm_module_gates._bayes_ratio, fits ONE slope v ~ a*x_t shared by all three coordinates. The cohort's per-axis variance is 16.95 / 2.67 / 1.60 A^2, so the three optimal slopes have opposite signs (+0.93, -0.79, -1.18 at t=0.50) and the shared one averages to 0.0675. The per-axis closed-form optimum at the same t is 0.4786, a factor of 7.09. An independent k-NN estimate of E[v|x_t] returns 0.5358 (254 clouds, k=32, 5D features), i.e. 1.12x the per-axis value, so the non-linear part is 12% and the restriction is the rest. Corrected, M4 PASSES at all five t on both 36-epoch arms (0.80/0.90/0.66/0.59/0.78 of the per-axis reference on gcv36, 0.83/0.89/0.63/0.57/0.81 on budget36).",
+      "artifact": "metrics/by_metric/wfa109_conditional_mean_envelope.json",
+      "reading": "The field was never over-emitting at the midpoint. M4 was comparing it to a reference that discards two thirds of the signal on an anisotropic cohort. The shared-slope error is largest exactly at t=0.50 (7.09x) and negligible at the ends (1.00x at t=0.05, 1.00x at t=0.95), which is why only one of the five t values ever failed.",
+      "addressed_by": [
+        "MOD7",
+        "T4"
+      ]
+    },
+    {
+      "id": "D6",
+      "symptom": "Conditioning is connected but never shown to be satisfied.",
+      "measured": "M2 shows a metal swap changes the output by 43.5% and a t shift by 106.9%; nothing measures whether a sample conditioned on (metal, coordination number) actually has that metal in that coordination.",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "reading": "A generator whose selling point is metal-awareness has to be scored on the condition being met, not on the output moving.",
+      "addressed_by": [
+        "MOD5"
+      ]
+    },
+    {
+      "id": "D7",
+      "symptom": "Diversity and novelty are unmeasurable at the cohort sizes on disk.",
+      "measured": "IntDiv1 0.869 at n=37, with the artifact's own note that the MOSES comparison needs n>=1000 and that an n=37 sample of the training data itself already sits at 0.885. Novelty has never been measured.",
+      "artifact": "metrics/by_metric/m7_diversity.json",
+      "reading": "Not a model defect and not a result either: the cohort is too small for the metric to mean anything.",
+      "addressed_by": [
+        "MOD8"
+      ]
+    },
+    {
+      "id": "D8",
+      "symptom": "No baseline.",
+      "measured": "Zero published metal-complex generators are run on this corpus. The only comparator in the repo is the metal-blind ablation, which has never been run at this protocol.",
+      "artifact": "metrics/by_metric/cfm_metal_blind_ablation.json",
+      "artifact_status": "ABSENT",
+      "reading": "Without a comparator the pool numbers have no scale. The cheapest defensible one is the same model with metal identity removed from every input, because it isolates the paper's claim.",
+      "addressed_by": [
+        "MOD9"
+      ]
+    },
+    {
+      "id": "D9",
+      "symptom": "Property quality is far outside any publishable band.",
+      "measured": "SA 6.44 and QED 0.094 on n=66 survivors of the free-generation panel (one seed, one checkpoint).",
+      "artifact": "metrics/by_metric/cfm_free_generation_panel_seed0.json",
+      "reading": "A consequence, not an independent defect: a fragmented 3-ring-dominant pool cannot score well on either. No separate module is planned; the targets are pool-level acceptance tests on MOD1-MOD4.",
+      "addressed_by": [
+        "MOD1",
+        "MOD2",
+        "MOD3",
+        "MOD4"
+      ],
+      "done_when": "SA <= 4.5 and QED >= 0.30 on a >=1000-molecule pool"
+    },
+    {
+      "id": "D10",
+      "symptom": "The measurement chain does not identify its own checkpoint.",
+      "measured": "On the gcv36 arm the configured criterion bond_exact_type read 0.000 at all 36 epochs, so best_epoch was 0 while the run reached epoch 35; the gates then loaded _last.pt (sha 23d5be27) while per_epoch_metrics.json named seed0.pt (sha 0550a84b) and M10 failed the hash check. The same run's bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over those epochs, and its gen_validity_n was 0 (no generation eval), so the signal existed and the criterion did not use it.",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "reading": "Two defects wearing one symptom. The chain half: the gates loaded a file the artifact did not name, so the hash check compared two epochs. Fixed on 2026-10-25 — the gates now load the artifact-named checkpoint, and M10 passes on the re-gated run. The selection half: bond_exact_type cannot move, so 'best' meant 'first'. Fixed in three places — the config must name a criterion that moves (bond_type_f1, measured 0.018 to 0.113 on this arm), resolve_selection selects the final epoch when a criterion is constant and records provenance.selection, and the pool numbers are re-measured on whatever checkpoint the artifact names.",
+      "addressed_by": [
+        "T1"
+      ]
+    },
+    {
+      "id": "D11",
+      "symptom": "A 64-cloud arm reaches 42.5 GB and OOMs the host.",
+      "measured": "anon-rss 35.79 GB (pid 2513370, 13:54:34) and 42.52 GB (pid 2581802, 15:52:07). With fm_ode_term_weight 0.0 the same arm peaks at 5.28 GB and oscillates 2.1-4.6 GB. MEASURED 2026-10-25 (metrics/by_metric/wfa109_fmode_graph_retention_long.json, 160 steps at 405 atoms): the live-tensor count is constant at 382 and the RSS slope decays from 17.7 MB/step over 40 steps to 4.76 over 160, so nothing accumulates. The 16 graphs cost 232 MB each at 405 atoms (3.72 GB per step, metrics/by_metric/wfa110_fmode_checkpoint_peaks.json), which at the 2,957-atom batch is ~27 GB on top of a 5.28 GB base - the observed peak.",
+      "artifact": "metrics/by_metric/wfa110_fmode_checkpoint_peaks.json",
+      "reading": "The reading in v11.0 ('bounded at 16 graphs, so the retention is across steps') was wrong, and the measurement says so. There is no leak: the live-tensor count is flat over 160 steps and the RSS slope decays as the allocator's arena reaches its working-set size. The term is a per-step budget that scales with atom count, and the only lever is to stop storing the stage activations. Checkpointing them cuts the added peak 3.3x (3.72 GB -> 1.12 GB per step at 405 atoms).",
+      "addressed_by": [
+        "T2"
+      ]
+    },
+    {
+      "id": "D12",
+      "symptom": "决定论文生死的基线不存在：所有校准臂都是「用 k 行估一个偏移」，没有「用同样 k 行重训」的对照。",
+      "measured": "n_cal 曲线 0.3674/0.5559/0.6094/0.6584/0.6839/0.7038/0.7243 全部来自 eb 偏移臂；0.6839 与常数偏移 oracle 0.7353 只差 0.0514。若 10 行重训能到 0.68 以上，整条叙事退化为「少样本微调」这一已知结论。",
+      "artifact": "metrics/by_metric/msrs_calibration_vs_finetune.json",
+      "artifact_status": "ABSENT",
+      "reading": "这是审稿人的第一个问题，也是唯一能推翻整篇论文的实验。必须在写任何正文之前跑。",
+      "addressed_by": [
+        "T13"
+      ]
+    },
+    {
+      "id": "D13",
+      "symptom": "所有 DOI 数字都是池化的，逐论文 R² 分布从未报告。",
+      "measured": "msrs_paper_calibration.json 只有 aggregate 的池化 R²（n_eval_rows 21,309）与 100 次抽样的分位（5% 0.676 / 最小 0.673）；1,784 个 DOI 组的逐论文 R² 中位数、四分位、负值占比都不在盘上。池化 R² 可以被少数大论文拉动。",
+      "artifact": "metrics/by_metric/msrs_per_paper_r2.json",
+      "artifact_status": "ABSENT",
+      "reading": "不需要新数据，只需要把已有评估行按 DOI 分组重算。成本最低、防守价值最高。",
+      "addressed_by": [
+        "T14"
+      ]
+    },
+    {
+      "id": "D14",
+      "symptom": "40+ 条负结果是并列清单，不是机制。",
+      "measured": "docs/HONEST_NEGATIVE_CATALOG.md 累计 247 条 / ACTIVE 203；docs/PREDICTIVE_LINE_INDEX.md §1 有 UP-1..UP-41 记分牌。四个机制（支持度不足 / 水平-形状分解 / 标签偏移 / 不可识别）分别在 R6/R9/R10/R14/R15/R18 出现过，但从未被写成一张「哪个失败由哪个机制解释」的表。",
+      "artifact": "docs/NEGATIVE_MECHANISM_MAP.md",
+      "artifact_status": "ABSENT",
+      "reading": "并列 40 条读起来像运气不好；归并成 4 个机制读起来像领域约束。这是故事 A 的第二环。",
+      "addressed_by": [
+        "T15"
+      ]
+    },
+    {
+      "id": "D15",
+      "symptom": "污染审计只覆盖一个数据集对。",
+      "measured": "IrCytoToxDB vs MSRS：DOI 重叠 221/222 = 99.55%，653 个 (DOI,细胞系) 格里 89.4% 数值相同（|Δ|<0.01），r=0.9611（metrics/by_metric/msrs_external_cohort_probe.json）。RuCytoToxDB（12,439 值 / 3,247 配合物 / 921 论文）与另外 1-2 个公开集从未审计。",
+      "artifact": "metrics/by_metric/contamination_audit_multi.json",
+      "artifact_status": "ABSENT",
+      "reading": "一对是轶事，三对才是领域事实。故事 B 的全部内容就是这张表。",
+      "addressed_by": [
+        "T16",
+        "T26"
+      ]
+    },
+    {
+      "id": "D16",
+      "symptom": "DOI 协议上没有 chemprop v2 基线。",
+      "measured": "DOI 折上唯一的 GNN 是自研 D-MPNN 0.3282（UP-28），低于指纹树 0.3767；chemprop v2 从未在 DOI 折上跑过。审稿人不会接受「拿自家 GNN 跟自家树比」。",
+      "artifact": "metrics/by_metric/msrs_chemprop_doi.json",
+      "artifact_status": "ABSENT",
+      "reading": "这是可比性要求，不是能力要求：无论 chemprop 高于还是低于 0.3767，都必须报。若它更高，UP-28 的「GNN 在 DOI 上更差」要改写成「我们的 GNN 更差」。",
+      "addressed_by": [
+        "T17"
+      ]
+    },
+    {
+      "id": "D17",
+      "symptom": "全部 headline 都在 potency 一个终点上。",
+      "measured": "0.6839 / 0.7080 / 1.4478 / −0.0734 / 0.5974 全部是 pIC50 类终点；校准协议是否只对 potency 成立，从未测过。",
+      "artifact": "metrics/by_metric/second_endpoint_calibration.json",
+      "artifact_status": "ABSENT",
+      "reading": "单终点是审稿人第二个会要的东西。至少要有 0/10/50 三个点。",
+      "addressed_by": [
+        "T18"
+      ]
+    },
+    {
+      "id": "D18",
+      "symptom": "单语料。",
+      "measured": "21,404 行 / 5 金属 / 3 条观测金属边 / 1,784 DOI 组，只有一个语料。C9 说明外部独立 cohort 不存在，但这不等于第二个语料不能建。",
+      "artifact": "metrics/by_metric/second_corpus_doi.json",
+      "artifact_status": "ABSENT",
+      "reading": "第二语料是故事 A 的加分项、故事 B 的前提。被 B4 的获取问题挡着。",
+      "addressed_by": [
+        "T19"
+      ]
+    },
+    {
+      "id": "D19",
+      "symptom": "金属配合物的键级基准不存在。",
+      "measured": "CFM 的 bond head 在 c8 全语料上 bond_type_macro_f1 0.618 vs OpenBabel 0.505，但这是 2,112 个生成云的池化数，不是基准集：n<500、无 per-class 拆解、无 xyz2mol / RDKit 对照。",
+      "artifact": "metrics/by_metric/metal_bond_order_benchmark.json",
+      "artifact_status": "ABSENT",
+      "reading": "OpenBabel 对金属配合物的键级感知是公认痛点。n≥500 且每类 ≥30 的三方对照就是一篇工具论文。",
+      "addressed_by": [
+        "T20"
+      ]
+    },
+    {
+      "id": "D20",
+      "symptom": "「一次测量值多少 R²」没有写成决策曲线。",
+      "measured": "n_cal 七个点（0.3674/0.5559/0.6094/0.6584/0.6839/0.7038/0.7243）与宽度 1.4478 都在盘上，但没有成本轴、没有可承诺精度的下界、没有逐论文的边际收益。",
+      "artifact": "metrics/by_metric/calibration_value_curve.json",
+      "artifact_status": "ABSENT",
+      "reading": "这条把论文从化学信息学抬到「科学 ML 的决策」层，读者面大得多，而且不需要新实验。",
+      "addressed_by": [
+        "T21"
+      ]
+    },
+    {
+      "id": "D21",
+      "symptom": "「标签偏移不是协变量漂移」只在 MSRS 一个领域测过。",
+      "measured": "密度比分类器 AUC 0.5678、ESS 94.5%、加权只把宽度挪 -0.0022 （metrics/by_metric/msrs_conformal_shift.json）。第二领域未选、未测。",
+      "artifact": "metrics/by_metric/label_shift_second_domain.json",
+      "artifact_status": "ABSENT",
+      "reading": "单领域只能写成观察，第二个领域才能写成方法。被 B5 的选数据问题挡着。",
+      "addressed_by": [
+        "T22"
+      ]
+    },
+    {
+      "id": "D22",
+      "symptom": "MSRS 的数据描述符还不到投稿级。",
+      "measured": "docs/DATASET_CARD.md 186 行、metrics/by_metric/msrs_data_card.json 在盘，但缺 Scientific Data 要的三件事：去重规则的可复算审计、至少一个端到端复用示例、与公开源（MetalCytoToxDB）的差异声明。",
+      "artifact": "docs/MSRS_DATA_DESCRIPTOR.md",
+      "artifact_status": "ABSENT",
+      "reading": "数据卡是内部用的；描述符是给外部复用的。差别在「别人能不能照着重建这个表」。",
+      "addressed_by": [
+        "T23"
+      ]
+    },
+    {
+      "id": "D23",
+      "symptom": "预注册 + kill 规则的方法学没有成文。",
+      "measured": "docs/PREREG_TEMPLATE.md 203 行是模板；40+ 个预注册实验、冻结的 kill 规则、一周撤回 5 个头条（索引 §3）从未被汇总成「哪些是预注册、哪些是事后、kill 触发了几次」。",
+      "artifact": "docs/PREREGISTRATION_METHODS.md",
+      "artifact_status": "ABSENT",
+      "reading": "这是本项目最罕见的资产，但并列成「我们很诚实」没有价值；要给出可核对的计数。",
+      "addressed_by": [
+        "T24"
+      ]
+    },
+    {
+      "id": "D24",
+      "symptom": "故事 A 的手稿骨架不存在。",
+      "measured": "六环论证链（+0.1002 → 3.64% 跨金属配体 → 0.377→0.684 → AUC 0.568 → 宽度 -27.9% → 99.55% 重叠）每一环都有 artifact，但没有图目录 / 表目录 / venue-fit；docs/ 下现有的是 paper/ 的章节模板，不是这篇新故事的骨架。",
+      "artifact": "docs/PAPER_A_MEASUREMENT_OUTLINE.md",
+      "artifact_status": "ABSENT",
+      "reading": "骨架先写，缺的图表才看得见。骨架不能在 T13 出结果前写。",
+      "addressed_by": [
+        "T25"
+      ]
+    },
+    {
+      "id": "D25",
+      "symptom": "启动器构造的 argv 与 trainer 的 argparse 不一致；dry-run 契约失效。",
+      "measured": "launch_wf310e_r20_p5 构造 20 个 flag，12 个 trainer 不声明，整条 launcher 只能 rc=2；scripts/gpu_smoke_w2_sliced.sh 有 5 个同类 flag；两个 trainer 的 --torch-compile 都硬编码 mode=reduce-overhead，而模块级 DEFAULT_TORCH_COMPILE_MODE 没有任何生产调用点读取。",
+      "artifact": "molmetal/scripts/wf_argv_capability_check.py",
+      "reading": "已修（ba1933d6 / adda43e4）：能力门把「launcher 能不能跑」变成一个可执行检查，两个 trainer 的 compile mode 改为读常量，27 个红测试按已发布表面重定标，199 passed / 0 failed。保留这条是为了不让「契约卫生」在下一轮被当成没做过。",
+      "addressed_by": [
+        "T28"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "id": "MOD1",
+      "name": "TypedEdgeField",
+      "addresses": [
+        "D1"
+      ],
+      "where": "molmetal/adapters/flow_matching_lipman/ (EGNNVelocityField edge features) + the decode path that supplies the predicted order",
+      "change": "Feed the bond order the head already predicts back into the EGNN as a typed edge feature. No new order head: MEASURED on the c8 full corpus the head reaches macro-F1(type) 0.475/0.632/0.618 at epochs 0/1/2 against an OpenBabel reference of 0.505, while the same run logs bond_features=OFF, so the field reads raw distance plus is_short/is_long and the order never reaches the coordinates. The change is the edge-feature path, a checkpoint that declares whether it has it, and a decode step that uses the same order logits the metric scores.",
+      "done_when": "on the same c8 protocol: an on/off ablation of the typed-edge path changes the velocity field's output on identical inputs (M2-style perturbation, >= 1e-2), single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 does not fall below 0.618.",
+      "risk": "Typed edges change the EGNN's input width, so every existing checkpoint needs a fresh run or a migration. The effect may also be nil: if the ring and fragment errors come from the sampler rather than the field, giving the field order information changes nothing measurable.",
+      "status": "IN_PROGRESS",
+      "evidence": [
+        "models/velocity_net.py",
+        "molmetal/adapters/flow_matching_lipman/vector_channels.py",
+        "molmetal/adapters/flow_matching_lipman/__init__.py",
+        "molmetal/tests/test_typed_edges.py",
+        "molmetal/scripts/wfa110_typed_edge_ablation.py",
+        "metrics/by_metric/wfa110_typed_edge_ablation_ep20.json"
+      ],
+      "result": "The path is wired, opt-in, and trains: a zero-initialised rank-5 projection per layer, added to the edge input, with a per-cloud presence mask so a withheld order is the untyped field exactly. MEASURED ablation on the smoke arm (64 clouds, CPU): the projection leaves zero and the order moves the velocity by 0.22% at 2 epochs, 0.39% at 8, 0.50% at 20 - below the 1e-2 bar, and sublinear, so the training budget is not the lever at this scale.",
+      "open_question": "Whether the channel is weak by construction or unused by a 64-cloud fit. The 20-epoch projection norm is 0.002 against an Adam step of 1e-3 over 160 steps, i.e. the gradient is mostly cancelled: the FM regression does not need the order to fit 64 clouds. The full-corpus arm is where the question is answerable."
+    },
+    {
+      "id": "MOD2",
+      "name": "GeometryConsistencyTerm",
+      "addresses": [
+        "D2",
+        "D4"
+      ],
+      "where": "molmetal/loss/geometry_consistency.py (new) + train_cfm_yuelbond_wasserstein.py (--geometry-consistency-weight)",
+      "change": "LANDED 2026-10-25. One differentiable term evaluated on x1_hat, not on the training x1, with three parts: non-bonded pairs below 0.7*(rcov_i+rcov_j); bonded pairs outside [0.85, 1.25] x (rcov_i+rcov_j); metal-ligand pairs outside the per-metal band from MOD3. Each part is a hinge-squared mean over the pairs that exist, so a satisfied pair contributes exactly zero. Master weight plus three part weights, all defaulting to 0.0/1.0 and therefore bit-exact for every existing config. Registered in _LAST_LOSS_TERMS as geometry_term so the liveness guard and the M9 share table see it.",
+      "done_when": "on a >=1000-molecule pool: single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A.",
+      "risk": "A strong attraction term collapses the cloud; the weight needs a 3-point budget sweep before any result is quoted.",
+      "evidence": [
+        "metrics/by_metric/wfa108l_geom_smoke_loss_terms.json"
+      ]
+    },
+    {
+      "id": "MOD3",
+      "name": "MetalGeometryPrior",
+      "addresses": [
+        "D4"
+      ],
+      "where": "molmetal/loss/geometry_consistency.py (METAL_ML_BAND_A), consumed by MOD2's third part",
+      "change": "LANDED 2026-10-25 as the band table, not as a learned prior. MEASURED p10/p90 of the metal-ligand distance per metal from the REAL_DFT cohort in metrics/by_metric/cfm_metal_geometry.json: Pt 1.979-2.466 (n=3571), Ru 1.939-2.371 (5723), Ir 2.005-2.360 (3549), Rh 1.995-2.351 (2374), Os 1.870-2.439 (844), Re 1.938-2.427 (2457). MOD2 penalises an M-L pair outside its own metal's band, so the prior is metal-specific rather than one constant. Not yet fed into the field as a conditioning vector: that needs a CN head, which is MOD5.",
+      "done_when": "median M-L distance within 0.15 A of the DFT per-metal median on the metals held out of the prior fit.",
+      "risk": "Some metals have few rows; the per-metal median has to carry its own n and be reported with it.",
+      "evidence": [
+        "metrics/by_metric/wfa108l_geom_smoke_loss_terms.json"
+      ]
+    },
+    {
+      "id": "MOD4",
+      "name": "RingSizePrior",
+      "addresses": [
+        "D3"
+      ],
+      "where": "new RingSizePriorHead + decoder in molmetal/adapters/flow_matching_lipman/",
+      "change": "Enumerate candidate cycles in the predicted bond graph, featurise each by size, planarity and the MOD1 bond orders, predict a plausibility score, and rescore the edges that close it. Train on truth graphs with the spurious triangles the current decoder emits as explicit negatives.",
+      "done_when": "on a >=1000-molecule pool: three_ring_share <= 0.10 and six_ring_share >= 0.45, with single_fragment_rate not falling below its MOD2 value.",
+      "risk": "A cycle prior applied at decode can only reject edges; if the coordinate field already placed atoms in a triangle, rejection lowers connectivity. Order MOD2 before MOD4."
+    },
+    {
+      "id": "MOD5",
+      "name": "ConditionEncoder",
+      "addresses": [
+        "D6"
+      ],
+      "where": "molmetal/adapters/flow_matching_lipman/ (metal embedding table) + new coordination head",
+      "change": "Extend the metal conditioning table from metal identity to (metal, coordination number) pairs; add a coordination-number head so the realised CN is measurable; add classifier-free guidance with a config-keyed scale so the condition can be strengthened at sample time.",
+      "done_when": "given (metal, CN), >=60% of samples match both, metal retention >=0.95, and the guidance scale is reported with the number it was measured at.",
+      "risk": "Guidance trades diversity for adherence; both numbers have to be reported together or the metric is gameable.",
+      "status": "IN_PROGRESS",
+      "evidence": [
+        "molmetal/adapters/flow_matching_lipman/conditioning.py",
+        "molmetal/tests/test_cn_conditioning.py",
+        "molmetal/scripts/wfa112_cn_cond_ab.py",
+        "metrics/by_metric/wfa112_cn_conditioning_smoke.json"
+      ],
+      "note": "The coordination-number HEAD in `change` was not built, and the substitution is deliberate: the realised CN is read from the metal's degree in the decoded RDKit molecule. A head predicts what the field thinks; the done_when is about the sample, and on a generated sample the graph IS the answer. Building a head would add a second, weaker measurement of the same thing."
+    },
+    {
+      "id": "MOD6",
+      "name": "MagnitudeCalibrationHead",
+      "addresses": [
+        "D5"
+      ],
+      "where": "molmetal/adapters/flow_matching_lipman/vector_channels.py",
+      "change": "Replace the scalar channel gate with a per-t magnitude head whose target is the measured conditional-mean envelope from MOD7, trained with an auxiliary loss on |v_pred| against that envelope. Only build this if MOD7 says the field is over-emitting; if MOD7 says the envelope is larger than the linear bound, the gate is re-anchored instead and this module is not built.",
+      "done_when": "M4 PASS at all five t values on a trained arm, or a recorded decision that the band was wrong with the MOD7 number as the evidence.",
+      "risk": "Fitting the gate to the envelope is close to fitting the metric. The envelope must be measured on data the field was not trained on.",
+      "status": "DECIDED_NOT_BUILT",
+      "decision": "MOD7 measured the envelope at 1.02-1.28x the corrected reference at every t and every cohort size (8 / 63 / 252 clouds). It never approaches M4's 2.0x ceiling, so there is no measured over-emission for a magnitude head to correct. Re-anchoring the reference was the whole fix.",
+      "evidence": [
+        "metrics/by_metric/wfa109_conditional_mean_envelope.json"
+      ]
+    },
+    {
+      "id": "MOD7",
+      "name": "NonparametricEnvelope",
+      "addresses": [
+        "D5"
+      ],
+      "where": "new script molmetal/scripts/wf_a109_conditional_mean_envelope.py",
+      "change": "Estimate E[v|x_t] nonparametrically at the five M4 t values, by k-NN over x_t on a held-out split, and report |E[v|x_t]| / |v| next to the linear-Gaussian bayes_ratio. This is a measurement, not a model change; it decides whether MOD6 is built.",
+      "done_when": "one artifact carrying both ratios at t = 0.05/0.25/0.50/0.75/0.95, with the held-out split fingerprint and the k used.",
+      "risk": "k-NN in 3N dimensions is weak; the estimate is a lower bound too, and has to be reported as one.",
+      "status": "DONE",
+      "evidence": [
+        "molmetal/scripts/wf_a109_conditional_mean_envelope.py",
+        "metrics/by_metric/wfa109_conditional_mean_envelope.json",
+        "molmetal/tests/test_m4_bayes_reference.py"
+      ]
+    },
+    {
+      "id": "MOD8",
+      "name": "DiversityAndNoveltySampler",
+      "addresses": [
+        "D7"
+      ],
+      "where": "trainer diversity flags (6, all wired, all default OFF) + cfm_property_panel.py",
+      "change": "Run a measured ablation over the six wired diversity knobs instead of leaving them off; add scaffold conditioning so a pool can be drawn per scaffold; produce a >=1000-molecule pool and score novelty against the training corpus with an n-matched control.",
+      "done_when": "n>=1000 pool, novelty fraction >=0.90, IntDiv1 reported against an n-matched training-distribution control, not against MOSES.",
+      "risk": "None of the six knobs has ever been shown to help; the ablation may return six nulls, which is a legitimate outcome to record."
+    },
+    {
+      "id": "MOD9",
+      "name": "MetalBlindAblation",
+      "addresses": [
+        "D8"
+      ],
+      "where": "config-only: metal_conditioning=none with the metal atom type masked",
+      "change": "Run the same protocol with metal identity removed from every input. This is the comparator the paper's claim needs: it isolates metal-awareness from everything else in the architecture.",
+      "done_when": "paired comparison on >=3 seeds of (metal-aware, metal-blind) on single_fragment_rate, three_ring_share, metal retention and bond_type_macro_f1.",
+      "risk": "A re-implementation of a published external generator is still missing and is not covered by this module."
+    }
+  ],
+  "module_gates": [
+    {
+      "id": "M1",
+      "module": "data entry",
+      "pass": "max |x_t - ((1-t)*x0 + t*x1)| < 1e-5 and max |v_target - (x1-x0)| == 0",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "measured": "identity residual 5.96e-07, both boundaries exact, sigma measured 2.525 against 2.485 declared (1.6%)."
+    },
+    {
+      "id": "M2",
+      "module": "conditioning path",
+      "pass": "each of {metal swap, t shift, atom-type swap} moves the velocity by > 1e-2 relative",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "measured": "metal swap 43.5%, t shift 106.9%, atom-type swap 10.3%. Pre-fix 3.0% / 0.58% / 0.50%."
+    },
+    {
+      "id": "M3",
+      "module": "velocity head capacity",
+      "pass": "2000-step single-batch overfit reaches <= 10% of the v=0 baseline",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "measured": "0.0491 against a v=0 baseline of 11.7605, i.e. 0.42%."
+    },
+    {
+      "id": "M4",
+      "module": "output scale",
+      "pass": "ratio in [0.5, 2.0] x bayes_ratio at every t, lower bound only where bayes_ratio >= 0.15",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa109_m4_peraxis_gcv36_last.json",
+      "measured": "ratio / per-axis linear-Gaussian reference at t = 0.05 / 0.25 / 0.50 / 0.75 / 0.95: 0.80 / 0.90 / 0.66 / 0.59 / 0.78 on the gcv36 epoch-35 checkpoint and 0.83 / 0.89 / 0.63 / 0.57 / 0.81 on budget36 epoch 35, all inside [0.5, 2.0]. The old shared-slope reference gave 0.80 / 0.98 / 4.02 / 0.73 / 0.79 and failed on t=0.50 alone.",
+      "next": null
+    },
+    {
+      "id": "M5",
+      "module": "gradient path",
+      "pass": "every block in _FM_REACH_BLOCKS has a non-zero grad norm and no block exceeds another by 100x",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "measured": "vel_field 5.1293; head and pocket_encoder reported at 0 and not judged."
+    },
+    {
+      "id": "M6",
+      "module": "time resolution",
+      "pass": "output changes by > 10% of its own norm across a 101-point t sweep, smoothly",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+      "measured": "endpoint change 177.7%, smoothness 0.0167, minimum adjacent cosine 0.99. Pre-fix 2.31% and flat."
+    },
+    {
+      "id": "M7",
+      "module": "warm start",
+      "pass": "no missing key is an atom embedding, a time MLP or a velocity head",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+      "measured": "47 of 51 transfer; the 4 that do not are cross_attn.in_proj_weight and three update_mlp.linear1.weight."
+    },
+    {
+      "id": "M8",
+      "module": "train / sample seam",
+      "pass": "max |dv| == 0 between the trainer's and the sampler's velocity call",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+      "measured": "max |dv| = 0 at pad width 56."
+    },
+    {
+      "id": "M9",
+      "module": "objective balance",
+      "pass": "no single term above 90% of the total and no contributing term without a declared weight",
+      "status": "FAIL",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "measured": "fm_term reaches 91.47% of the total at epoch 24 of 36, so no_term_above_90pct fails. The c8 arm peaked at 88.6% over its 3 recorded epochs, which is why this row read PASS before the 36-epoch series existed.",
+      "next": "T3's full-corpus arm decides whether this is a small-arm artefact: 64 clouds let bond_ce fall fast enough that the FM term dominates by epoch 24. If fm_term stays under 90% over 18 full-corpus epochs, this row returns to PASS citing that artifact; if it does not, the objective needs a weight schedule and that becomes a module."
+    },
+    {
+      "id": "M10",
+      "module": "metric chain",
+      "pass": "the checkpoint the gates loaded is the one the artifact names, by hash",
+      "status": "PASS",
+      "artifact": "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+      "measured": "5 of 5 checks pass: the gates load the checkpoint the artifact names (seed0.pt, sha 0550a84b), the artifact declares that same sha, and the split fingerprint is recorded. Before the fix the gates loaded _last.pt (sha 23d5be27) and compared it against the artifact's 0550a84b.",
+      "next": "T1's remaining half: a run written after the change must carry provenance.selection. Until then the degenerate-criterion path is covered by tests only, not by a live run."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "priority": 0,
+      "title": "A selected checkpoint the criterion can actually rank",
+      "what": "Three changes, each measured. (1) The criterion: the arm was configured with bond_exact_type, which is structurally 0.000, while bond_type_macro_f1_pooled moved 0.0182 to 0.1125 over the same 36 epochs. Every config in this line now names bond_type_f1. (2) The chain: the gates loaded _last.pt while the artifact named seed0.pt, so M10 compared two epochs and reported the difference as a broken chain. The gates now load the artifact-named checkpoint (cfm_module_gates._artifact_named_ckpt). (3) The guard: resolve_selection selects the final epoch when a criterion's history holds one distinct value, and writes provenance.selection so the artifact says which case it is.",
+      "addresses": [
+        "D10"
+      ],
+      "done_when": "M10 PASS on a run written after the change, whose per_epoch_metrics.json carries provenance.selection with either degenerate false or selected_checkpoint last, and whose declared sha equals the sha of the file it names.",
+      "evidence": [
+        "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+        "molmetal/tests/test_cfm_selection_degeneracy.py"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "T2",
+      "priority": 0,
+      "title": "Find the retention inside FmOdeTerm",
+      "what": "Find the retention inside FmOdeTerm. It holds 16 forward graphs per step, which is bounded, yet RSS grows monotonically to 42.5 GB. Instrument the term's lifetime across steps and fix the retainer; keep fm_ode_term_weight 0.0 in every arm until then.",
+      "addresses": [
+        "D11"
+      ],
+      "done_when": "a 2-epoch run at fm_ode_term_weight 0.05 under an 8 GB RSS ceiling completes with the watchdog not firing, and the growth curve is an artifact.",
+      "status": "IN_PROGRESS",
+      "result": "The leak hypothesis is refuted and the memory is bounded. FmOdeTerm checkpoints its four stage forwards (use_checkpoint=True), which is numerically exact including under dropout (6 tests) and cuts the term's added peak 3.3x at 405 atoms (3,718 -> 1,120 MB, three separate processes). MEASURED end to end: the 64-cloud, 2-epoch arm at 0.05 now completes at a 9,747 MB peak against the 42.52 GB that OOMed the host, with the term live at 0.50% of the loss.",
+      "artifact": "metrics/by_metric/wfa110_fmode_ckpt_run.json",
+      "note": "done_when's 8 GB ceiling is missed by 1.7 GB at 64 clouds (4,510 MB of term on a 5,237 MB base) and met at 8 clouds (2,501 MB). Getting under 8 GB at 64 clouds needs n_steps below 4 - 16 forwards is n_steps squared - which changes the term, or a smaller batch. Not done: that decision is the user's, because the term is only 0.5-0.7% of the objective."
+    },
+    {
+      "id": "T3",
+      "priority": 0,
+      "title": "The measurement arm every other task is scored on",
+      "what": "One measurement arm that everything else is scored on: full corpus (26715 clouds), batch 64, 18 epochs, the c8 split, 3 seeds, FmOdeTerm off, gen_eval_n >= 1000 with the pool saved.",
+      "addresses": [
+        "D7",
+        "D8",
+        "D9"
+      ],
+      "done_when": "3 checkpoints + per-epoch metrics + a >=1000-molecule pool per seed, each with the provenance block, and the same n_test fingerprint across seeds.",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T1",
+        "T2"
+      ],
+      "blocked_note": "and the host must be checked with free -m and launched under an RSS ceiling.",
+      "probe": "2026-10-26 memory probe (metrics/by_metric/wfa113_t3_memory_probe.json). With FmOdeTerm off, the 26,715-cloud cohort loads into 3.66 GB of host RSS and batch 64 reaches 23.6 GB of VRAM on a card already holding 31 GB of another user's work: it does not OOM. Both probes were stopped before completing an epoch, so 23.6 GB is a floor and no wall clock was measured. The observed step time was >40x the c8 record, on a contended card.",
+      "open_decision": "T3's config must also declare metal_conditioning. The c8 reference does not, and the argparse default is `none`, so that reference and every acceptance.rows[].now number come from a METAL-BLIND model. Building T3 from c8 unchanged yields a third metal-blind arm and leaves MOD9/T11's metal-aware arm missing. T3 is also 22,572 optimiser steps (418 x 18 x 3 seeds), which is a multi-day launch on a shared card, not a 4.5-hour one.",
+      "per_step_cost": "2026-10-26 (Wf-A114, metrics/by_metric/wfa114_velocity_forward_count.json). The '>40x the c8 record' reading above was half an explanation. One optimiser step evaluated the velocity field 11 times and only 1 was the main FM term: shortcut_distillation recomputed it (its first term IS the FM regression, and it was ADDED again on top of fm_term, so the FM MSE entered the total at 2 x fm_weight while fm_weight still read 1.0), consistency recomputed it as its clean pass, EDM recomputed it as pred_raw, EnergyConservation recomputed it as v0, and SBOO3Term recomputed it inside the rotation loop. All five are exact recomputations of a tensor the step already had; the field carries dropout, so each also returned a different sample than the one the main loss was fitted to. After the fix the step costs 7 forwards (main 1, so3 2, shortcut 1, consistency 1, energy 1, sboo3 1). Wall clock could not be A/B'd: the same one-batch CPU profile measured batch_total 13354 -> 33159 -> 32918 ms over the same interval while doing strictly less work, so the host was 2.5x slower by the third run.",
+      "evidence": [
+        "configs/wfa113_t3_probe_2026_10_26.yaml",
+        "configs/wfa113_t3_probe_small_2026_10_26.yaml",
+        "metrics/by_metric/wfa113_t3_memory_probe.json",
+        "metrics/by_metric/wfa114_velocity_forward_count.json"
+      ]
+    },
+    {
+      "id": "T4",
+      "priority": 1,
+      "title": "Measure the conditional-mean envelope (decides MOD6)",
+      "what": "MOD7: measure the nonparametric conditional-mean envelope at the five M4 t values on a held-out split. CPU only, no training.",
+      "addresses": [
+        "D5"
+      ],
+      "done_when": "artifact with |E[v|x_t]|/|v| and the linear-Gaussian bayes_ratio side by side at all five t, plus the split fingerprint.",
+      "status": "DONE",
+      "result": "Shared-slope reference is 7.09x too small at t=0.50; the per-axis optimum and a k-NN estimate agree to 12%. M4 re-gated PASS on both arms.",
+      "artifact": "metrics/by_metric/wfa109_conditional_mean_envelope.json"
+    },
+    {
+      "id": "T5",
+      "priority": 1,
+      "title": "MOD1: typed edges, no new order head",
+      "what": "MOD1: feed the predicted bond order into the EGNN as typed edge features, and prove the field's output depends on them. The order head is not rebuilt: it is already above the OpenBabel reference on the full corpus (0.618 vs 0.505 at c8 epoch 2).",
+      "addresses": [
+        "D1"
+      ],
+      "done_when": "the on/off ablation moves the field's output by >= 1e-2 on identical inputs, single_fragment_rate and three_ring_share move in the expected direction, and bond_type_macro_f1 stays >= 0.618 on the c8 protocol.",
+      "status": "IN_PROGRESS",
+      "blocked_by": [
+        "T3"
+      ],
+      "blocked_note": "needs the measurement arm to be comparable.",
+      "result": "Typed edges implemented and ablated. The ablation does NOT reach the done_when threshold at smoke scale: 0.0050 against 1e-2 at 20 epochs.",
+      "artifact": "metrics/by_metric/wfa110_typed_edge_ablation_ep20.json"
+    },
+    {
+      "id": "T6",
+      "priority": 2,
+      "title": "MOD2 + MOD3: geometry consistency term",
+      "what": "MOD2 + MOD3: geometry consistency term on the sampled x1_hat, with the per-metal M-L band as its third part. Code landed 2026-10-25 (molmetal/loss/geometry_consistency.py + four YAML weights + 8 unit tests). Remaining: a 3-point weight sweep on the 64-cloud arm with gen_eval on, then the >=1000-molecule pool.",
+      "addresses": [
+        "D2",
+        "D4"
+      ],
+      "done_when": "single_fragment_rate >= 0.80, frac_pairs_hard_clash <= 0.001, metal_ligand_min in [1.7, 2.4] A on a >=1000-molecule pool, with the sweep table as the evidence for the weight.",
+      "evidence": [
+        "molmetal/loss/geometry_consistency.py",
+        "molmetal/tests/test_geometry_consistency.py",
+        "configs/wfa108l_geom_smoke_2026_10_25.yaml"
+      ],
+      "status": "IN_PROGRESS",
+      "blocked_by": [
+        "T3"
+      ],
+      "note": "MOD2/MOD3 are live: geometry_term 2.4686 -> 1.1543 over two epochs of the smoke arm, 7.7% -> 4.4% of train_loss, zero fallback warnings. The 3-point weight sweep is still open."
+    },
+    {
+      "id": "T7",
+      "priority": 3,
+      "title": "MOD4: ring-size prior at decode",
+      "what": "MOD4: ring-size prior at decode, trained with the spurious triangles as negatives. Built as a DECODE-TIME gate instead: the selector is greedy and sequential, so the ring a candidate pair would close is exact (shortest path between its endpoints in the bonds accepted so far, plus one) and a closure below min_ring_size is refused. No retrain, no loss term.",
+      "addresses": [
+        "D3"
+      ],
+      "done_when": "three_ring_share <= 0.10 and six_ring_share >= 0.45 with single_fragment_rate not below its T6 value.",
+      "status": "IN_PROGRESS",
+      "blocked_by": [
+        "T6"
+      ],
+      "blocked_note": "a cycle prior can only remove edges; connectivity has to be there first.",
+      "result": "MEASURED (3 pools x 256 clouds, one 20-epoch smoke checkpoint, prior-on vs prior-off on the same generated geometry). Prior off: ring_3 0.291, ring_6 0.082, ring_5_6 0.148, 1.45 rings/mol, single_fragment 0.038, decode_ratio 1.000. min_ring_size=5: ring_3 0.000, ring_6 0.259, ring_5_6 0.476, 0.85 rings/mol, single_fragment 0.064, decode_ratio 1.000. min_ring_size=4: ring_3 0.000, ring_6 0.111, ring_5_6 0.217, 1.17 rings/mol. Per-seed 5+6 share at min=5: 0.516 / 0.457 / 0.464. The prior refused 674 of 18,245 considered candidates in 350 of 768 clouds; no cloud gained a three-ring (226 fell, 0 rose); five-rings 74 -> 142 and six-rings 91 -> 169.",
+      "artifact": "metrics/by_metric/wfa111_ring_prior_ab.json",
+      "evidence": [
+        "molmetal/molmetal_lam/lam_chem/ring_prior.py",
+        "molmetal/tests/test_ring_prior.py",
+        "molmetal/scripts/wfa111_ring_prior_ab.py"
+      ],
+      "note": "The gate is HALF met: three_ring_share 0.000 (<=0.10) and single_fragment rose rather than fell, but six_ring_share 0.259 is below 0.45, and rings/mol falls to 0.85 against real tmQM's 4.19. Both misses are the pool's: this checkpoint gives 1.45 rings/mol to begin with, and the prior can only keep the rings the geometry offers. The full-corpus c7 checkpoint that produced the 66.8% three-ring share is no longer on disk, so the magnitude is not transferable and the gate has to be re-run on T3's pool. min_ring_size=5 dominates 4: at 4 the freed valence lands on four-rings (369 -> 418), and the OPT-2 tmQM reference has four-rings at 0.50% against 0.49% for three-rings -- the same pathology at a different size."
+    },
+    {
+      "id": "T8",
+      "priority": 3,
+      "title": "MOD5: metal/CN conditioning and guidance",
+      "what": "MOD5: (metal, coordination number) conditioning, a CN head, classifier-free guidance, and a conditional-success metric.",
+      "addresses": [
+        "D6"
+      ],
+      "done_when": ">=60% of samples match a requested (metal, CN), metal retention >=0.95, guidance scale reported with the number.",
+      "status": "IN_PROGRESS",
+      "blocked_by": [
+        "T3"
+      ],
+      "result": "Code landed 2026-10-26. CNConditioner (one embedding row per CN, row 0 zero), coordination_number_from_bonds on the LOCAL per-cloud bond frame, cn_conditioning / cn_max / cn_conditioning_dropout / cn_cfg_scale / cn_request_override wired through the model, the loss and the sampler, conditional_success measured from the metal's degree in the decoded RDKit molecule. 56-step three-arm smoke: null request reproduces the OFF arm to 2.9e-07 relative at epoch 0, the ON arm moves epoch-0 loss by 2.1e-04, and the request reaches the field at 1.0%-54% relative velocity change (all 40 cells above the 1e-2 bar). The decode does NOT obey at 7 epochs: the dose-response range of mean decoded CN across requests 2/4/6 is 0.078 at cfg 1.0 and 0.125 at cfg 2.0 against a requested spread of 4.",
+      "artifact": "metrics/by_metric/wfa112_cn_conditioning_smoke.json",
+      "note": "The done_when as written is gameable and must be re-read before it is scored. MEASURED: request 2 scores conditional_success 0.750 while requests 4 and 6 score 0.062 and 0.031, and the decoded mean CN is ~2.13 in all three cells. The model emits a metal with ~2 bonds whatever is asked, so 'request the modal CN' clears 60% on a channel that does not steer. The gate is the dose-response range across requests plus metal_retention, not one cell. Obedience itself needs the T3 checkpoint.",
+      "evidence": [
+        "molmetal/adapters/flow_matching_lipman/conditioning.py",
+        "molmetal/tests/test_cn_conditioning.py",
+        "molmetal/scripts/wfa112_cn_cond_ab.py",
+        "configs/wfa112_cn_cond_smoke_on_2026_10_26.yaml",
+        "metrics/by_metric/wfa112_cn_cond_ab_smoke.json"
+      ]
+    },
+    {
+      "id": "T9",
+      "priority": 4,
+      "title": "MOD6: magnitude head, only if T4 says over-emission",
+      "what": "MOD6, only if T4 says the field over-emits: magnitude head fitted to the measured envelope.",
+      "addresses": [
+        "D5"
+      ],
+      "done_when": "M4 PASS at all five t, or a recorded decision that the band was wrong, citing T4's number.",
+      "status": "DROPPED",
+      "blocked_by": [],
+      "resolution": "DROPPED 2026-10-27. T4 (MOD7) measured the nonparametric envelope and M4 now PASSES at all five t on both 36-epoch arms, so the premise 'the field over-emits' is false; MOD6 is not built and MOD6 stays DECIDED_NOT_BUILT. The old entry still said BLOCKED on T4 after T4 had closed."
+    },
+    {
+      "id": "T10",
+      "priority": 4,
+      "title": "MOD8: diversity ablation at n >= 1000",
+      "what": "MOD8: ablation over the six diversity knobs, scaffold-conditioned pool, novelty against the training corpus at n>=1000.",
+      "addresses": [
+        "D7"
+      ],
+      "done_when": "novelty >= 0.90 on a >=1000-molecule pool, IntDiv1 against an n-matched training control, all six knobs' ablation rows on disk including the nulls.",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T3"
+      ]
+    },
+    {
+      "id": "T11",
+      "priority": 5,
+      "title": "MOD9: metal-blind ablation, paired over seeds",
+      "what": "MOD9: metal-blind ablation on the same protocol, 3 seeds, paired comparison.",
+      "addresses": [
+        "D8"
+      ],
+      "done_when": "paired deltas with a one-sided t-test over 3 seeds on single_fragment_rate, three_ring_share, metal retention and bond_type_macro_f1.",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T3",
+        "T6"
+      ]
+    },
+    {
+      "id": "T12",
+      "priority": 5,
+      "title": "docs/CFM_RESULTS.md, machine-checked",
+      "what": "Write docs/CFM_RESULTS.md as the machine-checked results document (the guarded test test_cfm_results_doc.py already exists and skips until the file lands).",
+      "addresses": [
+        "D9"
+      ],
+      "done_when": "the document exists, every number in it is in the cfm-results block, and the test passes rather than skips.",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T3",
+        "T6",
+        "T7"
+      ]
+    },
+    {
+      "id": "T13",
+      "priority": 0,
+      "title": "决定臂：同一批 10 行，校准 vs 重训",
+      "what": "同一批 100 次 10 行抽样、同一评估行，三个臂：(a) 现有 eb 常数偏移臂（0.6839）；(b) 用同一 10 行对指纹树重训（同折、零调参预算，只 fit）；(c) 用同一 10 行对树做加权。三臂必须逐位复现 0.3674 与 0.6839 才可归因。",
+      "addresses": [
+        "D12"
+      ],
+      "done_when": "artifact 里三臂各有 R²、5% 分位、逐论文中位数；verdict 字段是 CALIBRATION_WINS / FINETUNE_WINS / TIE 之一；若 TIE 或 FINETUNE_WINS，north_star.decision_rule.publication_rule 的放弃判据记为已触发。",
+      "gate": {
+        "primary": "R²(cal) − R²(finetune) ≥ +0.02",
+        "lower_bound": "校准臂的 5% 分位不低于重训臂的 5% 分位",
+        "reproduce": "eb 臂 n=0/10 逐位复现 0.3674 / 0.6839（容差 5e-5）"
+      },
+      "kill": "R²(finetune) ≥ R²(cal) ⇒ 触发放弃判据，故事 A 不写，写进 catalog。",
+      "device": "cpu",
+      "cost": "CPU ~50 min",
+      "status": "PLANNED",
+      "evidence": []
+    },
+    {
+      "id": "T14",
+      "priority": 0,
+      "title": "逐论文 R² 分布，以及「去掉大论文」的重算",
+      "what": "把 msrs_paper_calibration.json 的评估行按 DOI 分组，算逐论文 R² 的中位数、IQR、负值占比；再按论文行数去掉前 10% 的大论文，重算池化 R²。两版并列。",
+      "addresses": [
+        "D13"
+      ],
+      "done_when": "artifact 含 1,784 组的逐论文 R²、中位数、IQR、负值占比、以及去掉前 10% 论文后的池化 R²；池化与逐论文两版同时出现在主表。",
+      "gate": {
+        "drift": "池化 R² − 去掉大论文后的 R² ≤ 0.05",
+        "coverage": "逐论文 R² 至少覆盖 1,000 个 DOI 组，覆盖率写进 artifact"
+      },
+      "kill": "差值 >0.05 ⇒ 0.6839 不得作为主数字，主数字改用逐论文中位数，并写进 catalog。",
+      "device": "cpu",
+      "cost": "CPU ~25 min",
+      "status": "PLANNED",
+      "evidence": []
+    },
+    {
+      "id": "T15",
+      "priority": 1,
+      "title": "把 203 条 ACTIVE 负结果压成 4 个机制",
+      "what": "建 docs/NEGATIVE_MECHANISM_MAP.md：每条 ACTIVE 负结果映射到四个机制之一（支持度不足 / 水平-形状分解 / 标签偏移 / 不可识别）或 UNEXPLAINED，并给出计数与代表性 artifact。",
+      "addresses": [
+        "D14"
+      ],
+      "done_when": "文档存在，每个机制有小节与计数，UNEXPLAINED 有显式计数，且总数与 docs/HONEST_NEGATIVE_CATALOG.md 的 ACTIVE 数对得上。",
+      "gate": {
+        "attribution": "≥80% 的 ACTIVE 条目有机制归属"
+      },
+      "kill": "UNEXPLAINED >40% ⇒ 机制分类是事后叙事，退回清单形式并写进 catalog。",
+      "device": "cpu",
+      "cost": "CPU ~1.5 h（文档）",
+      "status": "PLANNED",
+      "evidence": [
+        "docs/HONEST_NEGATIVE_CATALOG.md",
+        "docs/PREDICTIVE_LINE_INDEX.md"
+      ]
+    },
+    {
+      "id": "T16",
+      "priority": 1,
+      "title": "污染审计扩到 ≥3 个数据集对",
+      "what": "对 MSRS 与 IrCytoToxDB / RuCytoToxDB / 再一个公开集，算 DOI、化合物、(DOI,细胞系) 三级重叠，并估有效独立样本量。每个来源的获取方式与许可写进 artifact。",
+      "addresses": [
+        "D15"
+      ],
+      "done_when": "artifact 含 ≥3 对的三个重叠率、格一致率、有效独立样本量；拿不到数据的那一对显式标 BLOCKED 并写原因。",
+      "gate": {
+        "pairs": "≥3 对，或 ≥2 对 + 1 对 BLOCKED 且有获取失败的证据"
+      },
+      "kill": "第三对无法获取（无公开 SMILES 或无 DOI 列）⇒ 审计停在 2 对，故事 B 降级为故事 A 的一节。",
+      "device": "cpu",
+      "cost": "CPU ~2 h + 获取时间",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/msrs_external_cohort_probe.json"
+      ]
+    },
+    {
+      "id": "T17",
+      "priority": 2,
+      "title": "chemprop v2 在 DOI 协议上（同折同 seed）",
+      "what": "同 DOI 5-fold、同 5 seed、同评估行，跑 chemprop v2；YAML-only 启动；报 R² 与对指纹树的配对差。必须同报自研 D-MPNN 0.3282 与树 0.3767。",
+      "addresses": [
+        "D16"
+      ],
+      "done_when": "artifact 含 chemprop v2 的 DOI R²（5 seed）、配对差 vs 树、以及 n_test 指纹与 UP-26 一致；若 n_test 不一致，作废重跑而不是换评估行。",
+      "gate": {
+        "comparability": "n_test 指纹与 UP-26 一致；折与 seed 数写进 artifact"
+      },
+      "kill": "指纹不一致且无法对齐 ⇒ 该臂不进主表，标注 NOT_COMPARABLE。",
+      "device": "cuda:0",
+      "cost": "GPU0 ~1.5 h（5 fold × 5 seed；超 3 h 降到 3 seed 并标注）",
+      "status": "PLANNED",
+      "evidence": []
+    },
+    {
+      "id": "T18",
+      "priority": 2,
+      "title": "第二个终点上的校准曲线",
+      "what": "在 potency 之外的终点（细胞毒 IC50 轴或另一条可用的 pIC50 外终点）上重跑 n_cal = 0/10/50 三个点，并算该终点的 oracle bound。",
+      "addresses": [
+        "D17"
+      ],
+      "done_when": "artifact 含第二终点的三点曲线、oracle bound、n_rows；若曲线形状与 potency 不一致，显式写出。",
+      "gate": {
+        "points": "≥3 个 n_cal 点",
+        "direction": "n_cal=10 的增益方向与 potency 相同"
+      },
+      "kill": "第二终点可用行 <2,000 ⇒ 标 BLOCKED，不跑小样本曲线。",
+      "device": "cuda:0",
+      "cost": "GPU0 ~1 h + CPU 汇总",
+      "status": "PLANNED",
+      "evidence": []
+    },
+    {
+      "id": "T19",
+      "priority": 3,
+      "title": "第二个语料（RuCytoToxDB 优先）",
+      "what": "取 RuCytoToxDB（12,439 值 / 3,247 配合物 / 921 论文）；拿不到就人工整理 ≥60 化合物 / ≥3 金属 / ≥8 篇。在第二语料上建 DOI 折并跑 n_cal 0/10 两点。",
+      "addresses": [
+        "D18"
+      ],
+      "done_when": "第二语料上 DOI 折可建，n_cal 0/10 两点在盘，语料来源与许可写进 artifact。",
+      "gate": {
+        "points": "≥2 个 n_cal 点",
+        "split": "DOI 折可建且组数 ≥50"
+      },
+      "kill": "与 MSRS 的 DOI 重叠 >90% ⇒ 它不是第二语料，转入 T16 的污染审计并停止。",
+      "device": "cuda:0",
+      "cost": "获取 1-3 天 + GPU0 ~2 h",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T13"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T20",
+      "priority": 2,
+      "title": "金属配合物键级基准（n≥500，三方对照）",
+      "what": "从 tmQM 的 bond-order 字段抽 n≥500 且每类 ≥30 的子集，做 ≥90% 人工抽查；OpenBabel / xyz2mol / RDKit DetermineBonds 三方对照，报 per-class F1 与 macro-F1。",
+      "addresses": [
+        "D19"
+      ],
+      "done_when": "artifact 含 n、per-class 计数与 F1、三方对照、人工抽查一致率；c8 生成池的 0.618 在同一脚本下给出可比值。",
+      "gate": {
+        "size": "n≥500 且每类 ≥30",
+        "truth": "人工抽查一致率 ≥0.90"
+      },
+      "kill": "真值抽查 <0.90 ⇒ 停止基准，0.618 降级为「对 OpenBabel 的池化比较」。",
+      "device": "cpu",
+      "cost": "CPU ~3 h + 人工抽查",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log"
+      ]
+    },
+    {
+      "id": "T21",
+      "priority": 1,
+      "title": "校准的价值曲线：实验预算 → 可承诺精度",
+      "what": "把 n_cal 曲线转成决策图：x 轴每篇论文 k 行测量，y 轴 5% 分位 R² 与区间中位宽，两条线（校准 / 无校准），并给每个 k 的边际收益。",
+      "addresses": [
+        "D20"
+      ],
+      "done_when": "artifact 含每个 k 的 5% 分位、中位宽、边际收益；同一张数据表可直接画成正文图 1。",
+      "gate": {
+        "tails": "每个 k 都报 5% 分位与宽度，不许只画均值"
+      },
+      "kill": "k≥10 之后边际收益 ≈0 ⇒ 价值曲线的卖点消失，降级为故事 A 的一节。",
+      "device": "cpu",
+      "cost": "CPU ~30 min",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/msrs_paper_calibration.json"
+      ]
+    },
+    {
+      "id": "T22",
+      "priority": 4,
+      "title": "标签偏移的第二个领域",
+      "what": "在临床 / 材料 / 光谱里选一个有批次或中心随机效应的公开回归集，重跑密度比分类器、算 ESS 与加权前后的宽度差。",
+      "addresses": [
+        "D21"
+      ],
+      "done_when": "第二领域的 AUC、ESS、加权前后宽度差在盘，数据集与获取方式写进 artifact。",
+      "gate": {
+        "same_shape": "AUC <0.65 且 ESS >90%（与 MSRS 同型）"
+      },
+      "kill": "找不到可公开获取的第二领域 ⇒ 停在「MSRS 单领域观察」，不写成一般化主张。",
+      "device": "cpu",
+      "cost": "CPU ~1 h + 选数据时间",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/msrs_conformal_shift.json"
+      ]
+    },
+    {
+      "id": "T23",
+      "priority": 2,
+      "title": "MSRS 数据描述符（Scientific Data 级）",
+      "what": "写 docs/MSRS_DATA_DESCRIPTOR.md：去重规则的可复算审计（重复 DOI 组、同一化合物多 SMILES、单位换算）、一个从 parquet 到 21,404 行 / 1,784 DOI 的端到端复用示例、与 MetalCytoToxDB 的差异声明。",
+      "addresses": [
+        "D22"
+      ],
+      "done_when": "文档 + 可执行示例在盘，示例从零复现 §2 的三个计数；差异声明指向 C9 的实测。",
+      "gate": {
+        "reproduce": "示例脚本从零复现 21,404 / 5 / 1,784 三个计数"
+      },
+      "kill": "示例无法从零复现计数 ⇒ 数据卡与 parquet 漂移，先修卡再谈投稿。",
+      "device": "cpu",
+      "cost": "CPU ~2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "docs/DATASET_CARD.md",
+        "metrics/by_metric/msrs_data_card.json"
+      ]
+    },
+    {
+      "id": "T24",
+      "priority": 2,
+      "title": "预注册 + kill 规则的方法学记录",
+      "what": "写 docs/PREREGISTRATION_METHODS.md：预注册实验数、事后实验数、kill 触发数、撤回数字数（引用索引 §3），每条 kill 给出触发证据路径。",
+      "addresses": [
+        "D23"
+      ],
+      "done_when": "四个计数都在文档里，且每个都能用 grep 索引或 todo.json 核对；「事后实验」占比显式写出。",
+      "gate": {
+        "verifiable": "每个计数都给出可重跑的核对命令或 artifact 路径"
+      },
+      "kill": "事后实验占比 >30% ⇒ 方法学叙事不成立，降级为故事 A 的一节。",
+      "device": "cpu",
+      "cost": "CPU ~2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "docs/PREREG_TEMPLATE.md",
+        "docs/PREDICTIVE_LINE_INDEX.md"
+      ]
+    },
+    {
+      "id": "T25",
+      "priority": 1,
+      "title": "故事 A 的手稿骨架（图表目录 + venue fit）",
+      "what": "写 docs/PAPER_A_MEASUREMENT_OUTLINE.md：六环论证链、每环的 artifact、4 图 3 表的目录、JCIM 与 J Cheminform 的 scope 差异与选择理由。",
+      "addresses": [
+        "D24"
+      ],
+      "done_when": "骨架在盘，每张图表指向一个已存在的 artifact；缺的标 ABSENT 并对应一个 task id。",
+      "gate": {
+        "traceable": "100% 的图表指向 artifact 或标 ABSENT"
+      },
+      "kill": "T13 的 verdict 是 FINETUNE_WINS ⇒ 骨架不写。",
+      "device": "cpu",
+      "cost": "CPU ~2 h（文档）",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T13",
+        "T14",
+        "T15"
+      ],
+      "evidence": [
+        "docs/CLAIM_LEDGER.md",
+        "docs/PREDICTIVE_LINE_INDEX.md"
+      ]
+    },
+    {
+      "id": "T26",
+      "priority": 3,
+      "title": "故事 B：外部验证的幻觉（短稿或故事 A 的 §2）",
+      "what": "以 T16 的三对审计为主线写短稿：DOI / 化合物 / (DOI,细胞系) 三级重叠 + 有效独立样本量。若 DP-17 选合并，则改写成故事 A 的 §2。",
+      "addresses": [
+        "D15"
+      ],
+      "done_when": "文档在盘；无论合并与否，主表里的 C9 都要改成三对口径。",
+      "gate": {
+        "consistency": "C9 的 99.55% 与新审计不矛盾，或显式说明哪一对取代它"
+      },
+      "kill": "T16 只拿到 2 对且第三对 BLOCKED ⇒ 不单独成篇，只做故事 A 的 §2。",
+      "device": "cpu",
+      "cost": "CPU ~4 h（文档）",
+      "status": "PLANNED",
+      "blocked_by": [
+        "T16"
+      ],
+      "evidence": [
+        "metrics/by_metric/msrs_external_cohort_probe.json"
+      ]
+    },
+    {
+      "id": "T27",
+      "priority": 4,
+      "title": "故事 C：生成线成稿（等 MOD2+MOD3+MOD4）",
+      "what": "等 single_fragment_rate ≥0.80、frac_pairs_hard_clash ≤0.001、metal_ligand_min 1.7-2.4 三条同时成立后，再写生成线。现在写只能写成「我们尝试过」。",
+      "addresses": [
+        "D2",
+        "D3",
+        "D4"
+      ],
+      "done_when": "三条池级指标在 ≥1000 分子池上同时成立，且 T11（metal-blind 配对）在盘。",
+      "gate": {
+        "acceptance": "acceptance.rows 中生成线 10 行至少 8 行通过"
+      },
+      "kill": "MOD2/MOD3/MOD4 任一未落地 ⇒ 不投入 GPU，不写正文。",
+      "device": "cuda:0",
+      "cost": "3-6 个月",
+      "status": "BLOCKED",
+      "blocked_by": [
+        "T6",
+        "T7"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T28",
+      "priority": 0,
+      "title": "启动契约卫生（argv 能力门 + compile mode + 红测试重定标）",
+      "what": "建 molmetal/scripts/wf_argv_capability_check.py，把每个 flag 喂给 trainer 自己的 parse_args；两个 trainer 的 --torch-compile 改读 DEFAULT_TORCH_COMPILE_MODE；27 个红测试按已发布表面重定标。",
+      "addresses": [
+        "D25"
+      ],
+      "done_when": "能力门在盘且对 launch_wf310e_r20_p5 返回 FAIL（12/20 未声明）；gpu_smoke_w2_sliced 的 argv 返回 PASS（8/8）；16 个测试文件 199 passed / 0 failed。",
+      "gate": {
+        "gate_works": "能力门对已知坏 argv 返回 rc=1，对已知好 argv 返回 rc=0"
+      },
+      "kill": "不适用（已完成）。",
+      "device": "cpu",
+      "cost": "已完成",
+      "status": "DONE",
+      "evidence": [
+        "molmetal/scripts/wf_argv_capability_check.py",
+        "molmetal/tests/test_wf335r3_g6_cuda_graphs.py",
+        "molmetal/tests/test_wf335r2_wireup_reverify.py"
+      ]
+    }
+  ],
+  "acceptance": {
+    "note": "生成线（CFM）的池级门槛，写在测量之前。每一行都指向一个模块。测量线（预测线）的门槛不在本表：见 publication_plan.acceptance，那里多数条目是「必须报告什么」而不是「必须达到什么」，因为没有可推导的数值依据。",
+    "rows": [
+      {
+        "metric": "single_fragment_rate",
+        "target": ">= 0.80",
+        "now": 0.2505,
+        "module": "MOD2"
+      },
+      {
+        "metric": "bond_type_macro_f1",
+        "target": ">= 0.60 (hold the c8 level; OpenBabel 0.505)",
+        "now": 0.618,
+        "module": "MOD1"
+      },
+      {
+        "metric": "three_ring_share",
+        "target": "<= 0.10",
+        "now": 0.6684,
+        "module": "MOD4"
+      },
+      {
+        "metric": "six_ring_share",
+        "target": ">= 0.45",
+        "now": 0.0292,
+        "module": "MOD4"
+      },
+      {
+        "metric": "metal_ligand_min",
+        "target": "1.7-2.4 A",
+        "now": 1.234,
+        "module": "MOD2+MOD3"
+      },
+      {
+        "metric": "frac_pairs_hard_clash",
+        "target": "<= 0.001",
+        "now": 0.0148,
+        "module": "MOD2"
+      },
+      {
+        "metric": "SA",
+        "target": "<= 4.5",
+        "now": 6.44,
+        "module": "MOD1-4 (consequence)"
+      },
+      {
+        "metric": "QED",
+        "target": ">= 0.30",
+        "now": 0.094,
+        "module": "MOD1-4 (consequence)"
+      },
+      {
+        "metric": "novelty",
+        "target": ">= 0.90 at n>=1000",
+        "now": null,
+        "module": "MOD8"
+      },
+      {
+        "metric": "conditional success",
+        "target": ">= 0.60",
+        "now": null,
+        "module": "MOD5"
+      }
+    ]
+  },
+  "constraints": {
+    "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
+    "gpu": "GPU0 only",
+    "venv": "/home/hugo/codes/mol-metal/.venv",
+    "memory": "every launch goes through an RSS ceiling with a growth trace; a 64-cloud arm has already taken the host down twice at 36-42 GB",
+    "no_wet_lab": true,
+    "no_paper_dir_edits": true,
+    "numbers": "every number traces to an artifact path on disk; a number with no artifact is not written here",
+    "seeds": "3 seeds for anything quoted as a result; 1 seed is a probe"
+  },
+  "pointer": {
+    "history": "git log",
+    "results": "docs/CFM_RESULTS.md",
+    "negative_catalog": "docs/HONEST_NEGATIVE_CATALOG.md",
+    "metric_registry": "registry/metrics.yaml (molmetal/scripts/registry.py check)",
+    "predictive_line": "docs/PREDICTIVE_LINE_INDEX.md（预测线唯一权威索引）",
+    "claim_ledger": "docs/CLAIM_LEDGER.md（C1-C10，正文的上限）"
+  },
+  "publication_plan": {
+    "assessed_at": "2026-10-27",
+    "verdict": {
+      "generation_line": "不能支撑二区。10 行验收表 1 过 / 9 不过；typed edge 在 8/20/40 epoch 的 max rel change 0.39% / 0.50% / 0.22% 全部低于 1e-2。失败是结构性的（无环先验、无金属几何先验、键级不进速度场），不是预算问题。",
+      "predictive_line": "能，但必须按测量论文投，不是模型论文。JCIM / J Cheminform / Digital Discovery 都收 measurement & benchmark。",
+      "strongest_asset": "不是模型，是测量纪律：40+ 个预注册实验、冻结的 kill 规则、一周撤回 5 个头条（docs/PREDICTIVE_LINE_INDEX.md §3）。",
+      "one_sentence": "给新论文 10 行实测，跨论文 R² 从 0.377 到 0.684（下界 0.676），拿到常数偏移上界 0.735 的 93%；这 +0.3165 里 +0.2834 来自校正、只有 +0.0331 来自评估行构成。"
+    },
+    "innovation_claim": {
+      "not_this": "不是新架构。C1 自己写着：增益来自输入里有金属，不是来自新结构。",
+      "a": "在 21,404 行、跨论文粒度上把「论文偏移」量化。",
+      "b": "证明它是标签偏移不是协变量漂移（密度比 AUC 0.5678），所以再加特征没用。",
+      "c": "给它定价：10 行买到常数偏移上界的 93%。",
+      "d": "与 conformal 串起来：宽度降 27.9%（2.0073 → 1.4478）而覆盖不动（0.9007）。"
+    },
+    "stories": [
+      {
+        "id": "A",
+        "title": "What metal-complex potency data can and cannot support",
+        "thesis": "这个领域的数据不支持替换学习，只支持带校准的绝对预测。",
+        "evidence_chain": [
+          "金属身份承重：ΔR² +0.1002，p=2.3e-20（C1）",
+          "但金属替换不可学：10 个金属对里 7 个配对组数为 0，跨 ≥2 金属的配体只占 3.64%（R6）",
+          "能学的是绝对强度，且必须先做论文级校准：0.377 → 0.684（R14/R19）",
+          "残余不确定性是标签偏移不是协变量：AUC 0.568（R15）",
+          "校准后再套 conformal：宽度 -27.9%、覆盖 0.9007（R22）",
+          "所谓外部验证在这个领域基本不存在：99.55% 重叠（C9）"
+        ],
+        "venue": [
+          "JCIM",
+          "J Cheminform"
+        ],
+        "needs_gpu": true,
+        "cost": "未估：取决于 T13 的 verdict；T13/T14/T15/T21 是 CPU，T17 是 GPU0 ~1.5 h",
+        "blocked_by": [
+          "T13",
+          "T14",
+          "T15",
+          "T25"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "B",
+        "title": "The illusion of external validation",
+        "thesis": "公开金属配合物语料之间不存在独立 cohort，DOI 重叠 99.55%。",
+        "evidence_chain": [
+          "IrCytoToxDB vs MSRS：221/222 DOI 重叠，653 格 89.4% 数值相同，r=0.9611（C9）",
+          "扩到 ≥3 对后给有效独立样本量（T16）",
+          "若三对全部 >90%，C9 从「领域事实」升级为「三数据集事实」"
+        ],
+        "venue": [
+          "J Cheminform",
+          "Digital Discovery"
+        ],
+        "needs_gpu": false,
+        "cost": "4-6 周（纯数据）",
+        "blocked_by": [
+          "T16",
+          "T26"
+        ],
+        "status": "PLANNED",
+        "merge_option": "DP-17：与故事 A 合并成一篇时，本故事成为 A 的 §2。"
+      },
+      {
+        "id": "C",
+        "title": "Metal-aware conditional generation",
+        "thesis": "金属感知的条件生成需要三个先验（环大小、金属配位几何、键级进速度场）才成立。",
+        "evidence_chain": [
+          "现在：single_fragment 0.2505 / three_ring 0.6684 / metal_ligand_min 1.234 A",
+          "MOD2 几何一致性项已落地（wfa108l），未做权重 sweep",
+          "MOD4 环先验已作为 decode-time gate 落地，未做 ≥1000 分子池验证",
+          "MOD1 typed edge 的消融三个 epoch 全部 <1e-2"
+        ],
+        "venue": [
+          "JCIM",
+          "J Cheminform",
+          "Digital Discovery"
+        ],
+        "needs_gpu": true,
+        "cost": "3-6 个月",
+        "blocked_by": [
+          "T6",
+          "T7",
+          "T27"
+        ],
+        "status": "BLOCKED"
+      }
+    ],
+    "directions": [
+      {
+        "id": "V1",
+        "title": "一次测量值多少 R²（价值信息曲线）",
+        "why": "把校准曲线当决策图卖：实验预算 → 可承诺精度。读者面从化学信息学扩到科学 ML 的决策层。",
+        "venue": [
+          "Briefings in Bioinformatics",
+          "Patterns"
+        ],
+        "needs_gpu": false,
+        "task": "T21"
+      },
+      {
+        "id": "V2",
+        "title": "标签偏移不是协变量偏移的一般化",
+        "why": "AUC 0.568 + 0.24 SD 的论文偏移，这个组合在任何跨实验室的科学回归里都成立；要第二个领域才敢这么说。",
+        "venue": [
+          "方法论文（未定）"
+        ],
+        "needs_gpu": false,
+        "task": "T22",
+        "blocked_by": [
+          "B5"
+        ]
+      },
+      {
+        "id": "V3",
+        "title": "金属配合物的键级感知基准",
+        "why": "OpenBabel 对金属配合物的键级感知是公认痛点；n≥500 + 三方对照就是一篇工具论文。",
+        "venue": [
+          "J Cheminform"
+        ],
+        "needs_gpu": false,
+        "task": "T20",
+        "blocked_by": [
+          "B6"
+        ]
+      },
+      {
+        "id": "V4",
+        "title": "MSRS 数据集描述符",
+        "why": "数据本身可以投 Scientific Data；风险是「只是公开数据的整合」，要靠 C9 那种「整合本身发现的问题」撑起来。",
+        "venue": [
+          "Scientific Data"
+        ],
+        "needs_gpu": false,
+        "task": "T23"
+      },
+      {
+        "id": "V5",
+        "title": "预注册 + kill 规则的方法学",
+        "why": "「我们怎么跑 40 个实验而没骗自己」。二区对纯方法学 perspective 挑剔，最好作为故事 A 的一节，不单独投。",
+        "venue": [
+          "作为故事 A 的一节"
+        ],
+        "needs_gpu": false,
+        "task": "T24"
+      }
+    ],
+    "acceptance": {
+      "note": "测量线的门槛。多数是「必须报告什么」而不是「必须达到什么」——没有可推导的数值依据时不写数字，避免造门槛。",
+      "rows": [
+        {
+          "metric": "校准 vs 重训（n_cal=10）",
+          "requirement": "R²(cal) − R²(finetune) ≥ +0.02，且校准臂的 5% 分位不低于重训臂",
+          "current": "重训臂从未跑过",
+          "artifact": "metrics/by_metric/msrs_calibration_vs_finetune.json",
+          "task": "T13"
+        },
+        {
+          "metric": "逐论文 R²",
+          "requirement": "报中位数 / IQR / 负值占比；池化与「去掉前 10% 大论文」两版差 ≤0.05",
+          "current": "只有池化 0.6839 与抽样 5% 分位 0.676",
+          "artifact": "metrics/by_metric/msrs_per_paper_r2.json",
+          "task": "T14"
+        },
+        {
+          "metric": "负结果机制归属",
+          "requirement": "≥80% 的 ACTIVE 条目有机制归属；UNEXPLAINED 显式计数",
+          "current": "203 条并列",
+          "artifact": "docs/NEGATIVE_MECHANISM_MAP.md",
+          "task": "T15"
+        },
+        {
+          "metric": "污染审计",
+          "requirement": "≥3 个数据集对的 DOI / 化合物 / (DOI,细胞系) 三级重叠 + 有效独立样本量",
+          "current": "1 对（99.55%）",
+          "artifact": "metrics/by_metric/contamination_audit_multi.json",
+          "task": "T16"
+        },
+        {
+          "metric": "chemprop v2 on DOI",
+          "requirement": "同折同 seed 跑完并同报树 0.3767 与自研 D-MPNN 0.3282；不设胜负门槛",
+          "current": "未跑",
+          "artifact": "metrics/by_metric/msrs_chemprop_doi.json",
+          "task": "T17"
+        },
+        {
+          "metric": "第二终点 / 第二语料",
+          "requirement": "两者至少一个落地，且第二终点给 3 个 n_cal 点",
+          "current": "都没有",
+          "artifact": "metrics/by_metric/second_endpoint_calibration.json",
+          "task": "T18"
+        }
+      ]
+    },
+    "risks": [
+      {
+        "risk": "单语料",
+        "detail": "21,404 行 / 5 金属 / 1 个终点。二区审稿人一定会要第二个。",
+        "retire_by": [
+          "T18",
+          "T19"
+        ]
+      },
+      {
+        "risk": "主干是树",
+        "detail": "指纹树 0.3767 高于自研 D-MPNN 0.3282（UP-28）。要么把它写成发现，要么补 chemprop。",
+        "retire_by": [
+          "T17"
+        ]
+      },
+      {
+        "risk": "「校准 ≈ 微调」的质疑",
+        "detail": "只有决定臂能挡住：同样 10 行，重训 vs 估偏移。",
+        "retire_by": [
+          "T13"
+        ]
+      },
+      {
+        "risk": "负结果被读成运气",
+        "detail": "40+ 条并列清单没有信息量；不归并成机制，审稿人只会看到「试了很多都不行」。",
+        "retire_by": [
+          "T15"
+        ]
+      }
+    ],
+    "abandonment": {
+      "rule": "若 T13 的 verdict 是 FINETUNE_WINS 或 TIE，故事 A 不写。",
+      "why": "贡献会退化成「用少量数据适配」这一已知结论；那不是二区贡献，也不是本文想说的。",
+      "then": "把 T13 的对照表写进 docs/HONEST_NEGATIVE_CATALOG.md，转向故事 B（纯数据，不依赖校准叙事）或方向 V3（键级基准，不依赖本语料）。",
+      "frozen_at": "2026-10-27T02:26+08:00"
+    },
+    "pitfalls": [
+      "decode_ratio 0.9647-0.998 不能单独引用：它数的是「RDKit 能解析这个字符串」，而 75% 的池子是多片段。",
+      "gen_validity 1.0 是松散原子假象（sa_scored=0）。",
+      "C3 的 0.5985 与 0.5826 不是同一估计量的两次测量（配对键不同、样本不同）。",
+      "0.6839 是「10 行校准后的读数」，不是模型能力；同批行零校正 0.4005 必须一起报。"
+    ]
+  },
+  "legacy_identifiers": {
+    "note": "以下 id 在 2026-10-19 与 2026-10-25 的两次重写中已从本文件移除，代码注释与 docs/CFM_STATUS_2026_10_12.md 仍在引用。它们不是活条目：不要按 id 去本文件里找内容。",
+    "ids": {
+      "BLK-C-PERF": "42x 优化与启动边界；测量记录保留在 docs/CFM_STATUS_2026_10_12.md",
+      "BLK-C-OBJ": "生成目标（QED / SA / 贵金属专有指标）；现由 D9 与 MOD2-MOD4 承担",
+      "BLK-C-M3": "生成有效率下限；现由 D2 与 MOD2 承担",
+      "BLK-C-L3": "选择混杂；现由 D10 与 T1 承担",
+      "BLK-C4": "QED 惩罚项；molmetal/adapters/flow_matching_lipman/qed_penalty.py 已实现",
+      "BLK-C11": "连通性组装；见 molmetal/molmetal_lam/lam_chem/assemble_connectivity.py:563",
+      "BLK-C14": "熵权重下限；见 molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py",
+      "BLK-M1": "解码器默认路径；见 molmetal/molmetal_lam/lam_chem/decoder_rework.py:234",
+      "BLK-P2": "MCTS 价值通道（样本不足下的过度解读）；见 docs/00_MODEL_NARRATIVE.md:234",
+      "A4": "环大小可表示性；被 molmetal/tests/test_a4_receptive_field.py 反驳，现由 D3 与 MOD4 承担",
+      "OPT_1_MEASURED_2026_10_13": "SA 评分器 fork 分歧；见 molmetal/tests/test_sascorer_fork_divergence.py",
+      "TIER_1": "旧的三级 tier 表（TIER_1.m1 / m21 等）；2026-10-19 重写时移除，现由 D1-D11 与 acceptance.rows 承担",
+      "PRIMARY_1 / SECONDARY_1 / PRIMARY_2 / TERTIARY": "论文引用的四组主结果；内容在 molmetal/eval/reporting/cite_helper.py 的 BibTeX 字符串里"
+    }
+  },
+  "execution_order": {
+    "note": "按「是否阻塞论文」排序，不按优先级删条目。每个 task id 恰好出现一次；P0 全部是 CPU，GPU 任务排在决定臂之后。UP-xx 是预测线第六轮的包，与 Txx 并列排。",
+    "waves": [
+      {
+        "wave": 0,
+        "status": "DONE",
+        "items": [
+          "T28"
+        ],
+        "device": "cpu",
+        "why": "契约卫生已完成，但它决定了后面所有 launcher 能不能跑。"
+      },
+      {
+        "wave": 1,
+        "status": "PLANNED",
+        "items": [
+          "T13",
+          "T14",
+          "T15",
+          "T21"
+        ],
+        "device": "cpu",
+        "why": "四个都纯 CPU、互不依赖；T13 是唯一能推翻论文的实验，排第一。"
+      },
+      {
+        "wave": 2,
+        "status": "PLANNED",
+        "items": [
+          "T16",
+          "T23",
+          "T24",
+          "T20"
+        ],
+        "device": "cpu",
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。"
+      },
+      {
+        "wave": 3,
+        "status": "PLANNED",
+        "items": [
+          "T17",
+          "T18"
+        ],
+        "device": "cuda:0",
+        "why": "两个 GPU 臂，合计约 2.5 h；都在决定臂之后，因为决定臂可能关掉整条线。"
+      },
+      {
+        "wave": 4,
+        "status": "PLANNED",
+        "items": [
+          "T19",
+          "T22"
+        ],
+        "device": "cuda:0 / blocked",
+        "why": "都被获取问题挡着（B4 / B5）；拿不到就标 BLOCKED，不跑小样本凑数。"
+      },
+      {
+        "wave": 5,
+        "status": "PLANNED",
+        "items": [
+          "T25",
+          "T26"
+        ],
+        "device": "cpu",
+        "why": "手稿骨架在 T13/T14/T15 之后，故事 B 在 T16 之后。"
+      },
+      {
+        "wave": 6,
+        "status": "BLOCKED",
+        "items": [
+          "T27"
+        ],
+        "device": "cuda:0",
+        "why": "等 MOD2+MOD3+MOD4；现在写只能写成「我们尝试过」。"
+      },
+      {
+        "wave": 7,
+        "status": "PLANNED",
+        "items": [
+          "UP-40",
+          "UP-42"
+        ],
+        "device": "cuda:0 / cpu",
+        "why": "第六轮剩下的两个包；UP-42 要把 eb_slope 0.7080 并入主表，否则索引与主表不一致。"
+      },
+      {
+        "wave": 8,
+        "status": "IN_PROGRESS",
+        "items": [
+          "T1",
+          "T2",
+          "T3",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T10",
+          "T11",
+          "T12"
+        ],
+        "device": "cuda:0",
+        "why": "生成线正在进行的 10 个任务；T3 是它们的共同分母。"
+      },
+      {
+        "wave": 9,
+        "status": "DROPPED",
+        "items": [
+          "T9"
+        ],
+        "device": "—",
+        "why": "T4 的答案否定了前提（M4 五个 t 全过），MOD6 不建。"
+      },
+      {
+        "wave": 10,
+        "status": "DONE",
+        "items": [
+          "T4"
+        ],
+        "device": "cpu",
+        "why": "MOD7 已交付，见 metrics/by_metric/wfa109_conditional_mean_envelope.json。"
+      }
+    ]
   }
 }

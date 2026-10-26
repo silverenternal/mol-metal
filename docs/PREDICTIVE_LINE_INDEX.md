@@ -4,7 +4,8 @@
 **作用**：预测线（MSRS 跨金属 pIC50 / Krasnov / chemprop / D-MPNN）每个数字只有一个权威出处。
 **规则**：本文档里的每个数字都由 `molmetal/tests/test_predictive_line_index.py` 对着 artifact 校验；
 改了 artifact 不改这里 → 测试红。**引用前先看 §3 撤回日志**——预测线最容易犯的错是引用一个已经撤回的数。
-**不覆盖**：生成线见 `cfm_todo.json`；论文主张台账见 `docs/CLAIM_LEDGER.md`。
+**不覆盖**：生成线见 `todo.json`（2026-10-27 起 `cfm_todo.json` 已合并进该文件，CFM 的 id 未改）；
+论文主张台账见 `docs/CLAIM_LEDGER.md`。
 
 ---
 

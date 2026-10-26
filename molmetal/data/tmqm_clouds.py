@@ -76,8 +76,8 @@ __all__ = [
 #: metal atom to the padding index via ``_z_to_onehot`` until the vocab
 #: extends.  This is the EXACT pattern the existing docstring
 #: (``tmqm_clouds.py:20-25``) describes for the other 5 non-Pt metals,
-#: so Pd/Au do not introduce a NEW defect class.  The cfm_todo.json
-#: vocab claim ("6-metal 6L params" per cfm_todo.json:25) is unchanged;
+#: so Pd/Au do not introduce a NEW defect class.  The plan's
+#: vocab claim ("6-metal 6L params") is unchanged;
 #: the §6.66 W2 closeout enumerates the YuelBond extension as a
 #: future-Wf-XX task.  See molmetal/data/coord_geometry.py for the
 #: 14-metal d-block classifier (the d-block classifier IS already

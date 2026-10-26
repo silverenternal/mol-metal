@@ -3,7 +3,7 @@
 # Per AGENTS.md §5.10 license-header mandate.
 """Canonical citation blocks for the 4 paper main-result references.
 
-Mirrors ``cfm_todo.json`` §PRIMARY_1 (LigandDiff) / §SECONDARY_1
+Mirrors ``todo.json`` §PRIMARY_1 (LigandDiff) / §SECONDARY_1
 (tmcinvdes) / §PRIMARY_2 (PlatinAI/Rusanov) / §TERTIARY (MetalCytoToxDB /
 Krasnov). Returned as BibTeX-ready strings so ``end_of_training.py`` can
 emit a paper-appendix block without manual editing.

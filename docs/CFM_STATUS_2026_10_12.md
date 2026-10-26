@@ -4,7 +4,15 @@ Single source of truth for the generative (CFM) line as of this date. Every
 number below is MEASURED and carries the path it came from. Where a value is
 not on disk it says **NOT ON DISK** rather than being estimated.
 
-Plan and blockers: [`cfm_todo.json`](../cfm_todo.json) (repo root).
+Plan and blockers: [`todo.json`](../todo.json) (repo root).
+
+> **2026-10-27 — `cfm_todo.json` was merged into `todo.json` and deleted.**
+> The CFM half of the plan (D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12) moved
+> verbatim, ids unchanged. Every `cfm_todo.json::X` reference below is a
+> historical record of what the plan said on 2026-10-12 and is **not** a live
+> pointer; `todo.json::legacy_identifiers` maps the ids that no longer exist
+> (BLK-C-PERF, BLK-C-OBJ, BLK-C-M3, BLK-C-L3, A4, ...) to where the content
+> lives now.
 Scope: [`PAPER_SCOPE.md`](PAPER_SCOPE.md). Nothing here touches `paper/*`.
 
 ---

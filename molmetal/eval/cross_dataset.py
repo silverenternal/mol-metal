@@ -22,8 +22,8 @@ This script is a SCRIPT TEMPLATE — invoking it requires:
      pretrain at molmetal/checkpoints/).
   2. PlatinAI 4-cell labels (already loaded by
      molmetal.molmetal_lam.lam_chem.platinai_dataset.PlatinAIDataset).
-  3. NCI-60 GI50 9-cell labels (per cfm_todo.json::TIER_1.m21 metric).
-  4. MetalCytoToxDB (per cfm_todo.json::TIER_1.m1 metric).
+  3. NCI-60 GI50 9-cell labels (per todo.json::legacy_identifiers, TIER_1.m21).
+  4. MetalCytoToxDB (per todo.json::legacy_identifiers, TIER_1.m1).
 
 Default YAML flag ``eval.cross_dataset_validation: false`` keeps the
 9-wave trainer sum bit-exact.  When set to true, the trainer's eval

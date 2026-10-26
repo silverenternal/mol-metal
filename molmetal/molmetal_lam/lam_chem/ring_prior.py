@@ -86,7 +86,7 @@ The triangles became pentagons; the share reached the right number for the
 wrong reason.  Any report of this prior has to carry ``rings_per_mol``,
 ``single_fragment_rate`` and ``decode_ratio`` beside the share, which is why
 ``wfa111_ring_prior_ab.py`` reports all of them and why the gate in
-``cfm_todo.json`` T7 is not met by the share alone.
+``todo.json`` T7 is not met by the share alone.
 """
 
 from __future__ import annotations

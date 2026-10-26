@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""``cfm_todo.json`` is a plan only if every defect has a plan attached to it.
+"""``todo.json`` is a plan only if every defect has a plan attached to it.
 
-The file was restructured on 2026-10-25 from a gate table into
+The CFM half of the file was restructured on 2026-10-25 from a gate table into
 ``diagnosis -> modules/tasks -> acceptance``.  That structure is the user's
 requirement ("每一个我提出来的问题都要有对应的模型解构改进的计划"), and a
 requirement stated only in prose decays the first time an entry is edited by
@@ -17,6 +17,11 @@ hand.  These tests are the decay guard:
 * every acceptance row names a module that exists.
 
 Adding a diagnosis without a plan is a red test, which is the point.
+
+2026-10-27: the plan moved from ``cfm_todo.json`` into ``todo.json`` (the CFM
+half is kept verbatim, ids unchanged).  The file is now the single plan for
+both lines, so the same six invariants also cover the 14 publication-line
+diagnoses D12-D25 and their tasks.
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PLAN = REPO_ROOT / "cfm_todo.json"
+PLAN = REPO_ROOT / "todo.json"
 
 MODULE_REF = re.compile(r"MOD\d+")
 TASK_STATUSES = {"PLANNED", "IN_PROGRESS", "DONE", "BLOCKED", "DROPPED"}
