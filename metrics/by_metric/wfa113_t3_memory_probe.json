@@ -1,0 +1,57 @@
+{
+  "artifacts_on_disk": {
+    "full_probe_log": "/tmp/wfa113/probe.log",
+    "small_probe_log": "/tmp/wfa113/probe_small.log"
+  },
+  "caveat": "The logs are in /tmp and will not survive a reboot; the numbers above are the durable record.",
+  "configs": [
+    "configs/wfa113_t3_probe_2026_10_26.yaml",
+    "configs/wfa113_t3_probe_small_2026_10_26.yaml"
+  ],
+  "date": "2026-10-26",
+  "measured": {
+    "full_corpus": {
+      "epochs_completed": 0,
+      "gpu_allocated_mb_at_stop": 23580,
+      "host_rss_high_water_mb": 3657.4,
+      "n_train": 26715,
+      "note": "stopped by hand after 30 min; the epoch had not finished, so 23,580 MiB is a floor, not a peak.",
+      "oom": false,
+      "wall_before_stop_s": 1800
+    },
+    "small_cohort": {
+      "epochs_completed": 0,
+      "gpu_allocated_mb_at_stop": 11436,
+      "host_rss_high_water_mb": 2725.5,
+      "n_train": 512,
+      "note": "8 steps did not complete in 12 min, which is the speed finding: the c8 protocol's recorded 872 s/epoch implies 2.1 s/step, so the host was running at >40x that. Three other GPU processes were resident (28.6 GB and 2.8 GB from other users).",
+      "oom": false,
+      "steps_expected": 8,
+      "wall_before_stop_s": 720
+    }
+  },
+  "metric": "wfa113_t3_memory_probe",
+  "open_decision": "T3's config also has to declare metal_conditioning. The c8 reference does not, and the argparse default is `none`, so that reference -- and every acceptance.rows[].now number -- comes from a METAL-BLIND model. Building T3 from c8 unchanged would produce a third metal-blind arm and leave MOD9/T11's metal-aware arm missing.",
+  "protocol": {
+    "base": "configs/c8_fullgen_b64_2026_10_24.yaml",
+    "changes": [
+      "fm_ode_term_weight 0.05 -> 0.0 (T3 requires FmOdeTerm off)",
+      "output.* re-pointed",
+      "probe only: epochs 1, gen_eval_n 0",
+      "small probe only: n_train 26715 -> 512"
+    ],
+    "unchanged": "batch 64, hidden_dim 128, n_layers 3, use_tmqm_init true, scaffold split, consistency_weight 0.05, shortcut_distill true, so3_average true, sboo3_n_rot 1"
+  },
+  "tag": "MEASURED",
+  "task": "T3 (the measurement arm every other CFM task is scored on)",
+  "what": "A memory probe, not a result. T3 has never been launched because the c8 config it would be built from records a peak of 78,320 MiB (three regularisers) to 97,286 MiB (six) and its own header says the n_train=26,715 launch OOM'd on its first step. T3 turns FmOdeTerm off, so the question was whether that fits. Two probes were run and both were STOPPED before completing an epoch, so every number below is a LOWER BOUND on the peak and none of them is a wall-clock measurement.",
+  "what_this_does_establish": [
+    "T3's host cost is small: 26,715 clouds load into 3.66 GB of RSS, not tens of GB. The 36-42 GB growth T2 chased was FmOdeTerm, which T3 turns off.",
+    "T3 does not OOM at batch 64 with FmOdeTerm off on a card already holding 31 GB of another user's work. 23.6 GB + 31 GB = 55 GB of 97.9 GB."
+  ],
+  "what_this_does_not_establish": [
+    "The peak. Both probes were interrupted, so both VRAM figures are lower bounds.",
+    "The wall clock. T3 is 22,572 optimiser steps (418 x 18 x 3 seeds). Nothing here measures a completed epoch on an uncontended card, and the card was contended.",
+    "That the c8 protocol is reproducible at all on this host: neither probe finished an epoch, so no loss value exists."
+  ]
+}

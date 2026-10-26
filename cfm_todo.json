@@ -391,7 +391,14 @@
         "T1",
         "T2"
       ],
-      "blocked_note": "and the host must be checked with free -m and launched under an RSS ceiling."
+      "blocked_note": "and the host must be checked with free -m and launched under an RSS ceiling.",
+      "probe": "2026-10-26 memory probe (metrics/by_metric/wfa113_t3_memory_probe.json). With FmOdeTerm off, the 26,715-cloud cohort loads into 3.66 GB of host RSS and batch 64 reaches 23.6 GB of VRAM on a card already holding 31 GB of another user's work: it does not OOM. Both probes were stopped before completing an epoch, so 23.6 GB is a floor and no wall clock was measured. The observed step time was >40x the c8 record, on a contended card.",
+      "open_decision": "T3's config must also declare metal_conditioning. The c8 reference does not, and the argparse default is `none`, so that reference and every acceptance.rows[].now number come from a METAL-BLIND model. Building T3 from c8 unchanged yields a third metal-blind arm and leaves MOD9/T11's metal-aware arm missing. T3 is also 22,572 optimiser steps (418 x 18 x 3 seeds), which is a multi-day launch on a shared card, not a 4.5-hour one.",
+      "evidence": [
+        "configs/wfa113_t3_probe_2026_10_26.yaml",
+        "configs/wfa113_t3_probe_small_2026_10_26.yaml",
+        "metrics/by_metric/wfa113_t3_memory_probe.json"
+      ]
     },
     {
       "id": "T4",
