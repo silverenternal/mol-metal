@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T02:26+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。",
+  "updated": "2026-10-27T03:05+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -16,7 +16,8 @@
     "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。",
     "publication_plan：二区评估的结论（三个故事、五个发散方向、四条风险、放弃判据），每条指向一个 task。",
     "diagnosis / modules / module_gates / tasks / acceptance：生成线的原 cfm_todo.json 结构，id 未改。",
-    "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。"
+    "execution_order：把 UP-xx 与 Txx 排成一条执行序列，按「是否阻塞论文」排序，不按优先级删条目。",
+    "self_audit：2026-10-27 的生成线自查表（SA-1..SA-6）。回答「为什么还没改完」，每条带证据、影响、状态与任务；reproduce 里的命令都可直接跑。"
   ],
   "rules": {
     "truth": "§5.2 每个数字必须能追到 metrics/by_metric/*.json 的路径；没有 artifact 的数字只能标 PROJECTED。",
@@ -107,7 +108,7 @@
       "单语料单终点：21,404 行 / 5 金属 / 1 个 potency 终点，第二终点与第二语料都没跑（D17/D18）。"
     ],
     "cfm_baseline_facts": [
-      "生成线池级验收表 10 行过 1 行：bond_type_macro_f1 0.618 ≥0.60（OpenBabel 0.505）；single_fragment_rate 0.2505（目标 ≥0.80）、three_ring_share 0.6684（≤0.10）、six_ring_share 0.0292（≥0.45）、metal_ligand_min 1.234 A（1.7-2.4）、frac_pairs_hard_clash 0.0148（≤0.001）、SA 6.44（≤4.5）、QED 0.094（≥0.30）全部未过；novelty 与 conditional success 未测。",
+      "生成线池级验收表 10 行过 1 行（bond_type_macro_f1 0.618 >=0.60，OpenBabel 0.505）。⚠️ 该表的 now 值全部测在 radial 头上，而该头已被证不能拟合一个 batch（self_audit SA-3）；single_fragment 0.2505 / three_ring 0.6684 / six_ring 0.0292 / metal_ligand_min 1.234 A / hard_clash 0.0148 / SA 6.44 / QED 0.094 都是这个场的读数，不是模型能力上限。",
       "全语料自由生成池 SA≤4.5 = 0.28%（36/12,668），联合闸（SA≤4.5 且 novelty≥0.90）0/10,190（metrics/by_metric/c7_scale_matched_pools.json）。",
       "typed edge 在 8/20/40 epoch 的 max rel change 是 0.39% / 0.50% / 0.22%，1e-2 阈值三个都不过（metrics/by_metric/wfa110_typed_edge_ablation_ep{8,20}.json）。",
       "M9 是唯一 FAIL 门：fm_term 在第 24/36 epoch 占总损失 91.47%，超过 90% 线；T3 的全语料臂决定它是小样本伪影还是真的需要权重调度。"
@@ -964,7 +965,9 @@
       "第二终点 T18 / 第二语料 T19",
       "键级基准 T20 / 价值曲线 T21 / 跨领域标签偏移 T22",
       "数据描述符 T23 / 预注册方法学 T24",
-      "手稿骨架 T25 / 故事 B T26 / 故事 C T27"
+      "手稿骨架 T25 / 故事 B T26 / 故事 C T27",
+      "生成线自查 T29（会学习的场 + 可测的池）",
+      "失败不再静默 T30（DEAD run / OOM fallback / term share）"
     ]
   },
   "diagnosis": [
@@ -1237,6 +1240,26 @@
       "reading": "已修（ba1933d6 / adda43e4）：能力门把「launcher 能不能跑」变成一个可执行检查，两个 trainer 的 compile mode 改为读常量，27 个红测试按已发布表面重定标，199 passed / 0 failed。保留这条是为了不让「契约卫生」在下一轮被当成没做过。",
       "addressed_by": [
         "T28"
+      ]
+    },
+    {
+      "id": "D26",
+      "symptom": "「会学习的场」和「可测的池」从未同时存在：有池的 run 用的是拟合不了 一个 batch 的头，能学的 run 没有生成池。",
+      "measured": "2026-10-22 的容量门（79001df0 / 540cb8cd）在 8 clouds、200 步、10x lr 上测出 radial 头 loss 10.529 对 v=0 基线 10.652（98.8%），|v_pred| 0.298 vs |target| 5.159，cosine 0.128——它产生不了位移，采样器返回 x0。替代头 vector_channels 在同一门上是 1.157（10.9%，cosine 0.944）。2026-10-24 的 c8 全量跑（那张 10 行验收表的来源）配置里没有 velocity_head 键，注释写的是 'the radial velocity head'，即默认 radial。vector_channels 之后的三次尝试：wfa108b_budget20 目录 0 文件（2026-10-22 15:51 创建）；wfa108h_b64 只到 epoch 0（2026-10-24 18:12，5 条事件 + 1 个 ckpt，无 CSV）；wfa108j_budget36 在 288 步上 fm_term 10.4418 -> 8.1805（min 7.9741），场确实在学，但 gen_* 全 0（没有生成池）。",
+      "artifact": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log",
+      "reading": "所以 10 行验收表里那 9 行失败，测的是一个已知产生不了位移的场。它们不是模型能力证据，也不能用来判 MOD1/MOD4 的生死——那两项的消融用的是 vector_channels，但只有 32-64 clouds（80-288 步）。这一格实验矩阵是空的，不是被填上之后失败。",
+      "addressed_by": [
+        "T29"
+      ]
+    },
+    {
+      "id": "D27",
+      "symptom": "失败是静默的：空目录、半截 run、被 OOM 丢掉的正则项、压过目标项的蒸馏项，都不进 summary。",
+      "measured": "results/wfa108b_budget20_vector_channels/ 创建于 2026-10-22 15:51、0 文件，看起来像「还没开始」而不是「失败」。results/wfa108h_b64_chunk2_vector_channels/ 有 epoch 0 的 5 条事件和一个 9.5 MB ckpt，没有 per_epoch_metrics.csv。c8 的每个 epoch 都有 三个正则项因 OutOfMemoryError 被丢弃（regularizer_fallbacks 1/1/1 -> 1/1/2 -> 1/1/4），同时 shortcut_distill_loss 在每个 epoch 都大于 fm_term（11.5779 vs 11.5367；10.9638 vs 10.8346；10.5906 vs 10.3499），谁在驱动坐标从未单独测过。",
+      "artifact": "results/wfa108h_b64_chunk2_vector_channels/events.jsonl",
+      "reading": "§5.5 说的「Report SHIPPED ≠ file on disk」在这里是反过来的：磁盘上是空的，而没有任何东西报告它失败。一个 run 目录存在不等于一次实验存在。",
+      "addressed_by": [
+        "T30"
       ]
     }
   ],
@@ -2012,6 +2035,52 @@
         "molmetal/tests/test_wf335r3_g6_cuda_graphs.py",
         "molmetal/tests/test_wf335r2_wireup_reverify.py"
       ]
+    },
+    {
+      "id": "T29",
+      "priority": 0,
+      "title": "跑「会学习的场 + 可测的池」那一格",
+      "what": "vector_channels + lsq init + 全语料 26,715 + batch 64 + gen_eval_n >= 1000 + 2-3 epoch（834-1250 步）。先跑 A 臂；A 出池后再决定是否加 B（关 typed edge）与 C（关 shortcut_distill，若该权重可置 0 且不影响其它项）。",
+      "addresses": [
+        "D26"
+      ],
+      "done_when": "artifact 含 fm_term 轨迹、gen_single_fragment_ratio、gen_raw_ring_3_share、gen_raw_rings_per_mol、gen_metal_ratio，池 n>=1000 已保存，且 n_test 指纹与 c8 一致。",
+      "gate": {
+        "learns": "fm_term 在 2 epoch 内下降 >=10%（budget36 的 288 步降 21.7% 是参照）",
+        "pool": "gen_eval_n >= 1000 且可打分（sa_scored > 0）",
+        "comparable": "n_test 指纹与 c8 一致，否则换池也不可比"
+      },
+      "kill": "fm_term 下降但 gen_raw_ring_3_share 仍 >=0.5 ⇒ 头不是瓶颈，瓶颈在解码或采样几何，停止换头并写进 catalog。",
+      "device": "cuda:0",
+      "cost": "GPU0 1.5-2.5 h（c8 的 radial 是 15 min/epoch，vector_channels 更慢，按 30-45 min/epoch 估）",
+      "status": "PLANNED",
+      "evidence": [
+        "results/wfa108j_budget36/per_epoch_metrics.csv",
+        "configs/wfa108j_budget36_2026_10_25.yaml",
+        "configs/c8_fullgen_b64_2026_10_24.yaml"
+      ]
+    },
+    {
+      "id": "T30",
+      "priority": 0,
+      "title": "让失败的 run 不再静默",
+      "what": "三件事：(1) 训练器在每个 run 目录写 run_status.json（STARTED / TRAINED_EPOCH / FINISHED / DEAD），启动时若目录已有 ckpt 但没有 per_epoch_metrics.csv，标 DEAD 并打印上一次停在第几 epoch，而不是静默 resume 或静默重跑；(2) regularizer fallback 进 per-epoch summary 与 synthesis.md，不只进 artifact 的 regularizer_fallbacks；(3) 每个 loss term 报占 train_loss 的比例，任何 term 超过 40% 都必须在 summary 里列出（现在 shortcut_distill 11.58 > fm_term 11.54 没人看见）。",
+      "addresses": [
+        "D27"
+      ],
+      "done_when": "三个改动各有测试；对现有 run 目录跑一遍审计，能把 wfa108b_budget20（空）与 wfa108h_b64（1 epoch）识别为 DEAD 并给出停在哪个 epoch。",
+      "gate": {
+        "dead_run": "对 results/wfa108b_budget20_vector_channels/ 返回 DEAD",
+        "partial_run": "对 results/wfa108h_b64_chunk2_vector_channels/ 返回 DEAD@epoch0",
+        "term_share": "对 c8 的 master.log 返回 shortcut_distill_loss 占比 >40% 的告警"
+      },
+      "kill": "不适用（工程项）。",
+      "device": "cpu",
+      "cost": "CPU ~2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log"
+      ]
     }
   ],
   "acceptance": {
@@ -2077,7 +2146,8 @@
         "now": null,
         "module": "MOD5"
       }
-    ]
+    ],
+    "provenance_caveat": "2026-10-27 自查（见 self_audit SA-3）：本表所有 now 值来自 c8 全量跑，而那条 run 用的是 radial 速度头——10-22 已测出它连一个 batch 都拟合不了（cosine 0.128，返回 x0）。所以这 10 行是「一个产生不了位移的场」的读数，不是模型能力上限。在 T29 出池之前，本表只能当「当前产物」记录，不能当「模块无效」的证据。"
   },
   "constraints": {
     "launch": "YAML only (AGENTS.md 5.11); wrappers pass --config/--out-dir/--ckpt-dir only",
@@ -2385,20 +2455,22 @@
           "T16",
           "T23",
           "T24",
-          "T20"
+          "T20",
+          "T30"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。"
       },
       {
         "wave": 3,
         "status": "PLANNED",
         "items": [
+          "T29",
           "T17",
           "T18"
         ],
         "device": "cuda:0",
-        "why": "两个 GPU 臂，合计约 2.5 h；都在决定臂之后，因为决定臂可能关掉整条线。"
+        "why": "T29 是生成线的决定臂（会学习的场 + 可测的池），必须先于一切换头之外的模块工作；T17/T18 是预测线的可比性臂。三条都是 GPU，合计约 4-5 h。"
       },
       {
         "wave": 4,
@@ -2475,6 +2547,75 @@
         "device": "cpu",
         "why": "MOD7 已交付，见 metrics/by_metric/wfa109_conditional_mean_envelope.json。"
       }
+    ]
+  },
+  "self_audit": {
+    "created": "2026-10-27",
+    "scope": "生成线（CFM）。回答的是「为什么到现在还没改完」，不是「该投什么」。",
+    "method": "按时间顺序读 git log、每个 run 的 per_epoch_metrics.csv / events.jsonl 与启动它的 config，不读 summary。理由是 summary 由同一批代码写，而这一轮的问题恰好是 summary 不报失败。",
+    "verdict": "不是模块没做，也不是模块做了没用。是实验矩阵缺了一格，而缺的那一格被创建了两次、都没跑完，且没有东西报告它没跑完。在 T29 完成之前，生成线没有任何一条指标是在「会学习的场 + 可测的池」上测的。",
+    "findings": [
+      {
+        "id": "SA-1",
+        "finding": "有一轮 A/B 比的是两个完全相同的场",
+        "evidence": "6a1c7ff7（2026-10-21）",
+        "measured": "configs/wfa107_*.yaml 带 wasserstein_weight 0.0 且无 use_fm_objective；两臂 vel_field 权重 bit-identical（max |delta| 0.0），同一噪声采出同一批云（max deviation 0.000e+00 A）。那批云平均对距 2.26 A、89.1% 的对在 cutoff 内、156 rings/mol（真值 5.00 / 41.2% / 19.7）。报告的环效应 raw graph 只差 0.0045，经 assembler 放大 27 倍成 0.1211。",
+        "impact": "那一轮的环先验结论全部作废；MOD4 后来改成 decode-time gate 与此无关。",
+        "status": "FIXED",
+        "task": null
+      },
+      {
+        "id": "SA-2",
+        "finding": "radial 速度头拟合不了一个 batch",
+        "evidence": "79001df0 + 540cb8cd（2026-10-22）",
+        "measured": "8 clouds、200 步、10x lr：loss 10.529 对 v=0 基线 10.652（98.8%），|v_pred| 0.298 vs |target| 5.159，cosine 0.128，vel_scale 0.032 -> -0.005。替代头 vector_channels 1.157（10.9%，cosine 0.944）。",
+        "impact": "采样器返回 x0（先验）。所有用 radial 头生成的池都不是模型输出。",
+        "status": "FIXED（头已有，未在生产配置启用）",
+        "task": "T29"
+      },
+      {
+        "id": "SA-3",
+        "finding": "10 行验收表测在 radial 头上，且是在诊断之后两天",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log",
+        "measured": "configs/c8_fullgen_b64_2026_10_24.yaml 无 velocity_head 键（默认 radial），注释写 'the radial velocity head'。该 run 的 fm_term 11.5367 -> 10.8346 -> 10.3499，同时 gen_raw_ring_3_share 0.7081 -> 0.8976 -> 0.9244：越训越糟，是场收敛到 blob 的签名。",
+        "impact": "验收表 9 行失败不能当模型能力证据。单片段 0.2505、三元环 0.6684、M-L 1.234 A 都是这个场的读数。",
+        "status": "OPEN",
+        "task": "T29"
+      },
+      {
+        "id": "SA-4",
+        "finding": "能学的那个配置从来没有跑完",
+        "evidence": "results/wfa108b_budget20_vector_channels/（空）、results/wfa108h_b64_chunk2_vector_channels/（epoch 0）、results/wfa108j_budget36/（288 步，无池）",
+        "measured": "budget20：目录 2026-10-22 15:51 创建、0 文件。b64：2026-10-24 18:12，5 条事件、1 个 ckpt、无 per_epoch_metrics.csv。budget36：vector_channels + lsq，64 clouds / batch 8 / lr 1e-3 / 36 epoch = 288 步，fm_term 10.4418 -> 8.1805（min 7.9741），但 gen_* 全 0。",
+        "impact": "「换头之后池会不会变好」这个问题从未被回答，尽管它是整条线最便宜的问题。",
+        "status": "OPEN",
+        "task": "T29"
+      },
+      {
+        "id": "SA-5",
+        "finding": "三个正则项每个 epoch 因 OOM 被丢弃，且不进 summary",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log 的 regularizer_fallbacks",
+        "measured": "FmOdeTerm / EnergyConservation / SBOO3Term 的 OutOfMemoryError 计数在 epoch 0/1/2 是 1/1/1 -> 1/1/2 -> 1/1/4。",
+        "impact": "c8 的 objective 与配置声明的不是同一个；任何「关掉/打开某个正则项」的结论在这条 run 上不可归因。",
+        "status": "OPEN",
+        "task": "T30"
+      },
+      {
+        "id": "SA-6",
+        "finding": "蒸馏项每个 epoch 都大于目标项，谁在驱动坐标没测过",
+        "evidence": "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log 的 loss_terms",
+        "measured": "shortcut_distill_loss vs fm_term：11.5779 vs 11.5367；10.9638 vs 10.8346；10.5906 vs 10.3499。三个 epoch 全部是蒸馏项更大。",
+        "impact": "如果坐标主要由蒸馏项驱动，那么「FM 目标在学什么」这个问题本身需要重问。",
+        "status": "OPEN",
+        "task": "T30"
+      }
+    ],
+    "reproduce": [
+      "git log -1 --format=%s 6a1c7ff7 79001df0 540cb8cd",
+      "grep -c velocity_head configs/c8_fullgen_b64_2026_10_24.yaml   # 期望 0 次匹配",
+      "ls results/wfa108b_budget20_vector_channels/ | wc -l           # 期望 0",
+      "wc -l results/wfa108h_b64_chunk2_vector_channels/events.jsonl  # 期望 5",
+      "python -c \"import json;[print(json.loads(l)['fm_term']) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log') if 'train_epoch' in l]\""
     ]
   }
 }
