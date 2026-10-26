@@ -115,8 +115,15 @@ fi
 # `rc=${PIPESTATUS[0]}` on the line AFTER the pipeline is NOT sufficient: errexit
 # fires at the pipeline and never reaches it (measured, 2026-10-09). The
 # `set +o pipefail` below is load-bearing.
+#
+# `setsid --wait` is the OTHER half, and it is not cosmetic: without it the
+# trainer stays in the invoking shell's session, so if that shell exits the
+# trainer is SIGTERM'd with no traceback (BLK-I1 mechanism a). `--wait` is
+# required rather than optional — bare `setsid` may fork and return 0 before the
+# trainer has done anything, which would make `PIPESTATUS[0]` report success for
+# a run that had not started. `--wait` propagates the trainer's own status.
 set +o pipefail
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} ${TRAINER} "$@" 2>&1 | tee "${OUT_DIR}/launch.log"
+PYTHONPATH=/home/hugo/codes/mol-metal setsid --wait ${PY} ${TRAINER} "$@" 2>&1 | tee "${OUT_DIR}/launch.log"
 rc=${PIPESTATUS[0]}
 set -o pipefail
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} exit=${rc}; log at ${OUT_DIR}/launch.log"

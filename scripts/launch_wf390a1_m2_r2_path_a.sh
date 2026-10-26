@@ -382,7 +382,16 @@ run_pair() {
   echo "PAIR_BUDGET_START ${metal} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} "${TRAINER}" \
+  # `--wait` on setsid, and pipefail off for this one pipeline.
+  #   * `setsid nohup cmd | tee` without `--wait`: setsid may fork and return 0
+  #     before the trainer starts, so PIPESTATUS[0] reports success for a run
+  #     that has not done anything yet.
+  #   * pipefail on: DataLoader workers hold the pipe open after the trainer
+  #     exits, tee takes EOF first, the next trainer write takes SIGPIPE and
+  #     the propagated 141 aborts the sweep (BLK-I1b) — before the budget line
+  #     and before the next pair.
+  set +o pipefail
+  CUDA_VISIBLE_DEVICES=0 setsid --wait nohup ${PY} "${TRAINER}" \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
@@ -391,6 +400,7 @@ run_pair() {
     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
 "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
+  set -o pipefail
 
   local pair_end_s pair_elapsed_s
   pair_end_s=$(date +%s)

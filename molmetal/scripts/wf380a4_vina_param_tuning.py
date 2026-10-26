@@ -117,6 +117,25 @@ INDUSTRY_CUTOFF_KCAL_MOL = -7.0
 # to ``import yaml``.  Kept as stdlib-only for CPU-only environments
 # where ``pyyaml`` may be missing.
 # ---------------------------------------------------------------------------
+class _PendingKey:
+    """A ``key:`` whose value has not been seen yet.
+
+    YAML does not say whether such a key opens a mapping or a block sequence
+    until the next line arrives, and the previous loader guessed wrong every
+    time: it created a dict immediately, then its block-sequence branch did
+    ``if isinstance(parent, list)`` against a dict, so every ``- item`` line was
+    silently dropped. ``cohort.pockets`` came out as ``{}``, ``list({})`` as
+    ``[]``, and ``statistics.median([])`` raised ``StatisticsError`` — the
+    script had been exiting 1 on its own shipped config.
+    """
+
+    __slots__ = ("owner", "key")
+
+    def __init__(self, owner: Dict[str, Any], key: str) -> None:
+        self.owner = owner
+        self.key = key
+
+
 def _load_yaml_simple(path: Path) -> Dict[str, Any]:
     """Minimal YAML loader for the canonical vina_docking_params.yaml schema.
 
@@ -124,15 +143,18 @@ def _load_yaml_simple(path: Path) -> Dict[str, Any]:
       - top-level ``key: value`` mappings
       - ``key:`` followed by indented children (2-space indent)
       - inline ``[a, b, c]`` lists
-      - inline ``- a - b`` lists
+      - block sequences: ``key:`` then ``- item`` lines
       - scalar types: int, float, str, bool, None
 
-    Anything fancier falls back to parsing as a string.  This is
-    intentional — the Wf-380-A4 config is hand-authored and flat.
+    A construct it cannot represent RAISES instead of being dropped.  The
+    earlier version documented a "falls back to parsing as a string" policy
+    that it did not implement: it dropped the line and returned a config that
+    looked valid.  A loader that silently loses data is worse than one that
+    refuses, because the loss surfaces far away as an empty list.
     """
     raw = path.read_text(encoding="utf-8")
     out: Dict[str, Any] = {}
-    stack: List[Tuple[int, Dict[str, Any]]] = [(-1, out)]
+    stack: List[Tuple[int, Any]] = [(-1, out)]
     for line_no, raw_line in enumerate(raw.splitlines(), 1):
         # Skip blank lines and full-line comments.
         stripped = raw_line.split("#", 1)[0].rstrip()
@@ -141,27 +163,59 @@ def _load_yaml_simple(path: Path) -> Dict[str, Any]:
         indent = len(raw_line) - len(raw_line.lstrip(" "))
         content = stripped.strip()
         # Pop stack until we are at the correct parent indent.
+        #
+        # YAML block sequences may sit at the SAME indent as their key:
+        #
+        #     pockets:
+        #     - 1h36
+        #     - 3eml
+        #
+        # so a pending key (or the list it resolved to) is not popped when the
+        # incoming line is an item at that indent.  Popping it would make the
+        # first item look like it belonged to the grandparent mapping.
         while stack and stack[-1][0] >= indent:
+            top_indent, top = stack[-1]
+            if (
+                content.startswith("- ")
+                and top_indent == indent
+                and isinstance(top, (list, _PendingKey))
+            ):
+                break
             stack.pop()
         parent = stack[-1][1] if stack else out
+        # Resolve a pending `key:` now that its first child line is known.
+        if isinstance(parent, _PendingKey):
+            container: Any = [] if content.startswith("- ") else {}
+            parent.owner[parent.key] = container
+            stack[-1] = (stack[-1][0], container)
+            parent = container
         if content.startswith("- "):
-            # Inline list item — append to most-recent key on parent.
-            value_str = content[2:].strip()
-            value = _parse_scalar(value_str)
-            # find the most-recent key with a list under it
-            if isinstance(parent, list):
-                parent.append(value)
-                stack.append((indent, {}))  # placeholder for children
+            if not isinstance(parent, list):
+                raise ValueError(
+                    f"{path}:{line_no}: block sequence item under a mapping "
+                    f"({type(parent).__name__}); refusing to drop {content!r}"
+                )
+            item = content[2:].strip()
+            if ":" in item:
+                raise ValueError(
+                    f"{path}:{line_no}: mapping items inside a block sequence "
+                    f"are not supported by this loader: {item!r}"
+                )
+            parent.append(_parse_scalar(item))
             continue
         if ":" in content:
             key, _, value_str = content.partition(":")
             key = key.strip()
             value_str = value_str.strip()
+            if not isinstance(parent, dict):
+                raise ValueError(
+                    f"{path}:{line_no}: mapping entry inside a list is not "
+                    f"supported by this loader: {content!r}"
+                )
             if value_str == "":
-                # nested map or list begins on next lines
-                new_dict: Dict[str, Any] = {}
-                parent[key] = new_dict
-                stack.append((indent, new_dict))
+                # Mapping or block sequence begins on the next lines; which one
+                # is decided there, not here.
+                stack.append((indent, _PendingKey(parent, key)))
             elif value_str.startswith("[") and value_str.endswith("]"):
                 items = [
                     _parse_scalar(x.strip())
@@ -171,6 +225,11 @@ def _load_yaml_simple(path: Path) -> Dict[str, Any]:
                 parent[key] = items
             else:
                 parent[key] = _parse_scalar(value_str)
+    # A pending key that never received a child is an empty mapping, which is
+    # what `key:` with nothing after it means.
+    for _indent, frame in stack:
+        if isinstance(frame, _PendingKey):
+            frame.owner[frame.key] = {}
     return out
 
 
@@ -222,6 +281,21 @@ def load_vina_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
         if lvl not in cfg["levels"]:
             raise RuntimeError(
                 f"Wf-380-A4 config missing level '{lvl}' at {config_path}"
+            )
+    # Boundary check.  An empty cohort used to reach `statistics.median([])`
+    # three frames deeper and surface as `StatisticsError: no median for empty
+    # data`, which says nothing about which key was wrong or where.  The
+    # loader had been returning `pockets: {}` for a five-item block sequence,
+    # and this is the check that would have named it.
+    cohort = cfg.get("cohort", {})
+    for key in ("pockets", "seeds"):
+        value = cohort.get(key)
+        if not isinstance(value, list) or not value:
+            raise RuntimeError(
+                f"Wf-380-A4 config {config_path} has an empty or non-list "
+                f"cohort.{key} ({value!r}). The tuning ladder is defined over "
+                "a non-empty pocket x seed cohort; refusing to emit a report "
+                "with no per-pocket values in it."
             )
     LOG.info("Config loaded with %d levels", len(cfg["levels"]))
     return cfg

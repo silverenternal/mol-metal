@@ -253,3 +253,106 @@ def test_14_report_well_formed_json() -> None:
     parsed = json.loads(text)
     assert isinstance(parsed, dict)
     assert parsed["_workflow"] == "Wf-380-A4"
+
+
+# ---------------------------------------------------------------------------
+# The loader (2026-10-27) — a block sequence was being silently DROPPED
+# ---------------------------------------------------------------------------
+# `cohort.pockets` is written as
+#
+#     pockets:
+#     - 1h36
+#     - 3eml
+#
+# which is a block sequence at the SAME indent as its key. The old loader
+# created a dict for any `key:` with no inline value and then tested
+# `isinstance(parent, list)` against that dict, so every `- item` line was
+# discarded without a word. `pockets` came back as `{}`, `list({})` as `[]`,
+# and `statistics.median([])` killed the script — which is why the four report
+# tests above used to ERROR at setup rather than run.
+
+
+def test_15_block_sequences_load_as_lists() -> None:
+    from molmetal.scripts.wf380a4_vina_param_tuning import load_vina_config
+
+    cfg = load_vina_config(CONFIG_PATH)
+    cohort = cfg["cohort"]
+    assert cohort["pockets"] == ["1h36", "3eml", "3ny8", "4aaw", "4rlu"], (
+        "cohort.pockets must be the five-item list the YAML declares, not the "
+        f"empty mapping the old loader returned: {cohort['pockets']!r}"
+    )
+    assert cohort["seeds"] == [0, 1, 2]
+    # Every other block sequence in the same file was dropped the same way.
+    assert len(cfg["cross_references"]) == 12
+    assert len(cfg["honest_framing"]["claims"]) == 4
+    assert len(cfg["directives"]["pre_flight_gates_required"]) == 4
+
+
+def test_16_a_pending_key_becomes_a_list_only_when_an_item_follows() -> None:
+    """`key:` + `- x` is a list; `key:` + `k: v` is still a mapping."""
+    from molmetal.scripts.wf380a4_vina_param_tuning import _load_yaml_simple
+
+    import tempfile
+
+    body = (
+        "a:\n"
+        "  list_key:\n"
+        "  - one\n"
+        "  - two\n"
+        "  map_key:\n"
+        "    inner: 1\n"
+        "  scalar_key: 7\n"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as fh:
+        fh.write(body)
+        path = Path(fh.name)
+    try:
+        cfg = _load_yaml_simple(path)
+    finally:
+        path.unlink()
+    assert cfg["a"]["list_key"] == ["one", "two"]
+    assert cfg["a"]["map_key"] == {"inner": 1}
+    assert cfg["a"]["scalar_key"] == 7
+
+
+def test_17_an_unsupported_construct_raises_instead_of_being_dropped() -> None:
+    """Silent loss is the bug; refusing to parse is the fix."""
+    from molmetal.scripts.wf380a4_vina_param_tuning import _load_yaml_simple
+
+    import tempfile
+
+    body = "a:\n  - key: value\n"
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as fh:
+        fh.write(body)
+        path = Path(fh.name)
+    try:
+        with pytest.raises(ValueError, match="mapping items inside a block"):
+            _load_yaml_simple(path)
+    finally:
+        path.unlink()
+
+
+def test_18_an_empty_cohort_is_named_at_the_boundary() -> None:
+    """An empty cohort must not surface as `StatisticsError: no median`."""
+    from molmetal.scripts.wf380a4_vina_param_tuning import load_vina_config
+
+    import tempfile
+
+    body = (
+        "levels:\n"
+        "  low:\n    exhaustiveness: 8\n"
+        "  medium:\n    exhaustiveness: 32\n"
+        "  high:\n    exhaustiveness: 64\n"
+        "cohort:\n"
+        "  pockets: []\n"
+        "  seeds:\n"
+        "  - 0\n"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as fh:
+        fh.write(body)
+        path = Path(fh.name)
+    try:
+        with pytest.raises(RuntimeError, match=r"cohort\.pockets"):
+            load_vina_config(path)
+    finally:
+        path.unlink()

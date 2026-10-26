@@ -165,16 +165,19 @@ COMMON_ARGS=(
   --cuda-visible-devices 0
   # Per Wf-328-W2: --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS on 24-core host)
   --cpu-num-workers 8
-  # Per Wf-328-W6: --num-workers 8 (Wf-326B build_optimized_loader() factory;
-  # takes precedence over --cpu-num-workers; wires prefetch_factor=8 +
-  # pin_memory=True + persistent_workers=True)
-  --num-workers 8
+  # REMOVED 2026-10-27: `--num-workers 8` and `--no-cuda-graphs`.
+  #
+  # Neither is declared in train_dmpnn_multitask_wasserstein.py's argparse, so
+  # every recovery tuple exited rc=2 "unrecognized arguments" before an epoch
+  # ran — the recovery path for the Wf-337-G1 G6 failures could not recover
+  # anything. MEASURED against parse_args: `--cpu-num-workers` ACCEPTED,
+  # `--num-workers` REJECTED, `--no-cuda-graphs` REJECTED.
+  #
+  # The Wf-328-W6 loader factory that `--num-workers` was meant to reach is not
+  # reachable from this trainer at all; `--cpu-num-workers` is its only worker
+  # flag. CUDA graphs only exist behind `--torch-compile`, which this launcher
+  # does not pass, so the Wf-335-R3 lever is closed structurally.
   --data-csv "${DATA_CSV}"
-  # Per Wf-335-R3: CUDA Graphs hard-disable safety lever. Default ON in
-  # trainer (per Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-  # under --torch-compile-mode reduce-overhead); pass explicitly so paper
-  # §6 audits can verify the lever is wired.
-  --no-cuda-graphs
 )
 
 # Per TODO-182 §3.4 + Wf-296C ablation flag dispatcher.
@@ -368,7 +371,19 @@ run_tuple() {
     || { echo "=== $(date '+%H:%M:%S') FAIL ${cfg}/${metal}/seed=${seed} (per-wave check) ===" | tee -a "${LOG}"; return 1; }
   # GPU 0 (RTX PRO 6000 Blackwell) — pairs with --cuda-visible-devices 0
   # above; keep as-is (do not flip to the GPU-0 resolver default).
-  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+  #
+  # Two mechanisms, two fixes, and neither covers the other:
+  #   * `setsid --wait` detaches the trainer from this shell's session, so a
+  #     recovery sweep that outlives its terminal is not SIGTERM'd mid-run
+  #     (BLK-I1a). `--wait` is required: bare `setsid` may fork and return 0
+  #     before the trainer starts, and `rc` below would then report success.
+  #   * `set +o pipefail` for this one pipeline: DataLoader workers hold the
+  #     pipe open after the trainer exits, tee takes EOF first, the trainer's
+  #     next write takes SIGPIPE, and the propagated 141 aborts the sweep
+  #     (BLK-I1b). PIPESTATUS[0] is only readable if errexit does not fire
+  #     first, which is why the toggle is load-bearing.
+  set +o pipefail
+  CUDA_VISIBLE_DEVICES=0 setsid --wait ${PY} ${SCRIPT} \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
@@ -378,6 +393,7 @@ run_tuple() {
     ${CONFIRMED_FLAGS[$cfg]} \
     "${COMMON_ARGS[@]}" 2>&1 | tee "${tupledir}/run.log"
   local rc=${PIPESTATUS[0]}
+  set -o pipefail
   echo "=== $(date '+%H:%M:%S') RECOVER END ${cfg}/${metal}/seed=${seed} (rc=${rc}) ===" | tee -a "${LOG}"
   return "$rc"
 }

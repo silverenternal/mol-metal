@@ -108,28 +108,49 @@ class TestW2SlicedSmokeWrapper(unittest.TestCase):
         assert "VRAM_FREE_MIN_MIB=24576" in src, "24 GB VRAM threshold missing"
 
     def test_wrapper_invokes_sliced_mode_and_wf328_wf335_fixes(self):
-        """Wrapper must invoke --w2-gradient-mode sliced + propagate Wf-328/Wf-335
-        fixes (--torch-compile-mode-v2 max-autotune-no-cudagraphs,
-        --no-cuda-graphs, --num-workers 8, --cpu-num-workers 8, --bf16,
-        --tf32)."""
-        src = _wrapper_text(W2_SLICED_WRAPPER)
-        # sliced mode under test
-        assert (
-            "--w2-gradient-mode sliced" in src
-        ), "--w2-gradient-mode sliced missing from wrapper"
-        # Wf-335-R1 + R3 fixes
-        assert (
-            "--torch-compile-mode-v2 max-autotune-no-cudagraphs" in src
-        ), "Wf-335-R1 torch-compile-mode-v2 missing"
-        assert (
-            "--no-cuda-graphs" in src
-        ), "Wf-335-R3 no-cuda-graphs safety lever missing"
-        # Wf-328 num-workers propagation
-        assert "--num-workers 8" in src, "Wf-328-W6 num-workers 8 missing"
-        assert "--cpu-num-workers 8" in src, "Wf-328-W2 cpu-num-workers 8 missing"
-        # Wf-328 bf16/tf32
-        assert "--bf16" in src, "Wf-328-W3 bf16 missing"
-        assert "--tf32" in src, "Wf-328-W4 tf32 missing"
+        """Every flag the wrapper's --dry-run prints is declared by the trainer.
+
+        The 2026-09-29 version of this test asserted the wrapper contained
+        ``--torch-compile-mode-v2 max-autotune-no-cudagraphs``,
+        ``--no-cuda-graphs``, ``--num-workers 8`` and ``--bf16``.  None of
+        those is a dest of ``train_dmpnn_multitask_wasserstein.parse_args``,
+        so the wrapper it was pinning could not start: argparse rejected the
+        first undeclared flag with rc=2.  The test was protecting the defect.
+
+        This version checks the property instead of the prose: take the
+        command the wrapper would run and ask the trainer's own parser about
+        every flag in it.
+        """
+        from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
+        from molmetal.scripts.wf_argv_capability_check import flag_is_declared
+
+        proc = _run_wrapper(W2_SLICED_WRAPPER, "--dry-run", timeout=30)
+        assert proc.returncode == 0, (
+            f"--dry-run failed rc={proc.returncode}: "
+            f"{(proc.stderr or proc.stdout)[-400:]}"
+        )
+        out = proc.stdout
+        assert "[DRY-RUN]" in out, f"no [DRY-RUN] command in stdout: {out[-400:]!r}"
+        # The printed command is the [DRY-RUN] line plus its backslash-
+        # continued lines.
+        cmd_lines = []
+        for line in out[out.index("[DRY-RUN]"):].splitlines():
+            cmd_lines.append(line)
+            if not line.rstrip().endswith("\\"):
+                break
+        cmd = " ".join(cmd_lines).replace("\\", " ")
+        flags = sorted(set(re.findall(r"(?<![\w-])--[a-z][a-z0-9-]*", cmd)))
+        assert flags, f"could not extract any flag from: {cmd!r}"
+        undeclared = [f for f in flags if not flag_is_declared(parse_args, f)]
+        assert not undeclared, (
+            f"wrapper's dry-run argv passes flags the trainer does not declare: "
+            f"{undeclared}. The launch would die at argparse with rc=2.\n"
+            f"command: {cmd}"
+        )
+        # The mode under test must still be there.
+        assert "--w2-gradient-mode sliced" in cmd, (
+            "--w2-gradient-mode sliced missing from the dry-run command"
+        )
 
     def test_wrapper_user_ok_gate_denied_without_env(self):
         """Wrapper must REFUSE to launch real work without USER_OK=1."""

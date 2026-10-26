@@ -49,12 +49,10 @@ COMMON_ARGS=(
   --n-mc 256
   --cpu-num-workers 8
   --data-csv "${DATA_CSV}"
-  # Wf-335-R3 — CUDA Graphs hard-disable safety lever. Default ON in
-  # trainer (per Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-  # under --torch-compile-mode reduce-overhead); pass explicitly so paper
-  # §6 audits can verify the lever is wired.  Particularly relevant for
-  # this retry wrapper since Ru seed=2 was one of the Wf-330-B4 failures.
-  --no-cuda-graphs
+  # Wf-335-R3's `--no-cuda-graphs` was REMOVED here on 2026-10-27: the trainer's
+  # argparse does not declare it, so this retry wrapper — the one path that
+  # exists to recover the Wf-330-B4 failures — died rc=2 before launching
+  # anything. Graphs only exist behind `--torch-compile`, which is not passed.
 )
 
 run_pair() {
@@ -64,7 +62,10 @@ run_pair() {
   local pair_log="${OUT_BASE}/${metal}/seed${seed}/run.log"
   mkdir -p "${OUT_BASE}/${metal}/seed${seed}/ckpts"
   echo "=== $(date '+%H:%M:%S') Wf-310A RETRY START ${metal} seed=${seed} on GPU ${gpu} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=${gpu} ${PY} ${SCRIPT} \
+  # `setsid --wait`: the retry runs in its own session so it survives the
+  # invoking shell (BLK-I1a), and `$rc` below still reports the trainer's
+  # status rather than setsid's. Bare `setsid` may fork and return 0.
+  CUDA_VISIBLE_DEVICES=${gpu} setsid --wait ${PY} ${SCRIPT} \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \

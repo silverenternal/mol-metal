@@ -179,6 +179,46 @@ STATUS_HOLD_MSG="[STATUS_HOLD] 12-d RDKit 2D signal floor caps R² at ~0.004 (Wf
 [ -x "$(command -v "${PY}")" ] || die "PY not found: ${PY}"
 [ -f "${TRAINER}" ]           || die "trainer missing: ${TRAINER}"
 
+# -----------------------------------------------------------------------------
+# Trainer capability gate (2026-10-27)
+# -----------------------------------------------------------------------------
+# This launcher builds an argv the trainer does not parse.  MEASURED against
+# train_dmpnn_multitask_wasserstein.parse_args, the following are NOT declared:
+#
+#   --mode --tmqm-csv --platinai-csv --cells --tmqm-metals --use-multiph-pll
+#   --multiph-fourier-bins --pll-signature-dim --w2-weight --per-cell-w2-out
+#   --per-metal-w2-out --per-wave-convergence-out
+#
+# i.e. the whole `joint_tmqm_platinai` interface this script drives has never
+# existed in the trainer: grep for `joint_tmqm_platinai` or `per_cell_w2_out`
+# across molmetal/ returns nothing.  Before this gate the sweep died per tuple
+# with argparse rc=2, so a 4-cell x 5-seed run reported five failures and no
+# diagnosis.  Now it refuses once, with the list.
+#
+# Removing the gate is not the fix; implementing the interface is (that is a
+# feature, not a launcher repair, and it is not part of the 2026-10-27 pass).
+#
+# Placed after the helper definitions: the first version of this gate sat at
+# the top of the file and called `die`, which is defined further down, so the
+# failure path itself failed with "die: command not found" and the launcher
+# carried on.
+CAPABILITY_CHECK="${SCRIPTS_DIR}/wf_argv_capability_check.py"
+LAUNCH_ARGV_FLAGS="--mode --tmqm-csv --platinai-csv --cells --tmqm-metals \
+--seeds --epochs --hidden --depth --use-multiph-pll --multiph-fourier-bins \
+--pll-signature-dim --w2-weight --w2-gradient-mode --cpu-num-workers \
+--out-dir --per-cell-w2-out --per-metal-w2-out --per-wave-convergence-out \
+--device"
+if [ -f "${CAPABILITY_CHECK}" ]; then
+    if ! "${PY}" "${CAPABILITY_CHECK}" --trainer "${TRAINER}" \
+            --flags "${LAUNCH_ARGV_FLAGS}" > "${REPORTS_DIR}/argv_capability.txt" 2>&1; then
+        cat "${REPORTS_DIR}/argv_capability.txt" >&2
+        die "trainer does not declare this launcher's argv (see ${REPORTS_DIR}/argv_capability.txt). The joint_tmqm_platinai interface is not implemented in ${TRAINER}; refusing to launch tuples that can only exit rc=2."
+    fi
+    ok "trainer declares every flag this launcher passes"
+else
+    warn "capability checker missing: ${CAPABILITY_CHECK}; argv not verified"
+fi
+
 log "Wf-355-A3 R20 §5 tmQM d-block + PlatinAI 4-cell joint retrain wrapper — USER_OK=1 confirmed"
 log "  tmqm_csv=${TMQM_CSV}"
 log "  platinai_4cell_csv=${PLAT_4CELL_CSV}"
@@ -388,7 +428,7 @@ if [ "${DRY_RUN}" = "1" ]; then
     log "      --hidden ${HIDDEN} --depth ${DEPTH} \\"
     log "      --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \\"
     log "      --w2-weight 0.05 --w2-gradient-mode sort \\"
-    log "      --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs \\"
+    log "      --cpu-num-workers 8 \\"
     log "      --out-dir ${REPORTS_DIR}/per_seed_results \\"
     log "      --device=cuda:0"
     log ""
@@ -413,7 +453,7 @@ if [ "${DRY_RUN}" = "1" ]; then
         --wrapper "$(basename "$0")" \
         --mode "${MODE_LABEL}" \
         --trainer "${TRAINER}" \
-        --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs --out-dir ${REPORTS_DIR}/per_seed_results --device=cuda:0" \
+        --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --out-dir ${REPORTS_DIR}/per_seed_results --device=cuda:0" \
         --gpu "${GPU}" \
         --budget-hr "${BUDGET_HR}" \
         --user-ok "REQUIRED_STATUS_HOLD" \
@@ -447,7 +487,11 @@ start_ts=$(date +%s)
 for CELL in "${CELLS[@]}"; do
     for SEED in "${SEEDS_TO_USE[@]}"; do
         log "=== cell=${CELL} seed=${SEED} on ${GPU} ==="
-        if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
+        # `setsid --wait`: each (cell, seed) run gets its own session so it
+        # survives the invoking shell, and the `if` still tests the trainer's
+        # own exit status. Bare `setsid` may fork and return 0 immediately,
+        # which would make the failure branch unreachable.
+        if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" "${TRAINER}" \
                 --config "${DMPNN_CONFIG}" \
                 --mode joint_tmqm_platinai \
                 --tmqm-csv "${TMQM_CSV}" \
@@ -459,7 +503,7 @@ for CELL in "${CELLS[@]}"; do
                 --hidden "${HIDDEN}" --depth "${DEPTH}" \
                 --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \
                 --w2-weight 0.05 --w2-gradient-mode sort \
-                --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs \
+                --cpu-num-workers 8 \
                 --out-dir "${REPORTS_DIR}/${CELL}/seed${SEED}" \
                 --per-cell-w2-out "${REPORTS_DIR}/per_cell_w2.json" \
                 --per-metal-w2-out "${REPORTS_DIR}/per_metal_w2.json" \

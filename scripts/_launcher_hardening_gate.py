@@ -438,9 +438,19 @@ def audit_wrapper(path: Path, detached_by: dict[str, str] | None = None) -> dict
         r"(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S*)|setsid(?:\s+--?[A-Za-z-]+)*|nohup)"
         r"(?:\s+(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S*)|setsid(?:\s+--?[A-Za-z-]+)*|nohup))*"
     )
+    # A command inside `if` / `while` / `until` still starts at the keyword:
+    # `if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" trainer; then` is a
+    # correctly detached command, and the gate reported it as mangled until the
+    # keyword was stripped before the prefix test (2026-10-26, two launchers).
+    # Stripping cannot hide a real mangled detach: those heads start with a
+    # command word (`${PY}` / `python`) after an env assignment, which the
+    # prefix pattern does not accept.
+    _SHELL_KEYWORD_PREFIX = re.compile(
+        r"^(?:(?:if|elif|while|until|then|else|do|!|time|command)\s+)+"
+    )
     for n, line in _command_lines(ll):
         for m in re.finditer(r"(?<!\S)(setsid|nohup)(?!\S)", line):
-            head = line[: m.start()].strip()
+            head = _SHELL_KEYWORD_PREFIX.sub("", line[: m.start()].strip())
             if not head or _CMD_PREFIX.fullmatch(head):
                 continue  # command position — a correct detach
             if not _STARTS_PYTHON.search(line):

@@ -172,24 +172,36 @@ build_cohort_args() {
 # -----------------------------------------------------------------------------
 # Pre-launch SCAFFOLD smoke (Wf-399-A1 §5.7 50-step CPU smoke floor)
 # -----------------------------------------------------------------------------
-echo "=== Wf-125 P1 CONTROLD PAIR SCAFFOLD smoke (CPU; Wf-399-A1 §5.7 floor) ===" | tee -a "${LOG}"
-SMOKE_RC=0
-PYTHONPATH="${PROJECT_ROOT}" ${PY} "${TRAINER}" \
-    --epochs 2 \
-    --metals Rh --seeds 0 \
-    --wasserstein-weight 0.05 \
-    --csv "${LOMO_CSV}" --use-l2-guard \
-    --device cpu \
-    --rh-oversample 500 --rh-cohort-json "${REAL_RH_COHORT}" \
-    --out-dir "${OUT_BASE}/scaffold_smoke" \
-    --out-metric "${OUT_BASE}/scaffold_smoke/metrics.json" \
-    > "${OUT_BASE}/scaffold_smoke.log" 2>&1 || SMOKE_RC=$?
-echo "SCAFFOLD_SMOKE_RC=${SMOKE_RC}" | tee -a "${LOG}"
-# SCAFFOLD smoke is for flag-acceptance only; trainer may fail on dry-run
-# invariants in dev mode. Log + continue rather than abort (canonical
-# Wf-399-A1 §5.7 floor honoured in subsequent closeout rather than at launch).
-if [ "${SMOKE_RC}" -ne 0 ]; then
-    echo "WARN: SCAFFOLD smoke rc=${SMOKE_RC}; flag surface verified but trainer dev-mode may need adjust" | tee -a "${LOG}"
+# NOT run under --dry-run.  MEASURED 2026-10-27: this smoke loads the 27,132-row
+# LOMO table and trains 2 epochs on CPU, which took >9 minutes, so
+# `--dry-run` — documented at the top of this file as "CPU plan only" — was
+# slower than the real 60-second plan inspection it exists to serve, and it
+# left the trainer running after the caller gave up.  §5.7 asks for a smoke
+# before a flag wire-in ships, not on every plan rendering; the live path below
+# still runs it.
+if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "=== SCAFFOLD smoke SKIPPED (--dry-run): it trains 2 CPU epochs; the live path runs it ===" | tee -a "${LOG}"
+    SMOKE_RC=0
+else
+    echo "=== Wf-125 P1 CONTROLD PAIR SCAFFOLD smoke (CPU; Wf-399-A1 §5.7 floor) ===" | tee -a "${LOG}"
+    SMOKE_RC=0
+    PYTHONPATH="${PROJECT_ROOT}" ${PY} "${TRAINER}" \
+        --epochs 2 \
+        --metals Rh --seeds 0 \
+        --wasserstein-weight 0.05 \
+        --csv "${LOMO_CSV}" --use-l2-guard \
+        --device cpu \
+        --rh-oversample 500 --rh-cohort-json "${REAL_RH_COHORT}" \
+        --out-dir "${OUT_BASE}/scaffold_smoke" \
+        --out-metric "${OUT_BASE}/scaffold_smoke/metrics.json" \
+        > "${OUT_BASE}/scaffold_smoke.log" 2>&1 || SMOKE_RC=$?
+    echo "SCAFFOLD_SMOKE_RC=${SMOKE_RC}" | tee -a "${LOG}"
+    # SCAFFOLD smoke is for flag-acceptance only; trainer may fail on dry-run
+    # invariants in dev mode. Log + continue rather than abort (canonical
+    # Wf-399-A1 §5.7 floor honoured in subsequent closeout rather than at launch).
+    if [ "${SMOKE_RC}" -ne 0 ]; then
+        echo "WARN: SCAFFOLD smoke rc=${SMOKE_RC}; flag surface verified but trainer dev-mode may need adjust" | tee -a "${LOG}"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -351,7 +363,17 @@ run_controlled_pair_run() {
   echo "RUN_BUDGET_START run_mode=${run_mode} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START CONTROLD PAIR run_mode=${run_mode} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} "${TRAINER}" \
+  # `--wait` on setsid, and pipefail off for this one pipeline.
+  #   * `setsid nohup cmd | tee` without `--wait`: setsid may fork and return 0
+  #     before the trainer has started, so PIPESTATUS[0] below reports success
+  #     for a run that has not done anything yet. `--wait` propagates the
+  #     trainer's own status.
+  #   * pipefail on: DataLoader workers hold the pipe open after the trainer
+  #     exits, tee takes EOF first, the trainer's next write takes SIGPIPE and
+  #     the propagated 141 aborts the wrapper (BLK-I1b). errexit would fire at
+  #     the pipeline and the `local rc=` line would never run.
+  set +o pipefail
+  CUDA_VISIBLE_DEVICES=0 setsid --wait nohup ${PY} "${TRAINER}" \
     --out-dir "${OUT_BASE}/run_${run_mode}" \
     --out-metric "${OUT_BASE}/run_${run_mode}/metrics.json" \
     --ckpt-dir "${OUT_BASE}/run_${run_mode}/ckpts" \
@@ -359,6 +381,7 @@ run_controlled_pair_run() {
     "${cohort_args[@]+"${cohort_args[@]}"}" \
     2>&1 | tee "${run_log}"
   local rc=${PIPESTATUS[0]}
+  set -o pipefail
 
   local run_end_s run_elapsed_s
   run_end_s=$(date +%s)

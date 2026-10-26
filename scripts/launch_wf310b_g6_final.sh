@@ -70,11 +70,12 @@ COMMON_ARGS=(
   --cuda-visible-devices 0
   --cpu-num-workers 8
   --data-csv "${DATA_CSV}"
-  # Wf-335-R3 — CUDA Graphs hard-disable safety lever. Default ON in
-  # trainer (per Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-  # under --torch-compile-mode reduce-overhead); pass explicitly so paper
-  # §6 audits can verify the lever is wired.
-  --no-cuda-graphs
+  # Wf-335-R3's `--no-cuda-graphs` was REMOVED here on 2026-10-27: the flag is
+  # not declared in train_dmpnn_multitask_wasserstein.py's argparse, so every
+  # tuple died rc=2 "unrecognized arguments" before an epoch ran. CUDA graphs
+  # only exist behind `--torch-compile`, which this launcher does not pass, so
+  # the lever is closed structurally. Same defect Wf-r28 / Wf-R32 fixed in the
+  # G5 / G6 launchers.
 )
 
 # ---- Ablation config flag dispatcher (per Wf-296C verification) ----

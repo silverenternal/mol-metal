@@ -208,6 +208,11 @@ cat >"${REPORTS_DIR}/plan.json" <<EOF
     "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
 }
 EOF
+# Say where it went.  The file was written all along but the path was never
+# printed, so `--dry-run` looked like it produced nothing: the 2026-10-27
+# dry-run test asserted "DRY_RUN.log or plan.json appears in stdout/stderr" and
+# failed on this wrapper while the files sat on disk.
+log "  plan.json → ${REPORTS_DIR}/plan.json"
 
 # -----------------------------------------------------------------------------
 # Pre-launch check #1 — pre_flight_check.py --pipeline launch
@@ -425,6 +430,7 @@ run_phase() {
             --budget-hr "${budget_hr}" \
             --user-ok "$( [ "${phase_label}" = "R3" ] && echo REQUIRED || echo OPTIONAL_smoke )"
         ok "Phase ${phase_label} DRY-RUN logged"
+        log "  DRY_RUN.log → ${out_dir}/DRY_RUN.log"
         return 0
     fi
 

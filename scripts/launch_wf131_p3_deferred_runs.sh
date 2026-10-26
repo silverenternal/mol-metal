@@ -296,7 +296,12 @@ for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
     log "=== metal=${METAL} seed=${SEED} on ${GPU} ==="
     # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
     # directive; this call site is serial with every other job.
-    if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
+    #
+    # `setsid --wait` puts each run in its own session so the sweep survives
+    # the invoking shell, and still makes the `if` test the TRAINER's status:
+    # bare `setsid` may fork and return 0 before the run starts, which would
+    # turn `die` into an unreachable branch.
+    if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" "${TRAINER}" \
             --metals "${METAL}" \
             --seeds "${SEED}" \
             --epochs "${EPOCHS}" \

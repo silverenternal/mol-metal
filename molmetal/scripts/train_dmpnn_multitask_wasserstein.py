@@ -242,9 +242,16 @@ DEFAULT_W2_GRADIENT_MODE: str = "sliced"
 #: FP associativity, kept for reproducibility/ablation.
 DEFAULT_DMPNN_BACKEND: str = "pyg"
 
-#: The four Inductor ``torch.compile`` modes accepted by ``--torch-compile-mode``
-#: (and the ``-v2`` alias).  Wf-335-R1: default is ``max-autotune-no-cudagraphs``
-#: (CUDA Graphs disabled) to avoid the Wf-330-B4 RuntimeError.
+#: The four Inductor ``torch.compile`` modes the helper factories
+#: (:func:`_make_compiled_encoder_forward` / :func:`_make_compiled_w2_penalty`)
+#: and the ``--torch-compile`` call site accept.  Wf-335-R1: the default is
+#: ``max-autotune-no-cudagraphs`` (CUDA Graphs disabled) to avoid the
+#: Wf-330-B4 RuntimeError.  NOTE 2026-10-27: there is no ``--torch-compile-mode``
+#: CLI flag — af84a545 reverted this file wholesale to a pre-Wf-335-R1 snapshot
+#: and took the flag with it; ``--torch-compile`` reads
+#: ``DEFAULT_TORCH_COMPILE_MODE`` directly.  This comment used to claim the
+#: flag existed, which is how the hardcoded ``reduce-overhead`` at the call
+#: site went unnoticed.
 TORCH_COMPILE_MODES: Tuple[str, ...] = (
     "default",
     "reduce-overhead",
@@ -2249,9 +2256,17 @@ def train_one_metal_one_seed(
         # dynamic_shapes BEFORE any compile call: the training loop produces
         # variable batch sizes when n_train % batch_size != 0.
         torch._dynamo.config.dynamic_shapes = True
+        # 2026-10-27: this used to hardcode mode="reduce-overhead" — the
+        # CUDA-Graphs mode behind the Wf-330-B4 RuntimeError on Ru seed=2 +
+        # Ir seed=0. DEFAULT_TORCH_COMPILE_MODE was declared at module scope
+        # and documented as the default, but no production call site read it.
         try:
-            model = torch.compile(model, mode="reduce-overhead")
-            print("[compute] --torch-compile ENABLED (reduce-overhead)", flush=True)
+            model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)
+            print(
+                f"[compute] --torch-compile ENABLED "
+                f"({DEFAULT_TORCH_COMPILE_MODE})",
+                flush=True,
+            )
         except Exception as exc:  # noqa: BLE001
             # A corrupt inductor cache must not kill the run; eager is
             # bit-for-bit the no-flag path.
@@ -3848,8 +3863,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "torch.compile(model, mode='reduce-overhead') AFTER "
-            "torch._dynamo.config.dynamic_shapes=True. Default OFF."
+            "torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE) AFTER "
+            "torch._dynamo.config.dynamic_shapes=True. Default OFF. The mode "
+            f"is {DEFAULT_TORCH_COMPILE_MODE!r} (CUDA Graphs disabled) and is "
+            "deliberately not a CLI flag: the only other mode anyone has "
+            "wanted, 'reduce-overhead', is the Wf-330-B4 crash."
         ),
     )
     p.add_argument(

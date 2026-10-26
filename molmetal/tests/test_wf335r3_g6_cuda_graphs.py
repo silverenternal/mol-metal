@@ -1,40 +1,60 @@
 """Wf-335-R3 — G6 launch path CUDAGraphs avoidance + safety-lever tests.
 
 Owner: Hugo Lee
-Date: 2026-09-29
+Date: 2026-09-29 (rewritten 2026-10-27)
 Parent: TODO/pending/182_wf124_p3_per_innovation_ablation.md (TODO-182 G6)
 Refs:
   - TODO/completed/330b4_regression_smoke.md §1, §4.3 (Wf-330-B4 MEASURED)
   - TODO/completed/335r1_*.md (Wf-335-R1 — torch.compile mode default flip)
-  - Wf-335-R3 — adds the ``--no-cuda-graphs`` / ``--cudagraphs`` safety-lever
-    CLI pair + wires all 6 launch scripts per Wf-328-W2 enumeration.
 
 Background — Wf-330-B4 MEASURED (2026-09-29): Ru seed=2 + Ir seed=0 failed
 with ``RuntimeError: CUDAGraphs capture ...`` under
-``--torch-compile-mode reduce-overhead``.  Wf-335-R1 (committed) flipped the
-trainer default to ``max-autotune-no-cudagraphs`` so future runs avoid the
-trap by default.  Wf-335-R3 (this commit) adds a HARD OVERRIDE safety
-lever that pins the trainer to a no-CUDA-Graphs mode regardless of any
-explicit ``--torch-compile-mode`` / ``--torch-compile-mode-v2`` override
-that the launcher or user might pass.
+``--torch-compile-mode reduce-overhead``.
 
-Tests (4 total):
+What this file used to assert, and why that was wrong
+-----------------------------------------------------
+The 2026-09-29 version of this file asserted three things that never existed
+in the trainer:
 
-  - test_g6_launcher_has_no_cuda_graphs     (gates the regression: G6 path)
-  - test_torch_compile_mode_default_is_safe (R1 default = max-autotune-no-cudagraphs)
-  - test_six_launch_scripts_have_no_cuda_graphs (all 6 Wf-328-W2 launchers wired)
-  - test_no_cudagraphs_runtime_error         (override contract: mode pinned)
+  * a ``--no-cuda-graphs`` flag passed by six launchers,
+  * ``args.cudagraphs_disabled``, and
+  * ``args.torch_compile_mode`` / ``--torch-compile-mode``.
 
-All tests are CPU-only — no torch.cuda, no real launches.  < 5 s wall.
+MEASURED 2026-10-27: ``parse_args(["--no-cuda-graphs"])`` exits 2 with
+"unrecognized arguments", and neither ``cudagraphs_disabled`` nor
+``torch_compile_mode`` was an argparse dest. Two of the six enumerated
+launchers (``launch_wf124_p3_g4.sh``, ``launch_wf300_cfm_main.sh``) had been
+deleted, and the two surviving G5/G6 launchers had already removed
+``--no-cuda-graphs`` in Wf-r28 / Wf-R32 for exactly that reason. The file was
+therefore red for nine assertions about a CLI surface nobody had built.
+
+What the hazard actually was
+----------------------------
+``TORCH_COMPILE_MODES`` and ``DEFAULT_TORCH_COMPILE_MODE`` were declared at
+module scope in ``train_dmpnn_multitask_wasserstein.py`` and documented as the
+choices of ``--torch-compile-mode``, but no flag read them: the only live
+compile path was ``--torch-compile``, which hardcoded
+``mode="reduce-overhead"`` — the CUDA-Graphs mode behind Wf-330-B4. The "safe
+default" existed only in two helper factories with no production caller. The
+CFM trainer had the same hardcoded mode under a comment claiming the
+"Wf-335-R3 Blackwell cudagraphs safety contract".
+
+The flag itself is gone because ``af84a545`` (Wf-A39-1, the m21 selective
+revert) restored this trainer from a pre-Wf-335-R1 snapshot with a whole-file
+``git checkout``. That commit was about model performance, not about compile
+modes; the flag disappeared as collateral, and ``test_wf327f5_torch_compile.py``
+then pinned its absence. Re-adding a flag would re-litigate that revert, so the
+repair is smaller: the call site now reads ``DEFAULT_TORCH_COMPILE_MODE`` and
+the CFM trainer uses the same constant.
 
 Honest framing (AGENTS.md §5.2):
   - MEASURED: Wf-330-B4 RuntimeError on Ru seed=2 + Ir seed=0.
-  - MEASURED: trainer default switched to max-autotune-no-cudagraphs (R1).
-  - MEASURED: 6 launch scripts (Wf-328-W2 enumeration) updated with
-    ``--no-cuda-graphs`` (R3).
-  - PROJECTED: future G6 / G5 / G4 launches will not reproduce the
-    Wf-330-B4 RuntimeError (BLOCKED on AGENTS.md §5.1 kill_then_adapt
-    for actual GPU verification).
+  - MEASURED 2026-10-27: the three assertions above failed against the trainer.
+  - MEASURED 2026-10-27: after the repair, ``parse_args([])`` and
+    ``parse_args(["--torch-compile"])`` both leave the compile mode at
+    ``max-autotune-no-cudagraphs``; no CLI switch can select a graph mode.
+  - PROJECTED: future G6 / G5 launches will not reproduce the Wf-330-B4
+    RuntimeError (no GPU run performed under the current GPU0 embargo).
 """
 
 from __future__ import annotations
@@ -55,17 +75,22 @@ TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+SAFE_MODES = {"default", "max-autotune-no-cudagraphs"}
+
 
 # ---------------------------------------------------------------------------
-# Constants — the 6 launch scripts that Wf-328-W2 fixed (and R3 re-wires)
-# Cross-ref TODO/completed/328w2_launcher_num_workers_fix.md §2.1
+# Launchers that invoke train_dmpnn_multitask_wasserstein.py.
+#
+# The 2026-09-29 list was Wf-328-W2's six-entry enumeration. Two of those
+# files no longer exist (g4 was closed by TODO-180; wf300 was renamed to
+# wf299). Enumerating deleted paths makes the test red for a reason that has
+# nothing to do with CUDA Graphs, so the list is the set that is on disk now.
 # ---------------------------------------------------------------------------
-WF328W2_TARGETS = (
-    SCRIPTS / "launch_wf124_p3_g4.sh",
+LAUNCHERS_INVOKING_DMPNN = (
     SCRIPTS / "launch_wf124_p3_g5.sh",
     SCRIPTS / "launch_wf124_p3_g6.sh",
     SCRIPTS / "launch_wf310b_g6_final.sh",
-    SCRIPTS / "launch_wf300_cfm_main.sh",
+    SCRIPTS / "launch_wf299_cfm_main.sh",
     SCRIPTS / "retry_g5_missing_pairs.sh",
 )
 
@@ -82,182 +107,210 @@ def _read(path: Path) -> str:
     return path.read_text()
 
 
-def _active_flag_lines(src: str, flag: str) -> list[str]:
-    """Extract ``--<flag>`` lines that are NOT in comments.
+def _active_lines(src: str) -> list[str]:
+    """Lines that are not comments (full-line or trailing ``#``).
 
-    Skips comment lines (start with ``#``) so the Wf-335-R3 banner
-    comment (which mentions ``--no-cuda-graphs`` for documentation
-    purposes) does NOT count as an active override.
+    The launchers document the removed flags in banner comments; those must
+    not count as live arguments. A trailing-comment strip is included because
+    these files put the flag and its rationale on the same line.
     """
     out: list[str] = []
     for raw in src.splitlines():
         line = raw.strip()
-        if line.startswith("#"):
+        if not line or line.startswith("#"):
             continue
-        if flag in line:
-            out.append(line)
+        code = line.split("#", 1)[0].rstrip()
+        if code:
+            out.append(code)
     return out
 
 
-# ---------------------------------------------------------------------------
-# Test 1 — G6 launcher has --no-cuda-graphs (regression gate)
-# ---------------------------------------------------------------------------
-def test_g6_launcher_has_no_cuda_graphs() -> None:
-    """Wf-335-R3 — G6 launcher explicitly passes ``--no-cuda-graphs``.
+def _enables_flag(src: str, flag: str) -> list[str]:
+    """Active lines that pass ``flag`` as a standalone token.
 
-    Background: Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-    was triggered by ``--torch-compile-mode reduce-overhead`` (CUDA Graphs
-    capture inside Inductor).  Wf-335-R1 flipped the trainer default but
-    the G6 launcher is the canonical path that future TODO-182 / Wf-310B
-    runs will use, so the safety lever MUST be explicit in the launcher.
+    ``--torch-compile`` is a prefix of ``--torch-compile-mode``, so a plain
+    substring search would report the mode flag as the enabling switch.
+    """
+    pattern = re.compile(rf"(?<![\w-]){re.escape(flag)}(?![\w-])")
+    return [line for line in _active_lines(src) if pattern.search(line)]
 
-    Test passes iff the G6 launcher contains at least one ACTIVE (non-comment)
-    ``--no-cuda-graphs`` directive.
+
+# ---------------------------------------------------------------------------
+# Test 1 — the G6 launch path cannot reach a CUDA-Graphs compile
+# ---------------------------------------------------------------------------
+def test_g6_launcher_does_not_enable_torch_compile() -> None:
+    """G6 launcher never passes ``--torch-compile``.
+
+    CUDA Graphs only exist behind ``torch.compile`` in this trainer, and
+    ``--torch-compile`` defaults OFF. The G6 path that triggered Wf-330-B4 is
+    therefore graph-free by construction, not by a lever that has to be
+    remembered. If a future edit turns compile on for G6, this test fails and
+    the mode default (test 2) decides whether that is safe.
     """
     src = _read(G6_LAUNCHER)
-    active_lines = _active_flag_lines(src, "--no-cuda-graphs")
-    assert active_lines, (
-        f"G6 launcher ({G6_LAUNCHER.name}) does NOT pass "
-        f"--no-cuda-graphs as an active flag (only comments reference it). "
-        f"Wf-335-R3 requires the safety lever to be explicit so paper §6 "
-        f"audits can verify the lever is wired against the Wf-330-B4 "
-        f"RuntimeError regression."
-    )
-    # Sanity: the line is actually a CLI flag, not just a substring match
-    assert any(
-        "--no-cuda-graphs" in line and not line.startswith("#") for line in active_lines
+    enabling = _enables_flag(src, "--torch-compile")
+    assert not enabling, (
+        f"{G6_LAUNCHER.name} enables --torch-compile:\n  "
+        + "\n  ".join(enabling)
+        + "\nWf-330-B4 (Ru seed=2 + Ir seed=0) died in CUDAGraphs capture on "
+        "this launch path. Leave compile OFF here; if it is genuinely needed, "
+        "pair it with --torch-compile-mode max-autotune-no-cudagraphs and say "
+        "so in the launcher."
     )
 
 
 # ---------------------------------------------------------------------------
-# Test 2 — torch.compile mode default verified
+# Test 2 — the trainer's compile path is CUDA-Graphs-free
 # ---------------------------------------------------------------------------
 def test_torch_compile_mode_default_is_safe() -> None:
-    """Wf-335-R3 — verify the trainer default mode is CUDA-Graphs-free.
+    """``--torch-compile`` compiles with the safe mode, and only that mode.
 
-    Background: Wf-335-R1 flipped
-    ``train_dmpnn_multitask_wasserstein.py`` default ``--torch-compile-mode``
-    from ``reduce-overhead`` (CUDA Graphs) to ``max-autotune-no-cudagraphs``
-    (no CUDA Graphs).  This test reads the source directly and asserts the
-    new default is in place.  If a future refactor reverts the default,
-    this test FAILS and the safety net is restored.
+    Asserts the contract Wf-335-R1 declared but did not implement: the call
+    site reads ``DEFAULT_TORCH_COMPILE_MODE`` instead of a literal. There is
+    deliberately no ``--torch-compile-mode`` flag (af84a545 removed the one
+    Wf-335-R1 added, as collateral of a whole-file revert), so the property is
+    checked at the source, where the literal used to be.
     """
-    trainer_path = TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"
-    src = _read(trainer_path)
-
-    # The argparse default for --torch-compile-mode must be the
-    # no-CUDA-Graphs mode.  Match either the bare form or the indented form.
-    pattern = re.compile(
-        r'["\']--torch-compile-mode["\'].*?default\s*=\s*["\']([^"\']+)["\']',
-        re.DOTALL,
-    )
-    match = pattern.search(src)
-    assert match, (
-        "Could not locate --torch-compile-mode default in trainer source; "
-        "refactor may have moved the argparse block — update this test."
-    )
-    default_mode = match.group(1)
-    assert default_mode in {"default", "max-autotune-no-cudagraphs"}, (
-        f"Trainer --torch-compile-mode default is {default_mode!r}; "
-        f"Wf-335-R1 contract requires 'max-autotune-no-cudagraphs' "
-        f"(or 'default' which also disables CUDA Graphs). "
-        f"Switching back to 'reduce-overhead' or 'max-autotune' would "
-        f"re-introduce the Wf-330-B4 RuntimeError on Ru seed=2 + Ir seed=0."
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+        parse_args,
     )
 
-    # Also assert the function signature default agrees with the argparse
-    # default (drift guard — both must stay CUDA-Graphs-free).
-    sig_match = re.search(
-        r"def\s+train_one_seed\([^)]*torch_compile_mode:\s*str\s*=\s*[\"']([^\"']+)[\"']",
-        src,
-        re.DOTALL,
+    assert DEFAULT_TORCH_COMPILE_MODE in SAFE_MODES, (
+        f"DEFAULT_TORCH_COMPILE_MODE={DEFAULT_TORCH_COMPILE_MODE!r}; "
+        f"must be one of {sorted(SAFE_MODES)} (CUDA Graphs disabled)."
     )
-    if sig_match is not None:
-        sig_default = sig_match.group(1)
-        assert sig_default in {"default", "max-autotune-no-cudagraphs"}, (
-            f"train_one_seed() signature default torch_compile_mode="
-            f"{sig_default!r}; Wf-335-R1 contract requires "
-            f"'max-autotune-no-cudagraphs' or 'default'."
-        )
+
+    src = _read(TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py")
+    # The live call site is an assignment; the helper factories take a ``mode``
+    # parameter and the --help text quotes the call, so neither matches.
+    call_re = re.compile(
+        r"^\s*model\s*=\s*torch\.compile\(model,\s*mode\s*=\s*([^)\s]+)\s*\)"
+    )
+    modes = [
+        m.group(1)
+        for m in (call_re.match(line) for line in _active_lines(src))
+        if m
+    ]
+    assert modes, (
+        "No live torch.compile(model, mode=...) assignment found; the call "
+        "site moved — update this test rather than deleting it."
+    )
+    assert modes == ["DEFAULT_TORCH_COMPILE_MODE"], (
+        "The live compile call site uses "
+        f"{modes!r} instead of DEFAULT_TORCH_COMPILE_MODE. A literal there "
+        "means --torch-compile can select a CUDA-Graphs mode (Wf-330-B4)."
+    )
+
+    args = parse_args([])
+    assert args.torch_compile is False, (
+        "parse_args([]) must leave torch.compile OFF; a default-on compile "
+        "would put every run inside the Wf-330-B4 hazard."
+    )
 
 
 # ---------------------------------------------------------------------------
-# Test 3 — all 6 launch scripts updated with --no-cuda-graphs
+# Test 3 — no D-MPNN launcher turns compile on
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
     "launcher_path",
-    WF328W2_TARGETS,
+    LAUNCHERS_INVOKING_DMPNN,
     ids=lambda p: p.name,
 )
-def test_six_launch_scripts_have_no_cuda_graphs(launcher_path: Path) -> None:
-    """Wf-335-R3 — all 6 Wf-328-W2 launchers wired with ``--no-cuda-graphs``.
+def test_launch_scripts_do_not_enable_torch_compile(launcher_path: Path) -> None:
+    """Every launcher that invokes the D-MPNN trainer leaves compile OFF.
 
-    Cross-ref TODO/completed/328w2_launcher_num_workers_fix.md §2.1 for the
-    enumeration.  Each of the 6 launchers (g4, g5, g6, g6_final, wf300_cfm
-    Wave-B, retry_g5) must pass ``--no-cuda-graphs`` as an active (non-
-    comment) flag in its COMMON_ARGS array (or inline invocation).
-
-    The contract: every Wf-328-W2 launcher that invokes
-    ``train_dmpnn_multitask_wasserstein.py`` must also wire the Wf-335-R3
-    safety lever, so paper §6 audits can verify end-to-end.
+    This is the property the 2026-09-29 version was trying to protect with a
+    ``--no-cuda-graphs`` flag: no shipped launch path reaches CUDA Graphs.
+    Stated against the switch that actually exists, it is checkable.
     """
     src = _read(launcher_path)
-    active_lines = _active_flag_lines(src, "--no-cuda-graphs")
-    assert active_lines, (
-        f"{launcher_path.name}: missing active --no-cuda-graphs flag. "
-        f"Wf-335-R3 requires this safety lever on all 6 launchers that "
-        f"invoke train_dmpnn_multitask_wasserstein.py."
+    enabling = _enables_flag(src, "--torch-compile")
+    assert not enabling, (
+        f"{launcher_path.name} enables --torch-compile:\n  "
+        + "\n  ".join(enabling)
+        + "\nNo shipped launcher has ever enabled it. If that changes, the "
+        "mode must be pinned safe in the same argv."
     )
 
 
 # ---------------------------------------------------------------------------
-# Test 4 — no_CUDAGraphs_runtime_error (override contract)
+# Test 4 — parse_args override contract
 # ---------------------------------------------------------------------------
 def test_no_cudagraphs_runtime_error() -> None:
-    """Wf-335-R3 — verify the trainer's ``--no-cuda-graphs`` flag is parsed
-    and the ``--cudagraphs`` opt-out is also parsed (override contract).
+    """Enabling compile does not change the mode, because there is no mode knob.
 
-    This is the runtime-error-prevention contract: the trainer MUST accept
-    ``--no-cuda-graphs`` (the default; safety lever ON) and ``--cudagraphs``
-    (explicit opt-out for Wf-326C / Wf-328-W1 reproducer).  We exercise
-    both via parse_args() in CPU-only mode (no torch.cuda needed).
+    Two cases:
 
-    Background: Wf-330-B4 MEASURED RuntimeError was triggered when the
-    trainer ran under ``--torch-compile-mode reduce-overhead``.  R3 adds
-    a HARD OVERRIDE: ``--no-cuda-graphs`` (default ON) forces the trainer
-    to use a CUDA-Graphs-free mode regardless of any explicit override,
-    so the Wf-330-B4 RuntimeError is structurally prevented at the CLI
-    parse layer.
+      A. no flags            → compile off
+      B. ``--torch-compile`` → compile on, and the call site's mode is the
+         module constant
+
+    Case B is the Wf-330-B4 gate. Until 2026-10-27 the call site hardcoded
+    ``mode="reduce-overhead"``, so B silently meant "CUDA Graphs ON" no matter
+    what any default said. A flag cannot override it now because there is no
+    flag; the only way to reach a graph mode is to edit
+    ``DEFAULT_TORCH_COMPILE_MODE``, which this test would catch.
     """
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        DEFAULT_TORCH_COMPILE_MODE,
+        parse_args,
+    )
 
-    # Case A: --no-cuda-graphs (the default; safety lever ON).
+    # A
     args_default = parse_args([])
-    assert args_default.cudagraphs_disabled is True, (
-        "Trainer default for cudagraphs_disabled must be True "
-        "(Wf-335-R3 safety lever default ON per Wf-330-B4 MEASURED)."
+    assert args_default.torch_compile is False
+
+    # B
+    args_on = parse_args(["--torch-compile"])
+    assert args_on.torch_compile is True
+    assert DEFAULT_TORCH_COMPILE_MODE in SAFE_MODES, (
+        f"--torch-compile would compile with {DEFAULT_TORCH_COMPILE_MODE!r}; "
+        f"that is a CUDA-Graphs mode. Wf-330-B4 (Ru seed=2 + Ir seed=0) died "
+        f"in CUDAGraphs capture on this exact path."
+    )
+    # The flag is the only compile switch; nothing can select a mode at the
+    # CLI. Pin that, because re-adding a mode flag is how the hazard returns.
+    assert not hasattr(args_on, "torch_compile_mode"), (
+        "--torch-compile-mode reappeared. It was removed by af84a545 and its "
+        "return must be paired with a default of "
+        f"{DEFAULT_TORCH_COMPILE_MODE!r} and a test update, not silently."
     )
 
-    # Case B: --no-cuda-graphs explicit.
-    args_on = parse_args(["--no-cuda-graphs"])
-    assert (
-        args_on.cudagraphs_disabled is True
-    ), "--no-cuda-graphs must set cudagraphs_disabled=True."
 
-    # Case C: --cudagraphs explicit (opt-out for Wf-326C reproducer).
-    args_off = parse_args(["--cudagraphs"])
-    assert args_off.cudagraphs_disabled is False, (
-        "--cudagraphs must set cudagraphs_disabled=False "
-        "(explicit opt-out, Wf-326C / Wf-328-W1 reproducer only)."
+# ---------------------------------------------------------------------------
+# Test 5 — the CFM trainer carries the same safe mode
+# ---------------------------------------------------------------------------
+def test_cfm_trainer_compile_path_is_graph_free() -> None:
+    """The CFM trainer's compile path does not hardcode a CUDA-Graphs mode.
+
+    Until 2026-10-27 it did — ``torch.compile(model, mode="reduce-overhead")``
+    under a comment that claimed the Wf-335-R3 safety contract. Both trainers
+    now read ``DEFAULT_TORCH_COMPILE_MODE``.
+    """
+    cfm_path = TEST_SCRIPTS_DIR / "train_cfm_yuelbond_wasserstein.py"
+    src = _read(cfm_path)
+
+    const = re.search(
+        r'^DEFAULT_TORCH_COMPILE_MODE\s*=\s*["\']([^"\']+)["\']',
+        src,
+        re.MULTILINE,
+    )
+    assert const, (
+        "train_cfm_yuelbond_wasserstein.py has no DEFAULT_TORCH_COMPILE_MODE "
+        "constant; the compile call site is unconstrained again."
+    )
+    assert const.group(1) in SAFE_MODES, (
+        f"CFM DEFAULT_TORCH_COMPILE_MODE={const.group(1)!r}; must be one of "
+        f"{sorted(SAFE_MODES)}."
     )
 
-    # Case D: torch_compile_mode default is CUDA-Graphs-free
-    # (cross-cuts Test 2 — restated here for the override contract).
-    assert args_default.torch_compile_mode in {
-        "default",
-        "max-autotune-no-cudagraphs",
-    }, (
-        f"Trainer torch_compile_mode default is "
-        f"{args_default.torch_compile_mode!r}; must be "
-        f"'default' or 'max-autotune-no-cudagraphs' (CUDA-Graphs-free)."
+    hardcoded = [
+        line
+        for line in _active_lines(src)
+        if re.search(r"torch\.compile\(.*mode\s*=\s*[\"']", line)
+    ]
+    assert not hardcoded, (
+        "CFM compile call passes a literal mode instead of "
+        "DEFAULT_TORCH_COMPILE_MODE:\n  " + "\n  ".join(hardcoded)
     )

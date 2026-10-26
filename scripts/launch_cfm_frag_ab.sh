@@ -143,7 +143,13 @@ run_arm () {
   local cfg="$1" dir="$2" tag="$3"
   echo "[frag-ab] === ${tag} start $(date -Is)"
   # §5.6: trainer writes its own artefacts; we only redirect the log.
-  "${PY}" "${TRAINER}" --config "${cfg}" \
+  #
+  # `setsid --wait`: the caller backgrounds this function, but a background job
+  # is still in the wrapper's session, so if the wrapper dies the trainer is
+  # SIGTERM'd with it (BLK-I1 mechanism a). `--wait` keeps `$?` meaning the
+  # trainer's status — bare `setsid` may fork and return 0 immediately, which
+  # would report success for a run that never started.
+  setsid --wait "${PY}" "${TRAINER}" --config "${cfg}" \
     > "${dir%/}.log" 2>&1
   local rc=$?
   echo "[frag-ab] === ${tag} exit ${rc} $(date -Is)"

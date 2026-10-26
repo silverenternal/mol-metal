@@ -206,6 +206,57 @@ class TestNoFalsePositives:
         )
         assert "mangled_detach" not in _kinds(w)
 
+    def test_setsid_after_an_if_keyword_is_command_position(self, tmp_path):
+        """`if <env> setsid --wait cmd; then` detaches correctly.
+
+        The gate reported this as mangled until 2026-10-26, on two real
+        launchers (launch_wf131_p3_deferred_runs.sh,
+        launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh) that use the `if`
+        form precisely so the sweep can `die` on a failed run. The head is
+        `if CUDA_VISIBLE_DEVICES=0`, which is a shell keyword plus an env
+        assignment, not a trainer that has already started.
+        """
+        w = _write(
+            tmp_path,
+            "launch_ok_if_setsid.sh",
+            """\
+            #!/usr/bin/env bash
+            set -e
+            PY="${REPO}/.venv/bin/python"
+            if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" train_moleculenet.py \\
+                    --config c.yaml; then
+                echo ok
+            else
+                exit 1
+            fi
+            """,
+        )
+        assert "mangled_detach" not in _kinds(w)
+
+    def test_the_if_keyword_does_not_hide_a_real_mangled_detach(self, tmp_path):
+        """Stripping `if` must not turn a spliced detach into a pass.
+
+        The head after the keyword is `${PY} "${TRAINER}" --config c.yaml`,
+        i.e. the trainer already started and `setsid` is being handed to it as
+        argv. That is the defect the gate exists for.
+        """
+        w = _write(
+            tmp_path,
+            "launch_mangled_under_if.sh",
+            """\
+            #!/usr/bin/env bash
+            set -e
+            PY="${REPO}/.venv/bin/python"
+            if CUDA_VISIBLE_DEVICES=0 "${PY}" train_moleculenet.py \\
+                    --config c.yaml \\
+                    setsid nohup --out-dir out; then
+                echo ok
+            fi
+            """,
+        )
+        assert "mangled_detach" in _kinds(w)
+        assert _severities(w)["mangled_detach"] == "FAIL"
+
     def test_spawned_trainer_is_detached(self, tmp_path):
         w = _write(
             tmp_path,

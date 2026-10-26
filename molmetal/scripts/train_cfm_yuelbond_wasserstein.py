@@ -933,6 +933,14 @@ DEFAULT_VAL_CLOUDS = 192
 # mismatch a caller would otherwise have to learn by reading trainer source.
 DEFAULT_HIDDEN_DIM = 128
 DEFAULT_N_LAYERS = 3
+# 2026-10-27 — the Inductor mode used by ``--torch-compile``.  The call site
+# used to hardcode ``mode="reduce-overhead"``, which is the CUDA-Graphs mode
+# behind the Wf-330-B4 RuntimeError on Ru seed=2 + Ir seed=0, while the
+# surrounding comment claimed the "Wf-335-R3 Blackwell cudagraphs safety
+# contract".  The D-MPNN trainer has carried the same constant since
+# Wf-335-R1; this makes the two trainers agree.  ``reduce-overhead`` remains
+# reachable by editing this constant for the Wf-326C / Wf-328-W1 reproducer.
+DEFAULT_TORCH_COMPILE_MODE = "max-autotune-no-cudagraphs"
 # YuelBond bond-length cutoff (Å).  Mirrors ``YuelBondDecoderHead``'s own
 # default; that class filters ``d < cutoff`` and its docstring's worked
 # example is "cutoff=3.5 Å excludes 4.1 Å Cl-Cl".  Exposed as
@@ -14012,9 +14020,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "Wf-431-B1 NEW: torch.compile(model, mode='reduce-overhead') "
+            "Wf-431-B1 NEW: torch.compile(model, "
+            f"mode={DEFAULT_TORCH_COMPILE_MODE!r}) "
             "AFTER torch._dynamo.config.dynamic_shapes=True guard per "
-            "Wf-358-A3 + Wf-335-R3 Blackwell cudagraphs safety contract. "
+            "Wf-358-A3 + Wf-335-R3 Blackwell cudagraphs safety contract "
+            "(CUDA Graphs disabled). "
             "Default OFF; SCAFFOLD-only flag. Projected lift +20-50 pct "
             "GPU utilization on Blackwell sm_120 (per Wf-431-A1 sec F1). "
             "Bit-exact OFF when False."
@@ -15278,7 +15288,7 @@ def main() -> int:
         # custom Python loop at line 762+ produces variable batch sizes
         # when n_train % batch_size != 0).
         torch._dynamo.config.dynamic_shapes = True
-        # Defensive: torch.compile on CPU with reduce-overhead mode may
+        # Defensive: torch.compile on CPU with a CUDA-Graphs mode may
         # trigger an inductor cache corruption on some hosts
         # (InductorError: file too short on /tmp/torchinductor_hugo/...
         # .main.so). Wrap in try/except so a corrupt inductor cache
@@ -15287,10 +15297,10 @@ def main() -> int:
         # the training loop can still run. The user can clear the
         # inductor cache manually: `rm -rf /tmp/torchinductor_*`.
         try:
-            model = torch.compile(model, mode="reduce-overhead")
+            model = torch.compile(model, mode=DEFAULT_TORCH_COMPILE_MODE)
             print(
                 "[Wf-431-B1] --torch-compile ENABLED: model compiled "
-                "(mode='reduce-overhead', dynamic_shapes=True)",
+                f"(mode={DEFAULT_TORCH_COMPILE_MODE!r}, dynamic_shapes=True)",
                 flush=True,
             )
         except Exception as _ind_exc:

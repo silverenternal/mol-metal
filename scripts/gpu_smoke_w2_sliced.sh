@@ -27,8 +27,8 @@
 #   - exercises the sliced mode on a tiny D-MPNN cohort (e.g. 100 ligands
 #     × 1 seed × 1 epoch) so any torch + sliced regression is caught
 #     BEFORE the production training of the CFM/D-MPNN retrain runs;
-#   - propagates Wf-328 + Wf-335 fixes (CPU num-workers 8, BF16, TF32,
-#     torch-compile-mode-v2 max-autotune-no-cudagraphs, no-cuda-graphs);
+#   - propagates Wf-328 + Wf-335 fixes (CPU num-workers 8, TF32; CUDA Graphs
+#     are structurally off because --torch-compile is not passed);
 #   - enforces the kill_then_adapt USER_OK gate per AGENTS.md §5.1;
 #   - reports a HONEST-NEGATIVE if the W₂ sliced path regresses on
 #     Blackwell sm_120 (recorded for paper §6 reproducibility audits).
@@ -39,10 +39,10 @@
 #   - Wf-328 + Wf-335 fixes are propagated to the trainer:
 #       * --w2-gradient-mode sliced (this is the path under test)
 #       * --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS)
-#       * --bf16, --tf32 (Wf-328-W3, W4)
-#       * --num-workers 8 (Wf-328-W6)
-#       * --torch-compile-mode-v2 max-autotune-no-cudagraphs (Wf-335-R1)
-#       * --no-cuda-graphs safety lever (Wf-335-R3)
+#       * --tf32 (Wf-328-W4)
+#     Five flags this list used to advertise (--bf16, --num-workers,
+#     --torch-compile-mode-v2, --no-cuda-graphs, --smoke) are not declared by
+#     the trainer's argparse; see the removal note at the launch site.
 #
 # HONEST FRAMING (party-twenty-spirit §3.5):
 #   - MEASURED (2026-09-29 15:30): --w2-gradient-mode default is "sort";
@@ -206,11 +206,10 @@ launch_w2_sliced_smoke() {
   log "  trainer: molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
   log "  Wf-328+Wf-335 fixes:"
   log "    --w2-gradient-mode sliced (this smoke — production default is 'sort' per Wf-328-W5)"
-  log "    --torch-compile-mode-v2 max-autotune-no-cudagraphs (Wf-335-R1)"
-  log "    --no-cuda-graphs (Wf-335-R3 safety lever)"
-  log "    --num-workers 8 (Wf-328-W6 / Wf-326B OPTIMAL_NUM_WORKERS)"
-  log "    --cpu-num-workers 8 (Wf-328-W2)"
-  log "    --bf16 / --tf32 (Wf-328-W3, W4)"
+  log "    --cpu-num-workers 8 (Wf-328-W2; the trainer's only worker flag)"
+  log "    --tf32 (Wf-328-W4)"
+  log "    no --torch-compile, so no CUDA Graphs (the Wf-335-R3 lever is"
+  log "      structural here, not a flag — see the removal note below)"
   log "  expected wall: ~5 min GPU cuda:0 (100 ligands × 1 seed × 1-epoch smoke)"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
@@ -218,22 +217,39 @@ launch_w2_sliced_smoke() {
     echo "    --config ${DMPNN_CONFIG} \\" | tee -a "${target_log}"
     echo "    --cuda-visible-devices 0 \\" | tee -a "${target_log}"
     echo "    --w2-gradient-mode sliced \\" | tee -a "${target_log}"
-    echo "    --epochs 1 --seeds 0 --smoke --num-workers 8 --cpu-num-workers 8 \\" | tee -a "${target_log}"
-    echo "    --torch-compile-mode-v2 max-autotune-no-cudagraphs --no-cuda-graphs \\" | tee -a "${target_log}"
-    echo "    --bf16 --tf32 \\" | tee -a "${target_log}"
+    echo "    --epochs 1 --seeds 0 \\" | tee -a "${target_log}"
+    echo "    --cpu-num-workers 8 \\" | tee -a "${target_log}"
+    echo "    --tf32 \\" | tee -a "${target_log}"
     echo "    --out-dir ${OUT_BASE}" | tee -a "${target_log}"
     return 0
   fi
 
+  # Five flags were removed here on 2026-10-27 because the trainer does not
+  # declare them: `--smoke`, `--num-workers`, `--torch-compile-mode-v2`,
+  # `--no-cuda-graphs`, `--bf16`.  argparse rejected the FIRST one it met and
+  # exited rc=2, so this smoke could not run at all — it printed a pid and then
+  # died, which reads exactly like a launched job.
+  #
+  # MEASURED against train_dmpnn_multitask_wasserstein.parse_args:
+  #   ACCEPTED  --cpu-num-workers, --tf32, --channels-last, --torch-compile,
+  #             --w2-gradient-mode
+  #   REJECTED  --num-workers, --torch-compile-mode-v2, --no-cuda-graphs,
+  #             --bf16, --smoke
+  #
+  # What replaces each:
+  #   --smoke        -> `--epochs 1 --seeds 0` is the smoke (already here).
+  #   --num-workers  -> `--cpu-num-workers` is the trainer's only worker flag.
+  #   --torch-compile-mode-v2 / --no-cuda-graphs -> CUDA graphs only exist
+  #                     behind `--torch-compile`, which is NOT passed, so the
+  #                     lever is already closed structurally.
+  #   --bf16         -> not a CLI flag; BF16 is resolved by configure_bf16().
   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py" \
     --config "${DMPNN_CONFIG}" \
     --cuda-visible-devices 0 \
     --w2-gradient-mode sliced \
-    --epochs 1 --seeds 0 --smoke \
-    --num-workers 8 --cpu-num-workers 8 \
-    --torch-compile-mode-v2 max-autotune-no-cudagraphs \
-    --no-cuda-graphs \
-    --bf16 --tf32 \
+    --epochs 1 --seeds 0 \
+    --cpu-num-workers 8 \
+    --tf32 \
     --out-dir "${OUT_BASE}" \
     > "${target_log}" 2>&1 &
   local pid=$!
