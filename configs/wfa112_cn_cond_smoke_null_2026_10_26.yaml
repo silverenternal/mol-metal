@@ -1,0 +1,162 @@
+# configs/wfa112_cn_cond_smoke_null_2026_10_26.yaml — MOD5 smoke, CPU, NULL arm.
+#
+# The bit-exactness arm.  The channel is BUILT (so the module exists and is in
+# the optimizer) but every row is dropped to the null token, because
+# `cn_conditioning_dropout: 1.0` makes `rand() >= 1.0` false for every row.
+# The forward must then be the OFF arm's forward, exactly: the null row is
+# zero, and a zero bias added to the atom input changes nothing.
+#
+# If epoch-0 train_loss / fm_term differ from the OFF arm, the null row is not
+# zero or the bias is not purely additive, and CFG's unconditional branch is
+# not what it is claimed to be.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+
+flow:
+  use_fm_objective: true
+  fm_weight: 1.0
+  fm_noise_sigma: 2.485
+  fm_t_per_cloud: 1
+  fm_t_dist: log_normal
+  fm_log_normal_mu: 0.0
+  fm_log_normal_sigma: 3.0
+  prediction_target: velocity
+  velocity_head: vector_channels
+  vector_channels: 8
+  vector_channel_norm_gain: fixed
+  velocity_head_init: lsq
+  velocity_head_init_knots: 9
+  metal_conditioning: embedding
+  t_embedding_dim: 32
+
+  # MOD1 off: the smoke's single variable is MOD5.
+  typed_edge_features: false
+  typed_edge_classes: 5
+  typed_edge_dropout: 0.0
+
+  # ---- the one variable this arm adds (MOD5) ----------------------------
+  # The field knows which metal it is building but nothing about how many
+  # donors that metal should have.  One embedding row per CN, added to the
+  # atom input exactly where the metal bias is added.  Row 0 is the null
+  # token and is zero, which is both the bit-exactness device and the CFG
+  # unconditional branch.
+  cn_conditioning: true
+  cn_max: 12
+  # 1.0 drops EVERY row to the null token: the channel exists, and its
+  # contribution must be exactly zero.
+  cn_cfg_scale: 1.0
+  # -1 = each template's own CN.
+  cn_request_override: -1
+  cn_conditioning_dropout: 1.0
+
+  fm_ode_term_weight: 0.0
+  energy_conservation_weight: 0.0
+  geometry_consistency_weight: 0.0
+  sboo3_term_weight: 0.05
+  sboo3_n_rot: 1
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  dative_distance_cutoff: 2.6
+  metal_placement: legacy
+  use_metal_pair_features: true
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 4
+  method: euler
+  optimizer: adam
+  warmup_steps: 0
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  bond_length_guidance_weight: 0.0
+  ring_template_weight: 0.0
+
+protocol:
+  n_train: 64
+  n_val: 32
+  batch_size: 8
+  lr: 0.001
+  gen_validity_samples: 0
+  gen_eval_n: 32
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  epochs: 7
+  n_seeds_min: 1
+  scheduler:
+    type: none
+    warmup_epochs: 0
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+  early_stop_patience: 999
+
+output:
+  base_dir: results/wfa112_cn_cond_smoke_null_2026_10_26
+  log_master: results/wfa112_cn_cond_smoke_null_2026_10_26/master.log
+  ckpt_dir: results/wfa112_cn_cond_smoke_null_2026_10_26/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+
+compute:
+  gpu: cpu
+  device: cpu
+
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  user_ok_granted: "Wf-A112 CN-conditioning smoke (2026-10-26), CPU, 64 clouds x 7 epochs"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+
+honest_framing:
+  claims:
+  - "The CN channel is built, opt-in, and trained: its embedding gradient is
+    non-zero and the null row stays exactly zero."
+  do_not_claim:
+  - "That the field obeys a requested coordination number.  That is
+    conditional_success on a trained checkpoint, not a 64-cloud smoke."
+  deferred:
+  - "conditional_success at cfg_scale 1.0 vs 2.0 on the T3 pool."

@@ -1,0 +1,379 @@
+{
+  "cells": {
+    "cfg1__req_2": {
+      "cfg_scale": 1.0,
+      "conditional_success": 0.75,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 4,
+        "1": 4,
+        "2": 48,
+        "3": 2,
+        "4": 3,
+        "6": 3
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.125,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 2,
+      "requested_cn_hist": {
+        "2": 64
+      },
+      "single_fragment_ratio": 0.0625
+    },
+    "cfg1__req_4": {
+      "cfg_scale": 1.0,
+      "conditional_success": 0.0625,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 5,
+        "1": 2,
+        "2": 46,
+        "3": 5,
+        "4": 4,
+        "6": 2
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.140625,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 4,
+      "requested_cn_hist": {
+        "4": 64
+      },
+      "single_fragment_ratio": 0.03125
+    },
+    "cfg1__req_6": {
+      "cfg_scale": 1.0,
+      "conditional_success": 0.03125,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 1,
+        "1": 6,
+        "2": 48,
+        "3": 1,
+        "4": 6,
+        "6": 2
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.203125,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 6,
+      "requested_cn_hist": {
+        "6": 64
+      },
+      "single_fragment_ratio": 0.046875
+    },
+    "cfg1__req_truth": {
+      "cfg_scale": 1.0,
+      "conditional_success": 0.015625,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 3,
+        "1": 4,
+        "2": 48,
+        "3": 3,
+        "4": 4,
+        "6": 2
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.140625,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": "truth",
+      "requested_cn_hist": {
+        "3": 2,
+        "4": 2,
+        "5": 9,
+        "6": 17,
+        "7": 16,
+        "8": 11,
+        "9": 7
+      },
+      "single_fragment_ratio": 0.015625
+    },
+    "cfg2__req_2": {
+      "cfg_scale": 2.0,
+      "conditional_success": 0.734375,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 3,
+        "1": 6,
+        "2": 47,
+        "3": 3,
+        "4": 1,
+        "5": 1,
+        "6": 3
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.125,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 2,
+      "requested_cn_hist": {
+        "2": 64
+      },
+      "single_fragment_ratio": 0.046875
+    },
+    "cfg2__req_4": {
+      "cfg_scale": 2.0,
+      "conditional_success": 0.03125,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 4,
+        "1": 4,
+        "2": 47,
+        "3": 3,
+        "4": 2,
+        "5": 1,
+        "6": 3
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.15625,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 4,
+      "requested_cn_hist": {
+        "4": 64
+      },
+      "single_fragment_ratio": 0.015625
+    },
+    "cfg2__req_6": {
+      "cfg_scale": 2.0,
+      "conditional_success": 0.046875,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 3,
+        "1": 4,
+        "2": 48,
+        "3": 3,
+        "4": 2,
+        "5": 1,
+        "6": 3
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.1875,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": 6,
+      "requested_cn_hist": {
+        "6": 64
+      },
+      "single_fragment_ratio": 0.046875
+    },
+    "cfg2__req_truth": {
+      "cfg_scale": 2.0,
+      "conditional_success": 0.03125,
+      "decode_ratio": 1.0,
+      "decoded_cn_hist": {
+        "0": 3,
+        "1": 3,
+        "2": 49,
+        "3": 2,
+        "4": 2,
+        "5": 1,
+        "6": 4
+      },
+      "failure_reasons": {
+        "ok": 64
+      },
+      "mean_decoded_cn": 2.25,
+      "metal_retention": 1.0,
+      "n_clouds": 64,
+      "n_scored": 64,
+      "request": "truth",
+      "requested_cn_hist": {
+        "3": 2,
+        "4": 2,
+        "5": 9,
+        "6": 17,
+        "7": 16,
+        "8": 11,
+        "9": 7
+      },
+      "single_fragment_ratio": 0.015625
+    }
+  },
+  "checkpoint": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "checkpoint_args_used": [
+    "bond_aux_temperature",
+    "bond_head_kind",
+    "bond_pair_chemistry",
+    "bond_predictor",
+    "bond_rbf_features",
+    "bond_z_metal_set",
+    "bond_z_table",
+    "clash_penalty_weight",
+    "cn_conditioning",
+    "cn_conditioning_dropout",
+    "cn_max",
+    "cutoff",
+    "fm_batch_chunk_max_clouds",
+    "fm_batch_chunk_ratio",
+    "fm_objective",
+    "hidden_dim",
+    "max_atomic_number",
+    "metal_conditioning",
+    "metal_frame_channels",
+    "n_edge_layers",
+    "n_layers",
+    "n_rbf",
+    "pocket_inject_per_layer",
+    "pocket_per_layer",
+    "prediction_target",
+    "q_head_enabled",
+    "radial_centroid_masked",
+    "t_embedding_dim",
+    "tmqm_init_path",
+    "typed_edge_classes",
+    "typed_edge_dropout",
+    "typed_edge_features",
+    "use_bond_head_skip",
+    "use_egnn_velocity",
+    "use_metal_pair_features",
+    "use_tmqm_init",
+    "vector_channel_norm_gain",
+    "vector_channels",
+    "velocity_head",
+    "velocity_head_init",
+    "x1_denominator_floor",
+    "z_table"
+  ],
+  "checkpoint_cn_conditioning": true,
+  "checkpoint_epoch": 0,
+  "date": "2026-10-26",
+  "dose_response": {
+    "cfg1": {
+      "2": 2.125,
+      "4": 2.140625,
+      "6": 2.203125,
+      "range": 0.078125,
+      "truth": 2.140625
+    },
+    "cfg2": {
+      "2": 2.125,
+      "4": 2.15625,
+      "6": 2.1875,
+      "range": 0.125,
+      "truth": 2.25
+    }
+  },
+  "honest_limits": [
+    "conditional_success counts a decode whose metal degree equals the request; a decode that failed is excluded via conditional_n, so read n_scored beside it.",
+    "metal_retention is the share of decoded molecules that contain a metal at all; it does not check that it is the REQUESTED metal.",
+    "A single conditional_success cell is GAMEABLE.  MEASURED on the 7-epoch smoke checkpoint: request 2 scores 0.750 while requests 4 and 6 score 0.062 and 0.031, and the decoded mean CN is 2.13 in all three cells.  The model emits a metal with ~2 bonds no matter what is asked, so 'request the modal CN' passes a 60% bar on a channel that does not steer.  The gate has to be the dose-response range across requests, not one cell.",
+    "This script does not establish that the model should obey a request, only whether it does at this checkpoint."
+  ],
+  "metric": "wfa112_cn_cond_ab",
+  "pool": {
+    "metals": "Pt,Ru,Ir,Rh,Os,Re",
+    "n_clouds": 64,
+    "split": "val",
+    "truth_cn_hist": {
+      "3": 2,
+      "4": 2,
+      "5": 9,
+      "6": 17,
+      "7": 16,
+      "8": 11,
+      "9": 7
+    },
+    "truth_cn_mean": 6.625
+  },
+  "sampler": {
+    "method": "euler",
+    "n_steps": 4,
+    "noise_sigma": 2.485,
+    "pairing": "every cell shares the generation seed, hence x0 and the integration grid",
+    "seed": 0
+  },
+  "tag": "MEASURED",
+  "velocity_sensitivity": {
+    "definition": "||v(cn=r) - v(null)|| / ||v(null)||, L2 over the whole batch, one x and one t per row",
+    "edges_per_cloud": 3252,
+    "n_atoms_padded": 61,
+    "n_batch": 16,
+    "n_edges_total": 52032,
+    "per_request": {
+      "t=0.1": {
+        "cn_2": 0.012259645771744975,
+        "cn_3": 0.013732101004921343,
+        "cn_4": 0.02854139651783653,
+        "cn_5": 0.02360926023504744,
+        "cn_6": 0.023725796064735228,
+        "cn_7": 0.01973372830203997,
+        "cn_8": 0.010166598466716385,
+        "cn_9": 0.01950570085135886,
+        "null_norm": 100.36893463134766
+      },
+      "t=0.3": {
+        "cn_2": 0.024457822445017832,
+        "cn_3": 0.010564983030464447,
+        "cn_4": 0.02595059959505776,
+        "cn_5": 0.02311815159892181,
+        "cn_6": 0.034038392447263977,
+        "cn_7": 0.01876385152899422,
+        "cn_8": 0.018111086816210445,
+        "cn_9": 0.01583019156722342,
+        "null_norm": 76.79845428466797
+      },
+      "t=0.5": {
+        "cn_2": 0.0701732246103281,
+        "cn_3": 0.041455383276279865,
+        "cn_4": 0.09647553186836748,
+        "cn_5": 0.09842049304051959,
+        "cn_6": 0.06492963870420906,
+        "cn_7": 0.06729381193022871,
+        "cn_8": 0.061584040216534346,
+        "cn_9": 0.04951813884736933,
+        "null_norm": 41.95466232299805
+      },
+      "t=0.7": {
+        "cn_2": 0.16088423650626887,
+        "cn_3": 0.21594978281759894,
+        "cn_4": 0.3878219125754425,
+        "cn_5": 0.31007925148628446,
+        "cn_6": 0.5440748195133019,
+        "cn_7": 0.4010430361077548,
+        "cn_8": 0.1268638226165203,
+        "cn_9": 0.25608109701848625,
+        "null_norm": 9.339695930480957
+      },
+      "t=0.9": {
+        "cn_2": 0.048581381297897325,
+        "cn_3": 0.061371705668992485,
+        "cn_4": 0.10147289813320676,
+        "cn_5": 0.06921588574660839,
+        "cn_6": 0.15342864375914383,
+        "cn_7": 0.09975006347360224,
+        "cn_8": 0.04816603761244868,
+        "cn_9": 0.08042254303271994,
+        "null_norm": 33.6253662109375
+      }
+    }
+  },
+  "what": "Wf-A112 (MOD5/T8): does a requested coordination number reach the velocity field (velocity_sensitivity) and does the decoded metal obey it (conditional_success), across a request sweep and two guidance scales, on one paired noise draw."
+}

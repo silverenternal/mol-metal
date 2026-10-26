@@ -194,7 +194,15 @@
       "where": "molmetal/adapters/flow_matching_lipman/ (metal embedding table) + new coordination head",
       "change": "Extend the metal conditioning table from metal identity to (metal, coordination number) pairs; add a coordination-number head so the realised CN is measurable; add classifier-free guidance with a config-keyed scale so the condition can be strengthened at sample time.",
       "done_when": "given (metal, CN), >=60% of samples match both, metal retention >=0.95, and the guidance scale is reported with the number it was measured at.",
-      "risk": "Guidance trades diversity for adherence; both numbers have to be reported together or the metric is gameable."
+      "risk": "Guidance trades diversity for adherence; both numbers have to be reported together or the metric is gameable.",
+      "status": "IN_PROGRESS",
+      "evidence": [
+        "molmetal/adapters/flow_matching_lipman/conditioning.py",
+        "molmetal/tests/test_cn_conditioning.py",
+        "molmetal/scripts/wfa112_cn_cond_ab.py",
+        "metrics/by_metric/wfa112_cn_conditioning_smoke.json"
+      ],
+      "note": "The coordination-number HEAD in `change` was not built, and the substitution is deliberate: the realised CN is read from the metal's degree in the decoded RDKit molecule. A head predicts what the field thinks; the done_when is about the sample, and on a generated sample the graph IS the answer. Building a head would add a second, weaker measurement of the same thing."
     },
     {
       "id": "MOD6",
@@ -468,9 +476,19 @@
         "D6"
       ],
       "done_when": ">=60% of samples match a requested (metal, CN), metal retention >=0.95, guidance scale reported with the number.",
-      "status": "PLANNED",
+      "status": "IN_PROGRESS",
       "blocked_by": [
         "T3"
+      ],
+      "result": "Code landed 2026-10-26. CNConditioner (one embedding row per CN, row 0 zero), coordination_number_from_bonds on the LOCAL per-cloud bond frame, cn_conditioning / cn_max / cn_conditioning_dropout / cn_cfg_scale / cn_request_override wired through the model, the loss and the sampler, conditional_success measured from the metal's degree in the decoded RDKit molecule. 56-step three-arm smoke: null request reproduces the OFF arm to 2.9e-07 relative at epoch 0, the ON arm moves epoch-0 loss by 2.1e-04, and the request reaches the field at 1.0%-54% relative velocity change (all 40 cells above the 1e-2 bar). The decode does NOT obey at 7 epochs: the dose-response range of mean decoded CN across requests 2/4/6 is 0.078 at cfg 1.0 and 0.125 at cfg 2.0 against a requested spread of 4.",
+      "artifact": "metrics/by_metric/wfa112_cn_conditioning_smoke.json",
+      "note": "The done_when as written is gameable and must be re-read before it is scored. MEASURED: request 2 scores conditional_success 0.750 while requests 4 and 6 score 0.062 and 0.031, and the decoded mean CN is ~2.13 in all three cells. The model emits a metal with ~2 bonds whatever is asked, so 'request the modal CN' clears 60% on a channel that does not steer. The gate is the dose-response range across requests plus metal_retention, not one cell. Obedience itself needs the T3 checkpoint.",
+      "evidence": [
+        "molmetal/adapters/flow_matching_lipman/conditioning.py",
+        "molmetal/tests/test_cn_conditioning.py",
+        "molmetal/scripts/wfa112_cn_cond_ab.py",
+        "configs/wfa112_cn_cond_smoke_on_2026_10_26.yaml",
+        "metrics/by_metric/wfa112_cn_cond_ab_smoke.json"
       ]
     },
     {

@@ -1612,6 +1612,13 @@ class EpochMetrics:
     gen_raw_rings_per_mol: float = 0.0
     gen_raw_ring_5_6_share: float = 0.0
     gen_raw_ring_3_share: float = 0.0
+    # Wf-A112 (MOD5) — share of generated samples whose DECODED metal has
+    # exactly the coordination number the sample was asked for.  `_n` is the
+    # denominator (parsed molecules with a metal), so 0.0 over n=0 is
+    # distinguishable from 0.0 over n=32.  Only populated when the field was
+    # built with cn_conditioning.
+    gen_conditional_success: float = 0.0
+    gen_conditional_n: int = 0
     # Wf-A107f — epoch-MEAN of the flow-matching term (see
     # `_LAST_EPOCH_TERM_MEANS`).  0.0 with `use_fm_objective: true` means the
     # flag did not reach the objective; that is now readable from the artifact
@@ -1700,6 +1707,18 @@ def _to_device_cloud(cloud: AtomCloud, device: torch.device) -> AtomCloud:
         if int(batch.bond_orders_continuous.shape[0]) > 0:
             kwargs["bond_orders_continuous"] = batch.bond_orders_continuous
             kwargs["is_dative_pair"] = batch.is_dative_pair
+    # Wf-A112 (MOD5) — the metal index is per-cloud truth in exactly the same
+    # sense the bond list is, and this helper used to drop it.  MEASURED
+    # consequence (2026-10-26): ``Batch.metal_atom_index`` was -1 for every
+    # cloud the training loop saw, so the coordination-number label was 0 for
+    # every cloud, so the MOD5 conditioner's row 0 was the only row ever used
+    # and the channel was inert -- an on/off A/B would have reported "no
+    # effect" and the effect was never there to begin with.  Nothing else in
+    # the training loop reads the other per-cloud scalars, so only this one is
+    # carried; adding fields with no consumer is how a carrier grows a
+    # contract nobody checks.
+    if getattr(batch, "metal_atom_index", None) is not None:
+        kwargs["metal_atom_index"] = batch.metal_atom_index[0]
     return AtomCloud(**kwargs)
 
 
@@ -2208,6 +2227,17 @@ class CFMJointModel(nn.Module):
         # cloud is the untyped field exactly.  1.0 turns the typed path into
         # a no-op and 0.0 never trains the unconditional branch.
         typed_edge_dropout: float = 0.5,
+        # Wf-A112 (MOD5) — coordination-number conditioning.  The field knows
+        # which metal it builds but not how many donors it should have, so a
+        # CN request cannot be made and there is no null branch for CFG on a
+        # structural property.  ``True`` builds a CNConditioner whose row 0 is
+        # zero, so ``cond_cn=None`` is the pre-MOD5 forward bit-for-bit.
+        cn_conditioning: bool = False,
+        cn_max: int = 12,
+        # Fraction of CLOUDS whose CN request is replaced by the null token
+        # during training.  This is what trains ``p(v | cn = empty)``, i.e. the
+        # unconditional branch classifier-free guidance extrapolates from.
+        cn_conditioning_dropout: float = 0.1,
         # Wf-A108g (2026-10-23) — per-batch DATA volume, not model size.
         #
         # A batch pads every cloud to the largest member.  MEASURED on 64
@@ -2634,6 +2664,10 @@ class CFMJointModel(nn.Module):
                 # ``strict=True``.
                 typed_edge_features=bool(typed_edge_features),
                 typed_edge_classes=int(typed_edge_classes),
+                # Wf-A112 (MOD5) — coordination-number conditioning.  Default
+                # False builds no module and the forward is bit-exact.
+                cn_conditioning=bool(cn_conditioning),
+                cn_max=int(cn_max),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -2651,6 +2685,11 @@ class CFMJointModel(nn.Module):
         # scalar-t behaviour bit-for-bit.
         self.t_embedding_dim: int = int(t_embedding_dim)
         self.pocket_per_layer: bool = bool(pocket_per_layer)
+        # Wf-A112 (MOD5) — stored so the training step can ask whether a CN
+        # request exists without reaching into the velocity field, and so a
+        # rebuilt checkpoint that forgot the flag is caught by strict=True.
+        self.cn_conditioning: bool = bool(cn_conditioning)
+        self.cn_max: int = int(cn_max)
         # Wf-A108g — per-batch pad grouping.  Read by
         # ``_fm_field_forward``; 0.0 means one padded forward.
         self.fm_batch_chunk_ratio: float = float(fm_batch_chunk_ratio)
@@ -2695,6 +2734,9 @@ class CFMJointModel(nn.Module):
         pocket_embed: Optional[torch.Tensor] = None,
         bond_type_lut: Optional[torch.Tensor] = None,
         bond_type_mask: Optional[torch.Tensor] = None,
+        # Wf-A112 (MOD5) — requested coordination number per cloud, ``0`` =
+        # the null token.  ``None`` is the pre-MOD5 forward bit-for-bit.
+        cond_cn: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
 
@@ -2738,6 +2780,7 @@ class CFMJointModel(nn.Module):
             out, node_mask = self._fm_field_forward(
                 x_t, t, atomic_numbers, cloud_sizes, pocket_embed,
                 bond_type_lut=bond_type_lut, bond_type_mask=bond_type_mask,
+                cond_cn=cond_cn,
             )
             vel = out["vel"]  # (B, n_max, 3)
             return vel[node_mask]  # (N, 3) flat, cloud-major
@@ -2829,6 +2872,7 @@ class CFMJointModel(nn.Module):
         pocket_embed: Optional[torch.Tensor] = None,
         bond_type_lut: Optional[torch.Tensor] = None,
         bond_type_mask: Optional[torch.Tensor] = None,
+        cond_cn: Optional[torch.Tensor] = None,
     ):
         """Run ``vel_field`` over a flat cloud batch, in size-homogeneous groups.
 
@@ -2896,7 +2940,7 @@ class CFMJointModel(nn.Module):
         if len(groups) == 1:
             out, node_mask = self._fm_field_forward_padded(
                 x_t, atomic_numbers, sizes, offsets, t_b, groups[0],
-                pocket_embed, bond_type_lut, bond_type_mask,
+                pocket_embed, bond_type_lut, bond_type_mask, cond_cn=cond_cn,
             )
             # Keep the historical (B, N, ...) contract for the single-group
             # path so nothing downstream of the default configuration moves.
@@ -2906,7 +2950,7 @@ class CFMJointModel(nn.Module):
         for g in groups:
             chunk, _chunk_mask = self._fm_field_forward_padded(
                 x_t, atomic_numbers, sizes, offsets, t_b, g,
-                pocket_embed, bond_type_lut, bond_type_mask,
+                pocket_embed, bond_type_lut, bond_type_mask, cond_cn=cond_cn,
             )
             # chunk[k] is (len(g), n_max, ...); cloud j owns its first
             # sizes[ci] rows, the rest is the group's pad.
@@ -2930,6 +2974,7 @@ class CFMJointModel(nn.Module):
         pocket_embed: Optional[torch.Tensor],
         bond_type_lut: Optional[torch.Tensor] = None,
         bond_type_mask: Optional[torch.Tensor] = None,
+        cond_cn: Optional[torch.Tensor] = None,
     ):
         """One padded ``vel_field`` call over the clouds listed in ``group``.
 
@@ -2983,6 +3028,9 @@ class CFMJointModel(nn.Module):
             pocket_embed=None if pocket_embed is None else pocket_embed[_idx],
             edge_type=edge_type,
             edge_type_mask=edge_type_mask,
+            # Wf-A112 (MOD5) — the request is per CLOUD, so it is indexed by
+            # the group exactly like pocket_embed and t_b.
+            cond_cn=None if cond_cn is None else cond_cn[_idx],
         )
         return out, node_mask
 
@@ -2995,6 +3043,7 @@ class CFMJointModel(nn.Module):
         pocket_embed: Optional[torch.Tensor] = None,
         bond_type_lut: Optional[torch.Tensor] = None,
         bond_type_mask: Optional[torch.Tensor] = None,
+        cond_cn: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Absolute-position prediction ``x1_hat`` (Wf-A108e).
 
@@ -3020,6 +3069,7 @@ class CFMJointModel(nn.Module):
         out, node_mask = self._fm_field_forward(
             x_t, t, atomic_numbers, cloud_sizes, pocket_embed,
             bond_type_lut=bond_type_lut, bond_type_mask=bond_type_mask,
+            cond_cn=cond_cn,
         )
         return out["x1_hat"][node_mask]
 
@@ -4731,6 +4781,10 @@ def train_one_epoch(
     # Only read when the field was built with typed edges; 0.0 keeps the
     # typed path always-on, 1.0 makes it a no-op.
     typed_edge_dropout: float = 0.5,
+    # Wf-A112 (MOD5) — share of clouds whose CN request is replaced by the
+    # null token, so the unconditional branch of classifier-free guidance is
+    # trained rather than extrapolated from a branch the model never saw.
+    cn_conditioning_dropout: float = 0.1,
     log_normal_t: bool = False,  # False = uniform t-sampling (legacy)
     log_normal_t_mu: float = -0.5,  # Wf-340-A3 log-normal mu
     log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
@@ -5020,6 +5074,23 @@ def train_one_epoch(
     # orders, so a "same-seed" pair of runs could not be compared step by
     # step.  The permutation still changes every epoch.
     order = _epoch_permutation(n_train, shuffle_seed, epoch)
+    # Wf-A112 — the CN conditioning dropout draws from its OWN generator.
+    #
+    # MEASURED defect this exists for (2026-10-26): the mask was drawn with
+    # ``torch.rand(...)``, i.e. from the process-wide RNG, once per step, in
+    # the arms that built the channel and never in the arm that did not.  The
+    # three arms therefore consumed different amounts of RNG, saw different
+    # noise on every subsequent step, and the null-request arm — whose whole
+    # purpose is to reproduce the OFF arm bit-for-bit — reported a 1.18
+    # train_loss gap at epoch 0.  That gap was the RNG stream, not the
+    # channel, and it would have been read as "the channel changes the
+    # objective".
+    #
+    # Seeding from (shuffle_seed, epoch) keeps the mask reproducible and
+    # independent of how many other draws the architecture makes.
+    _cn_drop_gen = torch.Generator(device="cpu").manual_seed(
+        (int(shuffle_seed) * 100003 + int(epoch) + 17) % (2**31 - 1)
+    )
     for batch_start in range(0, n_train, batch_size):
         _t_loop0 = _stage_tick()
         batch_indices = order[batch_start : batch_start + batch_size]
@@ -6070,6 +6141,53 @@ def train_one_epoch(
                         ).to(_bond_mask.dtype)
                         _bond_mask = _bond_mask * _keep
 
+            # Wf-A112 (MOD5) — the requested coordination number, per cloud.
+            #
+            # The request at training time is the cloud's OWN CN, computed
+            # from its truth bond graph: that is a supervision target (the
+            # same status the bond-type labels have), available for every
+            # tmQM complex and never available for a sample being generated.
+            # At generation the same slot carries the user's request, which is
+            # what makes ``conditional_success`` a measurement rather than a
+            # restatement of the input.
+            #
+            # ``cond_cn=None`` when the field has no conditioner, so the
+            # forward stays bit-exact for every existing checkpoint.
+            _cond_cn = None
+            if bool(getattr(model, "cn_conditioning", False)):
+                from molmetal.adapters.flow_matching_lipman.conditioning import (
+                    coordination_number_from_bonds,
+                )
+
+                _cn_true = coordination_number_from_bonds(
+                    batch.bonds,
+                    batch.pair_cloud_idx,
+                    batch.metal_atom_index,
+                    n_clouds=int(batch.n_clouds),
+                ).to(z_all.device)
+                # Same OT-permutation guard as the typed-edge mask: a permuted
+                # target side means batch.bonds no longer describes z_all, and
+                # conditioning on a label that belongs to another cloud is
+                # worse than conditioning on the null.
+                if not (
+                    z_all.shape == batch.atomic_numbers.shape
+                    and bool(torch.equal(z_all, batch.atomic_numbers))
+                ):
+                    _cn_true = torch.zeros_like(_cn_true)
+                _p_cn = float(cn_conditioning_dropout)
+                if _p_cn > 0.0:
+                    _keep_cn = (
+                        torch.rand(
+                            _cn_true.shape,
+                            generator=_cn_drop_gen,
+                            device="cpu",
+                        )
+                        >= _p_cn
+                    ).to(device=_cn_true.device, dtype=_cn_true.dtype)
+                    _cond_cn = _cn_true * _keep_cn
+                else:
+                    _cond_cn = _cn_true
+
             if str(prediction_target) == "x1":
                 if stable_vm:
                     raise SystemExit(
@@ -6082,6 +6200,7 @@ def train_one_epoch(
                     x_t, t, z_all, cloud_sizes=_cloud_sizes,
                     pocket_embed=_pocket_embed,
                     bond_type_lut=_bond_lut, bond_type_mask=_bond_mask,
+                    cond_cn=_cond_cn,
                 )
                 fm_term = float(fm_weight) * F.mse_loss(_x1_pred, x1)
             else:
@@ -6097,6 +6216,7 @@ def train_one_epoch(
                     x_t, t, z_all, cloud_sizes=_cloud_sizes,
                     pocket_embed=_pocket_embed,
                     bond_type_lut=_bond_lut, bond_type_mask=_bond_mask,
+                    cond_cn=_cond_cn,
                 )
                 if stable_vm:
                     try:
@@ -7508,6 +7628,48 @@ def _carry_metal_index(tpl: "AtomCloud") -> torch.Tensor:
     return torch.tensor(AtomCloud.NO_METAL_INDEX, dtype=torch.long)
 
 
+def _conditioned_velocity_fn(
+    model,
+    z_b: torch.Tensor,
+    node_mask: torch.Tensor,
+    cond_cn_b: Optional[torch.Tensor],
+    cfg_scale: float,
+):
+    """Velocity closure for the ODE solver, with optional CN guidance.
+
+    ``cond_cn_b`` is ``(B,)`` in the SAME order as ``z_b``'s rows, or ``None``.
+    ``None`` reproduces the pre-MOD5 closure exactly: one forward, no
+    conditioning argument, so every archived sampling result is unchanged.
+
+    ``cfg_scale != 1.0`` runs the field twice and applies
+    ``v_uncond + s * (v_cond - v_uncond)``.  The unconditional branch is the
+    NULL token (``cond_cn=None``), not a zeroed request: they are the same
+    tensor by construction, and passing ``None`` keeps the null branch
+    reachable through the same code path the training dropout exercised.
+    """
+
+    def _vf(x, t):
+        edge_index, edge_mask = _block_diag_radius_edges(x, node_mask, model.cutoff)
+        # The solver passes t as a 0-d scalar (ModelWrapper contract); the
+        # field wants a per-sample (B,) time.
+        t_b = (
+            t.reshape(1).expand(x.shape[0])
+            if t.dim() == 0
+            else t.reshape(-1)[:1].expand(x.shape[0])
+        )
+        v_cond = model.vel_field(
+            x, z_b, edge_index, t_b, edge_mask=edge_mask, cond_cn=cond_cn_b
+        )["vel"]
+        if cond_cn_b is None or float(cfg_scale) == 1.0:
+            return v_cond
+        v_uncond = model.vel_field(
+            x, z_b, edge_index, t_b, edge_mask=edge_mask, cond_cn=None
+        )["vel"]
+        return v_uncond + float(cfg_scale) * (v_cond - v_uncond)
+
+    return _vf
+
+
 def generate_clouds_from_noise(
     model: "CFMJointModel",
     templates: Sequence[AtomCloud],
@@ -7524,6 +7686,14 @@ def generate_clouds_from_noise(
     # When > 0, the EGNN velocity is augmented at every ODE step with
     # a Hooke-spring force on bonded (Z_i, Z_j) pairs.
     bond_length_guidance_weight: float = 0.0,
+    # Wf-A112 (MOD5) — the requested coordination number per TEMPLATE, aligned
+    # with ``templates``.  ``None`` is the pre-MOD5 sampler exactly: no
+    # conditioning argument reaches the field.
+    cond_cn: Optional[torch.Tensor] = None,
+    # Classifier-free guidance scale on the CN channel.  1.0 is the plain
+    # conditional sample; >1.0 extrapolates away from the null branch and
+    # costs a second forward per ODE step.
+    cfg_scale: float = 1.0,
 ) -> List[AtomCloud]:
     """Integrate the velocity field from ``x_0 ~ N(0, I)`` to ``t = 1``.
 
@@ -7596,6 +7766,14 @@ def generate_clouds_from_noise(
     by_size: Dict[int, List[AtomCloud]] = {}
     for tpl in templates:
         by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append(tpl)
+    # Wf-A112 — the request is per template; ``by_size`` groups the OBJECTS,
+    # so the alignment has to go through identity rather than position.
+    _tpl_index = {id(t): i for i, t in enumerate(templates)}
+    if cond_cn is not None and int(cond_cn.numel()) != len(templates):
+        raise ValueError(
+            f"cond_cn has {int(cond_cn.numel())} entries for "
+            f"{len(templates)} templates"
+        )
 
     # pad_groups: bucket the clouds by SIZE, and pad each bucket only up to
     # its own maximum.
@@ -7645,16 +7823,16 @@ def generate_clouds_from_noise(
             b, n_atoms, 3, device=device, generator=gen
         ) * float(noise_sigma)
 
-        def _vf_pad(x, t, _z=z_b, _m=node_mask):
-            edge_index, edge_mask = _block_diag_radius_edges(x, _m, model.cutoff)
-            t_b = (
-                t.reshape(1).expand(x.shape[0])
-                if t.dim() == 0
-                else t.reshape(-1)[:1].expand(x.shape[0])
-            )
-            return model.vel_field(
-                x, _z, edge_index, t_b, edge_mask=edge_mask
-            )["vel"]
+        _cn_b = (
+            None
+            if cond_cn is None
+            else torch.stack(
+                [cond_cn[_tpl_index[id(g)]] for g in group]
+            ).to(device)
+        )
+        _vf_pad = _conditioned_velocity_fn(
+            model, z_b, node_mask, _cn_b, float(cfg_scale)
+        )
 
         solver = ODESolver(
             velocity_model=_vf_pad, method=str(method), n_steps=int(n_steps)
@@ -7687,20 +7865,16 @@ def generate_clouds_from_noise(
                 b, n_atoms, 3, device=device, generator=gen
             ) * float(noise_sigma)
 
-            def _vf(x, t, _z=z_b, _m=node_mask):
-                edge_index, edge_mask = _block_diag_radius_edges(
-                    x, _m, model.cutoff
-                )
-                # The solver passes t as a 0-d scalar (ModelWrapper contract);
-                # EGNNVelocityField wants a per-sample (B,) time.
-                t_b = (
-                    t.reshape(1).expand(x.shape[0])
-                    if t.dim() == 0
-                    else t.reshape(-1)[:1].expand(x.shape[0])
-                )
-                return model.vel_field(
-                    x, _z, edge_index, t_b, edge_mask=edge_mask
-                )["vel"]
+            _cn_b = (
+                None
+                if cond_cn is None
+                else torch.stack(
+                    [cond_cn[_tpl_index[id(g)]] for g in group]
+                ).to(device)
+            )
+            _vf = _conditioned_velocity_fn(
+                model, z_b, node_mask, _cn_b, float(cfg_scale)
+            )
 
             # Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance at
             # every ODE step.  When ``bond_length_guidance_weight > 0``
@@ -7872,9 +8046,18 @@ def decode_chemistry(
         from molmetal.eval.ring_profile import ring_sizes_from_mol
 
         ring_sizes = ring_sizes_from_mol(mol)
+        # Wf-A112 (MOD5) — the metal's degree in the DECODED molecule, which is
+        # the only honest answer to "did the sample honour the CN request".
+        # A predicted CN head would answer a different question (what the
+        # field thinks), and on a generated sample the graph is the output.
+        _metal_atom = next(
+            (a for a in mol.GetAtoms() if int(a.GetAtomicNum()) in want), None
+        )
         return {
             "n_fragments": len(sizes),
             "ring_sizes": ring_sizes,
+            "metal_z": int(_metal_atom.GetAtomicNum()) if _metal_atom is not None else None,
+            "metal_degree": int(_metal_atom.GetDegree()) if _metal_atom is not None else None,
             "n_rings": len(ring_sizes),
             "n_heavy": n_heavy,
             "largest_fragment_frac": (max(sizes) / n_heavy) if n_heavy else 0.0,
@@ -8068,6 +8251,18 @@ def evaluate_generation_validity(
     per_cloud_out: Optional[List[bool]] = None,
     pad_groups: bool = False,
     pad_group_bucket: int = 8,
+    # Wf-A112 (MOD5) — classifier-free guidance scale on the CN channel.
+    # 1.0 is the plain conditional sample; >1.0 doubles the forward cost.
+    cn_cfg_scale: float = 1.0,
+    # Wf-A112 (MOD5) — replace every template's own coordination number with
+    # one constant request.  ``None`` asks each template for its OWN CN, which
+    # is the "generate this complex" reading and the one the per-epoch report
+    # uses.  A constant request is the "obey me" reading: on the same pool it
+    # separates "the sample matches because the composition forced it" from
+    # "the sample matches because the channel steered it", and a sweep of
+    # constants is the only way to see whether the decoded CN RESPONDS to the
+    # request at all.
+    cn_request_override: Optional[int] = None,
 ) -> Tuple[int, int]:
     """Generate from noise, decode, and count RDKit-strict successes.
 
@@ -8114,6 +8309,21 @@ def evaluate_generation_validity(
     pool = _all[_off:_off + int(n_samples)] if _off else _all[: int(n_samples)]
     if not pool:
         pool = _all[: int(n_samples)]
+    # Wf-A112 (MOD5) — the request is each template's OWN coordination number,
+    # so "generate this composition" becomes "generate it at the CN the real
+    # complex has".  ``None`` when the field has no conditioner, which keeps
+    # the sampler call byte-identical for every pre-MOD5 run.
+    _req_cn: Optional[torch.Tensor] = None
+    if bool(getattr(model, "cn_conditioning", False)):
+        from molmetal.adapters.flow_matching_lipman.conditioning import (
+            cn_from_cloud,
+        )
+
+        if cn_request_override is None:
+            _req = [cn_from_cloud(c) for c in pool]
+        else:
+            _req = [int(cn_request_override)] * len(pool)
+        _req_cn = torch.tensor(_req, dtype=torch.long, device=device)
     clouds = generate_clouds_from_noise(
         model,
         pool,
@@ -8125,6 +8335,8 @@ def evaluate_generation_validity(
         pad_groups=bool(pad_groups),
         pad_group_bucket=int(pad_group_bucket),
         bond_length_guidance_weight=float(bond_length_guidance_weight),
+        cond_cn=_req_cn,
+        cfg_scale=float(cn_cfg_scale),
     )
     n_ok = 0
     chem_rows: list[Optional[Dict[str, Any]]] = []
@@ -8183,6 +8395,29 @@ def evaluate_generation_validity(
         # any flag, which is itself information), so "no teacher-forced
         # decode" and "the flag was never measured" stay distinguishable.
         chemistry_out["decode_flags"] = dict(decode_flags)
+        # Wf-A112 (MOD5) — conditional success: the share of samples whose
+        # DECODED metal has exactly the requested coordination number.  Paired
+        # by index with the request vector, so a decode that failed is skipped
+        # rather than counted as a miss (it is already in failure_reasons).
+        if _req_cn is not None:
+            _pairs = [
+                (int(req), row)
+                for req, row in zip(_req_cn.tolist(), chem_rows)
+                if row and row.get("metal_degree") is not None
+            ]
+            _hits = sum(1 for req, row in _pairs if int(row["metal_degree"]) == req)
+            chemistry_out["conditional_success"] = (
+                _hits / len(_pairs) if _pairs else 0.0
+            )
+            chemistry_out["conditional_n"] = len(_pairs)
+            chemistry_out["requested_cn_hist"] = {
+                str(k): sum(1 for r, _ in _pairs if r == k)
+                for k in sorted({r for r, _ in _pairs})
+            }
+            chemistry_out["decoded_cn_hist"] = {
+                str(k): sum(1 for _, row in _pairs if int(row["metal_degree"]) == k)
+                for k in sorted({int(row["metal_degree"]) for _, row in _pairs})
+            }
     if chemistry_rows_out is not None:
         chemistry_rows_out.clear()
         chemistry_rows_out.extend(chem_rows)
@@ -12683,6 +12918,76 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--cn-conditioning",
+        dest="cn_conditioning",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A112 (MOD5): condition the velocity field on a REQUESTED "
+            "coordination number. The field already knows which metal it is "
+            "building (it reads it out of atom_types) but nothing about how "
+            "many donors that metal should have, so 'give me an octahedral "
+            "Pt(II)' is not expressible and there is no null branch for "
+            "classifier-free guidance on a structural property. Row 0 of the "
+            "table is the zero vector, so cond_cn=None is the pre-MOD5 "
+            "forward bit-for-bit. Decode/conditioning only; no retrain of an "
+            "existing checkpoint is implied."
+        ),
+    )
+    p.add_argument(
+        "--cn-max",
+        dest="cn_max",
+        type=int,
+        default=12,
+        help=(
+            "Wf-A112: largest coordination number the conditioner covers. "
+            "tmQM complexes run 2-8; a request above this is clamped and "
+            "COUNTED (conditioner.n_clamped), never silently re-labelled."
+        ),
+    )
+    p.add_argument(
+        "--cn-conditioning-dropout",
+        dest="cn_conditioning_dropout",
+        type=float,
+        default=0.1,
+        help=(
+            "Wf-A112: share of clouds whose CN request is replaced by the "
+            "null token during training. This is what trains "
+            "p(v | cn = empty), the unconditional branch classifier-free "
+            "guidance extrapolates from; 0.0 never trains it."
+        ),
+    )
+    p.add_argument(
+        "--cn-cfg-scale",
+        dest="cn_cfg_scale",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-A112 (MOD5): classifier-free guidance scale for the CN "
+            "request at generation time, v = v_uncond + s*(v_cond - "
+            "v_uncond). 1.0 disables guidance (v = v_cond) and is the "
+            "pre-MOD5 behaviour. The unconditional branch is the null "
+            "token, which is only trained when --cn-conditioning-dropout "
+            "> 0; at scale > 1 with no trained null branch the guidance "
+            "extrapolates from a branch the model never saw."
+        ),
+    )
+    p.add_argument(
+        "--cn-request-override",
+        dest="cn_request_override",
+        type=int,
+        default=-1,
+        help=(
+            "Wf-A112 (MOD5): ask EVERY sample for this coordination number "
+            "instead of each template's own. -1 (default) is the per-template "
+            "request. A constant request is the 'obey me' reading: on the "
+            "same pool it separates 'the sample matches because the "
+            "composition forced it' from 'because the channel steered it', "
+            "and sweeping it is the only way to see whether the decoded CN "
+            "responds to the request at all."
+        ),
+    )
+    p.add_argument(
         "--typed-edge-features",
         dest="typed_edge_features",
         action="store_true",
@@ -13786,6 +14091,10 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
             getattr(args, "typed_edge_features", False)
         ),
         typed_edge_classes=int(getattr(args, "typed_edge_classes", 5)),
+        # Wf-A112 (MOD5) — CN conditioning.  Default False builds no module,
+        # so every existing checkpoint still loads strict=True.
+        cn_conditioning=bool(getattr(args, "cn_conditioning", False)),
+        cn_max=int(getattr(args, "cn_max", 12)),
         # Wf-A108g — per-batch pad grouping.  Default 0.0 (one padded
         # forward) so every pre-Wf-A108g checkpoint rebuilds and runs
         # exactly as it did; opt in via ``flow.fm_batch_chunk_ratio``.
@@ -15343,6 +15652,18 @@ def main() -> int:
         f"use_yuelbond={_use_yuelbond} joint_train=True "
         f"learnable_vel_scale=True (consistent)"
     )
+    # Wf-A112 (MOD5) — a conditioning channel that is not printed is a channel
+    # nobody can confirm was on, and the CN request is invisible in every
+    # other log line.  Report the FIELD's state, not the flag: a resumed
+    # checkpoint can carry an architecture the flag no longer matches.
+    _cn_cond = getattr(getattr(model, "vel_field", None), "cn_cond", None)
+    print(
+        f"[cfm-cond] cn_conditioning="
+        f"{'on @ cn_max=' + str(_cn_cond.cn_max) + ', dropout=' + format(float(getattr(args, 'cn_conditioning_dropout', 0.1)), '.2f') if _cn_cond is not None else 'off'}"
+        f" | cn_cfg_scale={format(float(getattr(args, 'cn_cfg_scale', 1.0)), '.2f')}"
+        f" | cn_request={'per_template' if int(getattr(args, 'cn_request_override', -1)) < 0 else 'fixed@' + str(int(getattr(args, 'cn_request_override', -1)))}"
+        f" | metal_conditioning={getattr(getattr(model, 'vel_field', None), 'metal_conditioning', 'none')}"
+    )
     # Wf-A90 — say which pair-head architecture is live.  The metal block
     # changes pair_head.0.weight from (H, 2H+3) to (H, 2H+6); a run that
     # silently fell back to the narrow head would look identical in every
@@ -15847,6 +16168,12 @@ def main() -> int:
             ),
             typed_edge_dropout=float(
                 getattr(args, "typed_edge_dropout", 0.5)
+            ),
+            # Wf-A112 (MOD5) — CN conditioning dropout.  The architecture
+            # flags go to CFMJointModel; this is the only CN knob the epoch
+            # loop reads.
+            cn_conditioning_dropout=float(
+                getattr(args, "cn_conditioning_dropout", 0.1)
             ),
             # FIX-C11 — these three were function defaults with no dest before;
             # the getattr fallbacks keep a caller that passes nothing (every
@@ -16362,6 +16689,19 @@ def main() -> int:
                         # bit-exact.
                         bond_length_guidance_weight=float(
                             getattr(args, "bond_length_guidance_weight", 0.0)
+                        ),
+                        # Wf-A112 (MOD5) — CFG scale for the CN request. 1.0
+                        # is v = v_cond, i.e. the unconditioned branch is not
+                        # used at all; >1 extrapolates away from the null
+                        # token, which is only a trained branch when
+                        # cn_conditioning_dropout > 0.
+                        cn_cfg_scale=float(getattr(args, "cn_cfg_scale", 1.0)),
+                        # -1 is the per-template request, which is what the
+                        # per-epoch report has always used.
+                        cn_request_override=(
+                            None
+                            if int(getattr(args, "cn_request_override", -1)) < 0
+                            else int(getattr(args, "cn_request_override", -1))
                         ),
                     )
                     _gen_ok += int(_ok_s)
@@ -17178,6 +17518,10 @@ def main() -> int:
             gen_rings_per_mol=float(_gen_chem.get("rings_per_mol_mean", 0.0) or 0.0),
             gen_ring_5_6_share=float(_gen_chem.get("ring_5_6_share", 0.0) or 0.0),
             gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
+            gen_conditional_success=float(
+                _gen_chem.get("conditional_success", 0.0) or 0.0
+            ),
+            gen_conditional_n=int(_gen_chem.get("conditional_n", 0) or 0),
             gen_ring_size_distribution=json.dumps(
                 _gen_chem.get("ring_size_distribution", {}) or {}
             ),
@@ -17356,6 +17700,10 @@ def main() -> int:
                     _gen_chem.get("ring_5_6_share", 0.0) or 0.0
                 ),
                 gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
+                gen_conditional_success=float(
+                    _gen_chem.get("conditional_success", 0.0) or 0.0
+                ),
+                gen_conditional_n=int(_gen_chem.get("conditional_n", 0) or 0),
                 gen_ring_size_distribution=json.dumps(
                     _gen_chem.get("ring_size_distribution", {}) or {}
                 ),

@@ -1,0 +1,452 @@
+{
+  "arms": {
+    "null": {
+      "config": "configs/wfa112_cn_cond_smoke_null_2026_10_26.yaml",
+      "decode_ratio": "32/32",
+      "epochs": 7,
+      "fm_term_first": 10.466112673282623,
+      "fm_term_last": 9.318154990673065,
+      "result_dir": "results/wfa112_cn_cond_smoke_null_2026_10_26",
+      "train_loss_first": 29.58499014377594,
+      "train_loss_last": 10.956833243370056
+    },
+    "off": {
+      "config": "configs/wfa112_cn_cond_smoke_off_2026_10_26.yaml",
+      "decode_ratio": "32/32",
+      "epochs": 7,
+      "fm_term_first": 10.466122329235077,
+      "fm_term_last": 9.317049086093903,
+      "result_dir": "results/wfa112_cn_cond_smoke_off_2026_10_26",
+      "train_loss_first": 29.584981441497803,
+      "train_loss_last": 10.95392107963562
+    },
+    "on": {
+      "config": "configs/wfa112_cn_cond_smoke_on_2026_10_26.yaml",
+      "decode_ratio": "32/32",
+      "epochs": 7,
+      "fm_term_first": 10.45997679233551,
+      "fm_term_last": 9.31398743391037,
+      "result_dir": "results/wfa112_cn_cond_smoke_on_2026_10_26",
+      "train_loss_first": 29.578826308250427,
+      "train_loss_last": 10.948230266571045
+    }
+  },
+  "channel": {
+    "cells": {
+      "cfg1__req_2": {
+        "cfg_scale": 1.0,
+        "conditional_success": 0.75,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 4,
+          "1": 4,
+          "2": 48,
+          "3": 2,
+          "4": 3,
+          "6": 3
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.125,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 2,
+        "requested_cn_hist": {
+          "2": 64
+        },
+        "single_fragment_ratio": 0.0625
+      },
+      "cfg1__req_4": {
+        "cfg_scale": 1.0,
+        "conditional_success": 0.0625,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 5,
+          "1": 2,
+          "2": 46,
+          "3": 5,
+          "4": 4,
+          "6": 2
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.140625,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 4,
+        "requested_cn_hist": {
+          "4": 64
+        },
+        "single_fragment_ratio": 0.03125
+      },
+      "cfg1__req_6": {
+        "cfg_scale": 1.0,
+        "conditional_success": 0.03125,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 1,
+          "1": 6,
+          "2": 48,
+          "3": 1,
+          "4": 6,
+          "6": 2
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.203125,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 6,
+        "requested_cn_hist": {
+          "6": 64
+        },
+        "single_fragment_ratio": 0.046875
+      },
+      "cfg1__req_truth": {
+        "cfg_scale": 1.0,
+        "conditional_success": 0.015625,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 3,
+          "1": 4,
+          "2": 48,
+          "3": 3,
+          "4": 4,
+          "6": 2
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.140625,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": "truth",
+        "requested_cn_hist": {
+          "3": 2,
+          "4": 2,
+          "5": 9,
+          "6": 17,
+          "7": 16,
+          "8": 11,
+          "9": 7
+        },
+        "single_fragment_ratio": 0.015625
+      },
+      "cfg2__req_2": {
+        "cfg_scale": 2.0,
+        "conditional_success": 0.734375,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 3,
+          "1": 6,
+          "2": 47,
+          "3": 3,
+          "4": 1,
+          "5": 1,
+          "6": 3
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.125,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 2,
+        "requested_cn_hist": {
+          "2": 64
+        },
+        "single_fragment_ratio": 0.046875
+      },
+      "cfg2__req_4": {
+        "cfg_scale": 2.0,
+        "conditional_success": 0.03125,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 4,
+          "1": 4,
+          "2": 47,
+          "3": 3,
+          "4": 2,
+          "5": 1,
+          "6": 3
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.15625,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 4,
+        "requested_cn_hist": {
+          "4": 64
+        },
+        "single_fragment_ratio": 0.015625
+      },
+      "cfg2__req_6": {
+        "cfg_scale": 2.0,
+        "conditional_success": 0.046875,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 3,
+          "1": 4,
+          "2": 48,
+          "3": 3,
+          "4": 2,
+          "5": 1,
+          "6": 3
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.1875,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": 6,
+        "requested_cn_hist": {
+          "6": 64
+        },
+        "single_fragment_ratio": 0.046875
+      },
+      "cfg2__req_truth": {
+        "cfg_scale": 2.0,
+        "conditional_success": 0.03125,
+        "decode_ratio": 1.0,
+        "decoded_cn_hist": {
+          "0": 3,
+          "1": 3,
+          "2": 49,
+          "3": 2,
+          "4": 2,
+          "5": 1,
+          "6": 4
+        },
+        "failure_reasons": {
+          "ok": 64
+        },
+        "mean_decoded_cn": 2.25,
+        "metal_retention": 1.0,
+        "n_clouds": 64,
+        "n_scored": 64,
+        "request": "truth",
+        "requested_cn_hist": {
+          "3": 2,
+          "4": 2,
+          "5": 9,
+          "6": 17,
+          "7": 16,
+          "8": 11,
+          "9": 7
+        },
+        "single_fragment_ratio": 0.015625
+      }
+    },
+    "checkpoint": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+    "dose_response": {
+      "cfg1": {
+        "2": 2.125,
+        "4": 2.140625,
+        "6": 2.203125,
+        "range": 0.078125,
+        "truth": 2.140625
+      },
+      "cfg2": {
+        "2": 2.125,
+        "4": 2.15625,
+        "6": 2.1875,
+        "range": 0.125,
+        "truth": 2.25
+      }
+    },
+    "pool": {
+      "metals": "Pt,Ru,Ir,Rh,Os,Re",
+      "n_clouds": 64,
+      "split": "val",
+      "truth_cn_hist": {
+        "3": 2,
+        "4": 2,
+        "5": 9,
+        "6": 17,
+        "7": 16,
+        "8": 11,
+        "9": 7
+      },
+      "truth_cn_mean": 6.625
+    },
+    "velocity_sensitivity": {
+      "definition": "||v(cn=r) - v(null)|| / ||v(null)||, L2 over the whole batch, one x and one t per row",
+      "edges_per_cloud": 3252,
+      "n_atoms_padded": 61,
+      "n_batch": 16,
+      "n_edges_total": 52032,
+      "per_request": {
+        "t=0.1": {
+          "cn_2": 0.012259645771744975,
+          "cn_3": 0.013732101004921343,
+          "cn_4": 0.02854139651783653,
+          "cn_5": 0.02360926023504744,
+          "cn_6": 0.023725796064735228,
+          "cn_7": 0.01973372830203997,
+          "cn_8": 0.010166598466716385,
+          "cn_9": 0.01950570085135886,
+          "null_norm": 100.36893463134766
+        },
+        "t=0.3": {
+          "cn_2": 0.024457822445017832,
+          "cn_3": 0.010564983030464447,
+          "cn_4": 0.02595059959505776,
+          "cn_5": 0.02311815159892181,
+          "cn_6": 0.034038392447263977,
+          "cn_7": 0.01876385152899422,
+          "cn_8": 0.018111086816210445,
+          "cn_9": 0.01583019156722342,
+          "null_norm": 76.79845428466797
+        },
+        "t=0.5": {
+          "cn_2": 0.0701732246103281,
+          "cn_3": 0.041455383276279865,
+          "cn_4": 0.09647553186836748,
+          "cn_5": 0.09842049304051959,
+          "cn_6": 0.06492963870420906,
+          "cn_7": 0.06729381193022871,
+          "cn_8": 0.061584040216534346,
+          "cn_9": 0.04951813884736933,
+          "null_norm": 41.95466232299805
+        },
+        "t=0.7": {
+          "cn_2": 0.16088423650626887,
+          "cn_3": 0.21594978281759894,
+          "cn_4": 0.3878219125754425,
+          "cn_5": 0.31007925148628446,
+          "cn_6": 0.5440748195133019,
+          "cn_7": 0.4010430361077548,
+          "cn_8": 0.1268638226165203,
+          "cn_9": 0.25608109701848625,
+          "null_norm": 9.339695930480957
+        },
+        "t=0.9": {
+          "cn_2": 0.048581381297897325,
+          "cn_3": 0.061371705668992485,
+          "cn_4": 0.10147289813320676,
+          "cn_5": 0.06921588574660839,
+          "cn_6": 0.15342864375914383,
+          "cn_7": 0.09975006347360224,
+          "cn_8": 0.04816603761244868,
+          "cn_9": 0.08042254303271994,
+          "null_norm": 33.6253662109375
+        }
+      }
+    }
+  },
+  "checks": [
+    {
+      "artifact": "configs/wfa112_cn_cond_smoke_{on,off,null}_2026_10_26.yaml",
+      "id": "flag_round_trip",
+      "measured": "parse_args(['--config', cfg]) returns cn_conditioning bool True/False, cn_max int 12, cn_conditioning_dropout float 0.10/1.0, cn_cfg_scale float 1.0, cn_request_override int -1 for the three arms; the \u00a75.11 yaml-only and config-binding gates both PASS repo-wide.",
+      "pass": true
+    },
+    {
+      "artifact": "results/wfa112_cn_cond_smoke_on_2026_10_26/master.log",
+      "id": "trainer_builds_the_channel",
+      "measured": "[cfm-cond] cn_conditioning=on @ cn_max=12, dropout=0.10 | metal_conditioning=embedding printed by the ON arm; cn_conditioning=off by the OFF arm.",
+      "pass": true
+    },
+    {
+      "artifact": "results/wfa112_cn_cond_smoke_*/per_epoch_metrics.json",
+      "id": "decode_ratio_positive",
+      "measured": "decode_ratio 32/32 at every epoch in all three arms.",
+      "pass": true
+    },
+    {
+      "artifact": "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json",
+      "id": "loss_decreases",
+      "measured": "56 optimiser steps per arm (64 clouds / batch 8 x 7 epochs). ON arm train_loss 29.5788 -> 10.9482 over 7 epochs; OFF 29.5850 -> 10.9539; NULL 29.5850 -> 10.9568.",
+      "pass": true
+    },
+    {
+      "artifact": "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json",
+      "id": "null_request_is_bit_exact",
+      "measured": "epoch 0: NULL - OFF train_loss +8.702e-06 (2.94e-07 relative), fm_term -9.656e-06. Across 7 epochs the largest absolute gap is 2.91e-03.",
+      "pass": true
+    },
+    {
+      "artifact": "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json",
+      "id": "channel_is_live",
+      "measured": "epoch 0: ON - OFF train_loss -6.155e-03 (2.08e-04 relative).",
+      "pass": true
+    },
+    {
+      "artifact": "metrics/by_metric/wfa112_cn_cond_ab_smoke.json",
+      "id": "request_reaches_the_field",
+      "measured": "velocity sensitivity ||v(cn=r)-v(null)||/||v(null)|| over r in 2..9 at t=0.1/0.3/0.5/0.7/0.9: min 0.0102, max 0.5441, all 40 cells >= 1e-2 on a 16-cloud batch with 3252 radius edges per cloud.",
+      "pass": true
+    },
+    {
+      "artifact": "metrics/by_metric/wfa112_cn_cond_ab_smoke.json",
+      "id": "decode_obeys_the_request",
+      "measured": "dose-response range of mean decoded CN across requests 2/4/6: 0.078 (cfg 1.0) and 0.125 (cfg 2.0) against a requested spread of 4. Truth CN mean on the pool is 6.625; decoded mean is 2.141. The channel reaches the field and does not steer the decode at 7 epochs.",
+      "pass": false
+    }
+  ],
+  "date": "2026-10-26",
+  "deltas": {
+    "null_minus_off": {
+      "epoch0_fm_term_abs": -9.655952453613281e-06,
+      "epoch0_fm_term_rel": 9.22592060208039e-07,
+      "epoch0_train_loss_abs": 8.702278137207031e-06,
+      "epoch0_train_loss_rel": 2.941450409452919e-07,
+      "max_abs_train_loss_over_epochs": 0.002912163734436035,
+      "max_rel_train_loss_over_epochs": 0.0002657851652710126
+    },
+    "on_minus_off": {
+      "epoch0_fm_term_abs": -0.00614553689956665,
+      "epoch0_fm_term_rel": 0.0005875287318103572,
+      "epoch0_train_loss_abs": -0.006155133247375488,
+      "epoch0_train_loss_rel": 0.00020809254509394229
+    }
+  },
+  "design": {
+    "channel": "one embedding row per CN, added to the atom input beside metal_bias",
+    "dropout": "cn_conditioning_dropout replaces a row with the null token; drawn from a LOCAL generator seeded by (shuffle_seed, epoch)",
+    "guidance": "v = v_uncond + s*(v_cond - v_uncond), s = cn_cfg_scale (YAML key, default 1.0)",
+    "null_token": "row 0 is zero, and is both the bit-exactness device and the CFG unconditional branch",
+    "realised_cn": "the metal's degree in the DECODED RDKit molecule, not a CN head: the graph is the output, so a head would answer a different question",
+    "row_init": "1/sqrt(H) from a LOCAL generator, so constructing the module draws no global RNG"
+  },
+  "honest_limits": [
+    "The smoke is 64 clouds x 7 epochs on CPU. It establishes wiring, not obedience: the decoded mean CN is 2.1 at every request because the checkpoint is 7 epochs old.",
+    "conditional_success at one request is gameable. MEASURED: request 2 scores 0.750 while requests 4 and 6 score 0.062 and 0.031, and the decoded mean CN is ~2.13 in all three cells. The T8 gate therefore has to be the dose-response range, not a single cell.",
+    "velocity_sensitivity is a property of the network on random positions, not of the sampler: it says the condition can reach the output, not that training used it.",
+    "cn_request_override and cn_cfg_scale are eval-time keys; the training loop always conditions on the template's own CN, with dropout."
+  ],
+  "metric": "wfa112_cn_conditioning_smoke",
+  "protocol": {
+    "batch_size": 8,
+    "device": "cpu",
+    "epochs": 7,
+    "n_train": 64,
+    "note": "56 steps per arm satisfies AGENTS.md \u00a75.7's 50-step requirement; the loss curve below is the per-epoch mean over 8 steps.",
+    "seed": 0,
+    "steps_per_epoch": 8,
+    "total_optimiser_steps_per_arm": 56
+  },
+  "reproduce": "for arm in off null on; do .venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/wfa112_cn_cond_smoke_${arm}_2026_10_26.yaml --seed 0 --out-dir results/wfa112_cn_cond_smoke_${arm}_2026_10_26 --ckpt-dir results/wfa112_cn_cond_smoke_${arm}_2026_10_26/checkpoints; done; .venv/bin/python -m molmetal.scripts.wfa112_cn_cond_ab --ckpt results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt --n-clouds 64 --cn-requests truth,2,4,6 --cfg-scales 1.0,2.0 --device cpu --out metrics/by_metric/wfa112_cn_cond_ab_smoke.json",
+  "sources": [
+    "results/wfa112_cn_cond_smoke_off_2026_10_26/per_epoch_metrics.json",
+    "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json",
+    "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json",
+    "metrics/by_metric/wfa112_cn_cond_ab_smoke.json"
+  ],
+  "tag": "MEASURED",
+  "task": "T8 / MOD5 (ConditionEncoder): coordination-number conditioning + classifier-free guidance",
+  "what": "The AGENTS.md \u00a75.7 wire-in evidence for MOD5, plus the two channel measurements that decide whether it is a knob or a decoration. Eight checks: five on the wiring, one on null-token exactness, one on whether a request reaches the velocity field, one on whether the decoded molecule obeys it."
+}

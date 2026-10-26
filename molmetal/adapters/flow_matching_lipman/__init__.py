@@ -1614,6 +1614,19 @@ class EGNNVelocityField(nn.Module):
         # ``strict=True`` and the forward is bit-exact.
         typed_edge_features: bool = False,
         typed_edge_classes: int = 5,
+        # Wf-A112 (MOD5) — coordination-number conditioning.  The field knows
+        # WHICH metal it is building (``metal_conditioning`` reads it out of
+        # ``atom_types``) but nothing about how many donors that metal should
+        # have, so "give me an octahedral Pt(II)" is not expressible and there
+        # is no null branch for classifier-free guidance on a structural
+        # property.
+        #
+        # ``True`` constructs a :class:`CNConditioner` whose row 0 is the zero
+        # vector, so ``cond_cn=None`` emits an exact zero bias and the forward
+        # is bit-identical to the pre-MOD5 field.  Default ``False`` builds no
+        # module, so every existing checkpoint still loads ``strict=True``.
+        cn_conditioning: bool = False,
+        cn_max: int = 12,
     ) -> None:
         """Construct the velocity field.
 
@@ -1752,6 +1765,17 @@ class EGNNVelocityField(nn.Module):
             nn.init.zeros_(self.metal_embed.weight[0])
         else:
             self.metal_embed = None  # type: ignore[assignment]
+        # Wf-A112 (MOD5) — CN conditioning.  ``None`` when off, so the forward
+        # pays one attribute test and constructs no tensor.
+        self.cn_conditioning = bool(cn_conditioning)
+        if self.cn_conditioning:
+            from molmetal.adapters.flow_matching_lipman.conditioning import (
+                CNConditioner,
+            )
+
+            self.cn_cond = CNConditioner(int(hidden_dim), int(cn_max))
+        else:
+            self.cn_cond = None  # type: ignore[assignment]
         self.metal_frame_channels = bool(metal_frame_channels)
         self.radial_centroid_masked = bool(radial_centroid_masked)
         # Wf-A108e (2026-10-22) — what the coordinate stack is trained to emit.
@@ -2288,6 +2312,7 @@ class EGNNVelocityField(nn.Module):
         batch_ctx: Optional[dict] = None,  # Track-A L3b — chemistry context dict
         edge_type: Optional[torch.Tensor] = None,  # (B, E, K) one-hot bond class
         edge_type_mask: Optional[torch.Tensor] = None,  # (B, 1, 1) 1 = known
+        cond_cn: Optional[torch.Tensor] = None,  # (B,) int64 requested CN, 0 = null
     ) -> dict:
         """Predict per-atom velocity (B, N, 3) AND atom-type logits (B, N, max_z).
 
@@ -2431,12 +2456,20 @@ class EGNNVelocityField(nn.Module):
                 torch.zeros(b, dtype=torch.long, device=atom_types.device),
             )
             metal_bias = self.metal_embed(_ids).unsqueeze(1)  # (B, 1, H)
+        # Wf-A112 (MOD5) — the requested coordination number.  ``None`` (or an
+        # all-zero request) yields an exact zero bias, so a caller that never
+        # heard of MOD5 gets the pre-MOD5 forward bit-for-bit; ``0`` as an int
+        # when the module is absent keeps the addition list identical.
+        cn_bias = 0
+        if self.cn_cond is not None:
+            cn_bias = self.cn_cond(cond_cn, b)  # (B, 1, H)
         if isinstance(_input_addend, int):
             h = (
                 self.atom_embed(atom_types)
                 + t_per_atom
                 + pocket_bias
                 + metal_bias
+                + cn_bias
             )
         else:
             h = (
@@ -2445,6 +2478,7 @@ class EGNNVelocityField(nn.Module):
                 + pocket_bias
                 + _input_addend
                 + metal_bias
+                + cn_bias
             )
         last_v = torch.zeros_like(x_t)
         if self.velocity_head == "vector_channels":
