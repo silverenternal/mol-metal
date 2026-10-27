@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T10:40+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。",
+  "updated": "2026-10-27T11:45+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -1410,6 +1410,36 @@
       "addressed_by": [
         "T42"
       ]
+    },
+    {
+      "id": "D43",
+      "symptom": "10 行验收表里有 3 行的 target 在磁盘上找不到语料侧的参照：一行低于语料自身值 20 个点，两行根本没有语料分布。",
+      "measured": "第 1 行 single_fragment_rate target >= 0.80，而 metrics/by_metric/cfm_panel_reference_band_real_tmqm.json::corrections_2026_10_12 写着真实 tmQM 在 production seeded sampler 下是 0.9983（不是 0.8365），并写明「must not be quoted as a band」。第 3 行 three_ring_share target <= 0.10 与第 4 行 six_ring_share target >= 0.45：对 metrics/by_metric/*.json 全量搜索 ring_3_share，16 个文件全部是生成池或 decoded-real-geometry 的产物，没有一个记录语料自身的环分布；now 值 0.6684/0.0292 来自 metrics/by_metric/c7_fullgen_pool_quality.json::overall，也是生成侧。",
+      "artifact": "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json",
+      "reading": "三行的问题不同但同源。第 1 行的 0.80 是一个圆整的棒，不是从 0.9983 推出来的，所以「过线」不等于「和语料一样连通」。第 3/4 行更彻底：语料的 3 环/6 环占比从未被测过，0.10 与 0.45 是凭印象定的，而「now」是生成侧的读数——两个数没有同一个坐标系。这违反 §5.2（每个数要能追到路径），而且是验收表里差距最大的两行（0.6684 对 0.10）。",
+      "addressed_by": [
+        "T43"
+      ]
+    },
+    {
+      "id": "D44",
+      "symptom": "generate_clouds_from_noise 的 padded 分支不实现 bond_length_guidance_weight，两条分支不是同一件事。",
+      "measured": "非 padded 分支在 :7997-8019 构造 _BondLengthGuidance 并把它加进 _vf_used；padded 分支在 :7932-7972 直接把 _conditioned_velocity_fn 交给 ODE，全程没有读 bond_length_guidance_weight。而 evaluate_generation_validity 在 :8455 无条件把该权重传进来，trainer 的 gen-eval 调用在 :16817 从 args 取它。因此 gen_pad_groups=true 且 bond_length_guidance_weight>0 时，权重被静默丢弃。当前没有 config 同时打开两者（3 个权重非零的 config 都没设 gen_pad_groups），所以是潜在缺陷。",
+      "artifact": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "reading": "同一个函数的两个分支在功能上不等价，而 docstring 与 pad_groups 的注释都在论证两者「数值等价」。上一轮已记的 no_grad 差异（SA-14）是性能，这一条是行为：一旦有人为了省显存打开 pad_groups，导引就会消失，而 gen_* 指标不会说明为什么变差。",
+      "addressed_by": [
+        "T44"
+      ]
+    },
+    {
+      "id": "D45",
+      "symptom": "门产物不记录自己由哪一版门代码产生，于是两个 artifact 里的 FAIL 无法用当前代码复现，而同一臂的两份产物门数与 checkpoint 都不同。",
+      "measured": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json 的 M5 checks 是 {no_block_zero_grad: false, spread_le_100x: false}；当前 cfm_module_gates.py:741 发的是 expected_blocks_have_grad，全仓库 0 个 .py 文件含 no_block_zero_grad，只有 2 个 JSON 含它（c8_epoch2 与 vector_channels）。按当前代码对同一份 measured 重判：expected=['vel_field']、norms=[1.0694]、nonzero=[1.0694]、spread=None，两项都为 True，即 M5 应为 PASS。另外 wfa108j 这一臂有两份产物：budget36.json 只有 M2/M4/M6（checkpoint epoch 35），fixed_arm.json 有十道（checkpoint 是另一个 run 的 epoch 5，8 PASS / 2 FAIL）。",
+      "artifact": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+      "reading": "c8 的「4/10 PASS」里至少有一道（M5）是旧门实现的产物，不是模型属性。同一臂「8/10 PASS」来自 5-epoch 的另一个 run，而真正跑完 36 epoch 的两个 checkpoint 只被 3 道门看过。读者无法从 artifact 判断哪一份是权威的，因为没有任何字段记录门集合或代码版本。这是 SA-8（门不看采样输出）的孪生问题：门看的东西也可能不是当前定义的东西。",
+      "addressed_by": [
+        "T45"
+      ]
     }
   ],
   "modules": [
@@ -2500,6 +2530,71 @@
         "results/wfa108j_budget36/events.jsonl",
         "results/wfa108j_budget36/per_epoch_metrics.json"
       ]
+    },
+    {
+      "id": "T43",
+      "priority": 1,
+      "title": "给验收表的 3 行补语料侧参照，或把 target 标成 PROJECTED",
+      "what": "用与生成池同一个 cohort 的真实 tmQM 分子，测 ring_size_distribution / rings_per_mol / ring_3_share / ring_5_6_share（从 bond_types 真值构图，不经解码器），写成 metrics/by_metric/real_tmqm_ring_profile.json；把 three_ring_share 与 six_ring_share 的 target 改成该文件的实测值 +/- 一个区间。第 1 行把 target 从 0.80 改成 0.9983 的实测值，并在行内写明「0.80 是旧值」。无法测的行标 PROJECTED。",
+      "addresses": [
+        "D43"
+      ],
+      "done_when": "real_tmqm_ring_profile.json 存在且带 n；三行的 target 都能在该文件里读到来源；acceptance.rows 每行有 artifact 字段。",
+      "gate": {
+        "measured_target": "每个 target 可追到 artifact",
+        "same_cohort": "语料侧与生成侧用同一个 cohort"
+      },
+      "kill": "若语料侧环分布与生成侧无差别（三环占比差 < 0.05），说明这两行不构成 gap，删掉这两行而不是保留一个假的差距。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json",
+        "metrics/by_metric/c7_fullgen_pool_quality.json"
+      ]
+    },
+    {
+      "id": "T44",
+      "priority": 2,
+      "title": "padded 分支补上 bond_length_guidance，或让两者互斥时报错",
+      "what": "把 _BondLengthGuidance 的构造与包装提到分支之前，两条路径共用；如果做不到（padded 分支的 z_b 含 padding 原子，导引会作用在 padding 上），则在 pad_groups=True 且 bond_length_guidance_weight>0 时 raise，而不是静默丢弃。",
+      "addresses": [
+        "D44"
+      ],
+      "done_when": "单测：pad_groups=True + 权重 0.1 要么产出与非 padded 相同的坐标（共用包装），要么 raise 且消息说明原因。",
+      "gate": {
+        "no_silent_drop": "两条分支的行为差异必须可见"
+      },
+      "kill": "若导引在 padded 张量上无法定义，选择 raise，并在 config 加载处拒绝这个组合。",
+      "device": "cpu",
+      "cost": "CPU 30 min",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7932-8019"
+      ]
+    },
+    {
+      "id": "T45",
+      "priority": 1,
+      "title": "门产物带代码指纹与门集合，并用当前代码重判 c8 与两条 36-epoch 臂",
+      "what": "在 cfm_module_gates 的输出里加 gate_code_sha256（cfm_module_gates.py 的 sha）、gate_set（本次跑的门 id 列表）、gate_check_keys（每个门的 checks 键名集合）。用当前代码对 c8 epoch2、wfa108j_budget36 epoch35、wfa108j_gcv36 epoch35 各重跑十道门，写新 artifact（不覆盖旧文件），并在文件名里带 regated_2026_10_27。",
+      "addresses": [
+        "D45"
+      ],
+      "done_when": "三份新 artifact 都存在且 gate_set 含 M1..M10；c8 的 M5 在新 artifact 里是 PASS 且 measured.expected_blocks=['vel_field']；旧 artifact 顶部写 superseded_by。",
+      "gate": {
+        "fingerprinted": "每份 artifact 有 gate_code_sha256 与 gate_set",
+        "reproducible": "同一代码重跑同一 checkpoint 得到同一 PASS/FAIL"
+      },
+      "kill": "若当前代码重判后 c8 的 PASS 数不变（仍 4/10），说明旧门与当前门在这一 checkpoint 上等价，删掉 gate_code_sha256 之外的字段，只保留一条说明。",
+      "device": "cpu",
+      "cost": "CPU 2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+        "metrics/by_metric/wfa108j_module_gates_budget36.json",
+        "molmetal/scripts/cfm_module_gates.py"
+      ]
     }
   ],
   "acceptance": {
@@ -2886,10 +2981,13 @@
           "T39",
           "T40",
           "T41",
-          "T42"
+          "T42",
+          "T43",
+          "T44",
+          "T45"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。 T43/T44 是验收表与采样器的最后两处 provenance/等价性缺口，同为 CPU。 T45（门产物无代码指纹）必须先于任何引用「几道门 PASS」的结论。"
       },
       {
         "wave": 3,
@@ -3183,6 +3281,33 @@
         "impact": "36 个 epoch 里有 6 个（17%）在偿还一个由批次构成决定的瞬态，而不是在训练速度场；M9 的 90% 阈值在 53.6% 上照常 PASS。类权重向量没有落盘，所以这个数无法从 artifact 复算，也无法在两条不同规模的臂之间比较 bond_ce 的绝对量级。",
         "status": "OPEN",
         "task": "T42"
+      },
+      {
+        "id": "SA-23",
+        "finding": "验收表 10 行里有 3 行的 target 没有语料侧参照：一行低于语料值 20 个点，两行的语料分布从未被测过。",
+        "evidence": "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json::corrections_2026_10_12、metrics/by_metric/c7_fullgen_pool_quality.json、todo.json::acceptance",
+        "measured": "single_fragment_rate target 0.80 对语料 0.9983；three_ring_share target 0.10 与 six_ring_share target 0.45 在任何 metrics/by_metric/*.json 里都找不到语料侧来源（16 个含 ring_3_share 的文件全是生成池或 decoded-real-geometry）。",
+        "impact": "0.6684 对 0.10 是表里最大的差距，但它比的是生成侧读数和一个凭印象的棒。读者会把它当成「离语料还差 0.57」，而语料的真实值没人测过。这是 §5.2 在验收表上的第二处违规（第一处是 SA-18 的 provenance）。",
+        "status": "OPEN",
+        "task": "T43"
+      },
+      {
+        "id": "SA-24",
+        "finding": "采样器的 padded 分支静默丢弃 bond_length_guidance_weight。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7932-7972 与 :7997-8019、:8455、:16817",
+        "measured": "非 padded 分支构造 _BondLengthGuidance 并包装 _vf；padded 分支直接交 _conditioned_velocity_fn 给 ODE，全程不读该参数。evaluate_generation_validity 无条件传它。当前 3 个权重非零的 config 都没设 gen_pad_groups，故未触发。",
+        "impact": "两条分支行为不等价，而注释与 docstring 都在论证等价。为了省显存打开 pad_groups 的 run 会同时失去导引，而 gen_* 指标不会说明原因。",
+        "status": "OPEN",
+        "task": "T44"
+      },
+      {
+        "id": "SA-25",
+        "finding": "门产物没有代码指纹；c8 的 M5 FAIL 用当前代码重判是 PASS，同一臂的两份产物门数不同（3 vs 10）且 checkpoint 不同（epoch 35 vs epoch 5）。",
+        "evidence": "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json、metrics/by_metric/wfa108i_module_gates_vector_channels.json、metrics/by_metric/wfa108j_module_gates_budget36.json、metrics/by_metric/wfa108j_module_gates_fixed_arm.json、molmetal/scripts/cfm_module_gates.py:741",
+        "measured": "no_block_zero_grad 出现在 2 个 JSON、0 个 .py；当前代码发 expected_blocks_have_grad。按当前代码重判 c8 的 M5：expected=['vel_field']，grad 1.0694，spread None，两项 True -> PASS。budget36.json 门集合 = [M2,M4,M6]（epoch 35）；fixed_arm.json 门集合 = M1..M10（另一个 run 的 epoch 5，8 PASS / 2 FAIL）。",
+        "impact": "「c8 4/10 PASS」这个数字至少有一道是旧门实现的产物，今天无法复现；「vector_channels 8/10」来自 5-epoch run。两个结论都被引用过，而 artifact 里没有一个字段能区分。",
+        "status": "OPEN",
+        "task": "T45"
       }
     ],
     "reproduce": [
@@ -3200,7 +3325,10 @@
       "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch':\n    lt=ast.literal_eval(r['loss_terms']); print(r['epoch'], lt['so3_term']/lt['fm_term'])\nEOF\n# 期望三个 0.1000000x",
       "python - <<'EOF'\nimport csv, json\nfor d in ['results/wfa108j_budget36','molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09']:\n    rows=list(csv.DictReader(open(d+'/per_epoch_metrics.csv'))); b=json.load(open(d+'/per_epoch_metrics.json'))['best']\n    r=[x for x in rows if int(x['epoch'])==int(b['epoch'])][0]\n    print(d, 'best.epoch', b['epoch'], 'best.bond_f1', round(b['bond_f1'],4), 'csv@same_epoch', round(float(r['bond_f1']),4), 'csv@last', round(float(rows[-1]['bond_f1']),4))\nEOF\n# 期望两个 run 的 best.bond_f1 都等于 csv@last，而不是 csv@same_epoch",
       "python - <<'EOF'\nimport pickle\nfor f in ['results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt','results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt']:\n    ck=pickle.load(open(f,'rb')); print(f.split('/')[-1], 'epoch', ck['epoch'], 'best_epoch', ck['best_epoch'])\nEOF\n# 期望 seed0.pt epoch=0, _last.pt epoch=35, 两者 best_epoch=0",
-      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('results/wfa108j_budget36/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch' and r['epoch']<=6:\n    lt=ast.literal_eval(r['loss_terms']) if isinstance(r['loss_terms'],str) else r['loss_terms']\n    print(r['epoch'], round(lt['bond_ce'],4), round(lt['fm_term'],4))\nEOF\n# 期望 bond_ce 从 15.92 落到 1.59，fm_term 同期不降"
+      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('results/wfa108j_budget36/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch' and r['epoch']<=6:\n    lt=ast.literal_eval(r['loss_terms']) if isinstance(r['loss_terms'],str) else r['loss_terms']\n    print(r['epoch'], round(lt['bond_ce'],4), round(lt['fm_term'],4))\nEOF\n# 期望 bond_ce 从 15.92 落到 1.59，fm_term 同期不降",
+      "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/cfm_panel_reference_band_real_tmqm.json'))\nprint(d['corrections_2026_10_12'][0]['per_claim_correction']['single_fragment_ratio (CFM-05)'][:300])\nprint('band:', d['reference_band']['single_fragment_rate'])\nEOF\n# 期望读到 0.9983 与 0.8365 两个数并存，并读到 must not be quoted",
+      "grep -n 'bond_length_guidance_weight' molmetal/scripts/train_cfm_yuelbond_wasserstein.py | sed -n '1,12p'\n# 期望看到 8004 只在非 padded 分支被读，7932-7972 不出现",
+      "python - <<'EOF'\nimport json,subprocess\np='metrics/by_metric/wfa108i_module_gates_c8_epoch2.json'\nd=json.load(open(p))\nm5=[g for g in d['gates'] if g['id']=='M5'][0]\nprint('artifact checks:', list(m5['checks']))\nprint('artifact status:', m5['status'])\nprint('code has no_block_zero_grad:', subprocess.run(['grep','-c','no_block_zero_grad','molmetal/scripts/cfm_module_gates.py'],capture_output=True,text=True).stdout.strip())\nprint('expected blocks measured:', m5['measured']['expected_blocks'] if 'expected_blocks' in m5['measured'] else '(absent: old gate)')\nEOF\n# 期望 artifact 用 no_block_zero_grad，而代码里 0 次出现"
     ]
   }
 }
