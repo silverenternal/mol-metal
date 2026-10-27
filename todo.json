@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T17:40+08:00",
+  "updated": "2026-10-28T00:00+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2393,10 +2393,24 @@
       "kill": "若 A 路线在 288 步内 fm_term 不降，删掉该项，不再调 p_self。",
       "device": "cpu",
       "cost": "CPU 2 h（含一个 50 步 smoke）",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py",
         "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl"
+      ],
+      "result": "先给该项加了显式权重，加的时候踩到并修掉了一个比原问题更严重的缺陷。第一次是把权重读成 getattr(args, \"shortcut_distill_weight\", 1.0)，写在 train_one_epoch 里——那是模块级函数，args 只在 main() 作用域内。于是每个 batch 都抛 NameError，被本块的 except 吃掉、只 warn 一次、替换成 torch.zeros(())，该项在无人察觉的情况下停止训练。同一个探针：坏版本 requires_grad=False value=0.0 并伴随 \"[cfm-fm] shortcut_distill fell back to 0: NameError('name \\'args\\' is not defined')\"；修好后 requires_grad=True value=0.000636186，与改动前 HEAD 的值逐位相同，说明权重 1.0 对目标是真无操作。现在权重走函数签名（shortcut_distill_weight: float = 1.0），调用点从 args 取，并新增 --shortcut-distill-weight；_objective_weights 实测能报出 2.5。其次，重读 c8 的 11.58 时发现之前把它当成\"该项占目标一半\"是错的：c8 跑在 2026-10-24，早于 5fb2c140（2026-10-27 才让本块复用当步速度预测），当时适配器以 include_fm_term=True 被调用，返回的是 fm_loss + p_self*shortcut_mse，即 FM MSE 第二次进入目标。证据是比值：11.5779/11.5367 = 1.0036、1.0119、1.0233，连续三个 epoch 都在 1.00±3% 以内，这是重复项的特征，不是第二个目标。差值才是该项自身的贡献：0.0412 / 0.1292 / 0.2407，对应 shortcut_mse = 0.0824 / 0.2584 / 0.4814，占 fm_term 的 0.71% / 2.38% / 4.65%。因此之前写的\"on-self MSE 46.3 / 43.9 / 42.4\"是错的（它假设了 include_fm_term=False），在 artifact 里撤回。重复计入已由 5fb2c140 去掉，所以本项现在只有 0.5*shortcut_mse，权重是唯一剩下的旋钮。该项自身还有两个结构性缺陷，只记录不改：(1) shortcut_pair 造的 x_s 落在流线时间 tau = t + s(1-t) 上却标成 s（20 万对均匀 (t,s)，seed 0：mean|tau-s| = 0.2493，max 0.9990，15.17% 超过 0.5；x_s 到流线的垂直偏差 5.4e-8，所以状态是对的、标签是错的）；(2) 1-p_self 那一半 batch 被替换成 (x_t, t) 而不是排除，于是这半边的项是 (v(x_t,t;dropout_a) - v(x_t,t;dropout_b))^2，量的是 dropout 方差，dropout 开着就永远到不了 0。两者都会改变已归档 c7/c8 的含义，且没有训练跑无法验证，所以只在启动横幅里说明。",
+      "artifact": "metrics/by_metric/wfa113_shortcut_distill_weight.json",
+      "tests": "molmetal/tests/test_wfa113_shortcut_weight_scope.py",
+      "gate_result": {
+        "on_line": "PASS — x_s 到流线的垂直偏差 5.4e-8 < 1e-5（x_s 是 x_t 与 x_1 的凸组合，本就在线上）",
+        "weighted": "PASS — _objective_weights() 实测返回 shortcut_distill_weight=2.5",
+        "epoch0_size": "PASS — shortcut_mse 0.0824 对 fm_term 11.54，是 0.71%，不是 done_when 里担心的 23.16"
+      },
+      "honest_limits": [
+        "c8 的差值分解精确到两次前向之间的 dropout 差（field 带 egnn_context_dropout 0.1）；比值论证不依赖这一点，重复项无论 dropout 如何都会跟着 fm_term 走。",
+        "时间标签与 masked-off 半边两个缺陷没有修：修任一个都会改变已归档 c7/c8 的含义，且没有训练跑无法验证。",
+        "没有 GPU 跑。这里只说明该项可以被缩放、是活的、且从来不是目标的 100%，不说明加权后更好还是更坏。",
+        "之前\"该项占目标一半 / on-self MSE 46.3\"的读法已撤回；撤回记录写进 artifact 的 honest_limits，不删旧结论。"
       ]
     },
     {
@@ -2557,10 +2571,21 @@
       "kill": "若删除后 fm_term 轨迹在 288 步内变化 > 2%（说明 0.1 的权重确实改变了优化路径），保留该项但把权重写进 _objective_weights 并在 M9 里合并计份额。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
         "molmetal/adapters/flow_matching_lipman/so3_average.py"
+      ],
+      "result": "判据是比值是否恒等于权重。c8 是盘上唯一开了 so3_average 的跑：so3_term/fm_term = 0.1000000026 / 0.1000000020 / 0.1000000020，三个 epoch 的极差 6.3e-10，远小于 1e-6 的判据，即等于 so3_average_weight 到 9 位有效数字。机制与等变场一致：v(Rx)=Rv(x) 时，MSE(v(R_k x_t), R_k dx) 对每个 k 都等于同一个数，K 次平均就是恒等；残余 2e-9 是旋转矩阵乘法的 float32 舍入，不是某层破坏了等变。结论是该正则项没有自己的梯度方向，实际效果是把 FM 系数从 fm_weight 抬到 fm_weight*(1+so3_average_weight)，c8 上就是 1.1 而不是 1.0。处置：保留代码路径不删——删掉会改变已归档 config 的含义，而 T40 的 kill 条款要求 288 步跑出\"fm_term 轨迹变化 > 2%\" 才能判定 0.1 的权重确实改变了优化路径，当前不训练无法执行。改为在启动横幅里直接写出实际 FM 系数，新 config 不再开 so3_average、把想要的系数写进 fm_weight。",
+      "artifact": "metrics/by_metric/wfa113_so3_is_a_copy.json",
+      "tests": "molmetal/tests/test_wfa113_so3_is_a_copy.py",
+      "gate_result": {
+        "decisive": "COPY — 比值逐 epoch 极差 6.3e-10 < 1e-6，等于权重本身；按 done_when 应删除，但 kill 条款（288 步 A/B）在当前不训练的前提下无法执行，故改为保留+横幅说明"
+      },
+      "honest_limits": [
+        "0.1 的权重对优化路径并非证明无关：它把 FM 梯度乘了 1.1，是真实的 10% 步长变化；kill 条款要求的 288 步 A/B 没跑。",
+        "盘上只有一个跑开过 so3_average，恒定性是 1 个 seed 的 3 个 epoch，不是跨 seed。",
+        "删除动作没有做：新 config 约定不再开该项，但老 config 仍然开着，二者语义不同。"
       ]
     },
     {

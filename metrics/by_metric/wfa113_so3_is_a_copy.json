@@ -1,0 +1,36 @@
+{
+ "metric": "wfa113_so3_is_a_copy",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T40 (D39). so3_average is advertised as an SO(3)-averaged regulariser. If the velocity field is equivariant, rotating x_t and the target by the same R leaves the MSE unchanged, so averaging over K rotations averages K copies of one number — the term becomes a scaled duplicate of the FM MSE and contributes no gradient direction of its own.",
+ "artifact_for": "todo.json D39 / T40",
+ "decision": "KEEP the code path; do not delete. Deleting it would change what the archived configs mean, and the kill clause in T40 requires a 288-step run to show the 0.1 weight changes the FM trajectory by more than 2% — which cannot be run under the current no-training directive. Instead the duplication is stated at launch.",
+ "measurements": {
+  "c8_per_epoch": {
+   "source": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+   "note": "the only run on disk with so3_average: true",
+   "rows": [
+    {"epoch": 0, "so3_term": 1.1536705993008955, "fm_term": 11.536705694700542, "ratio": 0.10000000258573306},
+    {"epoch": 1, "so3_term": 1.0834642457619807, "fm_term": 10.834642239164507, "ratio": 0.10000000201626685},
+    {"epoch": 2, "so3_term": 1.0349941786966825, "fm_term": 10.349941584482147, "ratio": 0.10000000195638474}
+   ],
+   "spread": 6.3e-10,
+   "threshold": 1e-6,
+   "verdict": "COPY — the ratio equals so3_average_weight (0.1) to 9 significant figures at every epoch"
+  },
+  "mechanism": "For an equivariant field v(Rx) = R v(x), the K-term average of MSE(v(R_k x_t), R_k dx) equals MSE(v(x_t), dx) for every k, so the average is the identity. The residual 2e-9 is float32 rounding in the rotation matmuls, not a broken equivariance layer.",
+  "effective_fm_coefficient": "fm_weight * (1 + so3_average_weight) = 1.0 * 1.1 on c8, i.e. the run trained with an FM coefficient 10% above the configured 1.0"
+ },
+ "red_check": {
+  "method": "molmetal/tests/test_wfa113_so3_is_a_copy.py",
+  "equivariant_field": "the average is a no-op (ratio == weight) — PASS",
+  "non_equivariant_field": "the average is NOT a no-op (ratio != weight) — PASS, so the test can distinguish the two",
+  "trainer_banner": "the launch states the effective FM coefficient when so3_average is on — PASS"
+ },
+ "honest_limits": [
+  "The 0.1 weight is not proven irrelevant to the optimisation path. It multiplies the FM gradient by 1.1, which is a real 10% step-size change; the T40 kill clause (288 steps, fm_term trajectory within 2%) has not been run.",
+  "Only one run on disk ever enabled so3_average, so the constancy is measured over 3 epochs of one seed, not across seeds.",
+  "New configs should leave so3_average off and put the intended coefficient into fm_weight directly; the trainer now says so at launch."
+ ],
+ "tests": "molmetal/tests/test_wfa113_so3_is_a_copy.py"
+}

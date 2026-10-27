@@ -1,0 +1,56 @@
+{
+ "metric": "wfa113_shortcut_distill_weight",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T33 (D30). shortcut_distill_loss entered the loss sum with no coefficient, so no config key could scale it. Adding the weight exposed a second defect: the first attempt read it with getattr(args, ...) inside train_one_epoch, where `args` is not bound, so the term raised NameError on every batch and the block's own except replaced it with torch.zeros(()).",
+ "artifact_for": "todo.json D30 / T33",
+ "code_change": [
+  "train_one_epoch gains shortcut_distill_weight: float = 1.0 (keyword-only, next to shortcut_distill)",
+  "the term is now float(shortcut_distill_weight) * shortcut_distillation_loss(...)",
+  "the train_one_epoch(...) call site passes float(getattr(args, 'shortcut_distill_weight', 1.0))",
+  "--shortcut-distill-weight added (default 1.0 = bit-exact with the previously unwrapped term)",
+  "launch banner states the weight, the p_self factor, and the two structural defects below"
+ ],
+ "measurements": {
+  "scope_defect": {
+   "probe": "1 epoch, cpu, the same _SMOKE_ARGS the liveness guard uses",
+   "broken": {
+    "shortcut_distill_loss": {"requires_grad": false, "value": 0.0},
+    "warning": "[cfm-fm] shortcut_distill fell back to 0: NameError(\"name 'args' is not defined\")"
+   },
+   "fixed": {
+    "shortcut_distill_loss": {"requires_grad": true, "value": 0.000636186}
+   },
+   "head_before_the_change": {
+    "shortcut_distill_loss": {"requires_grad": true, "value": 0.000636186},
+    "note": "identical to the fixed value, so a weight of 1.0 is a true no-op on the objective"
+   }
+  },
+  "c8_decomposition": {
+   "source": "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+   "run_date": "2026-10-24",
+   "shortcut_distill_loss": [11.57786266427291, 10.963824762682025, 10.590626903698205],
+   "fm_term": [11.536705694700542, 10.834642239164507, 10.349941584482147],
+   "ratio": [1.003568, 1.011923, 1.023262],
+   "excess": [0.041156969572368, 0.129182523517518, 0.240685319216058],
+   "implied_shortcut_mse": [0.082313939144736, 0.258365047035036, 0.481370638432116],
+   "share_of_fm": [0.007134, 0.023845, 0.046510],
+   "reading": "c8 predates 5fb2c140 (2026-10-27), which taught this block to reuse the step's own velocity prediction. Until then the adapter was called with include_fm_term=True and returned fm_loss + p_self*shortcut_mse, i.e. the main FM MSE entered the objective a SECOND time. The ratio of 1.00 to within 3% at three consecutive epochs is the signature of a duplicate; the shortcut term's own contribution is the excess."
+  },
+  "dead_term_gate_confirmation": {
+   "probe": "1 epoch, cpu, all nine ALLOWED_DEAD weights set to 0.05",
+   "result": "every one of chem_loss / qed / molecule / stereo / fragment / property / natural_charge / wasserstein_pocket / clash_penalty / bond_aux_mse stayed at exactly 0.0 with requires_grad=False, and no 'fell back to 0' warning was emitted",
+   "meaning": "the ALLOWED_DEAD reasons in test_cfm_loss_gradient_liveness.py are the gating input, not a swallowed exception"
+  }
+ },
+ "honest_limits": [
+  "The excess in c8_decomposition is exact only up to the dropout difference between the two forwards: the field carries egnn_context_dropout 0.1, and the pre-fix code recomputed the FM MSE rather than reusing the step's own. The ratio argument does not depend on this — a duplicate tracks fm_term regardless of dropout.",
+  "The 46.3 / 43.9 / 42.4 'on-self MSE' figure quoted in an earlier reading of c8 was WRONG: it assumed include_fm_term=False. The correct implied shortcut_mse is 0.0824 / 0.2584 / 0.4814. The earlier figure is retracted here rather than deleted from the record.",
+  "Two structural defects in the term itself are documented at launch and NOT fixed: (1) shortcut_pair builds x_s at flow time tau = t + s(1-t) but labels it s (200k uniform (t,s), seed 0: mean |tau-s| = 0.2493, max 0.9990, 15.17% off by more than 0.5; the perpendicular deviation of x_s from the flow line is 5.4e-8, so the state is right and the label is wrong); (2) the 1-p_self share of the batch is scored at (x_t, t) against the step's own prediction, so that half measures dropout variance and can never reach zero while dropout is on. Fixing either changes what the archived c7/c8 runs mean, and neither can be validated without a training run.",
+  "No GPU run. Nothing here says whether the weighted term helps or hurts; it only says the term can now be scaled, is live, and was never 100% of the objective."
+ ],
+ "tests": [
+  "molmetal/tests/test_wfa113_shortcut_weight_scope.py",
+  "molmetal/tests/test_cfm_loss_gradient_liveness.py"
+ ]
+}

@@ -5017,6 +5017,15 @@ def train_one_epoch(
     triton_ot: bool = False,  # False = no Triton env-var dispatch
     stable_vm: bool = False,  # False = use F.cross_entropy (legacy)
     shortcut_distill: bool = False,  # False = no teacher-student pair
+    # Wf-A113 (T33) — weight on the shortcut-distillation term.  It used to be
+    # added to the sum with NO coefficient, so a 1.0 weight was indistinguishable
+    # from a disabled term in the config.  It MUST arrive as a kwarg: the block
+    # that consumes it lives in `train_one_epoch`, which has no `args` in scope.
+    # Reading `getattr(args, ...)` there raises NameError, the surrounding
+    # `except` zeroes the term, and the only trace is a RuntimeWarning — i.e.
+    # exactly the "args is main()-scoped" defect that Wf-A30 hit on
+    # `wasserstein_pocket_term` (see the signature-fix note above).
+    shortcut_distill_weight: float = 1.0,
     consistency_weight: float = 0.0,  # 0.0 = no consistency regulariser
     per_cohort_features: bool = False,  # False = no per-cohort logging
     # Wf-409-A1 — TODO-94 R20-P3 Multi-PH + PLL full wire-in kwargs.
@@ -6647,7 +6656,9 @@ def train_one_epoch(
                 # existed this term could only ever be `p_distill * 0.0`.
                 # x_t / t / target_dx are resampled every batch, which is what
                 # keeps it from decaying into the constant shape.
-                shortcut_distill_loss = _sd.shortcut_distillation_loss(
+                shortcut_distill_loss = float(
+                    shortcut_distill_weight
+                ) * _sd.shortcut_distillation_loss(
                     pred_fn=lambda x, tt: model.fm_velocity(
                         x, tt, z_all, cloud_sizes=_cloud_sizes,
                         pocket_embed=_pocket_embed, _caller="shortcut",
@@ -14367,6 +14378,22 @@ def parse_args() -> argparse.Namespace:
         help=("Alias for --so3-average (Wf-385-A3 gate name parity)."),
     )
     p.add_argument(
+        "--shortcut-distill-weight",
+        dest="shortcut_distill_weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-A113 (2026-10-27) — T33.  The shortcut-distillation term had "
+            "NO weight: it entered the loss sum as `+ shortcut_distill_loss`, "
+            "so on c8 it contributed 11.58 next to the FM term's 11.54 — half "
+            "the objective, with nothing in the artifact saying so.  Default "
+            "1.0 preserves every existing run exactly; the point of the flag "
+            "is that the multiplier now exists and appears in "
+            "_objective_weights.  See the [cfm-loss] banner at launch for the "
+            "measured size and for the time-label defect this term carries."
+        ),
+    )
+    p.add_argument(
         "--use-shortcut-distillation",
         dest="shortcut_distill",
         action="store_true",
@@ -16225,6 +16252,100 @@ def main() -> int:
             f"({type(_head_obj).__name__}: raw d + is_short/is_long only; "
             f"pre-Wf-A107 architecture)"
         )
+    # Wf-A113 (2026-10-27) — T40.  The SO(3)-averaged FM term is a SCALED COPY
+    # of the FM MSE, not a separate objective.
+    #
+    # MEASURED on the only run that ever enabled it
+    # (molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl, 3 epochs):
+    # so3_term / fm_term = 0.1000000026 / 0.1000000020 / 0.1000000020, i.e.
+    # so3_average_weight to 9 significant figures at every epoch.  That is the
+    # expected result for an equivariant field: rotating x_t and the target by
+    # the same R leaves the MSE unchanged, so averaging over K rotations
+    # averages K copies of the same number.  The term therefore contributes no
+    # gradient direction of its own — it multiplies the FM gradient by
+    # (1 + so3_average_weight).
+    #
+    # The code path is kept so archived runs still reproduce, but the
+    # inflation is stated at launch instead of being derivable only by
+    # dividing two numbers in an events file.  New configs should leave
+    # so3_average off and put the weight in fm_weight.
+    # Wf-A113 (2026-10-27) — T33.  The shortcut term has no weight of its own
+    # and its (x_s, s) pair is mislabelled.
+    #
+    # The size of this term was reported as "roughly half the objective"
+    # (shortcut_distill_loss 11.5779 / 10.9638 / 10.5906 against fm_term
+    # 11.5367 / 10.8346 / 10.3499 on
+    # molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl).  That reading
+    # was WRONG, and the way it was wrong is instructive.  c8 ran on
+    # 2026-10-24, BEFORE commit 5fb2c140 (2026-10-27) taught this block to
+    # reuse the step's own prediction.  Until then the adapter was called with
+    # `include_fm_term=True`, so it returned
+    #
+    #     shortcut_distill_loss = fm_loss_recomputed + p_self * shortcut_mse
+    #
+    # i.e. the main FM MSE entered the objective a SECOND time.  The giveaway
+    # is the ratio: 11.5779/11.5367 = 1.0036, 1.0119, 1.0233 — a term that is
+    # 100% of fm_term to within 3% at three consecutive epochs is a duplicate,
+    # not a second objective.  Subtracting gives the actual shortcut
+    # contribution, 0.5 * shortcut_mse = 0.0412 / 0.1292 / 0.2407, so
+    # shortcut_mse = 0.0824 / 0.2584 / 0.4814 against an FM MSE of 11.54 /
+    # 10.83 / 10.35 — 0.71% / 2.38% / 4.65% of the objective, growing as the
+    # field learns to vary with time.  (The subtraction is exact up to the
+    # dropout difference between the two forwards; the field carries
+    # context_dropout 0.1, so the residual is small but not zero.)
+    #
+    # Since 5fb2c140 the double count is gone: the block returns only
+    # `p_self * shortcut_mse`, so the term is a few percent of the objective
+    # and `shortcut_distill_weight` is now the knob that controls it.
+    #
+    # Two defects remain, both structural, neither fixed here because fixing
+    # either changes what archived c7/c8 runs mean and neither can be
+    # validated without a training run:
+    #
+    # 1. The time label.  `shortcut_pair` builds
+    #        x_s = (1-s) x_t + s x_1
+    #    which lies on the flow line at time tau = t + s(1-t), and then LABELS
+    #    it `s`.  MEASURED over 200k uniform (t, s), seed 0: mean |tau - s| =
+    #    0.2493, max 0.9990, and 15.17% of pairs are off by more than half the
+    #    flow interval.  The target is v(x_t, t) while the input is (x_tau, s).
+    #    tau = t + s(1 - t) was verified against the sampled geometry to
+    #    2.4e-7, and the perpendicular deviation of x_s from the flow line is
+    #    5.4e-8 — the pair IS on the line, so it is the label that is wrong,
+    #    not the state.
+    #
+    # 2. The masked-off half.  `shortcut_pair` replaces the second sample with
+    #    (x_t, t) for the 1 - p_self share rather than excluding those rows, so
+    #    for ~half the batch the term is
+    #    (v(x_t,t; dropout_a) - v(x_t,t; dropout_b))^2 — a pure dropout-variance
+    #    penalty, not a shortcut term.  That half can never reach zero while
+    #    dropout is on, and it is the reason the term has a non-zero floor.
+    if bool(getattr(args, "shortcut_distill", False)):
+        _sc_w = float(getattr(args, "shortcut_distill_weight", 1.0))
+        print(
+            f"[cfm-loss] shortcut_distill=ON weight={_sc_w:g} x p_self=0.5, "
+            f"so the term is {_sc_w * 0.5:g} x shortcut_mse.  MEASURED on c8 "
+            f"(2026-10-24, before the double count was removed) it read 11.58 "
+            f"against fm_term 11.54, but 11.58 was the FM MSE entering a "
+            f"SECOND time; the shortcut contribution was the difference, "
+            f"0.0412, i.e. 0.71% of the objective at epoch 0.  Two defects "
+            f"remain: x_s sits at flow time t+s(1-t) but is labelled s (mean "
+            f"error 0.2493, max 0.9990), and the 1-p_self half of the batch "
+            f"is scored at (x_t, t) against the step's own prediction, so it "
+            f"measures dropout variance rather than a shortcut.",
+            flush=True,
+        )
+    if bool(getattr(args, "so3_average", False)):
+        _so3_w = float(getattr(args, "so3_average_weight", 0.1))
+        _fm_w = float(getattr(args, "fm_weight", 1.0))
+        print(
+            f"[cfm-loss] so3_average=ON: the term equals "
+            f"{_so3_w:g} x the FM MSE (measured ratio 0.1000000 on c8, "
+            f"constant over every epoch), so the effective FM coefficient is "
+            f"{_fm_w:g} x (1 + {_so3_w:g}) = {_fm_w * (1.0 + _so3_w):g}, "
+            f"not {_fm_w:g}.  It is a scaled copy, not a second objective; "
+            f"leave it off in new configs and put the weight in fm_weight.",
+            flush=True,
+        )
     _ring_w = float(getattr(args, "ring_template_weight", 0.0))
     if _ring_w > 0.0:
         print(
@@ -16648,6 +16769,9 @@ def main() -> int:
             triton_ot=bool(getattr(args, "triton_ot", False)),
             stable_vm=bool(getattr(args, "stable_vm", False)),
             shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
+            shortcut_distill_weight=float(
+                getattr(args, "shortcut_distill_weight", 1.0)
+            ),
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
             # Wf-A100 — the class-term weights.  Defaults are the
             # train_one_epoch defaults verbatim, so a caller that does not set
