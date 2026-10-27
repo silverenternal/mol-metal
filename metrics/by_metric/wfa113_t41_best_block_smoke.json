@@ -1,0 +1,116 @@
+{
+ "metric": "wfa113_t41_best_block_smoke",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T41's done_when asks for a 3-epoch CPU run in which `best` describes one epoch and the checkpoint the artifact names holds that same epoch. This records the run and the three checks, including the one that is vacuous here.",
+ "artifact_for": "todo.json SA-20 / D40 / T41",
+ "config": "configs/smoke_t41_best_block.yaml",
+ "command": ".venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/smoke_t41_best_block.yaml --out-dir /tmp/wfa113_t41_smoke --ckpt-dir /tmp/wfa113_t41_smoke/checkpoints",
+ "device": "cpu",
+ "wall_time_s": 252.99,
+ "epochs": 3,
+ "n_train": 64,
+ "n_val": 16,
+ "best": {
+  "epoch": 2,
+  "gate_epoch": 0,
+  "gate_metric": "bond_exact_type",
+  "gate_value": 0.0,
+  "gate_value_at_epoch": 0.0,
+  "bond_exact_type_rate": 0.0,
+  "bond_type_macro_f1_pooled": 0.0,
+  "bond_f1": 0.0,
+  "bond_precision": 0.0,
+  "bond_recall": 0.0,
+  "bond_n_scored": 16,
+  "bond_fields_from_epoch": 2,
+  "epochs_mixed": false,
+  "decode_ratio": 1.0,
+  "hit_target": false,
+  "target_note": "hit_target is measured on the gate metric, at that metric's own bar (0.5; 0.5 for bond_exact_type, 0.400 for combined, 0.8 for gen_validity, args.target_decode_ratio for decode_ratio). decode_ratio is reported but is not a chemistry metric (see decode_ratio_caveat)."
+ },
+ "early_stop_control": {
+  "requested_metric": "bond_type_f1",
+  "gating_metric": "bond_exact_type",
+  "gating_note": "bond_type_f1 degraded to bond_exact_type (its own input was unmeasured); bond_exact_type_rate is at its floor 0.000 over n=16 scored complexes",
+  "epochs_run": 3,
+  "best_value": 0.0,
+  "best_epoch": 0,
+  "selected_epoch": 2,
+  "selection_overrode_gate": true,
+  "degraded": true
+ },
+ "provenance": {
+  "checkpoint": "/tmp/wfa113_t41_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "checkpoint_selected": "/tmp/wfa113_t41_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "checkpoint_selected_exists": true,
+  "checkpoint_epoch_named": null,
+  "checkpoint_epoch_named_exists": false,
+  "checkpoint_last": "/tmp/wfa113_t41_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "checkpoint_last_exists": true,
+  "checkpoint_sha256": "5bfa9f082aae26c20236d4252ed094dc5c132cf593e1258f796aa6b7344e435e",
+  "checkpoint_sha256_of": "last",
+  "selection": {
+   "criterion": "bond_exact_type",
+   "n_epochs_recorded": 3,
+   "distinct_values": 1,
+   "value_set": [
+    "0"
+   ],
+   "degenerate": true,
+   "best_epoch_by_gate": 0,
+   "selected_epoch": 2,
+   "selected_checkpoint": "last",
+   "reason": "bond_exact_type has 1 distinct value(s) over 3 epoch(s) (['0']), so its argmax ranks nothing; the final epoch is selected instead"
+  }
+ },
+ "checks": {
+  "self_consistent": {
+   "claim": "best.epoch == best.bond_fields_from_epoch and epochs_mixed is false",
+   "measured": {
+    "best_epoch": 2,
+    "bond_fields_from_epoch": 2,
+    "epochs_mixed": false
+   },
+   "result": "PASS"
+  },
+  "named_file": {
+   "claim": "the file provenance.checkpoint names embeds epoch == best.epoch",
+   "measured": {
+    "checkpoint": "/tmp/wfa113_t41_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+    "embedded_epoch": 2,
+    "best_epoch": 2,
+    "sha256_matches_provenance": true
+   },
+   "result": "PASS"
+  },
+  "epoch_named_write": {
+   "claim": "the tagged save reproduces the selected checkpoint byte for byte",
+   "measured": {
+    "seed0_pt_sha256": "ff3732ce627eade4ba4e71a1c1e8a9693373563a0f2e54ad1b9787f364f05107",
+    "epoch0_pt_sha256": "ff3732ce627eade4ba4e71a1c1e8a9693373563a0f2e54ad1b9787f364f05107"
+   },
+   "result": "PASS",
+   "note": "the only improvement was epoch 0, so `_epoch0.pt` is the only tagged file; it is byte-identical to `seed0.pt`, which is what 'same in-memory state' has to mean"
+  },
+  "row_matches_best": {
+   "claim": "best's bond fields equal per_epoch_metrics[best.epoch]'s row",
+   "measured": {
+    "row_bond_f1": 0.0,
+    "best_bond_f1": 0.0,
+    "row_bond_exact_type_rate": 0.0,
+    "best_bond_exact_type_rate": 0.0,
+    "row_decode_ratio": 1.0,
+    "best_decode_ratio": 1.0
+   },
+   "result": "PASS",
+   "vacuous": true,
+   "vacuous_because": "every bond metric reads 0.000 at all three epochs on a 64-cloud 3-epoch CPU smoke, so equality holds for any row. This check cannot distinguish the epochs here; the synthetic-row tests in molmetal/tests/test_wfa113_best_block_one_epoch.py carry that weight."
+  }
+ },
+ "honest_limits": [
+  "The gate still degraded: `early_stop_metric: bond_type_f1` was requested but bond_type_macro_f1_pooled read 0.000 at every epoch, so resolve_early_stop_criterion fell through to bond_exact_type (also 0.000). That is a real property of a 3-epoch smoke, not a wiring fault — the same code path on the 36-epoch gcv36 artifact returns bond_type_macro_f1, which is what test_gcv36_combined_gate_is_not_a_constant asserts.",
+  "The run therefore exercises the DEGENERATE selection path: the gate's argmax was epoch 0 and resolve_selection overrode it to epoch 2. That is the case T41 was written for (budget36 named an epoch-0 file), but it means the non-degenerate path — `_epoch{N}.pt` chosen as `checkpoint` — is covered only by the unit tests, not by this run.",
+  "No quality claim. 64 clouds, 3 epochs, decode_ratio 1.000 is the loose-atom artefact."
+ ]
+}

@@ -139,6 +139,15 @@ protocol:
   weight_decay: 1.0e-05
   max_norm: 5.0
   early_stop_patience: 999
+  # Wf-A113 (2026-10-27) — this run shipped NO `early_stop_metric`, so it
+  # inherited `combined` = gen_validity x bond_exact_type_rate.  MEASURED on
+  # results/wfa108j_gcv36/per_epoch_metrics.json: gen_validity_samples is 0
+  # and bond_exact_type_rate is 0.000 at all 36 epochs, so `combined` was the
+  # constant 0.0 and selected epoch 0 -- the least-trained weights -- by the
+  # -inf arithmetic.  bond_type_macro_f1_pooled moved over 34 distinct values
+  # in that same file.  Score the axis that moves.  Re-running this config
+  # therefore selects a DIFFERENT epoch than the archived artifact.
+  early_stop_metric: bond_type_f1
 
 output:
   base_dir: results/wfa108j_gcv36

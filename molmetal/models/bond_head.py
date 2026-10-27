@@ -397,9 +397,19 @@ def _classify_dative_source(
     See :attr:`DecodedMol.dative_source`.  Cheap: one tensor->list
     conversion of the cloud's truth bonds, and only when the decode
     actually emitted a dative flag.
+
+    Wf-A113 (2026-10-27) — ``no_truth``.  An EMPTY dative list used to
+    return ``""`` whether or not the cloud carried per-pair truth, so a
+    generated cloud that predicted no dative bond and a real cloud whose
+    truth said "none of these are dative" were the same payload.  On the
+    generation line every cloud is truth-free, which made ``""`` the
+    single most common value and therefore uninformative.  The empty case
+    now names the missing truth explicitly; the non-empty cases are
+    unchanged, so every existing ``z_rule`` / ``truth`` / ``mixed`` count
+    keeps its meaning.
     """
     if not dative_bonds:
-        return "", 0
+        return ("no_truth", 0) if _dative_truth_pairs(cloud) is None else ("", 0)
     truth = _dative_truth_pairs(cloud)
     if truth is None:
         return "z_rule", 0

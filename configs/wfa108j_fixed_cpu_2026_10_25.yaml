@@ -138,6 +138,11 @@ protocol:
     min_lr: 1.0e-06
   weight_decay: 1.0e-05
   max_norm: 5.0
+  # Wf-A113 (2026-10-27) — same defect as the two 36-epoch siblings: no
+  # `early_stop_metric`, so `combined` inherited.  A 6-epoch CPU smoke also
+  # has no generation samples, which degrades `combined` to
+  # bond_exact_type, and exact-type is structurally 0.000 on this corpus.
+  early_stop_metric: bond_type_f1
 
 output:
   base_dir: results/wfa108j_fixed_cpu_2026_10_25

@@ -50,7 +50,9 @@ Exit codes follow the repo convention: 0 = every selected gate PASS,
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
 import json
 import subprocess
 import sys
@@ -83,7 +85,7 @@ METAL_Z: Dict[int, str] = {
 # not an out-of-distribution atom.
 _METAL_SWAP = {78: 44, 44: 78, 77: 45, 45: 77, 76: 75, 75: 76, 46: 78}
 
-_GATE_IDS = [f"M{i}" for i in range(1, 11)]
+_GATE_IDS = [f"M{i}" for i in range(1, 12)]
 
 
 # ---------------------------------------------------------------------------
@@ -1279,6 +1281,278 @@ def gate_m10(ctx: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# M11 — sampled-output gate
+# ---------------------------------------------------------------------------
+#: The reference band M11 compares a generated pool against.  Every number is
+#: READ from an artifact at run time; none is hardcoded, because a hand-typed
+#: band is a number nobody can re-derive.  See :func:`_m11_reference`.
+_M11_REF_RING_ARTIFACT = "metrics/by_metric/cfm_opt2_ring_content.json"
+_M11_REF_PANEL_ARTIFACT = "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json"
+
+#: Tolerances.  Stated as RATIOS of the reference rather than absolute values,
+#: so a future re-measurement of the band moves the bar with it.  A generated
+#: pool is not expected to match real chemistry exactly; it is expected to be
+#: on the same order.  The numbers come from the c8 measurement: single
+#: fragment 0.203 against a 0.8365 reference is 0.24x, and 3-ring share 0.708
+#: against 0.00489 is 145x.  A 0.5x floor and a 2x ceiling sit between the two
+#: populations with room on both sides, so neither a lucky epoch nor a bad
+#: one lands on the boundary.
+_M11_SINGLE_FRAG_FLOOR = 0.5
+_M11_RING3_CEIL = 2.0
+_M11_RINGS_PER_MOL_BAND = (0.3, 3.0)
+_M11_PARSE_FLOOR = 0.5
+#: Absolute tolerance for the cross-check between the pool CSV and the run's
+#: own per_epoch_metrics.json.  Both are computed from the same decode, so a
+#: disagreement means the artifact and the pool are not the same run.
+_M11_CROSSCHECK_TOL = 0.02
+
+
+def _m11_reference() -> Dict[str, Any]:
+    """Read the real-chemistry reference band from the two artifacts.
+
+    ``single_fragment_rate`` comes from
+    ``cfm_panel_reference_band_real_tmqm.json``, which decoded 2000 real tmQM
+    clouds through the SAME YuelBond head and scored the 636 that produced a
+    SMILES.  That is the right control for a decode-side gate: it includes the
+    decoder's own imperfection, so the bar is not "what a perfect molecule
+    looks like" but "what this decoder does on real geometry".
+
+    ``ring_3_share`` / ``rings_per_mol`` come from
+    ``cfm_opt2_ring_content.json``'s ``real`` block (2000 real tmQM SMILES,
+    8386 rings).  Ring content is a property of the MOLECULE, not of the
+    decode, so the corpus is the correct source there.
+
+    Raises rather than defaulting: a gate that silently invents a band is
+    worse than no gate.
+    """
+    ring_p = _resolve(_M11_REF_RING_ARTIFACT)
+    panel_p = _resolve(_M11_REF_PANEL_ARTIFACT)
+    missing = [str(p) for p in (ring_p, panel_p) if not p.is_file()]
+    if missing:
+        raise FileNotFoundError(f"M11 reference artifact(s) missing: {missing}")
+    ring_doc = json.loads(ring_p.read_text())
+    panel_doc = json.loads(panel_p.read_text())
+    real = ring_doc["real"]
+    dist = real["ring_size_distribution"]
+    n_rings = sum(int(v) for v in dist.values())
+    if n_rings <= 0:
+        raise ValueError("M11 reference: the real ring distribution is empty")
+    return {
+        "single_fragment_rate": float(
+            panel_doc["reference_band"]["single_fragment_rate"]
+        ),
+        "chemistry_validity_pass_rate": float(
+            panel_doc["reference_band"]["chemistry_validity_pass_rate"]
+        ),
+        "ring_3_share": float(dist.get("3", 0)) / n_rings,
+        "rings_per_mol": float(real["rings_per_mol"]["mean"]),
+        "ring_3_share_n_rings": n_rings,
+        "single_fragment_n": int(panel_doc.get("n", 0)),
+        "sources": {
+            "ring_content": str(ring_p),
+            "panel_band": str(panel_p),
+        },
+    }
+
+
+def _m11_read_smiles(path: Path) -> Tuple[List[str], str]:
+    """``(non-empty SMILES, delimiter)`` from a pool or corpus CSV.
+
+    Two shapes are on disk and both matter: the trainer's
+    ``generated_smiles.csv`` (comma, lower-case ``smiles``) and the tmQM
+    corpus ``tmQM_y.csv`` (semicolon, upper-case ``SMILES``, many empty).
+    Empty values are dropped BEFORE any denominator is formed, so the real
+    corpus can serve as a PASS control without its empty rows reading as
+    unparseable molecules.
+    """
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    header = raw.split("\n", 1)[0]
+    delim = ";" if header.count(";") > header.count(",") else ","
+    reader = csv.DictReader(io.StringIO(raw), delimiter=delim)
+    fields = reader.fieldnames or []
+    col = next(
+        (f for f in fields if str(f).strip().lower() == "smiles"),
+        None,
+    )
+    if col is None:
+        raise ValueError(
+            f"{path} has no 'smiles' column; columns are {fields[:8]}"
+        )
+    out = []
+    for row in reader:
+        s = (row.get(col) or "").strip()
+        if s:
+            out.append(s)
+    return out, delim
+
+
+def gate_m11(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Does the SAMPLED OUTPUT look like chemistry?
+
+    This is the gate the other ten are missing.  MEASURED 2026-10-25 on
+    ``molmetal/reports/cfm_c8_fullgen_2026_10_24``: M1/M6/M7/M8 passed while
+    the same run's pool averaged 2.5 fragments per molecule and put 71-92% of
+    its rings at size 3 (real: 0.5%).  A suite that can report four PASS on
+    that pool is gating the machinery and not the product.
+
+    Three checks, each a ratio against the real-chemistry band:
+
+    * single-fragment rate >= 0.5x real.  A complex is one molecule; this is
+      the direct detector, and it is the same quantity ``gen_validity``
+      cannot see.
+    * ring-3 share <= 2x real.  Three-membered rings are the signature of a
+      collapsed triangle rather than a scaffold: 0.5% real, 71-92% generated.
+    * rings per molecule within [0.3x, 3x] real.  A pool with the right
+      fragment count and no rings at all is a different failure, so this
+      bounds the shape from both sides.
+
+    Plus a parse-rate guard, so a pool cannot buy the fragment metric by
+    emitting fewer molecules, and an optional cross-check against the run's
+    own ``per_epoch_metrics.json`` — the artifact and the pool must describe
+    the same decode, or neither number means anything.
+    """
+    pool_csv = ctx.get("pool_csv")
+    if not pool_csv:
+        return {
+            "measured": {"pool_csv": None},
+            "checks": {"pool_supplied": False},
+            "pass": False,
+            "detail": "no --pool-csv; M11 reads a decoded pool, not the model",
+        }
+    pool_p = _resolve(str(pool_csv))
+    if not pool_p.is_file():
+        return {
+            "measured": {"pool_csv": str(pool_p), "exists": False},
+            "checks": {"pool_exists": False},
+            "pass": False,
+        }
+    ref = _m11_reference()
+    smiles, delim = _m11_read_smiles(pool_p)
+
+    from rdkit import Chem, RDLogger
+    from molmetal.eval.ring_profile import ring_sizes_from_mol
+
+    RDLogger.DisableLog("rdApp.*")
+    n_nonempty = len(smiles)
+    n_parsed = 0
+    n_single = 0
+    ring_hist: Dict[int, int] = {}
+    rings_per_mol_sum = 0
+    for s in smiles:
+        mol = Chem.MolFromSmiles(s)
+        if mol is None:
+            continue
+        n_parsed += 1
+        if len(Chem.GetMolFrags(mol, asMols=False, sanitizeFrags=False)) == 1:
+            n_single += 1
+        sizes = ring_sizes_from_mol(mol)
+        rings_per_mol_sum += len(sizes)
+        for k in sizes:
+            ring_hist[int(k)] = ring_hist.get(int(k), 0) + 1
+
+    if n_parsed == 0:
+        return {
+            "measured": {"pool_csv": str(pool_p), "n_nonempty": n_nonempty},
+            "checks": {"pool_parses": False},
+            "pass": False,
+            "detail": "no SMILES in the pool parsed; nothing to gate",
+        }
+    n_rings = sum(ring_hist.values())
+    parse_rate = n_parsed / n_nonempty
+    single_frag = n_single / n_parsed
+    ring3 = (ring_hist.get(3, 0) / n_rings) if n_rings else 0.0
+    rpm = rings_per_mol_sum / n_parsed
+
+    checks = {
+        "parse_rate": bool(parse_rate >= _M11_PARSE_FLOOR * ref["chemistry_validity_pass_rate"]),
+        "single_fragment_rate": bool(
+            single_frag >= _M11_SINGLE_FRAG_FLOOR * ref["single_fragment_rate"]
+        ),
+        "ring_3_share": bool(ring3 <= _M11_RING3_CEIL * ref["ring_3_share"]),
+        "rings_per_mol": bool(
+            _M11_RINGS_PER_MOL_BAND[0] * ref["rings_per_mol"]
+            <= rpm
+            <= _M11_RINGS_PER_MOL_BAND[1] * ref["rings_per_mol"]
+        ),
+    }
+
+    measured: Dict[str, Any] = {
+        "pool_csv": str(pool_p),
+        "delimiter": delim,
+        "n_nonempty": n_nonempty,
+        "n_parsed": n_parsed,
+        "parse_rate": round(parse_rate, 6),
+        "single_fragment_rate": round(single_frag, 6),
+        "ring_3_share": round(ring3, 6),
+        "rings_per_mol": round(rpm, 6),
+        "n_rings": n_rings,
+        "ring_size_distribution": {str(k): v for k, v in sorted(ring_hist.items())},
+        "reference": ref,
+        "thresholds": {
+            "parse_rate_min": _M11_PARSE_FLOOR * ref["chemistry_validity_pass_rate"],
+            "single_fragment_rate_min": _M11_SINGLE_FRAG_FLOOR
+            * ref["single_fragment_rate"],
+            "ring_3_share_max": _M11_RING3_CEIL * ref["ring_3_share"],
+            "rings_per_mol_min": _M11_RINGS_PER_MOL_BAND[0] * ref["rings_per_mol"],
+            "rings_per_mol_max": _M11_RINGS_PER_MOL_BAND[1] * ref["rings_per_mol"],
+        },
+    }
+
+    # Cross-check against the run's own epoch record when one is supplied.
+    # A pool and an artifact that disagree by more than the tolerance are not
+    # the same decode; the m21 lesson is that a gate reading one source alone
+    # can pass on a placeholder.
+    epoch_json = ctx.get("epoch_json")
+    if epoch_json:
+        ep = _resolve(str(epoch_json))
+        if not ep.is_file():
+            checks["epoch_json_exists"] = False
+            measured["epoch_json"] = str(ep)
+        else:
+            doc = json.loads(ep.read_text())
+            # The trainer writes these under a `gen_` prefix; a hand-written
+            # or older artifact may not.  Both spellings are searched, and a
+            # MISSING key is a FAIL: an epoch record that cannot state the two
+            # numbers cannot be cross-checked, and "absent" must not read as
+            # "agrees".
+            hits = _find_keys(
+                doc,
+                (
+                    "ring_3_share",
+                    "gen_ring_3_share",
+                    "single_fragment_ratio",
+                    "gen_single_fragment_ratio",
+                ),
+            )
+            rec3 = hits.get("ring_3_share", hits.get("gen_ring_3_share"))
+            recsf = hits.get(
+                "single_fragment_ratio", hits.get("gen_single_fragment_ratio")
+            )
+            measured["epoch_json"] = str(ep)
+            measured["epoch_recorded"] = {
+                "ring_3_share": rec3,
+                "single_fragment_ratio": recsf,
+            }
+            ok = isinstance(rec3, (int, float)) and isinstance(
+                recsf, (int, float)
+            )
+            if ok:
+                ok = (
+                    abs(float(rec3) - ring3) <= _M11_CROSSCHECK_TOL
+                    and abs(float(recsf) - single_frag) <= _M11_CROSSCHECK_TOL
+                )
+            checks["artifact_matches_pool"] = bool(ok)
+
+    failed = [k for k, v in checks.items() if not v]
+    detail = (
+        "sampled output is on the real-chemistry band"
+        if not failed
+        else f"off-band: {', '.join(failed)}"
+    )
+    return {"measured": measured, "checks": checks, "pass": all(checks.values()), "detail": detail}
+
+
 _GATES = {
     "M1": gate_m1,
     "M2": gate_m2,
@@ -1290,6 +1564,7 @@ _GATES = {
     "M8": gate_m8,
     "M9": gate_m9,
     "M10": gate_m10,
+    "M11": gate_m11,
 }
 
 _GATE_TITLES = {
@@ -1303,6 +1578,7 @@ _GATE_TITLES = {
     "M8": "train / sample seam",
     "M9": "objective balance",
     "M10": "metric chain",
+    "M11": "sampled output",
 }
 
 
@@ -1314,7 +1590,11 @@ def _build_parser() -> argparse.ArgumentParser:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--ckpt", required=True, help="checkpoint to gate")
+    p.add_argument(
+        "--ckpt",
+        default=None,
+        help="checkpoint to gate; required for every gate except M11",
+    )
     p.add_argument(
         "--run-dir",
         default=None,
@@ -1347,6 +1627,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--csv",
         default=None,
         help="override the cohort CSV (default: the checkpoint's data_csv)",
+    )
+    p.add_argument(
+        "--pool-csv",
+        default=None,
+        help="M11 — a decoded pool (generated_smiles.csv or a real corpus CSV "
+        "with a 'smiles' column). M11 gates the OUTPUT, so it reads this "
+        "instead of the model.",
+    )
+    p.add_argument(
+        "--epoch-json",
+        default=None,
+        help="M11 — the run's per_epoch_metrics.json; when given, the gate "
+        "cross-checks the recorded ring/fragment numbers against the pool "
+        "instead of trusting either alone.",
     )
     return p
 
@@ -1397,8 +1691,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if unknown:
         raise SystemExit(f"unknown gate id(s): {unknown}; known: {_GATE_IDS}")
 
-    ckpt_path = _resolve(args.ckpt)
-    if not ckpt_path.is_file():
+    ckpt_path = _resolve(args.ckpt) if args.ckpt else None
+    # M11 reads a decoded pool, not the model, so it is the one gate that can
+    # run with no checkpoint at all — which is what makes it usable on a
+    # control corpus (tmQM_y.csv) as well as on a run.  Every other gate needs
+    # weights, so the requirement stays for them.
+    _m11_only = [g.upper() for g in gate_ids] == ["M11"]
+    if ckpt_path is None:
+        if not _m11_only:
+            raise SystemExit("--ckpt is required for every gate except M11")
+    elif not ckpt_path.is_file():
         raise SystemExit(f"--ckpt '{ckpt_path}' is not a file")
 
     # Wf-A108k — the artifact decides which weights its numbers belong to.
@@ -1406,50 +1708,83 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # names something else makes M10 compare two epochs and call it a chain
     # failure. See _artifact_named_ckpt.
     _named, _why = _artifact_named_ckpt(args.run_dir)
-    if _named is not None and _named.resolve() != ckpt_path.resolve():
-        print(
-            f"[gates] --ckpt {ckpt_path.name} overridden by the run artifact: "
-            f"{_named.name} ({_why})",
-            flush=True,
-        )
-        ckpt_path = _named
-    elif _named is None:
+    if _named is not None and ckpt_path is not None:
+        if _named.resolve() != ckpt_path.resolve():
+            print(
+                f"[gates] --ckpt {ckpt_path.name} overridden by the run "
+                f"artifact: {_named.name} ({_why})",
+                flush=True,
+            )
+            ckpt_path = _named
+    elif _named is None and ckpt_path is not None:
         print(f"[gates] keeping --ckpt {ckpt_path.name}: {_why}", flush=True)
 
-    sha = _sha256(ckpt_path)
-    device = torch.device(args.device)
+    if ckpt_path is None:
+        # M11-only, no weights: the gate reads the pool.  Everything the other
+        # gates need (model, cohort, flattened tensors) stays None so a
+        # mis-selected gate fails loudly on the attribute access instead of
+        # silently reading a stale ctx.
+        migrated = False
+        ctx: Dict[str, Any] = {
+            "model": None,
+            "ns": None,
+            "clouds": [],
+            "x1": None,
+            "z": None,
+            "sizes": None,
+            "device": torch.device(args.device),
+            "seed": int(args.seed),
+            "n_clouds": 0,
+            "ckpt_path": None,
+            "ckpt_sha256": None,
+            "run_dir": args.run_dir,
+            "csv": args.csv,
+            "pool_csv": args.pool_csv,
+            "epoch_json": args.epoch_json,
+            "steps_m3": int(args.steps_m3),
+        }
+        print(
+            f"[gates] no checkpoint (M11 reads the pool) "
+            f"pool={args.pool_csv} epoch_json={args.epoch_json}",
+            flush=True,
+        )
+    else:
+        sha = _sha256(ckpt_path)
+        device = torch.device(args.device)
 
-    ck = _load_ckpt(ckpt_path)
-    model, ns, migrated = _build_model(ck, device)
-    clouds = _build_clouds(ns, int(args.n_clouds), int(args.seed))
-    if not clouds:
-        raise SystemExit("cohort produced 0 clouds")
-    x1, z, sizes = _flatten(clouds, device)
+        ck = _load_ckpt(ckpt_path)
+        model, ns, migrated = _build_model(ck, device)
+        clouds = _build_clouds(ns, int(args.n_clouds), int(args.seed))
+        if not clouds:
+            raise SystemExit("cohort produced 0 clouds")
+        x1, z, sizes = _flatten(clouds, device)
 
-    ctx: Dict[str, Any] = {
-        "model": model,
-        "ns": ns,
-        "clouds": clouds,
-        "x1": x1,
-        "z": z,
-        "sizes": sizes,
-        "device": device,
-        "seed": int(args.seed),
-        "n_clouds": int(args.n_clouds),
-        "ckpt_path": ckpt_path,
-        "ckpt_sha256": sha,
-        "run_dir": args.run_dir,
-        "csv": args.csv,
-        "steps_m3": int(args.steps_m3),
-    }
+        ctx = {
+            "model": model,
+            "ns": ns,
+            "clouds": clouds,
+            "x1": x1,
+            "z": z,
+            "sizes": sizes,
+            "device": device,
+            "seed": int(args.seed),
+            "n_clouds": int(args.n_clouds),
+            "ckpt_path": ckpt_path,
+            "ckpt_sha256": sha,
+            "run_dir": args.run_dir,
+            "csv": args.csv,
+            "pool_csv": args.pool_csv,
+            "epoch_json": args.epoch_json,
+            "steps_m3": int(args.steps_m3),
+        }
 
-    print(
-        f"[gates] ckpt={ckpt_path.name} sha256={sha[:12]} "
-        f"epoch={ck.get('epoch')} head="
-        f"{getattr(getattr(model, 'vel_field', None), 'velocity_head', 'none')} "
-        f"clouds={len(clouds)} atoms={int(x1.shape[0])} device={device}",
-        flush=True,
-    )
+        print(
+            f"[gates] ckpt={ckpt_path.name} sha256={sha[:12]} "
+            f"epoch={ck.get('epoch')} head="
+            f"{getattr(getattr(model, 'vel_field', None), 'velocity_head', 'none')} "
+            f"clouds={len(clouds)} atoms={int(x1.shape[0])} device={device}",
+            flush=True,
+        )
 
     results: List[Dict[str, Any]] = []
     for gid in gate_ids:
@@ -1502,28 +1837,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "date": time.strftime("%Y-%m-%d"),
         "generated_at_unix": int(time.time()),
         "what": (
-            "The ten module gates from cfm_todo.json v9.0, executed against "
-            "one checkpoint. Each gate measures one module's own function; "
-            "the seam gates (M1, M8) measure the join between two modules."
+            "The eleven module gates from cfm_todo.json v9.0 (M11 added "
+            "2026-10-27), executed against one checkpoint. Each gate measures "
+            "one module's own function; the seam gates (M1, M8) measure the "
+            "join between two modules; M11 measures the SAMPLED OUTPUT and "
+            "reads a decoded pool instead of the weights."
         ),
-        "checkpoint": str(ckpt_path),
-        "checkpoint_sha256": sha,
-        "ckpt_epoch": ck.get("epoch"),
+        "checkpoint": str(ctx["ckpt_path"]) if ctx["ckpt_path"] else None,
+        "checkpoint_sha256": ctx["ckpt_sha256"],
+        # M11 needs no weights, so a pool-only run records nulls here rather
+        # than a fabricated epoch or head name.
+        "ckpt_epoch": (ck.get("epoch") if ctx["ckpt_path"] else None),
         "velocity_head": getattr(
-            getattr(model, "vel_field", None), "velocity_head", None
+            getattr(ctx["model"], "vel_field", None), "velocity_head", None
         ),
         "prediction_target": getattr(
-            getattr(model, "vel_field", None), "prediction_target", None
+            getattr(ctx["model"], "vel_field", None), "prediction_target", None
         ),
-        "t_embedding_dim": int(getattr(ns, "t_embedding_dim", 0) or 0),
+        "t_embedding_dim": int(getattr(ctx["ns"], "t_embedding_dim", 0) or 0),
         "radial_centroid_masked": bool(
-            getattr(ns, "radial_centroid_masked", False)
+            getattr(ctx["ns"], "radial_centroid_masked", False)
         ),
-        "dataset": str(getattr(ns, "dataset", "synthetic")),
+        "dataset": (
+            str(getattr(ctx["ns"], "dataset", "synthetic"))
+            if ctx["ns"] is not None
+            else None
+        ),
         "run_dir": args.run_dir,
-        "device": str(device),
-        "n_clouds": len(clouds),
-        "n_atoms": int(x1.shape[0]),
+        "pool_csv": args.pool_csv,
+        "epoch_json": args.epoch_json,
+        "device": str(ctx["device"]),
+        "n_clouds": len(ctx["clouds"] or []),
+        "n_atoms": int(ctx["x1"].shape[0]) if ctx["x1"] is not None else 0,
         "seed": int(args.seed),
         "legacy_vel_migration": migrated,
         "gates": results,

@@ -89,7 +89,16 @@ def test_dative_truth_pairs_is_none_without_truth() -> None:
 # Provenance classification
 # ---------------------------------------------------------------------------
 def test_classify_dative_source_no_dative_bonds() -> None:
-    assert _classify_dative_source(_two_atom_cloud(78, 7, 2.0), []) == ("", 0)
+    # Wf-A113 — an empty list on a cloud with NO per-pair truth now says so,
+    # because on the generation line that is every cloud and "" carried no
+    # information.  With truth present the empty case still returns "".
+    assert _classify_dative_source(_two_atom_cloud(78, 7, 2.0), []) == (
+        "no_truth",
+        0,
+    )
+    assert _classify_dative_source(
+        _two_atom_cloud(78, 7, 2.0, truth=True), []
+    ) == ("", 0)
 
 
 def test_classify_dative_source_without_truth_is_z_rule() -> None:

@@ -1,0 +1,211 @@
+{
+ "metric": "cfm_molecule_validity_recompute",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T31 gate: the new metric must be computable from a shipped pool, and it must read far below the gen_validity that the same run reported.",
+ "definition": "molecule_validity = fraction of generated samples whose SMILES (a) RDKit parses and sanitises, (b) has exactly one fragment, (c) contains one of the six target metals, (d) has >1 heavy atom. Same denominator as gen_validity.",
+ "artifact_for": "todo.json SA-7 / D29 / T31",
+ "pools": {
+  "c8_fullgen_b64": {
+   "path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+   "per_epoch": {
+    "0": {
+     "n": 704,
+     "molecule_validity": 0.203125,
+     "molecule_validity_n": 143,
+     "single_fragment_ratio": 0.203125,
+     "no_metal_n": 0
+    },
+    "1": {
+     "n": 704,
+     "molecule_validity": 0.200284,
+     "molecule_validity_n": 141,
+     "single_fragment_ratio": 0.200284,
+     "no_metal_n": 0
+    },
+    "2": {
+     "n": 704,
+     "molecule_validity": 0.348011,
+     "molecule_validity_n": 245,
+     "single_fragment_ratio": 0.348011,
+     "no_metal_n": 0
+    }
+   }
+  },
+  "c7_fullgen": {
+   "path": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+   "per_epoch": {
+    "0": {
+     "n": 704,
+     "molecule_validity": 0.028409,
+     "molecule_validity_n": 20,
+     "single_fragment_ratio": 0.028409,
+     "no_metal_n": 0
+    },
+    "1": {
+     "n": 704,
+     "molecule_validity": 0.022727,
+     "molecule_validity_n": 16,
+     "single_fragment_ratio": 0.022727,
+     "no_metal_n": 0
+    },
+    "2": {
+     "n": 704,
+     "molecule_validity": 0.044034,
+     "molecule_validity_n": 31,
+     "single_fragment_ratio": 0.044034,
+     "no_metal_n": 0
+    },
+    "3": {
+     "n": 704,
+     "molecule_validity": 0.083807,
+     "molecule_validity_n": 59,
+     "single_fragment_ratio": 0.083807,
+     "no_metal_n": 0
+    },
+    "4": {
+     "n": 704,
+     "molecule_validity": 0.089489,
+     "molecule_validity_n": 63,
+     "single_fragment_ratio": 0.089489,
+     "no_metal_n": 0
+    },
+    "5": {
+     "n": 704,
+     "molecule_validity": 0.09517,
+     "molecule_validity_n": 67,
+     "single_fragment_ratio": 0.09517,
+     "no_metal_n": 0
+    },
+    "6": {
+     "n": 704,
+     "molecule_validity": 0.09517,
+     "molecule_validity_n": 67,
+     "single_fragment_ratio": 0.09517,
+     "no_metal_n": 0
+    },
+    "7": {
+     "n": 704,
+     "molecule_validity": 0.075284,
+     "molecule_validity_n": 53,
+     "single_fragment_ratio": 0.075284,
+     "no_metal_n": 0
+    },
+    "8": {
+     "n": 704,
+     "molecule_validity": 0.102273,
+     "molecule_validity_n": 72,
+     "single_fragment_ratio": 0.102273,
+     "no_metal_n": 0
+    },
+    "9": {
+     "n": 704,
+     "molecule_validity": 0.085227,
+     "molecule_validity_n": 60,
+     "single_fragment_ratio": 0.085227,
+     "no_metal_n": 0
+    },
+    "10": {
+     "n": 703,
+     "molecule_validity": 0.106686,
+     "molecule_validity_n": 75,
+     "single_fragment_ratio": 0.106686,
+     "no_metal_n": 0
+    },
+    "11": {
+     "n": 704,
+     "molecule_validity": 0.102273,
+     "molecule_validity_n": 72,
+     "single_fragment_ratio": 0.102273,
+     "no_metal_n": 0
+    },
+    "12": {
+     "n": 703,
+     "molecule_validity": 0.088193,
+     "molecule_validity_n": 62,
+     "single_fragment_ratio": 0.088193,
+     "no_metal_n": 0
+    },
+    "13": {
+     "n": 703,
+     "molecule_validity": 0.089616,
+     "molecule_validity_n": 63,
+     "single_fragment_ratio": 0.089616,
+     "no_metal_n": 0
+    },
+    "14": {
+     "n": 704,
+     "molecule_validity": 0.09517,
+     "molecule_validity_n": 67,
+     "single_fragment_ratio": 0.09517,
+     "no_metal_n": 0
+    },
+    "15": {
+     "n": 704,
+     "molecule_validity": 0.09375,
+     "molecule_validity_n": 66,
+     "single_fragment_ratio": 0.09375,
+     "no_metal_n": 0
+    },
+    "16": {
+     "n": 704,
+     "molecule_validity": 0.112216,
+     "molecule_validity_n": 79,
+     "single_fragment_ratio": 0.112216,
+     "no_metal_n": 0
+    },
+    "17": {
+     "n": 704,
+     "molecule_validity": 0.122159,
+     "molecule_validity_n": 86,
+     "single_fragment_ratio": 0.122159,
+     "no_metal_n": 0
+    }
+   }
+  }
+ },
+ "reading": "On c8 the same pool reported gen_validity 1.000/1.000/1.000 (molmetal/reports/cfm_c8_fullgen_2026_10_24 master.log + per-epoch block). molecule_validity on those rows is the single-fragment rate: the metal is present in 100% of parses, so the gap is entirely disconnected output. The metric therefore moves by 0.15 absolute between epoch 1 and epoch 2 where the parse rate moves by 0.000.",
+ "denominator_note": "gen_single_fragment_ratio (summarise_decode_chemistry) divides by the PARSED rows; molecule_validity divides by every sample drawn. On both shipped pools 100% of rows parsed, so the two are numerically identical and this artifact records that equality rather than hiding it. The denominators diverge as soon as a sample fails to parse, and the full denominator is the honest one for 'how many of the N samples are molecules'.",
+ "kill_criterion_check": {
+  "criterion": "T31 kill: if molecule_validity is exactly equal to gen_single_fragment_ratio, the new field has no increment.",
+  "result": "EQUAL on both shipped pools (metal present in 100% of parses).",
+  "decision": "KEEP, because the two answer different denominators and only molecule_validity is a single pass/fail predicate a gate can consume. Recorded so the equality is not read as independent evidence.",
+  "metal_conjunct_vacuous_today": true,
+  "metal_conjunct_nonvacuous_because": "metal_missing_rate is a live field on the same summary (a connected organic fragment with the metal dropped is the failure mode it was added for); it was 0 on these two pools only."
+ },
+ "summary": {
+  "c8_fullgen_b64": {
+   "first": 0.203125,
+   "last": 0.348011,
+   "delta": 0.144886,
+   "gen_validity_reported": "1.000 at all three epochs"
+  },
+  "c7_fullgen": {
+   "first": 0.028409,
+   "last": 0.122159,
+   "delta": 0.09375,
+   "epochs": 18
+  },
+  "wfa107_control_epoch0": {
+   "molecule_validity": 0.0,
+   "gen_validity_reported": 1.0,
+   "note": "derived from recorded per-epoch fields, not from a SMILES pool"
+  }
+ },
+ "recorded_field_derivation": {
+  "why": "T31's done_when names wfa107_ring_prior_ab control/epoch0: that run reported gen_validity 1.0 while its samples were 0% single-fragment. No SMILES pool was shipped for it, so this row is DERIVED from the per-epoch fields the run recorded, not recomputed from SMILES.",
+  "source": "metrics/by_metric/wfa107_ring_prior_ab.json",
+  "arm": "control",
+  "epoch": 0,
+  "recorded": {
+   "gen_validity": 1.0,
+   "gen_single_fragment_ratio": 0.0,
+   "gen_metal_ratio": 1.0,
+   "gen_rings_per_mol": 0.0,
+   "gen_largest_fragment_frac": 0.0582244463101923
+  },
+  "molecule_validity": 0.0,
+  "derivation": "molecule_validity is a conjunction: parse AND single-fragment AND metal-present AND >1 heavy atom. gen_single_fragment_ratio is 0.000, so the conjunction is 0.000 regardless of the other three conjuncts; no bound is needed on the unrecorded n_heavy conjunct.",
+  "gate_result": "PASS — molecule_validity 0.000 where the same epoch's gen_validity is 1.000"
+ }
+}

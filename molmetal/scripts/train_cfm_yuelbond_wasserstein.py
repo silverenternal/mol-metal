@@ -1021,6 +1021,13 @@ _TARGET_EXACT_TYPE_RATE = 0.50
 EARLY_STOP_METRICS: Tuple[str, ...] = (
     "decode_ratio",
     "gen_validity",
+    # Wf-A113 (2026-10-27) — the criterion that CAN fail.  ``gen_validity``
+    # is a parse rate and read 1.000 at every epoch of c8 while the same
+    # pool was 2.5 fragments per molecule.  This one requires one fragment
+    # and the seed metal, so it moves when the model produces loose atoms.
+    # Same degradation ladder as the others: an epoch that did not run the
+    # generation eval degrades rather than reporting a measured 0.0.
+    "molecule_validity",
     "bond_exact_type",
     "bond_type_f1",
     "bond_type_f1_eps",
@@ -1060,6 +1067,11 @@ def resolve_early_stop_criterion(
     bond_n_scored: float,
     bond_type_macro_f1: Optional[float] = None,
     early_stop_epsilon: float = DEFAULT_EARLY_STOP_EPSILON,
+    # Wf-A113 (2026-10-27) — the strict single-fragment + seed-metal rate.
+    # Optional so every existing caller and test keeps its old behaviour;
+    # when it is absent the criterion degrades exactly like an unmeasured
+    # bond metric, rather than being read as a measured 0.0.
+    molecule_validity: Optional[float] = None,
 ) -> Tuple[str, float, str]:
     """Resolve the early-stop criterion to a MEASURABLE ``(name, value, note)``.
 
@@ -1131,6 +1143,19 @@ def resolve_early_stop_criterion(
     if req == "gen_validity":
         if have_gen:
             return "gen_validity", float(gen_validity), _gen_saturated
+    elif req == "molecule_validity":
+        # Wf-A113.  Saturation is recorded, not treated as signal: 0.0 at
+        # every epoch is the collapse this criterion exists to name, and 1.0
+        # at every epoch means the pool is too easy to rank on it.
+        if have_gen and molecule_validity is not None:
+            _mv = float(molecule_validity)
+            _mv_note = (
+                f"molecule_validity is saturated at {_mv:.3f} over "
+                f"n={int(gen_n)} samples: it carries no gradient this run"
+                if _mv >= 1.0 or _mv <= 0.0
+                else ""
+            )
+            return "molecule_validity", _mv, _mv_note
     elif req == "bond_exact_type":
         if have_bond:
             return (
@@ -1243,27 +1268,73 @@ def resolve_early_stop_criterion(
                 "in a ~45-bond complex exactly right)"
             )
         if have_gen and have_bond:
+            # Wf-A113 (2026-10-27) — a product with a PINNED factor is not a
+            # combination, it is the other factor wearing the word "combined".
+            #
+            # MEASURED on results/wfa108j_gcv36/per_epoch_metrics.json: the
+            # generation half read 0.000 (gen_validity_samples: 0) and the bond
+            # half read 0.000 at all 36 epochs, so `combined` was the constant
+            # 0.0 — and the artifact still called its gate "combined", i.e.
+            # named two axes when neither had moved. The same arithmetic runs
+            # the other way: a generation half pinned at 1.000 makes the
+            # product equal the bond half exactly, so the generation axis
+            # contributed nothing while the name claimed it did.
+            #
+            # The value is unchanged in the pinned-at-1.0 case (x1.0 is
+            # identity) and in the pinned-at-0.0 case it is 0 either way; only
+            # the NAME and the note change, so no historical number moves.
+            # When BOTH halves are pinned the product is a constant no matter
+            # what it is called, and the honest answer is to keep the product
+            # and let the note carry the degeneracy — `resolve_selection`
+            # already detects a constant gate and reports it.
+            _gen_pinned = float(gen_validity) >= 1.0 or float(gen_validity) <= 0.0
+            _bond_pinned = _bond_half <= 0.0
+            _base_note = "; ".join(
+                x for x in (_gen_saturated, _bond_floor, _swap_note) if x
+            )
+            if _gen_pinned and not _bond_pinned:
+                return (
+                    _bond_half_name,
+                    _bond_half,
+                    f"combined reduced to {_bond_half_name} "
+                    f"({_bond_half:.4f}): the generation half is pinned at "
+                    f"{float(gen_validity):.4f} over n={int(gen_n)} samples, "
+                    "so the product is the bond half alone"
+                    + (f"; {_base_note}" if _base_note else ""),
+                )
+            if _bond_pinned and not _gen_pinned:
+                return (
+                    "gen_validity",
+                    float(gen_validity),
+                    "combined reduced to gen_validity "
+                    f"({float(gen_validity):.4f}): the bond half is pinned at "
+                    f"0.0000 ({_bond_half_name}), so the product is 0.0000 at "
+                    "every epoch and could not rank them"
+                    + (f"; {_base_note}" if _base_note else ""),
+                )
             return (
                 "combined",
                 float(gen_validity) * _bond_half,
-                "; ".join(
-                    x for x in (_gen_saturated, _bond_floor, _swap_note) if x
-                ),
-            )
-            return (
-                "combined",
-                float(gen_validity) * float(bond_exact_type_rate),
-                "; ".join(x for x in (_gen_saturated, _bond_floor) if x),
+                _base_note,
             )
         # One half is unmeasured; a product with a missing half is not a
         # measurement, it is 0.0 wearing a chemistry label.
         if have_bond:
+            # Wf-A113 (2026-10-27) — the same exact-type -> macro-F1 swap has
+            # to apply HERE, not only to the product.  MEASURED on
+            # results/wfa108j_gcv36/per_epoch_metrics.json: gen_validity_samples
+            # is 0, so `combined` took this branch, degraded to
+            # bond_exact_type, and gated on its constant 0.000 for all 36
+            # epochs — while bond_type_macro_f1_pooled moved over 34 distinct
+            # values in the same file.  The run selected epoch 0, the
+            # least-trained weights of the run.
             return (
-                "bond_exact_type",
-                float(bond_exact_type_rate),
-                f"combined degraded to bond_exact_type "
+                _bond_half_name,
+                _bond_half,
+                f"combined degraded to {_bond_half_name} "
                 f"(gen_n={int(gen_n)}: generation eval did not run)"
-                + (f"; {_bond_floor}" if _bond_floor else ""),
+                + (f"; {_bond_floor}" if _bond_floor else "")
+                + (f"; {_swap_note}" if _swap_note else ""),
             )
         if have_gen:
             return (
@@ -1367,6 +1438,58 @@ def resolve_selection(
     return out
 
 
+def resolve_best_block_bond_source(
+    per_epoch: Sequence[Any],
+    epoch_to_describe: int,
+    bond_acc: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Optional[int]]:
+    """Pick the bond fields for the summary's ``best`` block from ONE epoch.
+
+    THE DEFECT THIS CLOSES (Wf-A113)
+    --------------------------------
+    ``best.epoch`` names the epoch whose weights the artifact's provenance
+    points at; the bond fields beside it used to be read from ``_bond_acc``,
+    which after the training loop holds the LAST evaluated epoch.  On a
+    3-epoch run those coincide, which is why this survived for months.  On a
+    30-epoch run whose bond head peaked at epoch 3, the artifact reported
+    epoch 0's gate next to epoch 29's bond scores.  MEASURED: 87 of the 90
+    archived artifacts that carry both a JSON and its per-epoch CSV disagree
+    with their own CSV about which epoch the bond numbers came from.
+
+    ``epoch_to_describe`` is therefore the SELECTED epoch, not the gate's
+    argmax — those differ when a degenerate gate is overridden.
+
+    Returns
+    -------
+    (fields, epoch_of_fields)
+        ``fields`` carries the five headline bond numbers plus
+        ``bond_n_scored``.  ``epoch_of_fields`` is the epoch they came from,
+        or ``None`` when no recorded row matched ``epoch_to_describe``, in
+        which case the caller has fallen back to the last-evaluated epoch and
+        must report the block as mixed rather than self-consistent.
+
+    Module-level for the same reason :func:`resolve_selection` is: the rule
+    has to be testable without training a model.
+    """
+    def _epoch_of(m: Any) -> int:
+        if isinstance(m, dict):
+            return int(m.get("epoch", -1))
+        return int(getattr(m, "epoch", -1))
+
+    row = next(
+        (m for m in per_epoch if _epoch_of(m) == int(epoch_to_describe)),
+        None,
+    )
+    if row is not None:
+        fields = asdict(row) if hasattr(row, "__dataclass_fields__") else dict(row)
+        return fields, int(epoch_to_describe)
+    fields = dict(bond_acc)
+    # `_bond_acc` is the raw evaluator dict: it spells the scored-pair count
+    # `n_scored`, not `bond_n_scored`.  Normalise so the reader has one key.
+    fields.setdefault("bond_n_scored", bond_acc.get("n_scored", 0))
+    return fields, None
+
+
 #: The `hit_target` bar for each gate name.  A name not listed falls back to
 #: _TARGET_EXACT_TYPE_RATE, which is the conservative direction (a wrong
 #: "miss" is reportable, a wrong "hit" is a claim).
@@ -1375,6 +1498,13 @@ _EARLY_STOP_TARGETS: Dict[str, float] = {
     "gen_validity": _TARGET_GEN_VALIDITY,
     "bond_exact_type": _TARGET_EXACT_TYPE_RATE,
     "combined": _TARGET_COMBINED,
+    # Wf-A113 (2026-10-27) — `combined` can now REDUCE to one of its halves
+    # (see resolve_early_stop_criterion), and `bond_type_f1` is selectable on
+    # its own.  Without these keys both names fell through to the "unknown
+    # name" branch.  The bar is the same one that branch used, now named
+    # rather than inherited, so no historical hit_target moves.
+    "bond_type_f1": _TARGET_EXACT_TYPE_RATE,
+    "bond_type_macro_f1": _TARGET_EXACT_TYPE_RATE,
 }
 
 
@@ -1595,6 +1725,14 @@ class EpochMetrics:
     # real connected molecule.
     gen_largest_fragment_frac: float = 0.0
     gen_single_fragment_ratio: float = 0.0
+    # Wf-A113 (2026-10-27) — `gen_validity` is a PARSE rate: `C.C.C.C`
+    # sanitises, so a pool of loose atoms reads 1.000.  MEASURED on
+    # molmetal/reports/cfm_c8_fullgen_2026_10_24: gen_validity 1.000/1.000/
+    # 1.000 while single-fragment was 0.203/0.200/0.348.  This field is the
+    # same denominator with one-fragment + seed-metal applied, so the gap
+    # between the two is the size of the blind spot on THIS epoch.
+    gen_molecule_validity: float = 0.0
+    gen_molecule_validity_n: int = 0
     gen_metal_ratio: float = 0.0
     gen_mean_heavy_atoms: float = 0.0
     # Wf-A85 (2026-10-19) — ring SIZE on the generated corpus.  OPT-2
@@ -8193,6 +8331,46 @@ def decode_chemistry(
         return None
 
 
+def molecule_is_valid(
+    chem_row: Optional[Dict[str, Any]],
+    rdkit_strict_ok: bool,
+) -> bool:
+    """Whether ONE decoded sample is a MOLECULE, not just a parseable string.
+
+    Wf-A113 (2026-10-27) — ``gen_validity`` is ``n_ok / n`` where ``n_ok``
+    counts ``_rdkit_strict_reason(...) is None``.  That predicate asks only
+    whether RDKit can sanitise the string, and ``[Pt].[C].[C].[C]...``
+    sanitises: 44 loose atoms are 44 valid fragments.  MEASURED on
+    ``molmetal/reports/cfm_c8_fullgen_2026_10_24``: ``gen_validity`` read
+    1.000 at all three epochs while ``gen_single_fragment_ratio`` read
+    0.203 / 0.200 / 0.348 and ``gen_raw_ring_3_share`` 0.708 / 0.898 / 0.924.
+    A metric that reads 1.000 on the pool it is supposed to judge cannot
+    judge it, and ``combined = gen_validity x bond_half`` inherits that.
+
+    Three conjuncts, each already measured per sample by
+    :func:`decode_chemistry` or by the classifier:
+
+    * RDKit-strict, i.e. the string parses AND sanitises (the old predicate);
+    * exactly ONE fragment — a complex is one connected molecule, so loose
+      atoms are a failure however well they sanitise;
+    * the SEED metal survived and the molecule has more than one heavy atom —
+      the corpus is metal complexes, and a one-atom fragment is degenerate.
+
+    Returns ``False`` when ``chem_row`` is ``None`` (unparseable or raised),
+    so this is a strict refinement of the old predicate: every sample it
+    accepts was already accepted by ``gen_validity``.  The two therefore
+    differ by exactly the samples the old metric could not see, and
+    ``rdkit_parse_rate - molecule_validity`` is the size of that blind spot.
+    """
+    if not rdkit_strict_ok or not chem_row:
+        return False
+    if int(chem_row.get("n_fragments", 0) or 0) != 1:
+        return False
+    if not bool(chem_row.get("has_metal", False)):
+        return False
+    return int(chem_row.get("n_heavy", 0) or 0) > 1
+
+
 def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
     """Aggregate :func:`decode_chemistry` rows into one report dict.
 
@@ -8381,6 +8559,10 @@ def evaluate_generation_validity(
     # constants is the only way to see whether the decoded CN RESPONDS to the
     # request at all.
     cn_request_override: Optional[int] = None,
+    # Wf-A113 (2026-10-27) — receives one bool per cloud: the strict
+    # single-fragment + seed-metal refinement of ``n_ok``.  See
+    # :func:`molecule_is_valid`.
+    molecule_valid_out: Optional[List[bool]] = None,
 ) -> Tuple[int, int]:
     """Generate from noise, decode, and count RDKit-strict successes.
 
@@ -8486,6 +8668,7 @@ def evaluate_generation_validity(
         decoder, clouds, smiles_out, rejected_smiles_out, per_cloud_out,
         chem_rows, sa_target, reason_counts,
         decode_flags_out=decode_flags,
+        molecule_valid_out=molecule_valid_out,
     )
     first_error = reason_counts.pop("decode_error_example", "")
     # Wf-A84 — successes split into `ok` and `ok_repaired:<repair>`; both
@@ -8501,6 +8684,23 @@ def evaluate_generation_validity(
         chemistry_out.update(summarise_decode_chemistry(chem_rows))
         chemistry_out["n_samples"] = len(clouds)
         chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
+        # Wf-A113 — ``decode_ratio`` / ``gen_validity`` count RDKit-strict
+        # parses, and a string of loose atoms parses.  This is the same
+        # denominator with the fragment and metal conjuncts applied, so the
+        # pair (parse rate, molecule rate) states the blind spot instead of
+        # hiding it.  Always emitted when the vector is requested: a 0.0 here
+        # is a measurement, and its absence is not.
+        if molecule_valid_out is not None:
+            _n_mol = int(sum(1 for v in molecule_valid_out if v))
+            chemistry_out["molecule_validity"] = _n_mol / max(len(clouds), 1)
+            chemistry_out["molecule_validity_n"] = _n_mol
+            chemistry_out["molecule_validity_total"] = len(clouds)
+            chemistry_out["gen_validity_definition"] = (
+                "rdkit_parse_rate: Chem.MolFromSmiles + SanitizeMol accept the "
+                "string. Disconnected (C.C.C) and metal-free molecules PASS. "
+                "Read molecule_validity for the single-fragment + seed-metal "
+                "predicate."
+            )
         chemistry_out["n_decode_error"] = n_decode_error
         if first_error:
             chemistry_out["decode_error_example"] = first_error
@@ -8552,6 +8752,13 @@ def decode_clouds_and_classify(
     sa_target: Optional[float],
     reason_counts: Dict[str, int],
     decode_flags_out: Optional[Dict[str, int]] = None,
+    # Wf-A113 (2026-10-27) — one bool per cloud, ``True`` only where the
+    # decode is a single-fragment, metal-bearing molecule (see
+    # :func:`molecule_is_valid`).  Kept separate from ``per_cloud_out``
+    # rather than redefining it: the old vector is what ``gen_validity``
+    # and every archived A/B are built on, and a redefinition would move
+    # historical numbers without saying so.
+    molecule_valid_out: Optional[List[bool]] = None,
 ) -> None:
     """Decode every cloud, classify RDKit-strict, and fill the out-params.
 
@@ -8578,6 +8785,12 @@ def decode_clouds_and_classify(
         # failure.
         if per_cloud_out is not None:
             per_cloud_out.append(False)
+        # Wf-A113 — same alignment rule as ``per_cloud_out``: the slot is
+        # appended BEFORE anything can raise, so a decode that throws still
+        # leaves a ``False`` at this cloud's index instead of shifting every
+        # later cloud by one.
+        if molecule_valid_out is not None:
+            molecule_valid_out.append(False)
         try:
             res = decoder.decode(cloud)
             decoded = getattr(res, "decoded", None)
@@ -8669,6 +8882,12 @@ def decode_clouds_and_classify(
                 reason_counts[_bucket] = reason_counts.get(_bucket, 0) + 1
                 if per_cloud_out is not None:
                     per_cloud_out[-1] = True
+                # Wf-A113 — the strict refinement.  ``_reason is None`` says
+                # RDKit accepted the string; this additionally requires one
+                # fragment and the seed metal, so a 44-loose-atom decode is
+                # False here while it is True in ``per_cloud_out``.
+                if molecule_valid_out is not None:
+                    molecule_valid_out[-1] = molecule_is_valid(_chem_row, True)
             else:
                 reason_counts[_reason] = reason_counts.get(_reason, 0) + 1
                 if rejected_out is not None and len(rejected_out) < 200:
@@ -16769,9 +16988,15 @@ def main() -> int:
                 _gen_errs = 0
                 _gen_first_err = ""
                 _gen_rejected: List[Tuple[str, str]] = []
+                # Wf-A113 — pooled per-cloud strict-validity vector.  Pooled
+                # rather than averaged per seed for the same reason the
+                # chemistry rows are: a seed that decoded nothing must not
+                # weigh as much as a full one.
+                _gen_mol_valid: List[bool] = []
                 for _si, _sd in enumerate(_gen_seeds):
                     _chem_seed: Dict[str, Any] = {}
                     _rows_seed: List[Optional[Dict[str, Any]]] = []
+                    _mol_seed: List[bool] = []
                     _ok_s, _tot_s = evaluate_generation_validity(
                         model=model,
                         decoder=decoder,
@@ -16830,9 +17055,11 @@ def main() -> int:
                             if int(getattr(args, "cn_request_override", -1)) < 0
                             else int(getattr(args, "cn_request_override", -1))
                         ),
+                        molecule_valid_out=_mol_seed,
                     )
                     _gen_ok += int(_ok_s)
                     _gen_tot += int(_tot_s)
+                    _gen_mol_valid.extend(_mol_seed)
                     _gen_chem_rows.extend(_rows_seed)
                     _gen_errs += int(_chem_seed.get("n_decode_error", 0) or 0)
                     for _rk, _rv in (
@@ -16849,6 +17076,13 @@ def main() -> int:
                         {
                             "seed": int(_sd),
                             "gen_validity": float(_ok_s) / max(int(_tot_s), 1),
+                            # Wf-A113 — the same seed's strict rate, so the
+                            # per-seed payload can show the blind spot without
+                            # re-reading the pooled block.
+                            "molecule_validity": (
+                                sum(1 for v in _mol_seed if v)
+                                / max(int(_tot_s), 1)
+                            ),
                             "n_ok": int(_ok_s),
                             "n_total": int(_tot_s),
                             "template_offset": int(_si * _gen_n),
@@ -16870,6 +17104,21 @@ def main() -> int:
                 _gen_chem.update(summarise_decode_chemistry(_gen_chem_rows))
                 _gen_chem["n_samples"] = int(_gen_tot)
                 _gen_chem["decode_ratio"] = _gen_ok / max(_gen_tot, 1)
+                # Wf-A113 — ``gen_validity`` is a PARSE rate, not a molecule
+                # rate: ``C.C.C.C`` sanitises.  Both numbers are published
+                # side by side so the gap is a number rather than a caveat,
+                # and ``rdkit_parse_rate`` carries the honest name.
+                _n_mol = int(sum(1 for v in _gen_mol_valid if v))
+                _gen_chem["rdkit_parse_rate"] = _gen_ok / max(_gen_tot, 1)
+                _gen_chem["molecule_validity"] = _n_mol / max(_gen_tot, 1)
+                _gen_chem["molecule_validity_n"] = _n_mol
+                _gen_chem["molecule_validity_total"] = int(_gen_tot)
+                _gen_chem["gen_validity_definition"] = (
+                    "rdkit_parse_rate: Chem.MolFromSmiles + SanitizeMol accept "
+                    "the string. Disconnected (C.C.C) and metal-free molecules "
+                    "PASS. Read molecule_validity for the single-fragment + "
+                    "seed-metal predicate."
+                )
                 _gen_chem["n_decode_error"] = int(_gen_errs)
                 if _gen_first_err:
                     _gen_chem["decode_error_example"] = _gen_first_err
@@ -17191,6 +17440,13 @@ def main() -> int:
                 print(
                     f"[cfm-gen] epoch={epoch} gen_validity="
                     f"{_gen_ok / max(_gen_tot, 1):.3f} ({_gen_ok}/{_gen_tot}) "
+                    # Wf-A113 — the same denominator, one fragment + seed
+                    # metal required.  A gap here is loose-atom output that
+                    # the parse rate counted as success.
+                    f"molecule_validity="
+                    f"{float(_gen_chem.get('molecule_validity', 0.0) or 0.0):.3f} "
+                    f"({int(_gen_chem.get('molecule_validity_n', 0) or 0)}/"
+                    f"{_gen_tot}) "
                     f"solver={_gen_solver} "
                     f"seeds={len(_gen_per_seed)}x{_gen_n} "
                     f"per_seed=[{','.join(f'{v:.3f}' for v in _vals)}] "
@@ -17301,6 +17557,12 @@ def main() -> int:
                         epoch=int(epoch),
                         seed=int(_row["seed"]),
                         gen_validity=float(_row["gen_validity"]),
+                        # Wf-A113 — per-seed strict rate, so a seed whose
+                        # parses were all loose atoms is visible on its own
+                        # row instead of being averaged into the pool.
+                        molecule_validity=float(
+                            _row.get("molecule_validity", 0.0) or 0.0
+                        ),
                         n_ok=int(_row["n_ok"]),
                         n_total=int(_row["n_total"]),
                         template_offset=int(_row["template_offset"]),
@@ -17421,6 +17683,15 @@ def main() -> int:
             bond_type_macro_f1=_bond_acc.get("bond_type_macro_f1_pooled"),
             early_stop_epsilon=float(
                 getattr(args, "early_stop_epsilon", DEFAULT_EARLY_STOP_EPSILON)
+            ),
+            # Wf-A113 — the strict rate, when this epoch measured it.  The
+            # generation block only fills `_gen_chem` when the eval ran, so a
+            # `gen_eval_n: 0` run passes None and degrades instead of gating
+            # on a fabricated 0.0.
+            molecule_validity=(
+                float(_gen_chem["molecule_validity"])
+                if "molecule_validity" in _gen_chem
+                else None
             ),
         )
         if _es_note and epoch == 0:
@@ -17627,6 +17898,13 @@ def main() -> int:
             gen_validity=_gen_ok / max(_gen_tot, 1),
             gen_validity_val=_gen_ok,
             gen_validity_n=_gen_tot,
+            # Wf-A113 — published next to the parse rate, same denominator.
+            gen_molecule_validity=float(
+                _gen_chem.get("molecule_validity", 0.0) or 0.0
+            ),
+            gen_molecule_validity_n=int(
+                _gen_chem.get("molecule_validity_n", 0) or 0
+            ),
             gen_solver=_gen_solver,
             gen_eval_seeds=",".join(str(s) for s in _gen_seeds)
             if _gen_per_seed
@@ -17804,6 +18082,14 @@ def main() -> int:
                 gen_validity=float(_gen_ok / max(_gen_tot, 1)),
                 gen_validity_val=int(_gen_ok),
                 gen_validity_n=int(_gen_tot),
+                # Wf-A113 — the strict rate, so the event stream can chart
+                # the parse/molecule gap without reading the epoch JSON.
+                gen_molecule_validity=float(
+                    _gen_chem.get("molecule_validity", 0.0) or 0.0
+                ),
+                gen_molecule_validity_n=int(
+                    _gen_chem.get("molecule_validity_n", 0) or 0
+                ),
                 gen_solver=str(_gen_solver),
                 # 2026-10-05 (D3) — the per-seed split, as a compact string
                 # because emit_event stringifies non-scalars.  The structured
@@ -18114,6 +18400,21 @@ def main() -> int:
             # the very checkpoint it is measuring with a 1-epoch record.
             if not _eval_only:
                 _save_cfm_checkpoint(epoch, decode_ratio)
+                # Wf-A113 (2026-10-27) — ALSO under an epoch-named file.
+                # `seed{N}.pt` is overwritten on every improvement, so a
+                # reader holding that path cannot tell which epoch it holds
+                # without loading it, and MEASURED 87 of 90 artifacts
+                # disagreed with their own per-epoch CSV about which epoch
+                # "best" was.  The tagged name makes the epoch part of the
+                # path.  Same in-memory state, so the two files must be
+                # byte-identical; `provenance.checkpoint_epoch_named_sha256`
+                # records that and gate M10 can compare.
+                #
+                # No attribute is stashed on `model` for this: the name is
+                # derivable from `_selection["selected_epoch"]`, and a field
+                # written but never read is the inert-knob defect this audit
+                # exists to remove.
+                _save_cfm_checkpoint(epoch, decode_ratio, _tag=f"_epoch{epoch}")
         else:
             epochs_without_improve += 1
             if epochs_without_improve >= _patience:
@@ -18215,11 +18516,12 @@ def main() -> int:
 
     # Round-4 E3 — the BEST bond epoch, over the epochs actually recorded.
     #
-    # `best` below reports `_bond_acc`, which after the loop holds the LAST
-    # evaluated epoch — a run whose bond head peaked at epoch 3 and decayed
-    # after that reported its worst epoch as its best.  This block is the
-    # max over `per_epoch`, chosen on bond_f1, so the headline bond number
-    # in the JSON is the one a reader would quote.
+    # This block answers a different question from `best` below: it is the
+    # max over `per_epoch` on bond_f1, i.e. "how good did the bond head ever
+    # get".  `best` answers "what did the run select", and since Wf-A113 its
+    # bond fields come from the selected epoch's own row, so the two can no
+    # longer disagree about which epoch a number belongs to — they can only
+    # legitimately point at different epochs.
     _bond_scored_epochs = [m for m in per_epoch if int(m.bond_n_scored) > 0]
     _best_bond = max(
         _bond_scored_epochs,
@@ -18264,6 +18566,45 @@ def main() -> int:
     )
     total_elapsed = time.time() - overall_start
 
+    # Wf-A113 (2026-10-27) — `best` must describe ONE epoch.
+    #
+    # `best.epoch` is the epoch the gate selected; the bond fields used to
+    # come from `_bond_acc`, which after the loop holds the LAST evaluated
+    # epoch.  On a 3-epoch run those coincide, which is why this survived; on
+    # a 30-epoch run whose bond head peaked at epoch 3 it reported epoch 0's
+    # gate next to epoch 29's bond scores.  MEASURED: 87 of the 90 archived
+    # artifacts that carry both a JSON and its per-epoch CSV disagree with
+    # their own CSV about which epoch the bond numbers came from.
+    #
+    # The row is looked up rather than re-derived, so `best` and
+    # `per_epoch_metrics[best.epoch]` cannot drift.  When the selected epoch
+    # has no row (0-epoch run, or an eval-only pass that recorded nothing) the
+    # old source is kept and `epochs_mixed` says so instead of pretending.
+    # Wf-A113 (2026-10-27) — `best` describes the epoch whose weights the
+    # artifact NAMES, not the epoch the gate's arithmetic happened to reach.
+    #
+    # Those two are the same run except when `resolve_selection` overrode a
+    # degenerate gate (Wf-A108k): the gate's argmax is epoch 0 while the
+    # selected — and saved — weights are the final epoch's.  Reporting epoch 0
+    # in `best` next to a checkpoint that holds epoch N is the same class of
+    # defect as mixing bond fields across epochs, one level up.  The gate's
+    # own pick is kept as `gate_epoch` so nothing is lost.
+    _best_effective_epoch = int(_selection.get("selected_epoch", best_epoch))
+    _gate_value_at = {
+        int(e): float(v) for e, v in _gate_history
+    }.get(_best_effective_epoch)
+    _best_bond_src, _best_bond_src_epoch = resolve_best_block_bond_source(
+        per_epoch, _best_effective_epoch, _bond_acc
+    )
+    _best_effective_row = next(
+        (m for m in per_epoch if int(m.epoch) == _best_effective_epoch), None
+    )
+    _best_decode_ratio_effective = (
+        float(_best_effective_row.decode_ratio_rdkit_strict)
+        if _best_effective_row is not None
+        else best_decode_ratio
+    )
+
     def _provenance_block() -> Dict[str, object]:
         """Which weights and which rows produced this artifact (gate M10)."""
         import hashlib as _hashlib
@@ -18277,8 +18618,31 @@ def main() -> int:
         _prefer_last = (
             str(_selection.get("selected_checkpoint")) == "last" and _last.is_file()
         )
+        # Wf-A113 (2026-10-27) — the epoch-named file.  `seed{N}.pt` is
+        # rewritten on every improvement, so the path alone does not say which
+        # epoch a reader is opening; MEASURED 87 of 90 archived artifacts
+        # disagreed with their own per-epoch CSV about that.  The tagged file
+        # puts the epoch in the name, and it is written from the SAME
+        # in-memory state as `seed{N}.pt`, so the two must be byte-identical.
+        #
+        # It is only written on IMPROVEMENT, so under `_prefer_last` the file
+        # for the selected epoch generally does not exist.  Naming it anyway
+        # would put a path in the artifact that the next key reports absent —
+        # a reader cannot tell "this run has no such file" from "the write
+        # failed".  When the weights are the final epoch's, `_last.pt` IS the
+        # file, and `selection.selected_epoch` says which epoch that is.
+        _sel_epoch = _selection.get("selected_epoch")
+        _epoch_named = (
+            ckpt_dir
+            / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}_epoch{int(_sel_epoch)}.pt"
+            if (_sel_epoch is not None and not _prefer_last)
+            else None
+        )
+        _epoch_named_ok = _epoch_named is not None and _epoch_named.is_file()
         if _prefer_last:
             _primary, _primary_label = _last, "last"
+        elif _epoch_named_ok:
+            _primary, _primary_label = _epoch_named, f"selected_epoch{int(_sel_epoch)}"
         elif _sel.is_file():
             _primary, _primary_label = _sel, "selected"
         else:
@@ -18289,6 +18653,13 @@ def main() -> int:
             "checkpoint": str(_primary),
             "checkpoint_selected": str(_sel),
             "checkpoint_selected_exists": _sel.is_file(),
+            # Wf-A113 — the epoch is part of THIS path, so it needs no load.
+            "checkpoint_epoch_named": (
+                str(_epoch_named) if _epoch_named is not None else None
+            ),
+            "checkpoint_epoch_named_exists": bool(_epoch_named_ok),
+            "checkpoint_epoch_named_sha256": None,
+            "checkpoint_epoch_named_matches_selected": None,
             "checkpoint_last": str(_last),
             "checkpoint_last_exists": _last.is_file(),
             "checkpoint_sha256": None,
@@ -18330,6 +18701,23 @@ def main() -> int:
                     h.update(chunk)
             out["checkpoint_sha256"] = h.hexdigest()
             out["checkpoint_sha256_of"] = _primary_label
+        # Wf-A113 — the two writes come from one `model.state_dict()`, so a
+        # differing hash means the pair is not the pair this run thinks it
+        # wrote.  Recorded rather than asserted: a run must not abort on a
+        # bookkeeping check at the very end, but the mismatch has to be
+        # visible, and gate M10 can read it.
+        if _epoch_named_ok and _sel.is_file():
+            def _sha_of(p: Path) -> str:
+                h = _hashlib.sha256()
+                with open(p, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                return h.hexdigest()
+
+            _hn = _sha_of(_epoch_named)  # type: ignore[arg-type]
+            _hs = _sha_of(_sel)
+            out["checkpoint_epoch_named_sha256"] = _hn
+            out["checkpoint_epoch_named_matches_selected"] = bool(_hn == _hs)
         return out
 
     # Per-epoch metrics JSON.
@@ -18482,21 +18870,49 @@ def main() -> int:
         "gate_metric": _gate_name,
         "gate_value": None if _best_gate == float("-inf") else float(_best_gate),
         "best": {
-            "epoch": best_epoch,
+            # The epoch the weights named by provenance.checkpoint belong to.
+            "epoch": _best_effective_epoch,
+            # The gate's own argmax.  Differs from `epoch` only when the gate
+            # was degenerate and `resolve_selection` overrode it; see
+            # provenance.selection for the reason.
+            "gate_epoch": int(best_epoch),
             "gate_metric": _gate_name,
             "gate_value": None if _best_gate == float("-inf") else float(_best_gate),
+            # The gate's value AT the reported epoch — `gate_value` is the max
+            # over the run, which is not necessarily this epoch's score.
+            "gate_value_at_epoch": _gate_value_at,
             # 2026-10-05 — the headline follows the gate.  decode_ratio stays
             # present and stays caveated, but it is not what "best" means.
+            #
+            # Wf-A113 (2026-10-27) — these five read the SELECTED epoch's row.
+            # They used to read `_bond_acc`, which after the loop holds the
+            # last evaluated epoch, so `best.epoch` and the bond numbers in
+            # the same dict could describe two different epochs.  MEASURED: 87
+            # of the 90 archived artifacts that have both a JSON and its
+            # per-epoch CSV disagree with their own CSV.
             "bond_exact_type_rate": float(
-                _bond_acc.get("bond_exact_type_rate", 0.0)
+                _best_bond_src.get("bond_exact_type_rate", 0.0)
             ),
             "bond_type_macro_f1_pooled": float(
-                _bond_acc.get("bond_type_macro_f1_pooled", 0.0)
+                _best_bond_src.get("bond_type_macro_f1_pooled", 0.0)
             ),
-            "bond_f1": float(_bond_acc.get("bond_f1", 0.0)),
-            "bond_precision": float(_bond_acc.get("bond_precision", 0.0)),
-            "bond_recall": float(_bond_acc.get("bond_recall", 0.0)),
-            "decode_ratio": best_decode_ratio,
+            "bond_f1": float(_best_bond_src.get("bond_f1", 0.0)),
+            "bond_precision": float(_best_bond_src.get("bond_precision", 0.0)),
+            "bond_recall": float(_best_bond_src.get("bond_recall", 0.0)),
+            # `bond_n_scored` distinguishes "scored 0.0" from "scored
+            # nothing" — without it a 0.000 bond_f1 reads as a bad head when
+            # it may be an unscored epoch.
+            "bond_n_scored": int(_best_bond_src.get("bond_n_scored", 0)),
+            # Self-consistency, stated rather than assumed: which epoch the
+            # five fields above came from, and whether that is `best.epoch`.
+            # `epochs_mixed` is true only when the selected epoch has no row
+            # (0-epoch run, or an eval-only pass that recorded nothing), in
+            # which case the fields fall back to the last-evaluated epoch and
+            # the block is NOT self-consistent.
+            "bond_fields_from_epoch": _best_bond_src_epoch,
+            "epochs_mixed": _best_bond_src_epoch is None,
+            # decode_ratio at the reported epoch, not at the gate's argmax.
+            "decode_ratio": _best_decode_ratio_effective,
             "hit_target": early_stop_hit_target(
                 _gate_name, _best_gate, args.target_decode_ratio
             ),
@@ -18538,6 +18954,15 @@ def main() -> int:
                 else None  # 0-epoch run: no epoch ever improved
             ),
             "best_epoch": int(best_epoch),
+            # Wf-A113 (2026-10-27) — `best_epoch` above is the gate's ARGMAX.
+            # When the gate is degenerate `resolve_selection` overrides it, and
+            # the weights the artifact names belong to `selected_epoch`.  Both
+            # are reported here because `best.epoch` uses the latter: without
+            # this key the two blocks read as a contradiction.
+            "selected_epoch": _best_effective_epoch,
+            "selection_overrode_gate": bool(
+                int(_best_effective_epoch) != int(best_epoch)
+            ),
             "degraded": bool(_es_note),
             "why": (
                 "decode_ratio is NOT the default: this trainer's own "
@@ -18549,8 +18974,10 @@ def main() -> int:
             ),
         },
         "per_epoch_metrics": [asdict(m) for m in per_epoch],
-        # Round-4 E3 — see the construction above.  `best` above reports the
-        # LAST epoch's bond scores; this reports the best-scoring epoch.
+        # Round-4 E3 — see the construction above.  `best` reports the epoch
+        # the artifact names; this reports the best-scoring epoch on bond_f1.
+        # Since Wf-A113 the two cannot disagree about which epoch a NUMBER
+        # came from — they can only point at different epochs on purpose.
         "best_bond": best_bond_block,
         "wall_time_s": total_elapsed,
         # Consumers (metrics/*.json, TUI panels, pre-flight) must not read

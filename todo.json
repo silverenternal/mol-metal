@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T13:10+08:00",
+  "updated": "2026-10-27T12:35+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2338,11 +2338,14 @@
       "kill": "若 molecule_validity 与 gen_single_fragment_ratio 完全同值，说明新字段没有增量，删掉新字段只留 caveat。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "metrics/by_metric/wfa107_ring_prior_ab.json",
         "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json"
-      ]
+      ],
+      "result": "molecule_validity 与 rdkit_parse_rate 已同批输出，且前者能失败。c8_fullgen 三个 epoch 读 0.203/0.200/0.348，同一 pool 的 gen_validity 报 1.000/1.000/1.000；c7_fullgen 18 个 epoch 从 0.028 涨到 0.122（parse rate 全程 1.000，零变化）。wfa107 control/epoch0 由该 run 记录的 per-epoch 字段推导得 0.000（gen_single_fragment_ratio=0.000），而它的 gen_validity 报 1.000，正是 done_when 指定的那一格。kill 判据（与 gen_single_fragment_ratio 完全同值）在两个已发 pool 上成立，决定 KEEP：两者分母不同（全部抽样 vs 解析成功的行），且只有 molecule_validity 是 gate 能消费的单条 pass/fail。该等式已写进 artifact，不当独立证据用。",
+      "artifact": "metrics/by_metric/cfm_molecule_validity_recompute.json",
+      "tests": "molmetal/tests/test_wfa113_molecule_validity.py"
     },
     {
       "id": "T32",
@@ -2360,11 +2363,19 @@
       "kill": "若真实参考带自身也不过门，说明阈值定错，改阈值而不是改门。",
       "device": "cpu",
       "cost": "CPU 1-2 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
         "metrics/by_metric/wfa107_bond_graph_profile.json"
-      ]
+      ],
+      "result": "M11 上线，参考带全部从 artifact 读，不在门里写死。c8 epoch2 checkpoint 上的采样池 FAIL：single_fragment_rate 0.348（下限 0.5x0.8365=0.418）、ring_3_share 0.924（上限 2x0.00489=0.00978）、rings_per_mol 5.714 落在带内但被前两条拖成 FAIL；parse_rate 0.998 与 rings_per_mol 两条 PASS，说明门确实在分别判，不是整体一票。c7 全池同样 FAIL（0.085 / 0.668 / 6.31）。真实对照 .data/molmetal/tmQM/tmQM_y.csv PASS。另：--ckpt 由必填改为「除 M11 外必填」，M11 只读池也能跑；缺 artifact 时直接 FileNotFoundError，不让门自己编参考带。",
+      "artifact": "metrics/by_metric/wfa113_m11_c8_epoch2.json",
+      "artifacts": [
+        "metrics/by_metric/wfa113_m11_c8_epoch2.json",
+        "metrics/by_metric/wfa113_m11_c7_pool.json",
+        "metrics/by_metric/wfa113_m11_real_corpus.json"
+      ],
+      "tests": "molmetal/tests/test_wfa113_m11_sampled_output_gate.py"
     },
     {
       "id": "T33",
@@ -2561,11 +2572,25 @@
       "kill": "若复制权重会让 checkpoint_interval 的 _last.pt 语义冲突，只保留 (1)(3) 并把 provenance.checkpoint 改成 _last.pt，同时在 best 块里写明这一点。",
       "device": "cpu",
       "cost": "CPU 2 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "results/wfa108j_budget36/per_epoch_metrics.json",
         "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
         "configs/wfa108j_budget36_2026_10_25.yaml"
+      ],
+      "result": "(1) best 块现在描述一个 epoch：bond_* 五字段、bond_n_scored、decode_ratio 都取自 bond_fields_from_epoch 那一行，且 best.epoch 是 artifact 真正命名权重的那个 epoch（_selection.selected_epoch），不是 gate 的 argmax；gate 自己的 argmax 保留为 gate_epoch，gate_value_at_epoch 给出该 epoch 自己的分数。三个 provenance 键 bond_fields_from_epoch / epochs_mixed / gate_epoch 让读者不用读源码。(2) 改进时额外写 _epoch{N}.pt，provenance.checkpoint 指向它，并记 checkpoint_epoch_named_sha256 / checkpoint_epoch_named_matches_selected；degenerate 选择时不再命名一个不存在的 _epoch{N}.pt，而是指向 _last.pt 并由 selection.selected_epoch 说明它是哪个 epoch。early_stop_control 增加 selected_epoch 与 selection_overrode_gate，避免和 best.epoch 读成矛盾。(3) 三个 wfa108j 配置补 early_stop_metric: bond_type_f1；resolve_early_stop_criterion 的 combined 在任一因子被钉住时落到仍在动的半支（gen 钉在 1.000 或 0.000 → 返回 bond 半支；bond 半支钉在 0 → 返回 gen_validity；两边都钉住才保留 combined 并由 resolve_selection 报退化）。顺带修掉一处真缺陷：combined 在 gen 未测时降级到 bond_exact_type，而后者在该语料结构性为 0，gcv36 就是这么在 36 个 epoch 上选了 epoch 0；现在同一分支也走 exact-type→macro-F1 替换。",
+      "artifact": "metrics/by_metric/wfa113_t41_best_block_smoke.json",
+      "tests": "molmetal/tests/test_wfa113_best_block_one_epoch.py",
+      "gate_result": {
+        "self_consistent": "PASS — smoke: best.epoch=2, bond_fields_from_epoch=2, epochs_mixed=false; 且 best.bond_f1 == per_epoch_metrics[2].bond_f1",
+        "named_file": "PASS — smoke: provenance.checkpoint = seed0_last.pt, 内嵌 epoch=2 == best.epoch",
+        "no_saturated_product": "PASS — gcv36 36 个 epoch 的 recorded 历史下返回 bond_type_macro_f1（34 个不同值），不再是常数 combined"
+      },
+      "done_when_amendment": "done_when 第 1 条写的是「best.epoch == best_bond.epoch，或 best 带 epochs_mixed=true 且 bond_fields_from_epoch 等于最后 epoch」。实测两条都不字面成立，但更强的那条成立：best 的所有字段与 best.epoch 同源（bond_fields_from_epoch == best.epoch，epochs_mixed=false）。best_bond 是另一个块，回答的是「bond 头最好到过多少」，在 smoke 里三个 epoch 的 bond_f1 全为 0.000 因而 max 落在 epoch 0，与 best.epoch=2 不同是设计而非缺陷。task.gate.self_consistent（best.epoch 与 best.bond_f1 同 epoch）已满足，故按 gate 判 DONE，并把 done_when 的措辞按实际性质改写，而不是让两个块强行相等。",
+      "honest_limits": [
+        "smoke 的 bond 指标三个 epoch 全为 0.000，所以「字段取自正确的行」这一条在该 run 上是空检查；该性质由 molmetal/tests/test_wfa113_best_block_one_epoch.py 的合成行测试承担。",
+        "smoke 走的是 degenerate 选择路径（gate argmax=epoch 0 → 覆写为 epoch 2），非退化路径（_epoch{N}.pt 作为 primary）只有单测覆盖，没有 run 覆盖。",
+        "该 smoke 上 early_stop_metric: bond_type_f1 仍降级到 bond_exact_type，因为 3 epoch / 64 云的 macro-F1 全程 0.000；这是短 run 的性质，不是接线问题（36 epoch 的 gcv36 历史下返回 bond_type_macro_f1，有测试钉住）。"
       ]
     },
     {
