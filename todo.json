@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T12:30+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。",
+  "updated": "2026-10-27T13:10+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -1460,6 +1460,46 @@
       "addressed_by": [
         "T47"
       ]
+    },
+    {
+      "id": "D48",
+      "symptom": "候选对的特征里，两个原子叠在一起和一根 1.0 Å 的键完全同形，而叠在一起只发生在采样几何上。",
+      "measured": "yuelbond_decoder.py:778 与 :1368 都是 d = norm(...).clamp(min=1.0) 之后再 mask = d < 3.5，clamp 后的值同时喂给 d / is_short / is_long / RBF。真实 tmQM_X1 前 4000 个复合物最近原子对 mean 1.0616、p01 0.9632、min 0.9563（9.0% 有一对 < 1.0 Å，0 个 < 0.9 Å）；cfm_generated_geometry_defect.json 的 24 个生成云最近原子对 mean 0.5702、median 0.5599，24/24 云有硬接触，共 143 对，真实对照 0/24。",
+      "artifact": "metrics/by_metric/cfm_generated_geometry_defect.json",
+      "reading": "这条不是「clamp 写错了」，而是同一个数值保护在两个分布上语义相反。训练分布上它最多改动 0.044 Å，等于没生效；采样分布上它把 0.57 Å 的塌陷搬到 1.0 Å，正好落进 is_short=1 的格子，也就是头在真实几何上学到的「这一段基本都是键」。头的距离分辨力全部在 1.7 Å 以下，clamp 恰好只抹掉这一段。后果可以确定到这一步：塌陷对不会因为太近被拒。它是否造成了 3-ring 占比 0.71-0.92（真实 0.5%），没有测量，不能写成结论。",
+      "addressed_by": [
+        "T48"
+      ]
+    },
+    {
+      "id": "D49",
+      "symptom": "连通性先验在「一个键都没有」的云上被跳过，而这是它唯一还能救的情况。",
+      "measured": "cfm_decoder_yuelbond.py:767 是 if self.connectivity_prior and bond_orders:。c7 池 12,669 行里 302 行（2.38%）n_frags_raw>1 且 largest_frag_frac == 1/n_frags_raw，即解码出 0 根键、每个片段都是单原子；c8 池 2,112 行里这一类 0 行。_bridge_components（:1008）以 parent=list(range(n)) 起手，空 bond_orders 时 n_components=len(heavy)、候选来自 edge_index，能正常补桥。",
+      "artifact": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+      "reading": "入口条件放在失败的一侧：越碎越不执行。302 行占 2.4%，而 c7 池是验收表第 3/4 行的唯一来源。修法是把 and bond_orders 去掉，而不是加一个更强的条件；connectivity_prior=off 仍然逐位复现旧解码，所以这个改动有干净的对照。",
+      "addressed_by": [
+        "T49"
+      ]
+    },
+    {
+      "id": "D50",
+      "symptom": "第三个键头实现仍然写死 Pt-only + N/O/S 的 dative 规则，并缺两个解码器会读的属性；一选就崩在存权重。",
+      "measured": "train_cfm_yuelbond_wasserstein.py:2083-2087 是 ((z_i==7)|(z_i==8)|(z_i==16)) & (z_j==78)，只测一个方向；同文件 :17983 是 model.head.metal_set（无 getattr）；:2543-2548 仍接受 bond_predictor='dmpnn'。configs/ 39 个含 bond_predictor 的 YAML 里 0 个选 dmpnn。",
+      "artifact": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "reading": "YuelBondDecoderHead 与 YuelBondEdgeMPNNHead 都已改成 metal_set+donor_zs 的对称规则，DMPNNBondHead 保留的是 Wf-A69 修过的那个 bug 的原样。因为没有任何 config 选它，它今天不影响任何数字；但它是一个被 CLI 接受、被错误信息列出的选项，选中的结果是 5 个目标金属的配位键全部标成非 dative，且第一次 _save_cfm_checkpoint 就 AttributeError。要么补齐，要么删掉这个分支。",
+      "addressed_by": [
+        "T50"
+      ]
+    },
+    {
+      "id": "D51",
+      "symptom": "配位几何门的键计数只看第一个端点，金属在高索引时不计；今天被 valence cap 掩盖，调松 cap 就显形。",
+      "measured": "cfm_decoder_yuelbond.py:960 的 bonds_at_metal = sum(1 for (a, _, _) in bond_orders if a == metal_idx)，而 bond_orders 的 (i,j) 来自 triu_indices，i<j。tmQM_X1 的 9,111 个含金属复合物中 7,700 个金属在重原子索引 0，11.84%（5,729/48,371）的金属键金属处于较高索引。metal_geometry.py:415-432 的 max_bonds 与 _COVALENT_VALENCE 对表内每个金属等紧。",
+      "artifact": ".data/molmetal/tmQM/tmQM_X1.BO.gz",
+      "reading": "今天这道门是冗余的：valence cap 至少一样紧，所以漏计不改变任何解码。但 covalent_valence_table 的 docstring 把 Pt_IV（cap=6）当支持用法，那一刻几何门成为唯一上限，11.84% 的键不计入它，多配位 Pt 会被放过。修法是一行（数两端），价值在于把一个「现在没用、以后会错」的门变成现在就对。",
+      "addressed_by": [
+        "T51"
+      ]
     }
   ],
   "modules": [
@@ -2661,6 +2701,102 @@
         "molmetal/scripts/wf_a53_eval_cfm_test_split.py:653",
         "molmetal/tests/test_wf_a53_decode_connectivity.py:46"
       ]
+    },
+    {
+      "id": "T48",
+      "priority": 1,
+      "title": "给候选对加一条元素感知的塌陷拒绝，clamp 只留作数值保护",
+      "what": "在 YuelBondDecoderHead.forward、YuelBondEdgeMPNNHead.forward、DMPNNBondHead.forward 的候选构造里，用未截断的 d_raw 计算塌陷掩码 d_raw < clash_ratio*(rcov_i+rcov_j)（Cordero 半径，与 cfm_generated_geometry_defect.json 的 hard_clash 定义同一条），把命中的对从候选集剔除；d 的 clamp 保留给数值安全，但不再参与候选判定。新增 --bond-clash-reject on/off（默认 on）与 --bond-clash-ratio（默认 0.7），两者都进 YAML、都写进 provenance。不新增特征列，避免改变 pair_head 宽度。",
+      "addresses": [
+        "D48"
+      ],
+      "done_when": "24 个真实 tmQM 云上被剔除的对数为 0（真实语料 hard-clash 率本就是 0.0%）；24 个生成云上每云至少剔除 1 对，总剔除数落在 cfm_generated_geometry_defect.json 记录的 143 对量级；三原子 0.4 Å 合成云解码为 0 根键而不是三元环；开关与 ratio 出现在 artifact 里；T29 的池同时记录 clash_rejected_pairs 与 ring_3_share 的前后值（T29 未跑时此项记 UNMEASURED，不得写成通过）。",
+      "gate": {
+        "no_false_reject": "真实云剔除数 0",
+        "clash_rejected": "生成云 143 对全部剔除",
+        "no_ring3_from_clash": "合成塌陷三角 -> 0 键"
+      },
+      "kill": "若真实 tmQM 上出现任何被剔除的对（说明半径表或 ratio 不对），先修半径再谈生成侧；不要为了让生成侧数字好看而调 ratio。",
+      "device": "cpu",
+      "cost": "CPU 3 h（代码+单测）；数值 A/B 落在 T29",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:778",
+        "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:1368",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2067",
+        "metrics/by_metric/cfm_generated_geometry_defect.json"
+      ]
+    },
+    {
+      "id": "T49",
+      "priority": 1,
+      "title": "去掉连通性先验的空键前置条件，并给零键云一个单测",
+      "what": "把 decode() 的 if self.connectivity_prior and bond_orders: 改成 if self.connectivity_prior:。_bridge_components 已能处理空输入（parent=list(range(n))，n_components=len(heavy)，候选来自 edge_index），所以不需要别的改动。加单元测试：一个 5 原子云（1 金属 + 4 重原子）、head 对所有候选对输出 NO_BOND、所有对都在 3.5 Å 内，断言解码后是单重原子片段且 n_bridges>0。再加一个 connectivity_prior=off 的对照，断言逐位等于旧行为。",
+      "addresses": [
+        "D49"
+      ],
+      "done_when": "零键云在 connectivity_prior=on 时解码为单片段；on/off 两条路径的 n_bridges 分别为 >0 与 0，SMILES 不同；off 路径与改动前逐位一致；c7 池那 302 行（全单原子片段）在新代码下不再全空——该项需要重解码，T29 未跑时记 UNMEASURED。",
+      "gate": {
+        "zero_bond_connected": "零键云 -> 单片段",
+        "off_is_bit_exact": "connectivity_prior=off 逐位复现旧解码"
+      },
+      "kill": "若零键云在补桥后仍然 RDKit 拒绝（例如桥接制造了五价碳），则保留前置条件但在 artifact 里显式记 skipped_reason=no_bonds，让这 2.38% 在指标里可见，而不是静默走老路。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:767",
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:1008",
+        "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv"
+      ]
+    },
+    {
+      "id": "T50",
+      "priority": 2,
+      "title": "统一或删除 DMPNNBondHead 的 dative 规则与属性面",
+      "what": "二选一，写进计划时先记录选择：(a) 给 DMPNNBondHead 加 metal_set / donor_zs 两个属性，把 is_dative 换成与 YuelBondDecoderHead 相同的对称规则，并把 :17983 的 model.head.metal_set 改成 getattr(model.head, 'metal_set', _DEFAULT_METAL_SET)；(b) 从 :2543-2548 的分支里删掉 dmpnn，让 --bond-predictor 只接受三个已统一的头。默认走 (a)，因为 CLI 已经公开了这个值。加测试：构造 DMPNNBondHead，断言两个属性存在，且一条 Ru-N 候选对得到 is_dative=1。",
+      "addresses": [
+        "D50"
+      ],
+      "done_when": "DMPNNBondHead 有 metal_set 与 donor_zs；Ru-N / Pt-Cl / Ir-C 三条候选对的 is_dative 均为 1；用该头跑一次 1 步训练 + 存权重不再 AttributeError；三个头的 dative 规则由同一个函数产生，或每一处都带注释说明为何不同。",
+      "gate": {
+        "attributes_present": "metal_set 与 donor_zs 可读",
+        "non_pt_dative": "Ru-N 的 is_dative=1",
+        "checkpoint_writes": "dmpnn 头能存权重"
+      },
+      "kill": "若 (a) 会让 dmpnn 头的 pair_head 输入宽度变化（它只有 3 列 edge_attr，没有 donor 列），则说明它本来就无法承载扩展后的规则，直接走 (b) 删分支，并在 legacy_identifiers 里记下 dmpnn -> removed。",
+      "device": "cpu",
+      "cost": "CPU 1.5 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2083",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:17983",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2543"
+      ]
+    },
+    {
+      "id": "T51",
+      "priority": 3,
+      "title": "配位几何门的键计数改成数两端，并补 Pt_IV 用例",
+      "what": "把 cfm_decoder_yuelbond.py:960 的 bonds_at_metal 改成同时数 (a==metal_idx or b==metal_idx)。加两个单测：(1) 金属在高索引（例如 5 原子云里金属是 4 号）时，第 5 根键被几何门拒绝；(2) 默认 valence_cap 下解码逐位不变。同时在计划里记下这道门对表内金属与 _cap_for_z 等紧，冗余关系写进注释而不是删掉门。",
+      "addresses": [
+        "D51"
+      ],
+      "done_when": "金属在高索引时 bonds_at_metal 计数正确；valence_cap={78:6}（Pt_IV）的构造下第 5 根 Pt 键被拒；默认构造下解码与改动前逐位一致。",
+      "gate": {
+        "counts_both_ends": "高索引金属计数正确",
+        "pt_iv_cap_holds": "Pt_IV cap=6 时第 5 根键被拒",
+        "default_bit_exact": "默认构造逐位不变"
+      },
+      "kill": "若逐位一致性无法保持（几何门在有金属的双键/芳香键上本来就与 valence cap 不等价），则不修这一行，改为在 artifact 里记录 geometry_gate_redundant=true，并把 Pt_IV 的用法标成不支持。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:960",
+        "molmetal/molmetal_lam/priors/metal_geometry.py:415",
+        ".data/molmetal/tmQM/tmQM_X1.BO.gz"
+      ]
     }
   ],
   "acceptance": {
@@ -3052,10 +3188,14 @@
           "T44",
           "T45",
           "T46",
-          "T47"
+          "T47",
+          "T48",
+          "T49",
+          "T50",
+          "T51"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。 T43/T44 是验收表与采样器的最后两处 provenance/等价性缺口，同为 CPU。 T45（门产物无代码指纹）必须先于任何引用「几道门 PASS」的结论。 T46（权重可用性清单）先把「哪些数还能复核」写下来，T43 才知道哪几行必须标 weights_unavailable。 T47（解码侧金属集合漏 Pt）是 30 分钟的 CPU 修复，属于同一批 provenance 清理。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。 T43/T44 是验收表与采样器的最后两处 provenance/等价性缺口，同为 CPU。 T45（门产物无代码指纹）必须先于任何引用「几道门 PASS」的结论。 T46（权重可用性清单）先把「哪些数还能复核」写下来，T43 才知道哪几行必须标 weights_unavailable。 T47（解码侧金属集合漏 Pt）是 30 分钟的 CPU 修复，属于同一批 provenance 清理。 2026-10-27 第三轮新增 T48（候选对的塌陷拒绝）、T49（连通性先验的空键前置条件）、T50（第三个头的 dative 规则与属性面）、T51（配位几何门的键计数）；四条都是 CPU，且都改的是候选层而不是目标函数，必须在 T29 重跑池之前落地，否则池的碎片率会继续带着这两个已知原因。"
       },
       {
         "wave": 3,
@@ -3149,7 +3289,7 @@
   "self_audit": {
     "created": "2026-10-27",
     "scope": "生成线（CFM）。回答的是「为什么到现在还没改完」，不是「该投什么」。",
-    "method": "按时间顺序读 git log、每个 run 的 per_epoch_metrics.csv / events.jsonl 与启动它的 config，不读 summary。理由是 summary 由同一批代码写，而这一轮的问题恰好是 summary 不报失败。 第二轮（2026-10-27T04:20）改为按数据链路逐段读代码：数据入口 -> 目标函数 -> 采样器 -> 解码 -> 指标 -> 门，每条新发现都带可复现命令，未跑任何 GPU 训练或验证。",
+    "method": "按时间顺序读 git log、每个 run 的 per_epoch_metrics.csv / events.jsonl 与启动它的 config，不读 summary。理由是 summary 由同一批代码写，而这一轮的问题恰好是 summary 不报失败。 第二轮（2026-10-27T04:20）改为按数据链路逐段读代码：数据入口 -> 目标函数 -> 采样器 -> 解码 -> 指标 -> 门，每条新发现都带可复现命令，未跑任何 GPU 训练或验证。 第三轮（2026-10-27T05:40）转入 yuelbond 候选对生成：读 yuelbond_decoder.py 的 triu_indices/cutoff/clamp/is_short/is_dative 与 cfm_decoder_yuelbond.py 的 _select_bonds/_bridge_components，并把 tmQM_X1 的 xyz+BO 直接当测量面（真键距离分布、最近原子对分布），仍未跑 GPU 训练或验证。",
     "verdict": "不是模块没做，也不是模块做了没用。是实验矩阵缺了一格，而缺的那一格被创建了两次、都没跑完，且没有东西报告它没跑完。在 T29 完成之前，生成线没有任何一条指标是在「会学习的场 + 可测的池」上测的。",
     "findings": [
       {
@@ -3394,6 +3534,42 @@
         "impact": "Pt 是这条线的标题金属。只含 Pt 的解码会被记成「没有金属」。每 epoch 的 gen_metal_ratio 走另一条路所以看不出来，因此这个错误只在 wf_a53 的 held-out 评估里显形——而那条路径目前没有注册产物，等于还没人踩到。",
         "status": "OPEN",
         "task": "T47"
+      },
+      {
+        "id": "SA-28",
+        "finding": "候选对的距离在进入特征之前被 clamp 到 1.0 Å，把「两个原子叠在一起」压成「一根短键」；这一压缩在训练分布上最多 0.04 Å，在采样分布上到 0.43 Å。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:778、:1368；molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2067（DMPNNBondHead 同一行）",
+        "measured": "d = norm(...).clamp(min=1.0) 发生在 mask = d < 3.5 之前，所以 clamp 后的值同时进入 d、is_short(d<1.7)、is_long(d>3.0) 与 RBF。真实 tmQM_X1 前 4000 个复合物：最近原子对 mean 1.0616 / median 1.0778 / p01 0.9632 / min 0.9563，9.0% 的复合物有一对 < 1.0 Å，0 个 < 0.9 Å。生成侧（cfm_generated_geometry_defect.json，24 云）：最近原子对 mean 0.5702 / median 0.5599，24/24 云至少一对硬接触，共 143 对，真实对照 0/24。",
+        "impact": "同一行在训练分布上是数值保护，在采样分布上把塌陷搬进「短键」格子。头的全部距离分辨力都在 1.7 Å 以下，clamp 恰好抹掉这一段，所以塌陷对不会因为「太近」被拒，只会因为「够近」被接受。这不等于证明它造成了 3-ring 爆炸（那一步没测），但它确实去掉了候选层唯一能拒绝塌陷的信号，而且去的方式随分布变化。",
+        "status": "OPEN",
+        "task": "T48"
+      },
+      {
+        "id": "SA-29",
+        "finding": "连通性先验在「一个键都没有」的云上被跳过，而这正是它唯一还能救的情况。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:767（if self.connectivity_prior and bond_orders:）与 :1008（_bridge_components 对空输入本身是正确的）",
+        "measured": "c7 池 molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv 共 12,669 行，其中 302 行（2.38%）满足 n_frags_raw>1 且 largest_frag_frac == 1/n_frags_raw——每个片段都是单原子，即解码出 0 根键。c8 池 2,112 行里这一类为 0（143 个单片段行与「全单原子」计数完全相等），所以缺陷只在 c7 那一批显形。_bridge_components 的 union-find 以 parent=list(range(n)) 起手，空 bond_orders 时 n_components=len(heavy)、候选来自 edge_index，逻辑上可以直接补桥。",
+        "impact": "先验的入口条件放在失败的一侧：越需要连通，越不执行。302 行占 c7 池 2.4%，而 c7 池是验收表第 3/4 行唯一的来源，所以这两行的 now 值里混着一批本可连通的空图。",
+        "status": "OPEN",
+        "task": "T49"
+      },
+      {
+        "id": "SA-30",
+        "finding": "第三个键头实现仍然写死 Pt-only + N/O/S 的 dative 规则，并且缺两个解码器会读的属性。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2083-2087、:17983、:2543-2548",
+        "measured": "DMPNNBondHead.forward 里 is_dative = ((z_i==7)|(z_i==8)|(z_i==16)) & (z_j==78)，既不含 Ru/Rh/Re/Os/Ir，也不含 Wf-A94/A95 加的卤素与碳，且只测一个方向。同一类的 YuelBondDecoderHead 与 YuelBondEdgeMPNNHead 都已改成 metal_set+donor_zs 的对称规则。DMPNNBondHead 没有 metal_set / donor_zs 两个属性，而 :17983 写的是 model.head.metal_set（无 getattr），解码侧的 _is_metal_z/_is_donor 也直接读这两个属性。configs/ 里 39 个含 bond_predictor 的 YAML 中 0 个选 dmpnn，所以今天潜伏：一旦有人用 --bond-predictor dmpnn，崩点是第一次存权重，不是训练。",
+        "impact": "三个实现、三套 dative 规则，其中一套是 Wf-A69 修过的那个 bug 的原样。谁按 README 把 bond_predictor 换成 dmpnn，得到的不是「稍弱的头」，而是一个把 5 个目标金属的配位键全部标成非 dative 的头，且存盘即崩。",
+        "status": "OPEN",
+        "task": "T50"
+      },
+      {
+        "id": "SA-31",
+        "finding": "配位几何门的键计数只看 bond_orders 的第一个端点，而边表是 i<j，所以金属在高索引时完全不计；今天这道门与 valence cap 等紧所以是冗余的，一旦调松 cap 它就是唯一约束。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:960；molmetal/molmetal_lam/priors/metal_geometry.py:415-432；同文件 :132 起的 _COVALENT_VALENCE",
+        "measured": "bonds_at_metal = sum(1 for (a, _, _) in bond_orders if a == metal_idx)，而 bond_orders 的 (i,j) 直接来自 head 的 triu_indices，i<j 恒成立。tmQM_X1 的 9,111 个含金属复合物：7,700 个（84.5%）金属在重原子索引 0，11.84%（5,729/48,371）的金属键金属处于较高索引，对这些键计数恒为 0。同时 max_bonds 与 _cap_for_z 对表内每个金属等紧：Pt 4/4、Pd 4/4、Au 4/4、Cu 4/4、Zn 4/4、Ru 6/6、Ir 6/6、Rh 6/6、Re 6/6、Os 6/6。",
+        "impact": "今天没有可观测后果，因为 valence cap 至少一样紧。但 covalent_valence_table 的 docstring 明确把 Pt_IV（cap=6）当作支持用法，那一刻这道门成为唯一的配位上限，而 11.84% 的金属键不计入它——多配位的 Pt 会被放过。属于「现在冗余、调一个参数就活」的一类，和惰性开关同源。",
+        "status": "OPEN",
+        "task": "T51"
       }
     ],
     "reproduce": [
@@ -3416,7 +3592,30 @@
       "grep -n 'bond_length_guidance_weight' molmetal/scripts/train_cfm_yuelbond_wasserstein.py | sed -n '1,12p'\n# 期望看到 8004 只在非 padded 分支被读，7932-7972 不出现",
       "python - <<'EOF'\nimport json,subprocess\np='metrics/by_metric/wfa108i_module_gates_c8_epoch2.json'\nd=json.load(open(p))\nm5=[g for g in d['gates'] if g['id']=='M5'][0]\nprint('artifact checks:', list(m5['checks']))\nprint('artifact status:', m5['status'])\nprint('code has no_block_zero_grad:', subprocess.run(['grep','-c','no_block_zero_grad','molmetal/scripts/cfm_module_gates.py'],capture_output=True,text=True).stdout.strip())\nprint('expected blocks measured:', m5['measured']['expected_blocks'] if 'expected_blocks' in m5['measured'] else '(absent: old gate)')\nEOF\n# 期望 artifact 用 no_block_zero_grad，而代码里 0 次出现",
       "python - <<'EOF'\nimport os,glob,datetime,collections\nempt=[(d,datetime.datetime.fromtimestamp(os.path.getmtime(d)).strftime('%Y-%m-%d %H:%M')) for d in glob.glob('**/checkpoints',recursive=True)+glob.glob('**/ckpt',recursive=True) if '/.git/' not in d and not glob.glob(os.path.join(d,'*.pt'))]\nprint('empty', len(empt))\nprint(collections.Counter(t for _,t in empt).most_common(3))\nprint('c7 pt:', glob.glob('molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/*.pt'))\nEOF\n# 期望 empty 98，最多的一项 2026-10-21 16:52 共 88，c7 的 pt 列表为空",
-      "python - <<'EOF'\nimport re\ns=open('molmetal/scripts/train_cfm_yuelbond_wasserstein.py').read()\nprint('decode-side set:', re.search(r'metal_z = \\{[^}]+\\}', s).group(0))\nprint('target set     :', re.search(r'_TARGET_METALS = frozenset\\(\\{[^}]+\\}\\)', s).group(0))\nEOF\n# 期望第一行缺 78，第二行有 78"
+      "python - <<'EOF'\nimport re\ns=open('molmetal/scripts/train_cfm_yuelbond_wasserstein.py').read()\nprint('decode-side set:', re.search(r'metal_z = \\{[^}]+\\}', s).group(0))\nprint('target set     :', re.search(r'_TARGET_METALS = frozenset\\(\\{[^}]+\\}\\)', s).group(0))\nEOF\n# 期望第一行缺 78，第二行有 78",
+      "python - <<'EOF'\nimport gzip,re,math,collections\nT={'Ru','Rh','Re','Os','Ir','Pt','Pd'}\nc={}\nL=gzip.open('.data/molmetal/tmQM/tmQM_X1.xyz.gz','rt').readlines()\ni=0\nwhile i<len(L):\n    try:n=int(L[i].strip())\n    except ValueError:i+=1;continue\n    m=re.search(r'CSD_code\\s*=\\s*(\\w+)',L[i+1])\n    if m:c[m.group(1)]=([L[i+2+k].split()[0] for k in range(n)],[tuple(map(float,L[i+2+k].split()[1:4])) for k in range(n)])\n    i+=n+2\ntot=ge35=ge26=0\nfor line in gzip.open('.data/molmetal/tmQM/tmQM_X1.BO.gz','rt'):\n    if line.startswith('CSD_code'):\n        code=line.split('=',1)[1].split('|',1)[0].strip();continue\n    p=line.split()\n    if len(p)<3:continue\n    try:a=int(p[0])-1\n    except ValueError:continue\n    r=p[3:]\n    for k in range(0,len(r)-2,3):\n        try:b=int(r[k+1])-1;bo=float(r[k+2])\n        except:continue\n        if a>=b or bo<0.3 or code not in c:continue\n        s,x=c[code]\n        if s[a] not in T and s[b] not in T:continue\n        d=math.dist(x[a],x[b]);tot+=1\n        if d>=3.5:ge35+=1\n        if d>=2.6:ge26+=1\nprint(tot,ge35,ge26)\nEOF\n# 期望 49023 0 1715：候选集对真键零召回损失，2.6 A 的 dative 界漏 3.5%",
+      "python - <<'EOF'\nimport gzip,math,statistics as st\nL=gzip.open('.data/molmetal/tmQM/tmQM_X1.xyz.gz','rt').readlines()\ni=0;mins=[]\nwhile i<len(L) and len(mins)<4000:\n    try:n=int(L[i].strip())\n    except ValueError:i+=1;continue\n    try:x=[tuple(map(float,L[i+2+k].split()[1:4])) for k in range(n)]\n    except: i+=n+2;continue\n    i+=n+2\n    mins.append(min(math.dist(x[a],x[b]) for a in range(n) for b in range(a+1,n)))\nprint(st.mean(mins),min(mins),sum(m<1.0 for m in mins)/len(mins))\nEOF\n# 期望 1.0616 0.9563 0.090：clamp 在训练分布上最多改动 0.044 A",
+      "python - <<'EOF'\nimport csv,collections\nrows=list(csv.DictReader(open('molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv')))\nz=[r for r in rows if int(r['n_frags_raw'])>1 and abs(float(r['largest_frag_frac'])-1.0/int(r['n_frags_raw']))<1e-6]\nprint(len(rows),len(z),len(z)/len(rows))\nEOF\n# 期望 12669 302 0.0238：零键云占 2.4%，它们全被 and bond_orders 挡在先验之外"
+    ],
+    "cleared": [
+      {
+        "id": "C-28a",
+        "claim": "候选集（3.5 Å 上三角）对真实键没有召回损失，所以「cutoff 太紧」不是碎片化的原因。",
+        "measured": "tmQM_X1 全部 34,970 个复合物、49,023 条含金属真键（Wiberg BO >= 0.3）：d >= 3.5 Å 的 0 条（0.000%）；d >= 3.0 Å 674 条（1.375%）；d >= 2.6 Å 1,715 条（3.498%）。",
+        "artifact": ".data/molmetal/tmQM/tmQM_X1.xyz.gz + tmQM_X1.BO.gz"
+      },
+      {
+        "id": "C-28b",
+        "claim": "候选对的对称性与去重没有问题。",
+        "measured": "triu_indices(n,n,offset=1) 每个无序对恰好一次；_select_bonds 用 pair_key=(min,max) 去重；is_dative 自 Wf-A92 起双向测试，与原子顺序无关。",
+        "artifact": "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:767, :827；cfm_decoder_yuelbond.py:870"
+      },
+      {
+        "id": "C-28c",
+        "claim": "2.6 Å 的 dative 距离界确实漏掉 3.5% 的真金属键，但这是已标定的代价，不是新缺陷。",
+        "measured": "同一 49,023 条真键里 1,715 条（3.498%）在 2.6 Å 之外；wfa94 标定给出 2.6 Å 的 precision 0.9935 / recall 0.9841（F1 0.9888），与这个量级一致。dative 只是特征/标注，键本身仍可被预测为 SINGLE。",
+        "artifact": "metrics/by_metric/wfa94_tmqm_dative_calibration.json"
+      }
     ]
   }
 }
