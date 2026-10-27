@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T11:45+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。",
+  "updated": "2026-10-27T12:10+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -1440,6 +1440,16 @@
       "addressed_by": [
         "T45"
       ]
+    },
+    {
+      "id": "D46",
+      "symptom": "98 个 run 目录没有权重，其中 88 个是同一分钟被清空的；而 metrics 注册表里没有任何字段把一份指标连到它的 checkpoint，所以这件事在指标侧不可见。",
+      "measured": "对全仓库 **/checkpoints 与 **/ckpt 做扫描：98 个目录没有 .pt，33 个有。按 mtime 分组：2026-10-21 16:52 一个时刻占 88 个，其余分散在 5 个时间点。metrics/by_metric/*.json 里只有 15 份带 run_dir 字段（总 537 份），其中 1 份指向空目录（wfa96_ring_prior_gate.json -> results/cfm_5metal_wfa78_ring_prior）；带绝对 .pt 路径的 16 份里有 1 份指向已删除文件（cfm_arch1_t_degradation.json -> molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt）。验收表第 3/4 行的 now 值来自 molmetal/reports/cfm_c7_fullgen_2026_10_20，该目录的 checkpoints/ 自 2026-10-21 16:52 起为空。",
+      "artifact": "molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints",
+      "reading": "三个后果叠在一起。(1) 验收表第 3/4 行（three_ring_share / six_ring_share）只能从一个权重已不存在的 run 上测，缺口既无法关闭也无法重测；(2) 4 个 test_head_ring_size_behaviour 用例因此常红六天无人处理，因为没有任何 artifact 说它依赖的 .pt 没了；(3) 指标注册表把「数」和「产生它的权重」解耦，所以一次 rm 可以让 88 份历史读数变成不可复核，而 registry 的 stale 检查看不出来。",
+      "addressed_by": [
+        "T46"
+      ]
     }
   ],
   "modules": [
@@ -2595,6 +2605,29 @@
         "metrics/by_metric/wfa108j_module_gates_budget36.json",
         "molmetal/scripts/cfm_module_gates.py"
       ]
+    },
+    {
+      "id": "T46",
+      "priority": 1,
+      "title": "把每份指标连到它的 checkpoint，并给空目录一个显式状态",
+      "what": "给 metrics/by_metric/*.json 增加两个字段：run_dir 与 checkpoint_sha256（或 checkpoint_path + 存在性）。对 98 个空目录生成一份 metrics/by_metric/checkpoint_availability.json：目录、mtime、是否有 .pt、依赖它的 artifact 列表、依赖它的测试列表。对验收表里依赖空目录的行标 weights_unavailable。不恢复任何文件——只把状态写下来。",
+      "addresses": [
+        "D46"
+      ],
+      "done_when": "checkpoint_availability.json 存在且列出 98 个目录与 88 个同分钟清空项；每份引用 .pt 的 artifact 都有存在性字段；test_head_ring_size_behaviour 的 4 个用例要么带 skip(reason=weights_unavailable)，要么因文件恢复而通过，且 skip 理由指向该 JSON。",
+      "gate": {
+        "linked": "每份 artifact 能追到权重或显式说明权重不存在",
+        "visible": "空目录在注册表里可见，不再靠 ls 发现"
+      },
+      "kill": "若大部分 artifact 根本无法确定自己用了哪个 checkpoint（无 run_dir、无 sha），则只做 checkpoint_availability.json 的目录清单，并在计划里把「artifact 不知道自己用了哪个权重」记成一条独立缺陷。",
+      "device": "cpu",
+      "cost": "CPU 2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints",
+        "metrics/by_metric/cfm_arch1_t_degradation.json",
+        "molmetal/tests/test_head_ring_size_behaviour.py"
+      ]
     }
   ],
   "acceptance": {
@@ -2984,10 +3017,11 @@
           "T42",
           "T43",
           "T44",
-          "T45"
+          "T45",
+          "T46"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。 T43/T44 是验收表与采样器的最后两处 provenance/等价性缺口，同为 CPU。 T45（门产物无代码指纹）必须先于任何引用「几道门 PASS」的结论。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。 T43/T44 是验收表与采样器的最后两处 provenance/等价性缺口，同为 CPU。 T45（门产物无代码指纹）必须先于任何引用「几道门 PASS」的结论。 T46（权重可用性清单）先把「哪些数还能复核」写下来，T43 才知道哪几行必须标 weights_unavailable。"
       },
       {
         "wave": 3,
@@ -3308,6 +3342,15 @@
         "impact": "「c8 4/10 PASS」这个数字至少有一道是旧门实现的产物，今天无法复现；「vector_channels 8/10」来自 5-epoch run。两个结论都被引用过，而 artifact 里没有一个字段能区分。",
         "status": "OPEN",
         "task": "T45"
+      },
+      {
+        "id": "SA-26",
+        "finding": "88 个 run 目录在 2026-10-21 16:52 同一分钟失去权重，而指标注册表没有任何字段能显示这件事。",
+        "evidence": "全仓库 **/checkpoints 与 **/ckpt 扫描、metrics/by_metric/*.json、molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints",
+        "measured": "98 个空目录 / 33 个有 .pt；88 个空目录的 mtime 是 2026-10-21 16:52。537 份 metrics 里只有 15 份带 run_dir，1 份指向空目录；16 份带绝对 .pt 的里 1 份指向已删除文件。c7 的 checkpoints/ 为空但 generated_smiles.csv（12,670 行）还在，验收表第 3/4 行的 now 就从它来。",
+        "impact": "历史读数变成不可复核，而 registry 的 stale 检查看不到；一个测试红了六天没人能判断是代码坏了还是权重没了。这也是 SA-23 的物理原因：两行验收指标的唯一来源已经不存在。",
+        "status": "OPEN",
+        "task": "T46"
       }
     ],
     "reproduce": [
@@ -3328,7 +3371,8 @@
       "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('results/wfa108j_budget36/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch' and r['epoch']<=6:\n    lt=ast.literal_eval(r['loss_terms']) if isinstance(r['loss_terms'],str) else r['loss_terms']\n    print(r['epoch'], round(lt['bond_ce'],4), round(lt['fm_term'],4))\nEOF\n# 期望 bond_ce 从 15.92 落到 1.59，fm_term 同期不降",
       "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/cfm_panel_reference_band_real_tmqm.json'))\nprint(d['corrections_2026_10_12'][0]['per_claim_correction']['single_fragment_ratio (CFM-05)'][:300])\nprint('band:', d['reference_band']['single_fragment_rate'])\nEOF\n# 期望读到 0.9983 与 0.8365 两个数并存，并读到 must not be quoted",
       "grep -n 'bond_length_guidance_weight' molmetal/scripts/train_cfm_yuelbond_wasserstein.py | sed -n '1,12p'\n# 期望看到 8004 只在非 padded 分支被读，7932-7972 不出现",
-      "python - <<'EOF'\nimport json,subprocess\np='metrics/by_metric/wfa108i_module_gates_c8_epoch2.json'\nd=json.load(open(p))\nm5=[g for g in d['gates'] if g['id']=='M5'][0]\nprint('artifact checks:', list(m5['checks']))\nprint('artifact status:', m5['status'])\nprint('code has no_block_zero_grad:', subprocess.run(['grep','-c','no_block_zero_grad','molmetal/scripts/cfm_module_gates.py'],capture_output=True,text=True).stdout.strip())\nprint('expected blocks measured:', m5['measured']['expected_blocks'] if 'expected_blocks' in m5['measured'] else '(absent: old gate)')\nEOF\n# 期望 artifact 用 no_block_zero_grad，而代码里 0 次出现"
+      "python - <<'EOF'\nimport json,subprocess\np='metrics/by_metric/wfa108i_module_gates_c8_epoch2.json'\nd=json.load(open(p))\nm5=[g for g in d['gates'] if g['id']=='M5'][0]\nprint('artifact checks:', list(m5['checks']))\nprint('artifact status:', m5['status'])\nprint('code has no_block_zero_grad:', subprocess.run(['grep','-c','no_block_zero_grad','molmetal/scripts/cfm_module_gates.py'],capture_output=True,text=True).stdout.strip())\nprint('expected blocks measured:', m5['measured']['expected_blocks'] if 'expected_blocks' in m5['measured'] else '(absent: old gate)')\nEOF\n# 期望 artifact 用 no_block_zero_grad，而代码里 0 次出现",
+      "python - <<'EOF'\nimport os,glob,datetime,collections\nempt=[(d,datetime.datetime.fromtimestamp(os.path.getmtime(d)).strftime('%Y-%m-%d %H:%M')) for d in glob.glob('**/checkpoints',recursive=True)+glob.glob('**/ckpt',recursive=True) if '/.git/' not in d and not glob.glob(os.path.join(d,'*.pt'))]\nprint('empty', len(empt))\nprint(collections.Counter(t for _,t in empt).most_common(3))\nprint('c7 pt:', glob.glob('molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/*.pt'))\nEOF\n# 期望 empty 98，最多的一项 2026-10-21 16:52 共 88，c7 的 pt 列表为空"
     ]
   }
 }
