@@ -121,7 +121,7 @@ import time
 import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -153,6 +153,7 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondEdgeMPNNHead,
     bond_decision as _bond_decision,
     z_to_onehot,
+    _DEFAULT_METAL_SET,
     _DONOR_ZS,
     _YUELBOND_Z_TABLE,
 )
@@ -2115,6 +2116,15 @@ class DMPNNBondHead(nn.Module):
         cutoff: float = 3.5,
         min_distance: float = 1.0,
         z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
+        # Wf-A113 (2026-10-27) — the two attribute surfaces every other bond
+        # head already has.  ``DMPNNBondHead`` was the only head without
+        # them, so (a) its ``is_dative`` rule was frozen at Pt-only and
+        # (b) ``model.head.metal_set`` in the checkpoint feature-schema stamp
+        # raised AttributeError on this head.  Neither showed up in a run
+        # because no YAML selects ``bond_predictor: dmpnn``; the surface was
+        # latent, not harmless.
+        metal_set: Optional[Iterable[int]] = None,
+        donor_zs: Optional[Iterable[int]] = None,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -2122,6 +2132,16 @@ class DMPNNBondHead(nn.Module):
         self.cutoff = float(cutoff)
         self.min_distance = float(min_distance)
         self.z_table = tuple(z_table)
+        #: Metals that can carry a dative bond.  Same default as
+        #: :class:`YuelBondDecoderHead`, so swapping heads does not silently
+        #: change the feature the checkpoint was fitted on.
+        self.metal_set = frozenset(
+            int(z) for z in (_DEFAULT_METAL_SET if metal_set is None else metal_set)
+        )
+        #: Donor elements for the dative rule (N/O/S among others).
+        self.donor_zs = frozenset(
+            int(z) for z in (_DONOR_ZS if donor_zs is None else donor_zs)
+        )
         # Atom encoder: Z one-hot -> hidden_dim.  Same shape as
         # YuelBondDecoderHead.atom_encoder so the pair_head below has the
         # same input width as the default head.
@@ -2218,11 +2238,31 @@ class DMPNNBondHead(nn.Module):
         # Per-edge features (3-dim): d, is_dative, is_short.  Same
         # rule set as YuelBondDecoderHead.forward for is_dative.
         is_short = (d < 1.7).float()
+        # Wf-A92 / Wf-A113 — the SAME symmetric rule the other two heads use.
+        # This was `((z_i==7)|(z_i==8)|(z_i==16)) & (z_j==78)`: one-directional
+        # (a pair stored as (Pt, N) got is_dative=0 because the donor test ran
+        # on the metal side) and Pt-only (Z=78), so on Ru/Ir/Os/Rh/Re clouds
+        # every dative edge carried 0.  Both halves of that bug were fixed in
+        # `YuelBondDecoderHead` in Wf-A69 W2 and Wf-A92 and never propagated
+        # here.  Reads `self.donor_zs` / `self.metal_set` so a run that widens
+        # either set cannot leave this head behind.
+        _metal_t = torch.as_tensor(
+            sorted(self.metal_set),
+            device=atomic_numbers.device,
+            dtype=atomic_numbers.dtype,
+        )
+        _donor_t = torch.as_tensor(
+            sorted(self.donor_zs),
+            device=atomic_numbers.device,
+            dtype=atomic_numbers.dtype,
+        )
+        _z_i = atomic_numbers[i_idx]
+        _z_j = atomic_numbers[j_idx]
         is_dative = (
-            (atomic_numbers[i_idx] == 7)
-            | (atomic_numbers[i_idx] == 8)
-            | (atomic_numbers[i_idx] == 16)
-        ) & (atomic_numbers[j_idx] == 78)
+            torch.isin(_z_i, _donor_t) & torch.isin(_z_j, _metal_t)
+        ) | (
+            torch.isin(_z_i, _metal_t) & torch.isin(_z_j, _donor_t)
+        )
         edge_attr = torch.stack(
             [d.float(), is_dative.float(), is_short], dim=-1
         )  # (E, 3)
@@ -18266,7 +18306,10 @@ def main() -> int:
                 "donor_zs": sorted(
                     int(z) for z in getattr(model.head, "donor_zs", _DONOR_ZS)
                 ),
-                "metal_set": sorted(int(z) for z in model.head.metal_set),
+                "metal_set": sorted(
+                    int(z)
+                    for z in getattr(model.head, "metal_set", _DEFAULT_METAL_SET)
+                ),
                 "dative_max_distance": float(
                     getattr(decoder, "dative_max_distance", 2.6)
                 ),

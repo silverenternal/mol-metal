@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T13:05+08:00",
+  "updated": "2026-10-27T13:20+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2800,11 +2800,24 @@
       "kill": "若 (a) 会让 dmpnn 头的 pair_head 输入宽度变化（它只有 3 列 edge_attr，没有 donor 列），则说明它本来就无法承载扩展后的规则，直接走 (b) 删分支，并在 legacy_identifiers 里记下 dmpnn -> removed。",
       "device": "cpu",
       "cost": "CPU 1.5 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2083",
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:17983",
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2543"
+      ],
+      "result": "走 (a) 统一。DMPNNBondHead 增加 metal_set / donor_zs 两个属性（默认 _DEFAULT_METAL_SET / _DONOR_ZS），forward 的 is_dative 换成与 YuelBondDecoderHead 相同的对称规则 isin(donor) x isin(metal)，checkpoint 的 feature_schema 戳记里 model.head.metal_set 改成 getattr(..., _DEFAULT_METAL_SET)。kill 判据（是否改变 pair_head 输入宽度）实测不成立：edge 特征仍是 [d, is_dative, is_short] 三列，metal_set/donor_zs 只改变 is_dative 怎么算，所以不必走 (b) 删分支。实测（把 pair_head 改成把 is_dative 通道直通读出，不是把规则在测试里重写一遍）：金属放在高索引时 Ru-N / Pt-Cl / Ir-C / Re-S 四条旧规则全 0、新规则全 1；Pt-Ru 与 C-N 两条两边都是 0；metal_set={26} 时 Fe-N 为 1、Pt-N 为 0，证明规则读的是属性不是常量。把旧表达式临时改回去：5 个测试失败（四条 dative 对 + metal_set 覆盖），确认是真护栏。注意 Pt-Cl 在旧规则下也是 0——这是方向那一半的 bug，不只是 Pt-only 那一半。",
+      "artifact": "metrics/by_metric/wfa113_dmpnn_bond_head_parity.json",
+      "tests": "molmetal/tests/test_wfa113_dmpnn_bond_head_parity.py",
+      "decision": "(a) 统一，不删分支",
+      "gate_result": {
+        "attributes_present": "PASS — metal_set / donor_zs 均为非空 frozenset",
+        "non_pt_dative": "PASS — Ru-N / Pt-Cl / Ir-C / Re-S 的 is_dative 均为 1",
+        "checkpoint_writes": "PASS（结构性）— feature_schema 的 metal_set 读取改为 getattr 兜底，无 metal_set 的头不再 AttributeError；未跑完整 1 步训练，因为该头在 configs/ 里不可达"
+      },
+      "honest_limits": [
+        "没有用这个头跑过训练。证据是合成双原子云上的逐对标志位与属性面，不是训练结果。",
+        "dmpnn 在 configs/ 里不可达（没有任何 YAML 设 bond_predictor: dmpnn），所以这是修一个潜在面，不是修一条在跑的实验线。"
       ]
     },
     {

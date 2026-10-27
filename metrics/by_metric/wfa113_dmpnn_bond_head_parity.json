@@ -1,0 +1,88 @@
+{
+ "metric": "wfa113_dmpnn_bond_head_parity",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T50: DMPNNBondHead was the only bond head without metal_set/donor_zs, and its is_dative rule was frozen at the pre-Wf-A69 Pt-only one-directional form. Records what the old rule produced per pair and what the shared rule produces now.",
+ "artifact_for": "todo.json SA-30 / D50 / T50",
+ "choice": "(a) unify — add the two attributes and the symmetric rule; keep the 3-column edge feature",
+ "why_a_not_b": "the kill condition for (a) was 'does it change the pair_head input width'. It does not: the edge features stay [d, is_dative, is_short] = 3 columns, and metal_set/donor_zs only change HOW is_dative is computed. So the head can carry the extended rule, and deleting the branch would have thrown away a working architecture over an attribute that was simply missing.",
+ "code_change": [
+  "molmetal/scripts/train_cfm_yuelbond_wasserstein.py DMPNNBondHead.__init__: metal_set / donor_zs kwargs, defaulting to _DEFAULT_METAL_SET / _DONOR_ZS",
+  "DMPNNBondHead.forward: symmetric isin(donor) x isin(metal) rule, same as YuelBondDecoderHead (Wf-A69 W2 / Wf-A92)",
+  "checkpoint feature-schema stamp: model.head.metal_set -> getattr(model.head, 'metal_set', _DEFAULT_METAL_SET)"
+ ],
+ "old_rule": "is_dative = ((z_i == 7) | (z_i == 8) | (z_i == 16)) & (z_j == 78)",
+ "measurement": {
+  "method": "the head returns logits, not edge features, so the test rewires pair_head to pass the is_dative channel through: first layer zeroed except the is_dative input column, output layer zeroed except one class. That class's logit is then exactly the flag the head computed.",
+  "pairs": [
+   {
+    "pair": "Ru-N",
+    "donor_z": 7,
+    "metal_z": 44,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 1.0
+   },
+   {
+    "pair": "Pt-Cl",
+    "donor_z": 17,
+    "metal_z": 78,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 1.0
+   },
+   {
+    "pair": "Ir-C",
+    "donor_z": 6,
+    "metal_z": 77,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 1.0
+   },
+   {
+    "pair": "Re-S",
+    "donor_z": 16,
+    "metal_z": 75,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 1.0
+   },
+   {
+    "pair": "Pt-Ru",
+    "donor_z": 78,
+    "metal_z": 44,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 0.0
+   },
+   {
+    "pair": "C-N",
+    "donor_z": 6,
+    "metal_z": 7,
+    "metal_index": 1,
+    "old_rule": 0.0,
+    "new_rule": 0.0
+   }
+  ],
+  "metal_index_note": "the metal is placed at index 1 in every pair, i.e. the HIGHER index, because triu_indices stores pairs as (i<j) and the old rule tested the donor on z_i. Pt-Cl fails the old rule for that reason alone, which is the direction half of the bug.",
+  "metal_set_override": {
+   "config": "metal_set={26}",
+   "Fe-N": {
+    "old_rule": "unreachable (no attribute)",
+    "new_rule": 1.0
+   },
+   "Pt-N": {
+    "old_rule": "unreachable (no attribute)",
+    "new_rule": 0.0
+   },
+   "why": "proves the rule reads the attribute rather than a constant"
+  }
+ },
+ "regression_guard": "restoring the old expression fails 5 tests (the four dative pairs plus the metal_set override); verified by temporarily reverting the rule",
+ "latency": "no YAML in configs/ sets bond_predictor: dmpnn, so this head is unreachable from a launch. Latent, not harmless: the CLI accepts the value, so the next caller would get a Pt-only feature and an AttributeError at checkpoint time.",
+ "honest_limits": [
+  "No run was executed with this head. The evidence is the per-pair flag on synthetic diatomic clouds plus the attribute surface; nothing here shows the head trains or that its logits improve.",
+  "The 3-column edge feature is unchanged, so this is a correctness fix to an input, not an architecture change — but it does mean any future dmpnn checkpoint would be fitted under a DIFFERENT is_dative definition than any existing one, which is why the feature schema is stamped."
+ ],
+ "tests": "molmetal/tests/test_wfa113_dmpnn_bond_head_parity.py"
+}
