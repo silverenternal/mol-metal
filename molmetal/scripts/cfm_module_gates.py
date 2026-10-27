@@ -50,6 +50,7 @@ Exit codes follow the repo convention: 0 = every selected gate PASS,
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import hashlib
 import io
@@ -991,6 +992,23 @@ def gate_m8(ctx: Dict[str, Any]) -> Dict[str, Any]:
 # ``bond_ce`` / ``wasserstein_weight*w2_val``.  With single names, a run that
 # DOES export the term was reported unobservable for the two terms that carry
 # 99% of the objective.
+#
+# Wf-A113 (T34/D31) — three keys here named a dest that does not exist on the
+# trainer's parser, so the term they map was ALWAYS reported weightless:
+#
+#   diversity_weight        -> the term is ``mmd_weight + repulsion_weight``
+#   natural_charge_weight   -> the dest is ``natural_charge_mse_weight``
+#   edm_weight              -> there is no such dest and no scalar weight:
+#                              ``edm_preconditioning`` is a boolean and the
+#                              term enters the sum raw.  The key is gone on
+#                              purpose, so M9 reports ``edm_term`` as
+#                              weightless if it ever contributes — which is
+#                              the truth, not a lookup failure.
+#
+# ``_build_term_to_weights`` rejects a non-tuple value at import time.  The
+# defect it guards against is silent: a string iterates character by character,
+# so ``_TERM_TO_WEIGHTS`` gained single-letter keys, every real term looked
+# unmapped, and M9's ``weightless`` list was computed from an empty tuple.
 _WEIGHT_TO_TERM: Dict[str, Tuple[str, ...]] = {
     "fm_weight": ("fm_term",),
     "bond_loss_weight": ("bond_ce_loss", "bond_ce"),
@@ -1008,27 +1026,79 @@ _WEIGHT_TO_TERM: Dict[str, Tuple[str, ...]] = {
     "energy_conservation_weight": ("energy_class_term",),
     "sboo3_term_weight": ("sboo3_class_term",),
     "so3_average_weight": ("so3_term",),
-    "diversity_weight": ("diversity_term",),
+    # Wf-A113 (T33) — the term had no coefficient until 2026-10-27.
+    "shortcut_distill_weight": ("shortcut_distill_loss",),
+    # The diversity term is the sum of two regularisers, so both dests weight
+    # it; naming a single "diversity_weight" was a dest that never existed.
+    "mmd_weight": ("diversity_term",),
+    "repulsion_weight": ("diversity_term",),
     "consistency_weight": ("consistency_term",),
-    "edm_weight": ("edm_term",),
     "assemble_loss_weight": ("assemble_term",),
     "gen_validity_weight": ("soft_valence_term",),
     "chem_loss_weight": ("chem_loss_term",),
     "clash_penalty_weight": ("clash_penalty_term",),
-    "natural_charge_weight": ("natural_charge_term",),
-    "wasserstein_pocket_weight": "wasserstein_pocket_term",
+    "natural_charge_mse_weight": ("natural_charge_term",),
+    "wasserstein_pocket_weight": ("wasserstein_pocket_term",),
+    # The geometry term's master switch.  ``geometry_clash_weight`` /
+    # ``geometry_bond_weight`` / ``geometry_metal_weight`` scale its three
+    # components; the master is the dest that turns it on or off, so that is
+    # the one that answers "is this number under a knob".
+    "geometry_consistency_weight": ("geometry_term",),
 }
+
+#: Dests that carry a weight but are deliberately not mapped to a term.
+#: ``lambda_cfm_coupling_weight`` is a reward multiplier, not a term.
+#: ``bond_length_guidance_weight`` drives the sampler, not the objective.
+#: ``cfm_multiph_pll_weight`` has no exported term since Wf-A106 removed the
+#: wrapper, so M9 lists it under ``weights_with_no_exported_term``.
+_UNMAPPED_DESTS = frozenset(
+    {
+        "lambda_cfm_coupling_weight",
+        "bond_length_guidance_weight",
+        "cfm_multiph_pll_weight",
+        "geometry_clash_weight",
+        "geometry_bond_weight",
+        "geometry_metal_weight",
+    }
+)
 
 # Keys that are totals, not terms.  ``train_loss`` ends with ``_loss`` and is
 # the SUM of the terms, so including it in the denominator would make every
 # share a fraction of twice the objective.
 _AGGREGATE_KEYS = {"train_loss", "total_loss", "val_loss", "loss", "train_total"}
 
+
+def _build_term_to_weights(
+    table: Dict[str, Any],
+) -> Dict[str, Tuple[str, ...]]:
+    """Invert ``weight dest -> exported term``, refusing non-tuple values.
+
+    A string value used to pass silently: ``for t in "wasserstein_pocket_term"``
+    yields single characters, so the inverse map grew keys ``"w"``, ``"a"``,
+    ... and the real term mapped to ``()``.  M9 then reported it weightless
+    and nothing anywhere raised.
+    """
+    out: Dict[str, Tuple[str, ...]] = {}
+    for dest, terms in table.items():
+        if not isinstance(terms, tuple):
+            raise TypeError(
+                f"_WEIGHT_TO_TERM[{dest!r}] is {type(terms).__name__}, not a "
+                f"tuple: {terms!r}. A string iterates character by character, "
+                "so the inverse map silently gains single-letter keys and the "
+                "real term maps to nothing."
+            )
+        for t in terms:
+            if not isinstance(t, str):
+                raise TypeError(
+                    f"_WEIGHT_TO_TERM[{dest!r}] contains a "
+                    f"{type(t).__name__}: {t!r}"
+                )
+            out[t] = out.get(t, ()) + (dest,)
+    return out
+
+
 # Inverse of ``_WEIGHT_TO_TERM``: exported term name -> the dests that weight it.
-_TERM_TO_WEIGHTS: Dict[str, Tuple[str, ...]] = {}
-for _dest, _terms in _WEIGHT_TO_TERM.items():
-    for _t in _terms:
-        _TERM_TO_WEIGHTS[_t] = _TERM_TO_WEIGHTS.get(_t, ()) + (_dest,)
+_TERM_TO_WEIGHTS: Dict[str, Tuple[str, ...]] = _build_term_to_weights(_WEIGHT_TO_TERM)
 
 
 def _term_share_rows(doc: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
@@ -1089,6 +1159,56 @@ def _term_share_rows(doc: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
     return rows, "flat_keys"
 
 
+def _events_jsonl_rows(
+    run_dir: Any,
+) -> Tuple[List[Dict[str, Any]], str]:
+    """Per-epoch term rows from a run's ``events.jsonl``.
+
+    Wf-A113 (T34/D32).  M9 refused to run on a run directory without a
+    ``per_epoch_metrics.json``, and every run archived before that file existed
+    is in exactly that state — c8 among them.  The event stream carries the
+    same ``loss_terms`` dict on every ``train_epoch`` row, so the gate can read
+    the objective balance off it instead of declaring the run unmeasurable.
+
+    ``loss_terms`` is written by ``json.dumps`` of a stringified dict in some
+    trainer versions, so a value that arrives as a string is parsed with
+    ``ast.literal_eval``; a value that cannot be parsed is a reason, not a
+    crash, and is returned in the second element.
+    """
+    if run_dir is None:
+        return [], "no_run_dir"
+    p = _resolve(str(run_dir)) / "events.jsonl"
+    if not p.is_file():
+        return [], "no_events_jsonl"
+    rows: List[Dict[str, Any]] = []
+    bad = 0
+    with p.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                bad += 1
+                continue
+            if ev.get("event") != "train_epoch":
+                continue
+            terms = ev.get("loss_terms")
+            if isinstance(terms, str):
+                try:
+                    terms = ast.literal_eval(terms)
+                except (ValueError, SyntaxError):
+                    bad += 1
+                    continue
+            if not isinstance(terms, dict):
+                continue
+            rows.append({"epoch": ev.get("epoch"), "loss_terms": terms})
+    if not rows:
+        return [], f"events_jsonl_without_loss_terms (bad_lines={bad})"
+    return rows, "events_jsonl"
+
+
 def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """Objective balance: does one term own the objective, and are all declared
     terms observable at all?"""
@@ -1101,14 +1221,36 @@ def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
             "detail": "no --run-dir; M9 reads per_epoch_metrics.json",
         }
     p = _resolve(str(run_dir)) / "per_epoch_metrics.json"
-    if not p.is_file():
-        return {
-            "measured": {"path": str(p), "exists": False},
-            "checks": {"per_epoch_metrics_exists": False},
-            "pass": False,
-        }
-    doc = json.loads(p.read_text())
+    doc: Dict[str, Any]
+    source_hint: Optional[str] = None
+    if p.is_file():
+        doc = json.loads(p.read_text())
+    else:
+        # Wf-A113 (T34/D32) — fall back to the event stream.  Every run
+        # archived before per_epoch_metrics.json existed is otherwise
+        # unmeasurable, and "unmeasurable" was being read as "fine".
+        _rows, _why = _events_jsonl_rows(run_dir)
+        if not _rows:
+            return {
+                "measured": {
+                    "path": str(p),
+                    "exists": False,
+                    "events_jsonl": _why,
+                },
+                "checks": {"per_epoch_metrics_exists": False},
+                "pass": False,
+                "detail": (
+                    "no per_epoch_metrics.json and no usable events.jsonl "
+                    f"({_why}); M9 has nothing to read"
+                ),
+            }
+        doc = {"per_epoch_metrics": _rows}
+        source_hint = "events_jsonl"
     rows, source = _term_share_rows(doc)
+    if source_hint is not None:
+        # ``_term_share_rows`` reports which SHAPE it parsed ("loss_terms");
+        # what the caller needs to know here is which FILE it came from.
+        source = source_hint
     if not rows:
         return {
             "measured": {"path": str(p), "source": source},
@@ -1137,8 +1279,16 @@ def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
         terms = _WEIGHT_TO_TERM.get(dest) or ()
         return any(t in max_share_by_term for t in terms)
 
-    unobservable = sorted(d for d in weights if not _observable(d))
-    unmapped = sorted(d for d in weights if d not in _WEIGHT_TO_TERM)
+    unobservable = sorted(
+        d for d in weights if d not in _UNMAPPED_DESTS and not _observable(d)
+    )
+    # Wf-A113 (T34) — separate "nobody mapped this" from "this is mapped to
+    # nothing on purpose".  Before, both landed in one list and the deliberate
+    # ones made the unexplained ones look like normal noise.
+    unmapped = sorted(
+        d for d in weights if d not in _WEIGHT_TO_TERM and d not in _UNMAPPED_DESTS
+    )
+    deliberately_unmapped = sorted(d for d in weights if d in _UNMAPPED_DESTS)
     zero_valued = sorted(d for d in weights if _exported(d) and not _observable(d))
     # The decidable half of the question.  "Every declared weight is
     # observable" is NOT decidable from the artifact: ``_LAST_LOSS_TERMS``
@@ -1171,6 +1321,7 @@ def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
             "terms_contributing_without_a_weight": weightless,
             "unobservable_weights": unobservable,
             "weights_with_no_exported_term": unmapped,
+            "weights_deliberately_unmapped": deliberately_unmapped,
             "weights_whose_term_is_zero": zero_valued,
             "note": (
                 "``weights_whose_term_is_zero`` is reported, not judged: a "
@@ -1225,8 +1376,22 @@ def gate_m10(ctx: Dict[str, Any]) -> Dict[str, Any]:
         }
     p = _resolve(str(run_dir)) / "per_epoch_metrics.json"
     if not p.is_file():
+        # Wf-A113 (T34/D32) — M10 cannot fall back to events.jsonl the way M9
+        # does: the event stream carries loss terms, not checkpoint paths,
+        # hashes or split fingerprints.  So it says what IS on disk instead of
+        # reporting a bare "exists: False" that reads like a missing run.
+        ev = _resolve(str(run_dir)) / "events.jsonl"
         return {
-            "measured": {"path": str(p), "exists": False},
+            "measured": {
+                "path": str(p),
+                "exists": False,
+                "events_jsonl_present": ev.is_file(),
+                "note": (
+                    "events.jsonl carries loss_terms only; it has no "
+                    "checkpoint path, hash or split fingerprint, so the three "
+                    "provenance facts M10 asserts cannot be recovered from it."
+                ),
+            },
             "checks": {"per_epoch_metrics_exists": False},
             "pass": False,
         }

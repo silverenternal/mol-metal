@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-28T00:00+08:00",
+  "updated": "2026-10-28T01:10+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2430,10 +2430,23 @@
       "kill": "若 events.jsonl 的 loss_terms 与 per_epoch_metrics.json 的字段语义不同（加权 vs 原始），先统一语义再回退。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/scripts/cfm_module_gates.py",
         "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl"
+      ],
+      "result": "三处修完，其中两处比计划里写的更糟。(1) wasserstein_pocket_weight 的值是裸字符串，而 _TERM_TO_WEIGHTS 的构建是 `for t in terms`——字符串按字符迭代，于是反查表长出了 'w'/'a'/'s' 这些单字母键，wasserstein_pocket_term 映射到空元组，该项一贡献就被报成 weightless。改成单元素 tuple，并把构建抽成 _build_term_to_weights()，非 tuple 直接 TypeError；新单测断言反查表没有单字母键、且 diversity_term 映射到 (mmd_weight, repulsion_weight)。(2) 表里还有三个键指向训练器根本不存在的 dest：diversity_weight（真实是 mmd_weight + repulsion_weight）、natural_charge_weight（真实是 natural_charge_mse_weight）、edm_weight（根本没有这个 dest——edm_preconditioning 是布尔开关，该项以裸值进目标，没有标量权重）。前两个改正；edm 这个键删掉，让 M9 在该项真的贡献时如实报 weightless，而不是靠一个假 dest 把它洗白。顺带把 T33 新增的 shortcut_distill_weight 和 geometry_consistency_weight 补进表，并把 lambda_cfm_coupling_weight / bond_length_guidance_weight / cfm_multiph_pll_weight / geometry_{clash,bond,metal}_weight 收进 _UNMAPPED_DESTS，让「没人映射」和「故意不映射」不再混在一列里。(3) M9 在 per_epoch_metrics.json 缺失时回退读 events.jsonl 的 train_epoch 行（loss_terms 若是字符串用 ast.literal_eval 解），source 记为 events_jsonl；M10 无法这样回退（事件流里没有 checkpoint 路径/哈希/split 指纹），所以它现在明说 events_jsonl_present 以及「这三件事无法从事件流恢复」，而不是只给一个 exists: False。实测：M9 --run-dir molmetal/reports/cfm_c8_fullgen_2026_10_24 返回 source=events_jsonl、n_epochs=3、worst_term=shortcut_distill_loss（份额 0.473），并 FAIL 在 every_contributing_term_has_a_declared_weight，weightless = ['0.05*cb_loss', 'shortcut_distill_loss']。两条都是 c8 当时（2026-10-24）的真实状态：cb 项的键名里直接写着硬编码的 0.05 乘数，shortcut 项在 T33 之前确实没有权重。同时 no_term_above_90pct 通过（最大份额 0.473）。",
+      "artifact": "metrics/by_metric/wfa113_m9_c8_events_jsonl.json",
+      "tests": "molmetal/tests/test_wfa113_m9_weight_table.py",
+      "gate_result": {
+        "unit": "PASS — 字符串值 raise TypeError；反查表无单字母键；diversity_term 映射到两个 dest",
+        "c8_readable": "PASS — M9 --run-dir c8 返回 source=events_jsonl，3 个 epoch 行，worst_term=shortcut_distill_loss"
+      },
+      "honest_limits": [
+        "M10 没有 events.jsonl 回退：事件流只有 loss_terms，没有 checkpoint 路径、哈希或 split 指纹，所以 M10 仍然只能报 per_epoch_metrics_exists=False，只是现在把 events_jsonl_present 也写出来。",
+        "M9 仍然分不清「已声明权重但其项恒为 0」是功能关闭还是死旋钮；weights_whose_term_is_zero 只报告不判定（c8 上 6 个）。",
+        "c8 的 FAIL 是对 2026-10-24 那份代码的真实指控，不是对今天代码的指控；今天 cb 项已改用 cb_loss_term 并乘以 cb_loss_weight，shortcut 项已有 shortcut_distill_weight。",
+        "反查表仍靠手写，只是加了两条机械校验（值必须是 tuple、键必须是真实 dest）。dest 改名时这两条会响，但语义映射写错（把 A 项指到 B dest）不会响。"
       ]
     },
     {
