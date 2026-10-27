@@ -1,8 +1,8 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T05:40+08:00",
-  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。",
+  "updated": "2026-10-27T10:40+08:00",
+  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
   "how_to_read": [
@@ -1379,6 +1379,37 @@
       "addressed_by": [
         "T40"
       ]
+    },
+    {
+      "id": "D40",
+      "symptom": "per_epoch_metrics.json 的 best 块把两个 epoch 的数字配在一起：best.epoch 是选中的 epoch，best.bond_* 是最后一个 epoch。",
+      "measured": "results/wfa108j_budget36：best.epoch=0、best.bond_f1=0.2264，而 CSV 里 ep0 的 bond_f1 是 0.1087、ep35 是 0.2264。molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09：best.epoch=0、best.bond_f1=0.6593，CSV 里 ep0 是 0.4541、ep29 是 0.6593。results/cfm_5metal_default：best.epoch=26、best.bond_f1=0.2650，CSV 里 ep26 是 0.2743、ep29 是 0.2650。对全部 90 个同时有 CSV 与 JSON 的 run 做同一比对，87 个不一致。",
+      "artifact": "results/wfa108j_budget36/per_epoch_metrics.json",
+      "reading": "train_cfm_yuelbond_wasserstein.py:18216-18228 的注释自己写着 best 报的是 _bond_acc，循环结束后它指向最后一个 epoch；修正块写进了另一个键 best_bond。于是同一个文件里有两个「best」：best_bond 是自洽的，best 不是。artifact 里没有任何字段说明该读哪个。短 run（选择 epoch 恰好等于最后 epoch）看不出差别，所以 87/90 一直没被发现。",
+      "addressed_by": [
+        "T41"
+      ]
+    },
+    {
+      "id": "D41",
+      "symptom": "唯一一个 36 epoch、可学习的速度头的 run，交付的 checkpoint 是 epoch 0；而它的 config 仍然默认 combined。",
+      "measured": "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt 内嵌 epoch=0、best_epoch=0；同目录 _last.pt 内嵌 epoch=35、best_epoch=0。early_stop_control={requested_metric: combined, gating_metric: bond_exact_type, degraded: true, best_value: 0.0, epochs_run: 36}。provenance.checkpoint 与 provenance.checkpoint_selected 都指向 epoch-0 文件，且没有 selection 块（Wf-A108k 26a87d46 的时间是 2026-10-25 19:56，该 run 结束于 16:54）。第二个实例的机制不同：cfm_bond_head_30ep_onecycle_2026_10_09 的 gating_metric 仍是 combined，gating_note 明写 gen_validity 饱和在 0.000，30 个 epoch 的 gate_value 恒为 0，而同期 bond_type_macro_f1_pooled 从 0.1121 走到 0.4163——乘积里一个因子被钉死，另一个再好也是 0。",
+      "artifact": "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "reading": "D10/T1 已经把这一类记在 gcv36 上，并声称「这条线上的每个 config 现在都写 bond_type_f1」。磁盘上不是：configs/wfa108j_budget36_2026_10_25.yaml、wfa108j_gcv36、wfa108j_fixed_cpu 三个都没有 early_stop_metric 键，全部落回 combined；260 个 config 里只有 45 个写了这个键。所以「可学习的场」这一臂的模型选择从头到尾没有被修过，而 T29 要加载的正是它。",
+      "addressed_by": [
+        "T41",
+        "T29"
+      ]
+    },
+    {
+      "id": "D42",
+      "symptom": "bond_ce 在前 6 个 epoch 是均匀基线（ln 5 = 1.61）的 10 倍，期间它比 FM 目标还大，而决定它量级的类权重向量不在任何 artifact 里。",
+      "measured": "results/wfa108j_budget36：bond_ce = 15.9216 / 12.6756 / 9.2750 / 5.8741 / 2.9225 / 1.8291 / 1.5928（ep0..ep6），随后稳定在 1.59 附近，即 ln 5。占目标份额 53.6% / 49.7% / 43.5%（ep0..ep2），而 fm_term 从 10.4418 升到 10.7970（ep1）并在此后四个 epoch 内只在 9.2-10.8 之间摆动，直到 bond_ce 落到 1.83（ep5）之后才开始下行。对照：gen_eval_n>0 的同架构 run（wfa108b_lr1e3_vector_channels，n_train=200）ep0 bond_ce = 0.9988；c8（26,715 云、无类权重）ep0 = 0.5671。per_epoch_metrics.json 里没有任何字段记录 bond_class_weights 或 bond_class_prior。",
+      "artifact": "results/wfa108j_budget36/events.jsonl",
+      "reading": "bond_class_weights 的归一化是 sum_c p_c w_c = 1，这保证了「期望量级不变」，但没有保证批次内不变：F.cross_entropy(weight=...) 的 reduction='mean' 除以的是 sum_i w_{y_i}，所以一个稀有类样本多、且模型在它上面高置信度错误的批次，会把这个「均值」推到远高于 ln 5。n_train=64、batch=8 时一个 epoch 只有 8 步，这种批次构成偏差不会被平均掉；n_train=200 时被平均掉了。所以 15.92 不是「模型差」，是「加权均值的分母」在 8 步的尺度上不可比。M9 的 no_term_above_90pct 在 53.6% 上照常 PASS，看不到这个瞬态。",
+      "addressed_by": [
+        "T42"
+      ]
     }
   ],
   "modules": [
@@ -2421,6 +2452,54 @@
         "molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
         "molmetal/adapters/flow_matching_lipman/so3_average.py"
       ]
+    },
+    {
+      "id": "T41",
+      "priority": 0,
+      "title": "让 artifact 的 best 块自洽，并让选中的 checkpoint 就是被命名的那一个",
+      "what": "三件事。(1) per_epoch_metrics.json 的 best 块要么删掉 bond_* 字段只留 gate_*，要么加 epochs_mixed: true 与 bond_fields_from_epoch: <last>；读者不该需要读源码才知道 87/90 的 artifact 混了两个 epoch。(2) 选中 epoch 与最后 epoch 不同时，把选中的权重写成显式文件名 _epoch{N}.pt，并让 provenance.checkpoint 指向它；现在 budget36 的 provenance.checkpoint 指向一个内嵌 epoch=0 的文件。(3) configs/wfa108j_budget36、wfa108j_gcv36、wfa108j_fixed_cpu 三个文件补 early_stop_metric: bond_type_f1；resolve_early_stop_criterion 在 combined 的任一因子饱和（gen_validity ∈ {0,1} 或 bond_exact_type == 0）时必须落到仍在动的那个半支，而不是把乘积原样返回再补一条 note。",
+      "addresses": [
+        "D40",
+        "D41"
+      ],
+      "done_when": "3 epoch 的 CPU smoke 产出：best.epoch == best_bond.epoch，或 best 带 epochs_mixed=true 且 bond_fields_from_epoch 等于最后 epoch；provenance.checkpoint 指向的文件内嵌 epoch 等于 best.epoch；一个 gen_validity 恒为 0 的合成历史在 resolve_early_stop_criterion 下返回 bond_type_macro_f1 而不是 combined。",
+      "gate": {
+        "self_consistent": "best.epoch 与 best.bond_f1 取自同一 epoch",
+        "named_file": "checkpoint 文件内嵌 epoch == best.epoch",
+        "no_saturated_product": "饱和因子不得进入乘积"
+      },
+      "kill": "若复制权重会让 checkpoint_interval 的 _last.pt 语义冲突，只保留 (1)(3) 并把 provenance.checkpoint 改成 _last.pt，同时在 best 块里写明这一点。",
+      "device": "cpu",
+      "cost": "CPU 2 h",
+      "status": "PLANNED",
+      "evidence": [
+        "results/wfa108j_budget36/per_epoch_metrics.json",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
+        "configs/wfa108j_budget36_2026_10_25.yaml"
+      ]
+    },
+    {
+      "id": "T42",
+      "priority": 1,
+      "title": "把 bond_ce 的量级与批次构成解耦，并把类权重写进 artifact",
+      "what": "在 per_epoch_metrics.json 记录 bond_class_weights 与 bond_class_prior；在同一个 epoch 行同时记录 bond_ce（加权，现状）与 bond_ce_unweighted（weight=None），这样 15.92 -> 1.59 的瞬态会显示为 bond_ce 从 15.92 落到 1.59 而 bond_ce_unweighted 全程在 1.6 附近。给 M9 增加一条 term_share_at_epoch0：任一非聚合项在第一个 epoch 超过 50% 时记 WARN（不是 FAIL），因为那通常是初始化瞬态而不是目标失衡。",
+      "addresses": [
+        "D42"
+      ],
+      "done_when": "budget36 的 artifact 重算后同时有两列；bond_ce_unweighted 在 ep0 与 ep6 的差 < 0.2；M9 在 budget36 上给出 term_share_at_epoch0 的 WARN 与两个 CE 值。",
+      "gate": {
+        "recorded": "类权重向量出现在 artifact 里",
+        "decomposed": "两个 CE 同 epoch 成对出现",
+        "no_regression": "旧字段语义不变"
+      },
+      "kill": "若 bond_ce_unweighted 与 bond_ce 在 ep0 同样大，说明瞬态不是权重分母造成的，改查 bond 头的输出层初始化，并把本任务的结论写成否定。",
+      "device": "cpu",
+      "cost": "CPU 1 h",
+      "status": "PLANNED",
+      "evidence": [
+        "results/wfa108j_budget36/events.jsonl",
+        "results/wfa108j_budget36/per_epoch_metrics.json"
+      ]
     }
   ],
   "acceptance": {
@@ -2805,10 +2884,12 @@
           "T37",
           "T38",
           "T39",
-          "T40"
+          "T40",
+          "T41",
+          "T42"
         ],
         "device": "cpu",
-        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。"
+        "why": "审计与文档；T20 的键级基准不依赖语料，可与 T16 并行。 T30（失败不再静默）与它们同波，因为它审计的正是这些 run 目录。 2026-10-27 审计新增 T31/T32/T34（P0，指标与门先能失败）与 T33/T35（蒸馏项规格、pad_groups 等价性）；它们都必须在 T29 之前，否则 T29 的池仍然用一个不会失败的数字来判。 T37（pad_groups 缺 no_grad）是 30 分钟的 CPU 修复，放在这一波以免下一次池测量再付 50 倍显存。 T38（池的落盘列）与 T31/T32 同波，因为池一旦重跑而没有配对键，T29 的证据仍然不可分层。 T39（验收表逐行 provenance）与 T31/T32 同波：表本身现在会误导人。 T40（so3 是 fm 的复制）是纯前向测量，可与 T31/T32 并行。 T41（best 块混 epoch + 选中的 checkpoint 是 epoch 0）与 T42（bond_ce 量级不可比）都是纯 CPU 的 artifact 修复，必须先于 T29：否则 T29 的池会用一份没训练过的权重跑出来，而它的 headline bond 数会取自另一个 epoch。"
       },
       {
         "wave": 3,
@@ -3075,6 +3156,33 @@
         "impact": "每步 2 次完整前向换来的只是把 fm_weight 从 1.0 抬到 1.1；同时让 M9 的份额统计把 fm 家族算成约 56%。c8 的 OOM 归因里它是零信息的那一项。 configs/ 里有 20 个文件开着 so3_average: true、20 个开着 shortcut_distill: true，所以这不是 c8 单次的问题，而是这批 config 的默认形状。",
         "status": "OPEN",
         "task": "T40"
+      },
+      {
+        "id": "SA-20",
+        "finding": "per_epoch_metrics.json 的 best 块在 87/90 个 artifact 里把选中 epoch 的索引和最后 epoch 的 bond 指标配在一起。",
+        "evidence": "results/wfa108j_budget36/per_epoch_metrics.json + .csv、molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/、results/cfm_5metal_default/、results/cfm_5metal_wfa75_bond_guidance/",
+        "measured": "budget36 best.epoch=0 best.bond_f1=0.2264，CSV ep0=0.1087 ep35=0.2264；30ep best.epoch=0 best.bond_f1=0.6593，CSV ep0=0.4541 ep29=0.6593；cfm_5metal_default best.epoch=26 best.bond_f1=0.2650，CSV ep26=0.2743 ep29=0.2650。90 个同时有 CSV 与 JSON 的 run 中 87 个不一致。",
+        "impact": "任何按 best.epoch 去 CSV 取同一 epoch 其它指标的分析，拿到的 bond 数是别的 epoch 的。best_bond 是自洽的那一份，但 artifact 不说明该读哪个；短 run 因为两个 epoch 重合而看不出差别，所以这个缺陷跨 87 个文件存在了很久。",
+        "status": "OPEN",
+        "task": "T41"
+      },
+      {
+        "id": "SA-21",
+        "finding": "唯一一个 36 epoch 的可学习速度头 run，交付的 checkpoint 内嵌 epoch=0；它的 config 至今仍默认 combined。",
+        "evidence": "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt、results/wfa108j_budget36/per_epoch_metrics.json、configs/wfa108j_budget36_2026_10_25.yaml、commit 26a87d46",
+        "measured": "seed0.pt epoch=0 best_epoch=0；_last.pt epoch=35 best_epoch=0。early_stop_control: requested combined / gating bond_exact_type / degraded true / best_value 0.0 over 36 epochs。provenance.checkpoint 与 checkpoint_selected 同为 epoch-0 文件，无 selection 块；Wf-A108k 的修复比 run 结束晚 3 小时。三个 wfa108j config 都没有 early_stop_metric 键，260 个 config 里只有 45 个有。",
+        "impact": "D26 说「会学习的场」与「可测的池」从未同时成立；这条补上它的另一半——会学习的场连「哪一份权重」都没选对。T29 如果直接取 run 目录里的 seed0.pt，加载的是没有训练过的模型。第二个实例 cfm_bond_head_30ep 的机制不同：gen_validity 饱和在 0，乘积恒为 0，而 macro_f1 从 0.1121 走到 0.4163。",
+        "status": "OPEN",
+        "task": "T41"
+      },
+      {
+        "id": "SA-22",
+        "finding": "bond_ce 在 36-epoch 臂的前 6 个 epoch 是 ln 5 的 10 倍、比 FM 目标还大，而决定它量级的类权重不在 artifact 里。",
+        "evidence": "results/wfa108j_budget36/events.jsonl、results/wfa108b_lr1e3_vector_channels/per_epoch_metrics.csv、molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl",
+        "measured": "bond_ce ep0..ep6 = 15.9216 / 12.6756 / 9.2750 / 5.8741 / 2.9225 / 1.8291 / 1.5928（ln 5 = 1.6094）；目标份额 53.6% / 49.7% / 43.5%；fm_term 10.4418 -> 10.7970（ep1）后四个 epoch 在 9.2-10.8 摆动，ep5 之后才下行。对照 n_train=200 的同架构 run ep0 bond_ce=0.9988，c8（无类权重）ep0=0.5671。",
+        "impact": "36 个 epoch 里有 6 个（17%）在偿还一个由批次构成决定的瞬态，而不是在训练速度场；M9 的 90% 阈值在 53.6% 上照常 PASS。类权重向量没有落盘，所以这个数无法从 artifact 复算，也无法在两条不同规模的臂之间比较 bond_ce 的绝对量级。",
+        "status": "OPEN",
+        "task": "T42"
       }
     ],
     "reproduce": [
@@ -3089,7 +3197,10 @@
       "ls molmetal/reports/cfm_c8_fullgen_2026_10_24/per_epoch_metrics.json   # 期望 No such file",
       "python - <<'EOF'\nimport torch, torch.nn as nn\nfrom molmetal.adapters.flow_matching_lipman._reference.solver import ODESolver\nm=nn.Sequential(nn.Linear(3,3)).eval()\nx=torch.randn(2,5,3)\ny=ODESolver(velocity_model=lambda a,b: m(a)*float(b), method='midpoint', n_steps=5).sample(x, method='midpoint', n_steps=5)\nprint(y.requires_grad)\nEOF\n# 期望 True（证明未包 no_grad 时会建图）",
       "python - <<'EOF'\nimport json\nd=json.load(open('metrics/by_metric/c7_fullgen_pool_quality.json'))['overall'];print(d['single_fragment_rate'],d['three_ring_share'],d['six_ring_share'])\ne=json.load(open('metrics/by_metric/cfm_generated_geometry_defect.json'));print(e['cohort']['caveat'],e['generated_vs_real']['metal_ligand_min']['generated_mean'])\nEOF",
-      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch':\n    lt=ast.literal_eval(r['loss_terms']); print(r['epoch'], lt['so3_term']/lt['fm_term'])\nEOF\n# 期望三个 0.1000000x"
+      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('molmetal/reports/cfm_c8_fullgen_2026_10_24/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch':\n    lt=ast.literal_eval(r['loss_terms']); print(r['epoch'], lt['so3_term']/lt['fm_term'])\nEOF\n# 期望三个 0.1000000x",
+      "python - <<'EOF'\nimport csv, json\nfor d in ['results/wfa108j_budget36','molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09']:\n    rows=list(csv.DictReader(open(d+'/per_epoch_metrics.csv'))); b=json.load(open(d+'/per_epoch_metrics.json'))['best']\n    r=[x for x in rows if int(x['epoch'])==int(b['epoch'])][0]\n    print(d, 'best.epoch', b['epoch'], 'best.bond_f1', round(b['bond_f1'],4), 'csv@same_epoch', round(float(r['bond_f1']),4), 'csv@last', round(float(rows[-1]['bond_f1']),4))\nEOF\n# 期望两个 run 的 best.bond_f1 都等于 csv@last，而不是 csv@same_epoch",
+      "python - <<'EOF'\nimport pickle\nfor f in ['results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt','results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt']:\n    ck=pickle.load(open(f,'rb')); print(f.split('/')[-1], 'epoch', ck['epoch'], 'best_epoch', ck['best_epoch'])\nEOF\n# 期望 seed0.pt epoch=0, _last.pt epoch=35, 两者 best_epoch=0",
+      "python - <<'EOF'\nimport json, ast\nrows=[json.loads(l) for l in open('results/wfa108j_budget36/events.jsonl') if l.strip()]\nfor r in rows:\n  if r.get('event')=='train_epoch' and r['epoch']<=6:\n    lt=ast.literal_eval(r['loss_terms']) if isinstance(r['loss_terms'],str) else r['loss_terms']\n    print(r['epoch'], round(lt['bond_ce'],4), round(lt['fm_term'],4))\nEOF\n# 期望 bond_ce 从 15.92 落到 1.59，fm_term 同期不降"
     ]
   }
 }
