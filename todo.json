@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T12:55+08:00",
+  "updated": "2026-10-27T13:05+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2824,12 +2824,20 @@
       "kill": "若逐位一致性无法保持（几何门在有金属的双键/芳香键上本来就与 valence cap 不等价），则不修这一行，改为在 artifact 里记录 geometry_gate_redundant=true，并把 Pt_IV 的用法标成不支持。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:960",
         "molmetal/molmetal_lam/priors/metal_geometry.py:415",
         ".data/molmetal/tmQM/tmQM_X1.BO.gz"
-      ]
+      ],
+      "result": "把 cfm_decoder_yuelbond.py:991 的 bonds_at_metal 改成同时数 (a==metal_idx or b==metal_idx)。候选对来自 torch.triu_indices(offset=1)，每对都是 a<b，所以金属在高索引时旧代码一根都数不到；tmQM 上 9,111 个金属配合物里 7,700 个（84.51%）金属在重原子 0 号，而 48,371 根金属键里有 5,729 根（11.84%）金属在高索引侧——这些键对这道门是隐形的。冗余关系实测（不是猜）：max_bonds 与 _cap_for_z 在 Ru/Rh/Pd/Ag/Re/Os/Ir/Pt/Au/Zn/Cd 上相等，在 Fe 上是 6 vs 4（几何更松，价键门先拒），所以默认表下这道门从不做决定；只有当调用方把 cap 抬过几何时才成为约束（Pt_IV: valence_cap={78:6} vs 平面四方 4）。因此保留这道门、把冗余写进注释，而不是删掉。合成 Pt_IV 云（Pt + 五元环上 5 个 C，Pt-C 1.90 Å）：metal_index=5 时保留 4 根 Pt 键、拒 1 根，单端计数为 0；metal_index=0 时两种计数相同（4==4），默认构造不变。把旧表达式临时改回去跑同一组测试：2 failed / 2 passed，确认这是真回归护栏。",
+      "artifact": "metrics/by_metric/wfa113_geometry_gate_both_ends.json",
+      "tests": "molmetal/tests/test_wfa113_geometry_gate_both_ends.py",
+      "gate_result": {
+        "counts_both_ends": "PASS — metal_index=5: 单端 0 / 双端 4",
+        "pt_iv_cap_holds": "PASS — cap={78:6} 下第 5 根被拒（4 留 1 拒）",
+        "default_bit_exact": "PASS — metal_index=0 时两种计数逐键相等，门的行为不可能变；这是计数等式论证，不是与改动前的逐字节比较"
+      }
     }
   ],
   "acceptance": {

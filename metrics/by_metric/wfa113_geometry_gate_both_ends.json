@@ -1,0 +1,141 @@
+{
+ "metric": "wfa113_geometry_gate_both_ends",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T51: the coordination-geometry gate counted only the lower-index endpoint of each stored bond, so it never fired for a metal above its partner. Records the population, the redundancy that hid it, and the before/after decode on a Pt_IV cloud.",
+ "artifact_for": "todo.json SA-31 / D51 / T51",
+ "code_change": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py _select_bonds(): bonds_at_metal now counts `a == metal_idx or b == metal_idx` instead of `a == metal_idx`.",
+ "population": {
+  "source": ".data/molmetal/tmQM/tmQM_X1.xyz.gz (parsed against tmQM_X1.BO.gz)",
+  "metal_complexes": 9111,
+  "metal_at_heavy_index_0": 7700,
+  "metal_at_heavy_index_0_share": 0.8451,
+  "metal_bonds": 48371,
+  "metal_bonds_with_metal_at_higher_index": 5729,
+  "metal_bonds_blind_share": 0.1184,
+  "note": "candidate pairs come from torch.triu_indices(n, n, offset=1), so every stored pair has a < b"
+ },
+ "redundancy": {
+  "claim": "on the default valence table this gate never decides anything",
+  "measured": [
+   {
+    "z": 26,
+    "cap": 4.0,
+    "geom_max_bonds": 6,
+    "relation": "geom LOOSER — valence refuses first"
+   },
+   {
+    "z": 44,
+    "cap": 6.0,
+    "geom_max_bonds": 6,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 45,
+    "cap": 6.0,
+    "geom_max_bonds": 6,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 46,
+    "cap": 4.0,
+    "geom_max_bonds": 4,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 75,
+    "cap": 6.0,
+    "geom_max_bonds": 6,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 76,
+    "cap": 6.0,
+    "geom_max_bonds": 6,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 77,
+    "cap": 6.0,
+    "geom_max_bonds": 6,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 78,
+    "cap": 4.0,
+    "geom_max_bonds": 4,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 79,
+    "cap": 4.0,
+    "geom_max_bonds": 4,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 29,
+    "cap": 4.0,
+    "geom_max_bonds": 4,
+    "relation": "EQUAL"
+   },
+   {
+    "z": 30,
+    "cap": 4.0,
+    "geom_max_bonds": 4,
+    "relation": "EQUAL"
+   }
+  ],
+  "why_the_defect_was_invisible": "an equal cap means the valence check refuses at the same point, so the geometry gate never produced the difference; Fe is the one table entry where the geometry is looser, and there the valence check binds first. The gate becomes the binding constraint only when a caller raises a cap past the geometry — valence_cap={78: 6} for Pt_IV."
+ },
+ "synthetic_decode": {
+  "cloud": "6 atoms: one Pt, five C on a pentagon of radius 1.9 A (Pt-C 1.90 A, C-C 2.23 A)",
+  "logits": "BOND_SINGLE 10.0 on every Pt-C pair, NO_BOND 10.0 on every C-C pair",
+  "connectivity_prior": false,
+  "results": [
+   {
+    "metal_index": 5,
+    "valence_cap": "{78: 6}",
+    "pt_bonds_kept": 4,
+    "rejected_overvalent": 1,
+    "one_end_count": 0,
+    "both_end_count": 4,
+    "result": "the 5th Pt bond is refused; the one-end count is blind"
+   },
+   {
+    "metal_index": 5,
+    "valence_cap": "default",
+    "pt_bonds_kept": 4,
+    "rejected_overvalent": 1,
+    "note": "the valence cap refuses the 5th before the geometry gate is reached"
+   },
+   {
+    "metal_index": 0,
+    "valence_cap": "default",
+    "pt_bonds_kept": 4,
+    "one_end_count": 4,
+    "both_end_count": 4,
+    "result": "the two counts agree on the 84.5% majority case"
+   }
+  ]
+ },
+ "checks": {
+  "counts_both_ends": {
+   "claim": "a metal at the higher index is counted",
+   "measured": "metal_index=5: one-end 0, both-end 4",
+   "result": "PASS"
+  },
+  "pt_iv_cap_holds": {
+   "claim": "with valence_cap={78:6}, the 5th Pt bond is refused by the geometry gate",
+   "measured": "4 kept, 1 rejected",
+   "result": "PASS"
+  },
+  "default_bit_exact": {
+   "claim": "the default construction is unchanged",
+   "measured": "metal_index=0: one-end count == both-end count on every bond, so the gate cannot behave differently there; 4 bonds kept as before",
+   "result": "PASS",
+   "scope_note": "this is a count-equality argument on the majority case, not a byte comparison against the pre-change decode"
+  }
+ },
+ "regression_guard": "the two Pt_IV tests FAIL when the one-end expression is restored (verified by temporarily reverting the line): 2 failed, 2 passed",
+ "tests": "molmetal/tests/test_wfa113_geometry_gate_both_ends.py"
+}

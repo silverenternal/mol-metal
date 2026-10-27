@@ -968,8 +968,35 @@ class YuelBondBondDecoder:
                 metal_idx = i if gc_i is not None else j
                 if gc_i is not None and gc_j is not None:
                     gc = gc_i if gc_i.max_bonds <= gc_j.max_bonds else gc_j
+                # Wf-A113 (2026-10-27) — count BOTH endpoints.
+                #
+                # This used to be ``sum(1 for (a, _, _) in bond_orders if a
+                # == metal_idx)``.  Candidates come from
+                # ``torch.triu_indices(n, n, offset=1)``, so every stored
+                # pair has a < b; a metal that sits at a HIGHER index than
+                # its partner is never counted, and the gate silently never
+                # fires for it.  MEASURED over 9,111 tmQM metal complexes:
+                # 7,700 (84.5%) put the metal at heavy index 0, and 11.84%
+                # (5,729 of 48,371) of metal bonds have the metal at the
+                # higher index.
+                #
+                # The gate is REDUNDANT with ``_cap_for_z`` for every metal in
+                # the table, but not because the two numbers are always equal:
+                # MEASURED, ``max_bonds`` equals the covalent cap for
+                # Ru/Rh/Pd/Ag/Re/Os/Ir/Pt/Au/Zn/Cd, and EXCEEDS it for Fe
+                # (octahedral 6 vs cap 4).  In the equal case both refuse at
+                # the same point; in the Fe case the valence check refuses
+                # first.  Either way this gate never decides anything on the
+                # default table, and it becomes the binding constraint only
+                # when a caller raises a cap past the geometry — e.g.
+                # ``valence_cap={78: 6}`` for Pt_IV, where square planar
+                # allows 4.  Kept rather than deleted for exactly that case,
+                # and because the comment records why its silence was
+                # invisible.
                 bonds_at_metal = sum(
-                    1 for (a, _, _) in bond_orders if a == metal_idx
+                    1
+                    for (a, b, _) in bond_orders
+                    if a == metal_idx or b == metal_idx
                 )
                 if bonds_at_metal >= gc.max_bonds:
                     n_overvalent += 1
