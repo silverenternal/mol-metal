@@ -1,0 +1,93 @@
+{
+ "metric": "wfa113_connectivity_prior_zero_bonds",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T49: the connectivity prior was guarded on `and bond_orders`, so it was skipped exactly when the decode kept zero bonds — the only case it can still rescue. This records the population that guard produced and the before/after decode on a synthetic zero-bond cloud.",
+ "artifact_for": "todo.json SA-29 / D49 / T49",
+ "code_change": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py decode(): `if self.connectivity_prior and bond_orders:` -> `if self.connectivity_prior:`. _bridge_components already handles an empty bond list (parent = identity, one component per heavy atom, candidates from edge_index), so nothing else changed.",
+ "population": {
+  "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+  "rows": 12669,
+  "zero_bond_signature_rows": 302,
+  "zero_bond_share": 0.023838,
+  "definition": "n_frags_raw > 1 AND largest_frag_frac == 1/n_frags_raw (every fragment a single atom)",
+  "single_fragment_rows": 1079,
+  "note": "counted on the shipped pool, not re-decoded; the c7 run's own columns are the evidence"
+ },
+ "synthetic_decode": {
+  "cloud": "5 atoms: Pt at the centre, 4 C on a tetrahedron of circumradius 1.9 A",
+  "why_this_geometry": "all ten pairs are inside the 3.5 A candidate cutoff (C-C 3.10 A) and every pair is above the 1.0 A clamp, so the cloud isolates the prior from both",
+  "head_logits": {
+   "unsure": "NO_BOND 2.0, BOND_SINGLE 1.0, rest -10.0 (argmax is NO_BOND; max non-NO_BOND 1.0 >= min_logit 0.0)",
+   "certain": "NO_BOND 10.0, rest -10.0 (max non-NO_BOND below min_logit)"
+  },
+  "results": [
+   {
+    "head": "unsure",
+    "connectivity_prior": true,
+    "bonds_added": 4,
+    "bonds": 4,
+    "fragments": 1,
+    "sanitized": true,
+    "smiles": "[CH3][Pt]([CH3])([CH3])[CH3]"
+   },
+   {
+    "head": "unsure",
+    "connectivity_prior": false,
+    "bonds_added": 0,
+    "bonds": 0,
+    "fragments": 5,
+    "sanitized": true,
+    "smiles": "C.C.C.C.[Pt]"
+   },
+   {
+    "head": "certain",
+    "connectivity_prior": true,
+    "bonds_added": 0,
+    "bonds": 0,
+    "fragments": 5,
+    "sanitized": true,
+    "smiles": "C.C.C.C.[Pt]"
+   },
+   {
+    "head": "certain",
+    "connectivity_prior": false,
+    "bonds_added": 0,
+    "bonds": 0,
+    "fragments": 5,
+    "sanitized": true,
+    "smiles": "C.C.C.C.[Pt]"
+   }
+  ]
+ },
+ "checks": {
+  "zero_bond_connected": {
+   "claim": "a zero-bond cloud decodes to one fragment when the prior is on",
+   "measured": "4 bridges, 1 fragment, sanitized",
+   "result": "PASS"
+  },
+  "off_is_unchanged": {
+   "claim": "connectivity_prior=False reproduces the pre-D2 decode",
+   "measured": "0 bridges, 0 bonds, 5 fragments — the branch is not entered at all, so the path is the old one by construction",
+   "result": "PASS"
+  },
+  "prior_still_defers": {
+   "claim": "a head that says NO_BOND by a wide margin is not overridden",
+   "measured": "certain head -> 0 bridges with the prior on",
+   "result": "PASS",
+   "why_it_matters": "removing the `and bond_orders` guard must not turn the prior into an unconditional bond generator; connectivity_prior_min_logit is the deference knob and this pins it"
+  },
+  "c7_redecode": {
+   "claim": "the 302 all-single-atom rows stop being all-single-atom",
+   "measured": null,
+   "result": "UNMEASURED",
+   "why": "needs a re-decode of the c7 pool against its checkpoint, which is T29's run. Recording it as UNMEASURED rather than inferring it from the synthetic case."
+  }
+ },
+ "honest_limits": [
+  "The bridged molecule is chemically arbitrary: a bridge is added as BOND_SINGLE regardless of the head's class, so [CH3][Pt]([CH3])([CH3])[CH3] is 'the prior ran', not 'the molecule is right'.",
+  "The 302-row population is measured; the effect on it is not. The synthetic cloud shows the mechanism, not the size of the fix.",
+  "The guard removal does not touch the case where the head is confident NO_BOND, and that case is the majority of the c7 pool's zero-bond rows only if their logits are below min_logit — untested against the real logits."
+ ],
+ "tests": "molmetal/tests/test_wfa113_connectivity_prior_zero_bonds.py"
+}

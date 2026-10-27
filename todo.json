@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T12:35+08:00",
+  "updated": "2026-10-27T12:55+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2768,12 +2768,20 @@
       "kill": "若零键云在补桥后仍然 RDKit 拒绝（例如桥接制造了五价碳），则保留前置条件但在 artifact 里显式记 skipped_reason=no_bonds，让这 2.38% 在指标里可见，而不是静默走老路。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:767",
         "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:1008",
         "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv"
-      ]
+      ],
+      "result": "把 `if self.connectivity_prior and bond_orders:` 改成 `if self.connectivity_prior:`。_bridge_components 本来就处理空输入（parent=identity、每个重原子一个分量、候选来自 edge_index），所以只删前置条件、不动函数体。合成云实测（Pt 居中 + 4 个 C 正四面体，r=1.9 Å，10 对全在 3.5 Å 内且全在 1.0 Å 之上）：prior=on 时补 4 根桥、1 个片段、sanitized、[CH3][Pt]([CH3])([CH3])[CH3]；prior=off 时 0 桥、0 键、5 个片段、C.C.C.C.[Pt]——off 根本不进这个分支，与改动前逐位一致。另加一条控制：head 明确判 NO_BOND（非 NO_BOND logit 低于 connectivity_prior_min_logit）时，prior 仍然不覆盖，补 0 根——删前置条件不等于把 prior 变成无条件造键器。c7 池里那 302/12,669（2.3838%）全单原子片段行需要重解码，记 UNMEASURED（T29 未跑）。",
+      "artifact": "metrics/by_metric/wfa113_connectivity_prior_zero_bonds.json",
+      "tests": "molmetal/tests/test_wfa113_connectivity_prior_zero_bonds.py",
+      "gate_result": {
+        "zero_bond_connected": "PASS — 4 桥 / 1 片段 / sanitized",
+        "off_is_bit_exact": "PASS — off 不进入分支，0 桥 0 键 5 片段，路径与改动前相同",
+        "c7_redecode": "UNMEASURED — 需要 T29 的重解码"
+      }
     },
     {
       "id": "T50",

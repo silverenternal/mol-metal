@@ -763,8 +763,19 @@ class YuelBondBondDecoder:
         # Step 2b (Round-3 D2): connectivity prior — POSTPROCESS, after bond
         # selection and before assembly.  No-op when `connectivity_prior` is
         # False, so the pre-D2 decode is reproduced bit-exactly.
+        #
+        # Wf-A113 (2026-10-27) — the guard used to read
+        # `if self.connectivity_prior and bond_orders:`, which skipped the
+        # prior in exactly the case it exists to rescue: a decode that kept
+        # ZERO bonds.  MEASURED on the c7 pool
+        # (molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv):
+        # 302 of 12,669 rows (2.38%) are `n_frags_raw > 1` with
+        # `largest_frag_frac == 1/n_frags_raw`, i.e. every fragment a single
+        # atom and no bond anywhere.  `_bridge_components` already handles an
+        # empty input (parent = identity, one component per heavy atom,
+        # candidates from edge_index), so the precondition was pure loss.
         n_bridges = 0
-        if self.connectivity_prior and bond_orders:
+        if self.connectivity_prior:
             bond_orders, dative_bonds, n_bridges = self._bridge_components(
                 cloud,
                 yres,
