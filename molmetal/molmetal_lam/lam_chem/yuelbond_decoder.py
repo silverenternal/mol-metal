@@ -48,7 +48,7 @@ the same intuition that motivates this decoder.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -144,6 +144,69 @@ _METAL_SET_PRESETS: dict = {
 #: 100% for all six metals.  They are FEATURE-side only: no builder rank.
 _DONOR_ZS: frozenset = frozenset({5, 6, 7, 8, 9, 14, 15, 16, 17, 33, 34, 35, 53})
 #: B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I
+
+# ---------------------------------------------------------------------------
+# Wf-A113 (2026-10-27) — element-aware collapse rejection for candidate pairs
+# ---------------------------------------------------------------------------
+#: Cordero (2008) single-bond covalent radii, Angstrom.  This is the SAME table
+#: and the SAME 0.7 factor that ``cfm_generated_geometry_defect.json`` used to
+#: define ``hard_clash``, so the pairs rejected here are exactly the pairs that
+#: artifact counts.  Kept as a literal instead of imported from
+#: ``wf_blkc_l3_guidance_probe`` because a library module must not import a
+#: script; ``molmetal/tests/test_wfa113_bond_clash_rejection.py`` asserts the
+#: two tables are equal, so they cannot drift without a red test.
+_CORDERO_RCOV: Dict[int, float] = {
+    1: 0.31, 5: 0.84, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57, 14: 1.11, 15: 1.07,
+    16: 1.05, 17: 1.02, 33: 1.21, 35: 1.20, 53: 1.39, 78: 1.36, 44: 1.25,
+    77: 1.35, 45: 1.35, 76: 1.35, 75: 1.35,
+}
+#: Radius for an element outside the table.  1.3 A is the probe's default and
+#: is deliberately generous: an unknown element is rejected LESS often, which
+#: fails toward keeping a candidate rather than deleting a real bond.
+_RCOV_UNKNOWN: float = 1.3
+#: ``d < ratio * (r_i + r_j)`` is a collapse, not a bond.  At 0.7 no pair in
+#: real tmQM qualifies (MEASURED 0 of 34,970 complexes) while every generated
+#: cloud in cfm_generated_geometry_defect.json has at least one.
+DEFAULT_BOND_CLASH_RATIO: float = 0.7
+
+
+#: Highest Z the radius table indexes.  A dense table rather than
+#: ``torch.searchsorted`` ON PURPOSE: ``test_yuelbond_forward_alignment``
+#: forbids ``searchsorted`` anywhere in this module, because the ``all6``
+#: z-table is not sorted and a searchsorted lookup over it encoded every metal
+#: as another element.  That guard cannot tell a radius lookup from a z-table
+#: lookup, and weakening it to admit this call would remove the protection the
+#: next reader needs.
+_RCOV_MAX_Z: int = 92
+_RCOV_BY_Z = tuple(
+    _CORDERO_RCOV.get(z, _RCOV_UNKNOWN) for z in range(_RCOV_MAX_Z + 1)
+)
+
+
+def _rcov_per_atom(atomic_numbers: torch.Tensor) -> torch.Tensor:
+    """Cordero radius per atom, ``_RCOV_UNKNOWN`` for unlisted elements."""
+    table = torch.tensor(
+        _RCOV_BY_Z, device=atomic_numbers.device, dtype=torch.float32
+    )
+    return table[atomic_numbers.clamp(min=0, max=_RCOV_MAX_Z)]
+
+
+def pair_collapse_mask(
+    atomic_numbers: torch.Tensor,
+    i_idx: torch.Tensor,
+    j_idx: torch.Tensor,
+    d_raw: torch.Tensor,
+    ratio: float = DEFAULT_BOND_CLASH_RATIO,
+) -> torch.Tensor:
+    """True where a candidate pair is a steric collapse rather than a bond.
+
+    ``d_raw`` MUST be the UNCLAMPED distance.  The 1.0 A clamp hides exactly
+    the pairs this predicate exists to see: on generated geometry it moves the
+    distance by up to 0.43 A, and the clamped value lands in the ``d < 1.7``
+    cell the bond head learned to read as "short bond".
+    """
+    rc = _rcov_per_atom(atomic_numbers)
+    return d_raw < float(ratio) * (rc[i_idx] + rc[j_idx])
 
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
@@ -597,12 +660,24 @@ class YuelBondDecoderHead(nn.Module):
         # pre-existing checkpoint, which made its decode no longer the one
         # its weights were fitted to.  ``None`` keeps the current set.
         donor_zs: Optional[Tuple[int, ...]] = None,
+        # Wf-A113 (2026-10-27) — reject collapsed candidate pairs BEFORE the
+        # 1.0 A clamp can turn them into "short bonds".  Default ON: on real
+        # geometry it removes nothing (MEASURED 0 pairs), on sampled geometry
+        # it removes the pairs the clamp was manufacturing bonds from.
+        clash_reject: bool = True,
+        clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         self.n_layers = int(n_layers)
         self.cutoff = float(cutoff)
         self.min_distance = float(min_distance)
+        self.clash_reject = bool(clash_reject)
+        self.clash_ratio = float(clash_ratio)
+        #: Pairs dropped by the collapse predicate on the last forward.  The
+        #: decoder copies it into YuelBondDecodeResult so a generated pool can
+        #: record it instead of leaving the effect unmeasurable.
+        self.last_clash_rejected_pairs = 0
         # 2026-10-04 — the vocab is a parameter, not a module constant, so the
         # all-six-metals table ("all6", see Z_TABLE_PRESETS) can be selected
         # without editing this class.  Default is the original Pt-only table,
@@ -775,9 +850,28 @@ class YuelBondDecoderHead(nn.Module):
             )
         # Pair distances and short/long flags
         d_vec = positions[j_idx] - positions[i_idx]
-        d = d_vec.norm(dim=-1).clamp(min=self.min_distance)
+        # Wf-A113 (2026-10-27) — the clamp is NUMERICAL PROTECTION, not a
+        # candidate rule.  It used to run before the cutoff test, so the
+        # clamped value decided candidacy, ``is_short`` (d<1.7), ``is_long``
+        # (d>3.0) and the RBF centres.  On real geometry that moves the
+        # distance by at most 0.044 A; on sampled geometry it moves 0.43 A and
+        # lands a collapsed pair in the cell the head reads as "bond".
+        # MEASURED: 8.975% of real complexes have a pair below 1.0 A, 0% below
+        # 0.9 A; every generated cloud has a hard clash (mean min pair 0.570 A).
+        d_raw = d_vec.norm(dim=-1)
+        d = d_raw.clamp(min=self.min_distance)
         # Filter to within-cutoff pairs only (cutoff=3.5 Å excludes 4.1 Å Cl-Cl)
-        mask = d < self.cutoff
+        mask = d_raw < self.cutoff
+        if self.clash_reject:
+            _collapsed = pair_collapse_mask(
+                atomic_numbers, i_idx, j_idx, d_raw, self.clash_ratio
+            )
+            mask = mask & ~_collapsed
+            self.last_clash_rejected_pairs = int(
+                (_collapsed & (d_raw < self.cutoff)).sum()
+            )
+        else:
+            self.last_clash_rejected_pairs = 0
         i_idx = i_idx[mask]
         j_idx = j_idx[mask]
         d = d[mask]
@@ -1211,6 +1305,12 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # Wf-A95 (2026-10-19) — same constructor-input donor set as the
         # atom-MPNN head, so a checkpoint restores the set it trained with.
         donor_zs: Optional[Tuple[int, ...]] = None,
+        # Wf-A113 (2026-10-27) — same collapse rejection as
+        # :class:`YuelBondDecoderHead`; the edge list must be identical
+        # between heads or the trainer's downstream code would branch on
+        # which head is plugged in.
+        clash_reject: bool = True,
+        clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -1218,6 +1318,9 @@ class YuelBondEdgeMPNNHead(nn.Module):
         self.cutoff = float(cutoff)
         self.min_distance = float(min_distance)
         self.z_table = tuple(z_table)
+        self.clash_reject = bool(clash_reject)
+        self.clash_ratio = float(clash_ratio)
+        self.last_clash_rejected_pairs = 0
         # Dative-rule preset — same opt-in pattern as
         # :class:`YuelBondDecoderHead`.  ``pt_only`` preserves the
         # pre-Wf-A69 W2 behaviour bit-exactly for older checkpoints;
@@ -1365,8 +1468,22 @@ class YuelBondEdgeMPNNHead(nn.Module):
                 ),
             )
         d_vec = positions[j_idx] - positions[i_idx]
-        d = d_vec.norm(dim=-1).clamp(min=self.min_distance)
-        mask = d < self.cutoff
+        # Wf-A113 (2026-10-27) — same candidate rule as the atom-MPNN head:
+        # the clamp is numerical protection only, and a collapsed pair is not
+        # a candidate at all.
+        d_raw = d_vec.norm(dim=-1)
+        d = d_raw.clamp(min=self.min_distance)
+        mask = d_raw < self.cutoff
+        if self.clash_reject:
+            _collapsed = pair_collapse_mask(
+                atomic_numbers, i_idx, j_idx, d_raw, self.clash_ratio
+            )
+            mask = mask & ~_collapsed
+            self.last_clash_rejected_pairs = int(
+                (_collapsed & (d_raw < self.cutoff)).sum()
+            )
+        else:
+            self.last_clash_rejected_pairs = 0
         i_idx = i_idx[mask]
         j_idx = j_idx[mask]
         d = d[mask]
@@ -1583,6 +1700,13 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
         use_pair_chemistry: bool = False,
         n_rbf: int = RBF_FEATURE_DIM,
         donor_zs: Optional[Tuple[int, ...]] = None,
+        # Wf-A113 (2026-10-27) — pass the parent's collapse switch through.
+        # A subclass that silently reverted to the parent DEFAULT would make
+        # ``bond_predictor: yuelbond_edge_mpnn_residual`` ignore a YAML
+        # ``bond_clash_reject: off``, which is exactly the silent-default
+        # class of bug this project keeps paying for.
+        clash_reject: bool = True,
+        clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
     ) -> None:
         super().__init__(
             hidden_dim=hidden_dim,
@@ -1597,6 +1721,8 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
             use_pair_chemistry=use_pair_chemistry,
             n_rbf=n_rbf,
             donor_zs=donor_zs,
+            clash_reject=clash_reject,
+            clash_ratio=clash_ratio,
         )
 
 

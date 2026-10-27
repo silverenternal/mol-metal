@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-27T13:20+08:00",
+  "updated": "2026-10-27T17:40+08:00",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -2482,10 +2482,19 @@
       "kill": "若坐标不逐位相同，说明某处依赖了梯度图（不应发生），停止并查 dropout/training 标志。",
       "device": "cpu",
       "cost": "CPU 30 min",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
         "molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py"
+      ],
+      "result": "padded 分支的整段循环包进 torch.no_grad()，与 grouped 分支一致。实测：stub 速度场在两条分支里记录到的 torch.is_grad_enabled() 全为 False。把 no_grad 去掉后 test_padded_branch_runs_without_grad 失败。",
+      "artifact": "metrics/by_metric/wfa113_padded_guidance.json",
+      "tests": "molmetal/tests/test_wfa113_padded_guidance.py",
+      "gate_result": {
+        "no_grad": "PASS — 两条分支均为 False"
+      },
+      "honest_limits": [
+        "没有 GPU 运行；省下的显存没有量化。"
       ]
     },
     {
@@ -2653,9 +2662,20 @@
       "kill": "若导引在 padded 张量上无法定义，选择 raise，并在 config 加载处拒绝这个组合。",
       "device": "cpu",
       "cost": "CPU 30 min",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7932-8019"
+      ],
+      "result": "走「共用包装」而不是 raise。_BondLengthGuidance 增加 node_mask，__call__ 把 radius_edge_index(x, self._node_mask, cutoff) 而不是 None 传进去——因为 padded 分支的不变量是「padding 与任何原子都不发生作用」，而导引自己建图，必须拿到同一张 mask。训练器新增 _with_bond_length_guidance() 作为唯一构造点，两个分支都调用它。实测（stub 速度场，n_steps=2）：padded 分支构造 1 次（权重 0.1），grouped 分支 1 次；把 3 个 padding 原子故意放在真实原子的 cutoff 之内，真实原子受到的导引力与无 padding 时逐位相同，padding 原子受力恰为 0。",
+      "artifact": "metrics/by_metric/wfa113_padded_guidance.json",
+      "tests": "molmetal/tests/test_wfa113_padded_guidance.py",
+      "gate_result": {
+        "no_silent_drop": "PASS — padded 分支现在构造导引（把改动还原后该测试失败）",
+        "no_padding_leak": "PASS — padding 在 cutoff 内时真实原子受力不变（把 node_mask 还原为 None 后该测试失败）"
+      },
+      "honest_limits": [
+        "等价性只在速度层测（真实原子速度/受力相同），不是端到端坐标比较：两条路径的 torch.randn 形状不同，要逐位比较需要注入 x0，而采样器没有这个接口。",
+        "test_cfm_pad_groups_equivalence.py 的 docstring 原本声称它比较了两条路径的生成坐标，实际没有；已改正该声明并把缺口记在这里，而不是假装补上。"
       ]
     },
     {
@@ -2720,11 +2740,22 @@
       "kill": "若某处故意排除 Pt（例如只统计 5-metal 训练臂），保留该处但在同名字段上写明 cohort，不要复用同一个字段名。",
       "device": "cpu",
       "cost": "CPU 30 min",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4131",
         "molmetal/scripts/wf_a53_eval_cfm_test_split.py:653",
         "molmetal/tests/test_wf_a53_decode_connectivity.py:46"
+      ],
+      "result": "_decoded_smiles_stats 的 metal_z 从手写 5 元集合改成 _TARGET_METALS（含 Pt=78），返回值增加 decode_metal_cohort 让集合随数字一起走。实测：只含 Pt 的 SMILES 之前 decode_metal_ratio=0.0，现在 1.0。两个已发布池重算：c7 12,668 行里 1,350 行含 Pt（10.657%），旧集合给 0.89343，新集合 1.0000；c8 2,112 行里 225 行含 Pt（10.653%），0.89347 → 1.0000。也就是说这两个池里约一成行被报成「无金属」，而且是项目命名的那个金属。全仓扫描：训练器里不再有 5 元金属字面量；metal_geometry.py 的 (26,44,45,75,76,77) 是八面体几何的Fe 集合，与 cohort 无关，保持不变。",
+      "artifact": "metrics/by_metric/wfa113_decode_metal_cohort.json",
+      "tests": "molmetal/tests/test_wf_a53_decode_connectivity.py",
+      "gate_result": {
+        "pt_counted": "PASS — Pt-only SMILES -> 1.0",
+        "single_source": "PASS — 训练器内无 5 元金属字面量；cohort 随 decode_metal_cohort 一起输出"
+      },
+      "honest_limits": [
+        "前后数字是用两种元素集合重算已发布 SMILES 得到的，不是重跑 wf_a53。",
+        "没有改写任何历史 artifact；引用旧 metal_ratio 的表引的是 5 元定义。"
       ]
     },
     {
@@ -2744,12 +2775,25 @@
       "kill": "若真实 tmQM 上出现任何被剔除的对（说明半径表或 ratio 不对），先修半径再谈生成侧；不要为了让生成侧数字好看而调 ratio。",
       "device": "cpu",
       "cost": "CPU 3 h（代码+单测）；数值 A/B 落在 T29",
-      "status": "PLANNED",
+      "status": "DONE",
       "evidence": [
         "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:778",
         "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:1368",
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2067",
         "metrics/by_metric/cfm_generated_geometry_defect.json"
+      ],
+      "result": "候选判定改为在未截断的 d_raw 上做：d_raw < cutoff，且剔除 d_raw < ratio*(r_i+r_j) 的对（Cordero 半径，ratio=0.7，与 cfm_generated_geometry_defect.json 的 hard_clash 同一条）。clamp 保留，只作为特征侧的数值保护，不再参与候选判定。三个 forward（atom-MPNN / edge-MPNN / DMPNN）都改；新增 --bond-clash-reject（默认 on）与 --bond-clash-ratio（默认 0.7），两个键同时写进 feature schema 与每轮 generation 块；YuelBondDecodeResult 增加 clash_rejected_pairs（正常返回与空边返回都填）。实测：真实 tmQM 8 个云（两个头）剔除 0 对；合成塌陷三角（0.4/0.4/0.8 Å）剔除 3 对、E=0、解码 0 根键且 prior 也无法补桥；关掉规则时同一云 E=3、clamp 后距离恰为 1.0、is_short 全 1，解码出 CCC——这正是改动前的行为。artifact 记录的两个均值（生成 0.5702 / 真实 1.1718）分别被剔除/保留。",
+      "artifact": "metrics/by_metric/wfa113_bond_clash_rejection.json",
+      "tests": "molmetal/tests/test_wfa113_bond_clash_rejection.py",
+      "gate_result": {
+        "no_false_reject": "PASS — 真实 tmQM 8 云剔除 0 对",
+        "clash_rejected": "PARTIAL — 合成塌陷 3/3 剔除；artifact 记录的 143 对无法重放（生成云未落盘），记 UNMEASURED",
+        "no_ring3_from_clash": "PASS — 合成塌陷三角解码 0 键 0 桥"
+      },
+      "honest_limits": [
+        "143 对的总体重放记 UNMEASURED：cfm_generated_geometry_defect.json 的 24 个生成云从未落盘。",
+        "对已发布池的影响需要重解码（T29），未做，也未从合成用例推断。",
+        "半径表是从 wf_blkc_l3_guidance_probe 复制的第二份；有一条测试断言两份相等，但仍是两份。"
       ]
     },
     {

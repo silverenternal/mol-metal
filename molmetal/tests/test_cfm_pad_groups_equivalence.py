@@ -9,10 +9,23 @@ not scale with batch. The sampler groups by EXACT atom count, so 192 tmQM val
 clouds become 52 solver calls at median batch 3 -- ~15 s per generation pass
 where one padded batch would take ~0.4 s.
 
-That 42x is only worth taking if padding changes nothing. This test pins that.
-It compares GENERATED COORDINATES between the grouped path and the padded path,
-not the decode outcome: a decode that produces the same SMILES from different
-coordinates would hide the very drift this is meant to catch.
+That 42x is only worth taking if padding changes nothing.
+
+WHAT THIS FILE ACTUALLY CHECKS (corrected 2026-10-27)
+-----------------------------------------------------
+An earlier version of this paragraph claimed the file "compares GENERATED
+COORDINATES between the grouped path and the padded path".  It does not: there
+is no such test here and there never was.  The two paths draw their noise from
+``torch.randn`` calls of different shapes, so a coordinate comparison would
+need an injected ``x0``, which the sampler does not expose.  What the file
+checks is the property that comparison would rest on — that a masked padding
+atom contributes no live edge — plus the default and the recorded measurement.
+
+The velocity-level equivalent (real atoms get the same velocity and the same
+guidance force with and without padding present) lives in
+``molmetal/tests/test_wfa113_padded_guidance.py``.  A full end-to-end
+coordinate comparison remains UNMEASURED and should be written before anyone
+quotes pad_groups as bit-equivalent.
 
 The mathematical claim under test: padding atoms are placed far enough away
 that no real atom pairs with them inside `cutoff`, and the radius graph is

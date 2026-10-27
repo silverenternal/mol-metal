@@ -325,6 +325,14 @@ def test_gate_does_not_alter_the_eval_return_shape(trainer):
         # caller WAS updated in the same change, this list was not.
         "cn_cfg_scale",
         "cn_request_override",
+        # Wf-A113 (2026-10-27) — the per-sample single-fragment+metal flag
+        # collector.  The tripwire fired a third time, and again correctly:
+        # the caller WAS updated in the same change (the gen-eval loop passes
+        # `_mol_seed`), this list was not.  The parameter only collects a
+        # verdict; it does not filter `clouds`, so the return shape this test
+        # exists to protect is unchanged — `return n_ok, len(clouds)` below
+        # still appears exactly once.
+        "molecule_valid_out",
     ]
     src = inspect.getsource(trainer.evaluate_generation_validity)
     # The function body must never branch on the gate verdict.

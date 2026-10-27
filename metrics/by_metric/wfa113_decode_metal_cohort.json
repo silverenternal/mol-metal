@@ -1,0 +1,42 @@
+{
+ "metric": "wfa113_decode_metal_cohort",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T47 (SA-27): _decoded_smiles_stats used a hand-written 5-element metal set that OMITTED Pt, while _TARGET_METALS includes it. A Pt-only decode scored decode_metal_ratio 0.0, and wf_a53_eval_cfm_test_split re-published that number under the bare name metal_ratio.",
+ "artifact_for": "todo.json SA-27 / D47 / T47",
+ "code_change": [
+  "train_cfm_yuelbond_wasserstein.py::_decoded_smiles_stats: metal_z = _TARGET_METALS",
+  "the returned dict gains decode_metal_cohort so the set travels with the number"
+ ],
+ "measurements": {
+  "unit": {
+   "input": "[Pt](N)(N)(Cl)Cl",
+   "before": 0.0,
+   "after": 1.0
+  },
+  "shipped_pools": [
+   {
+    "pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+    "rows_parsed": 12668,
+    "pt_rows": 1350,
+    "pt_share": 0.10657,
+    "metal_ratio_before": 0.89343,
+    "metal_ratio_after": 1.0
+   },
+   {
+    "pool": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+    "rows_parsed": 2112,
+    "pt_rows": 225,
+    "pt_share": 0.10653,
+    "metal_ratio_before": 0.89347,
+    "metal_ratio_after": 1.0
+   }
+  ]
+ },
+ "reading": "Both shipped pools are ~10.7% Pt by row, and every one of those rows was counted as metal-free. The metric did not report 0 overall because the cohort mixes metals; it reported 0 for the metal the project is named after, which is invisible in the aggregate.",
+ "honest_limits": [
+  "The before/after numbers are recomputed from the shipped SMILES with both element sets. They are not a re-run of wf_a53.",
+  "No archived artifact is rewritten; any table quoting metal_ratio from before this commit is quoting the 5-element definition."
+ ],
+ "tests": "molmetal/tests/test_wf_a53_decode_connectivity.py"
+}

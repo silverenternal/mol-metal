@@ -1213,6 +1213,15 @@ class _BondLengthGuidance:
         cutoff: float,
         guidance_weight: float = 0.1,
         spring_constant: float = 50.0,
+        # Wf-A113 (2026-10-27) — the padding mask the velocity field already
+        # gets.  Without it the guidance builds its own radius graph over
+        # ALL atoms, including padding, so (a) real atoms could pair with a
+        # padding atom and (b) padding atoms (Z=0, table entry 1.50 A) get
+        # pulled toward the molecule.  That is the opposite of the padded
+        # branch's invariant, which is that padding sits far enough away to
+        # interact with nothing.  ``None`` is the pre-A113 behaviour and is
+        # correct for an unpadded batch, where every atom is real.
+        node_mask: Optional[torch.Tensor] = None,
     ) -> None:
         # Normalize atom_types to 2-D ``(B, N)`` so the per-batch
         # ``__call__`` loop can index it as ``atom_types[bi, idx]``.
@@ -1225,6 +1234,7 @@ class _BondLengthGuidance:
         self._cutoff = float(cutoff)
         self._guidance_weight = float(guidance_weight)
         self._spring_constant = float(spring_constant)
+        self._node_mask = node_mask
 
     @torch.no_grad()
     def _expected_length_table(self) -> torch.Tensor:
@@ -1267,7 +1277,9 @@ class _BondLengthGuidance:
         # candidate pairs).  We do not backprop through the edge
         # list — the prior is computed once per step on the current
         # positions.
-        edge_index, edge_mask = radius_edge_index(x, None, self._cutoff)
+        edge_index, edge_mask = radius_edge_index(
+            x, self._node_mask, self._cutoff
+        )
         # edge_index shape: (B, 2, E).  edge_mask shape: (B, E).
         if edge_index.shape[-1] == 0:
             return torch.zeros_like(x)

@@ -153,8 +153,11 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondEdgeMPNNHead,
     bond_decision as _bond_decision,
     z_to_onehot,
+    DEFAULT_BOND_CLASH_RATIO,
+    pair_collapse_mask,
     _DEFAULT_METAL_SET,
     _DONOR_ZS,
+    _METAL_SET_PRESETS,
     _YUELBOND_Z_TABLE,
 )
 # Wf-A35-1 (2026-10-14) C3 — single read-site for the
@@ -2125,6 +2128,12 @@ class DMPNNBondHead(nn.Module):
         # latent, not harmless.
         metal_set: Optional[Iterable[int]] = None,
         donor_zs: Optional[Iterable[int]] = None,
+        # Wf-A113 (2026-10-27) — the collapse rule every other head now has.
+        # This head was unreachable from any YAML when the rule was added, so
+        # leaving it out would have re-created the SA-30 shape: a head that
+        # silently computes a different candidate set from its siblings.
+        clash_reject: bool = True,
+        clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -2132,6 +2141,9 @@ class DMPNNBondHead(nn.Module):
         self.cutoff = float(cutoff)
         self.min_distance = float(min_distance)
         self.z_table = tuple(z_table)
+        self.clash_reject = bool(clash_reject)
+        self.clash_ratio = float(clash_ratio)
+        self.last_clash_rejected_pairs = 0
         #: Metals that can carry a dative bond.  Same default as
         #: :class:`YuelBondDecoderHead`, so swapping heads does not silently
         #: change the feature the checkpoint was fitted on.
@@ -2222,8 +2234,22 @@ class DMPNNBondHead(nn.Module):
                 ),
             )
         d_vec = positions[j_idx] - positions[i_idx]
-        d = d_vec.norm(dim=-1).clamp(min=self.min_distance)
-        mask = d < self.cutoff
+        # Wf-A113 (2026-10-27) — same candidate rule as the other heads: the
+        # clamp is numerical protection only, and a collapsed pair is dropped
+        # before it can be read as a short bond.
+        d_raw = d_vec.norm(dim=-1)
+        d = d_raw.clamp(min=self.min_distance)
+        mask = d_raw < self.cutoff
+        if self.clash_reject:
+            _collapsed = pair_collapse_mask(
+                atomic_numbers, i_idx, j_idx, d_raw, self.clash_ratio
+            )
+            mask = mask & ~_collapsed
+            self.last_clash_rejected_pairs = int(
+                (_collapsed & (d_raw < self.cutoff)).sum()
+            )
+        else:
+            self.last_clash_rejected_pairs = 0
         i_idx = i_idx[mask]
         j_idx = j_idx[mask]
         d = d[mask]
@@ -2509,6 +2535,14 @@ class CFMJointModel(nn.Module):
         # precious metals but reshapes ``atom_encoder`` so existing
         # checkpoints won't round-trip.
         bond_z_table: str = "pt",
+        # Wf-A113 (2026-10-27) — reject collapsed candidate pairs before the
+        # 1.0 A clamp can read them as short bonds.  Default ON: on real
+        # geometry it removes nothing (MEASURED 0 pairs over 34,970 tmQM
+        # complexes); on sampled geometry it removes the pairs the clamp was
+        # manufacturing bonds from (every one of 24 generated clouds had at
+        # least one hard clash, 143 pairs total).
+        bond_clash_reject: bool = True,
+        bond_clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
         # Wf-A69 W2 (2026-10-17) Fix 3 — bond-head topology.  Default
         # ``"single"`` (bit-exact Wf-A67/68/W1) is the 5-class softmax
         # CE.  ``"split"`` wraps the head into
@@ -2637,6 +2671,12 @@ class CFMJointModel(nn.Module):
                 n_layers=n_layers,
                 cutoff=cutoff,
                 z_table=z_table,
+                # Wf-A113 — resolve the SAME preset the other heads get, so
+                # swapping bond_predictor cannot silently change the dative
+                # feature.  ``_METAL_SET_PRESETS`` raises on an unknown key.
+                metal_set=_METAL_SET_PRESETS[str(bond_z_metal_set).strip().lower()],
+                clash_reject=bool(bond_clash_reject),
+                clash_ratio=float(bond_clash_ratio),
             )
         elif str(bond_predictor).lower() == "yuelbond":
             self.head = YuelBondDecoderHead(
@@ -2668,6 +2708,8 @@ class CFMJointModel(nn.Module):
                 use_rbf_distance=bool(bond_rbf_features),
                 use_pair_chemistry=bool(bond_pair_chemistry),
                 n_rbf=int(n_rbf),
+                clash_reject=bool(bond_clash_reject),
+                clash_ratio=float(bond_clash_ratio),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn":
             # Wf-A70 W1 (2026-10-17) — Fix 6: YuelBond B.1 edge-state
@@ -2690,6 +2732,8 @@ class CFMJointModel(nn.Module):
                 use_rbf_distance=bool(bond_rbf_features),
                 use_pair_chemistry=bool(bond_pair_chemistry),
                 n_rbf=int(n_rbf),
+                clash_reject=bool(bond_clash_reject),
+                clash_ratio=float(bond_clash_ratio),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn_residual":
             # Wf-A74 (2026-10-18) — Architecture 1 (3-layer residual
@@ -2717,6 +2761,8 @@ class CFMJointModel(nn.Module):
                 use_rbf_distance=bool(bond_rbf_features),
                 use_pair_chemistry=bool(bond_pair_chemistry),
                 n_rbf=int(n_rbf),
+                clash_reject=bool(bond_clash_reject),
+                clash_ratio=float(bond_clash_ratio),
             )
         else:
             raise ValueError(
@@ -4306,7 +4352,14 @@ def _decoded_smiles_stats(smiles: Sequence[str]) -> Dict[str, float]:
         return {}
     frag_counts: List[int] = []
     n_with_metal = 0
-    metal_z = {44, 45, 75, 76, 77}  # Ru Rh Re Os Ir
+    # Wf-A113 (2026-10-27) — this was a hand-written 5-element set that OMITTED
+    # Pt (78) while ``_TARGET_METALS`` (the cohort every run is trained on)
+    # includes it.  MEASURED: on a Pt-only decode the ratio was 0.0, i.e. the
+    # metric reported "no metal" for the metal the whole project is about, and
+    # ``wf_a53_eval_cfm_test_split`` re-published it under the bare name
+    # ``metal_ratio``.  One definition now, and the cohort is written into the
+    # dict below so a reader never has to guess which set a number came from.
+    metal_z = _TARGET_METALS
     for smi in smiles:
         if not smi:
             continue
@@ -4316,6 +4369,7 @@ def _decoded_smiles_stats(smiles: Sequence[str]) -> Dict[str, float]:
         frag_counts.append(len(Chem.GetMolFrags(mol)))
         if any(a.GetAtomicNum() in metal_z for a in mol.GetAtoms()):
             n_with_metal += 1
+    _cohort = sorted(int(z) for z in metal_z)
     if not frag_counts:
         return {
             "decode_n_decoded": 0,
@@ -4325,6 +4379,7 @@ def _decoded_smiles_stats(smiles: Sequence[str]) -> Dict[str, float]:
             "decode_fragments_max": 0,
             "decode_n_with_metal": 0,
             "decode_metal_ratio": 0.0,
+            "decode_metal_cohort": _cohort,
         }
     n_single = sum(1 for n in frag_counts if n == 1)
     return {
@@ -4335,6 +4390,8 @@ def _decoded_smiles_stats(smiles: Sequence[str]) -> Dict[str, float]:
         "decode_fragments_max": float(max(frag_counts)),
         "decode_n_with_metal": float(n_with_metal),
         "decode_metal_ratio": float(n_with_metal / len(frag_counts)),
+        # Wf-A113 — which elements counted as "metal" for this ratio.
+        "decode_metal_cohort": _cohort,
     }
 
 
@@ -7966,6 +8023,44 @@ def _conditioned_velocity_fn(
     return _vf
 
 
+def _with_bond_length_guidance(
+    vf,
+    z_b: torch.Tensor,
+    cutoff: float,
+    weight: float,
+    node_mask: Optional[torch.Tensor] = None,
+):
+    """Wrap a velocity closure with the MolDiff bond-length term, or not.
+
+    Wf-A113 (2026-10-27) — ONE definition for both sampler branches.  Before
+    this the padded branch never read ``bond_length_guidance_weight`` at all:
+    a run with ``pad_groups: on`` and a non-zero weight sampled WITHOUT the
+    term while the same config with ``pad_groups: off`` sampled WITH it, and
+    nothing in the log or the artifact said which one had happened.  That is
+    SA-24, and the fix is to build the wrapper in one place.
+
+    ``node_mask`` is threaded through because the padded branch's invariant is
+    that padding atoms interact with nothing; the guidance builds its own
+    radius graph, so it needs the same mask the velocity field gets.
+    """
+    _w = float(weight or 0.0)
+    if _w <= 0.0:
+        return vf
+    from molmetal.adapters.flow_matching_lipman import _BondLengthGuidance
+
+    blg = _BondLengthGuidance(
+        atom_types=z_b,
+        cutoff=float(cutoff),
+        guidance_weight=_w,
+        node_mask=node_mask,
+    )
+
+    def _wrapped(x, t, _vf_in=vf, _blg_in=blg):
+        return _vf_in(x, t) + _blg_in(x)
+
+    return _wrapped
+
+
 def generate_clouds_from_noise(
     model: "CFMJointModel",
     templates: Sequence[AtomCloud],
@@ -8107,43 +8202,50 @@ def generate_clouds_from_noise(
     else:
         pad_buckets = []
 
-    for n_atoms, group in pad_buckets:
-        b = len(group)
-        z_b = torch.zeros(b, n_atoms, dtype=torch.long, device=device)
-        node_mask = torch.zeros(b, n_atoms, dtype=torch.bool, device=device)
-        for i, g in enumerate(group):
-            n_i = int(g.atomic_numbers.shape[0])
-            z_b[i, :n_i] = g.atomic_numbers.long().to(device)
-            node_mask[i, :n_i] = True
-        x0 = torch.randn(
-            b, n_atoms, 3, device=device, generator=gen
-        ) * float(noise_sigma)
+    with torch.no_grad():
+        for n_atoms, group in pad_buckets:
+            b = len(group)
+            z_b = torch.zeros(b, n_atoms, dtype=torch.long, device=device)
+            node_mask = torch.zeros(b, n_atoms, dtype=torch.bool, device=device)
+            for i, g in enumerate(group):
+                n_i = int(g.atomic_numbers.shape[0])
+                z_b[i, :n_i] = g.atomic_numbers.long().to(device)
+                node_mask[i, :n_i] = True
+            x0 = torch.randn(
+                b, n_atoms, 3, device=device, generator=gen
+            ) * float(noise_sigma)
 
-        _cn_b = (
-            None
-            if cond_cn is None
-            else torch.stack(
-                [cond_cn[_tpl_index[id(g)]] for g in group]
-            ).to(device)
-        )
-        _vf_pad = _conditioned_velocity_fn(
-            model, z_b, node_mask, _cn_b, float(cfg_scale)
-        )
-
-        solver = ODESolver(
-            velocity_model=_vf_pad, method=str(method), n_steps=int(n_steps)
-        )
-        x1 = solver.sample(x0, method=str(method), n_steps=int(n_steps))
-        for i, g in enumerate(group):
-            n_i = int(g.atomic_numbers.shape[0])
-            out.append(
-                AtomCloud(
-                    positions=x1[i, :n_i].detach().cpu(),
-                    atomic_numbers=g.atomic_numbers.cpu(),
-                    metal_atom_index=_carry_metal_index(g),
-                )
+            _cn_b = (
+                None
+                if cond_cn is None
+                else torch.stack(
+                    [cond_cn[_tpl_index[id(g)]] for g in group]
+                ).to(device)
             )
-        del x0, x1, z_b, node_mask
+            _vf_pad = _with_bond_length_guidance(
+                _conditioned_velocity_fn(
+                    model, z_b, node_mask, _cn_b, float(cfg_scale)
+                ),
+                z_b,
+                model.cutoff,
+                bond_length_guidance_weight,
+                node_mask,
+            )
+
+            solver = ODESolver(
+                velocity_model=_vf_pad, method=str(method), n_steps=int(n_steps)
+            )
+            x1 = solver.sample(x0, method=str(method), n_steps=int(n_steps))
+            for i, g in enumerate(group):
+                n_i = int(g.atomic_numbers.shape[0])
+                out.append(
+                    AtomCloud(
+                        positions=x1[i, :n_i].detach().cpu(),
+                        atomic_numbers=g.atomic_numbers.cpu(),
+                        metal_atom_index=_carry_metal_index(g),
+                    )
+                )
+            del x0, x1, z_b, node_mask
     if pad_buckets and was_training:
         model.train()
     if pad_buckets:
@@ -8179,22 +8281,9 @@ def generate_clouds_from_noise(
             # is a no-op and the Wf-A74 sampling path is bit-exact
             # preserved.  See ``_BondLengthGuidance`` for the chemistry
             # table + per-pair spring force.
-            _blg_weight = float(bond_length_guidance_weight or 0.0)
-            if _blg_weight > 0.0:
-                from molmetal.adapters.flow_matching_lipman import (
-                    _BondLengthGuidance,
-                )
-                _blg = _BondLengthGuidance(
-                    atom_types=z_b,
-                    cutoff=float(model.cutoff),
-                    guidance_weight=_blg_weight,
-                )
-
-                def _vf_with_guidance(x, t, _vf_in=_vf, _blg_in=_blg):
-                    return _vf_in(x, t) + _blg_in(x)
-                _vf_used = _vf_with_guidance
-            else:
-                _vf_used = _vf
+            _vf_used = _with_bond_length_guidance(
+                _vf, z_b, model.cutoff, bond_length_guidance_weight, node_mask
+            )
 
             solver = ODESolver(
                 velocity_model=_vf_used, method=str(method), n_steps=int(n_steps)
@@ -11280,6 +11369,36 @@ def parse_args() -> argparse.Namespace:
             "existence-positive pairs only.  Anchored to PepForge B.3 "
             "+ GraViti B.3 (no inverse-freq weights).  See "
             "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::SplitBondHead."
+        ),
+    )
+    p.add_argument(
+        "--bond-clash-reject",
+        dest="bond_clash_reject",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Wf-A113 (2026-10-27): drop candidate pairs whose UNCLAMPED "
+            "distance is below ratio*(r_i+r_j), Cordero radii. Default ON. "
+            "Before this, the 1.0 A distance clamp ran before the cutoff "
+            "test, so two collapsed atoms became a pair at exactly 1.0 A and "
+            "landed in the is_short cell the head reads as 'bond'. MEASURED: "
+            "on real tmQM the predicate rejects 0 pairs; on the 24 generated "
+            "clouds of cfm_generated_geometry_defect.json it rejects all 143 "
+            "hard-clash pairs. Turn OFF only to reproduce a pre-A113 decode."
+        ),
+    )
+    p.add_argument(
+        "--bond-clash-ratio",
+        dest="bond_clash_ratio",
+        type=float,
+        default=0.7,
+        help=(
+            "Wf-A113 (2026-10-27): the collapse threshold as a fraction of "
+            "the summed covalent radii. 0.7 is the same definition "
+            "cfm_generated_geometry_defect.json used for hard_clash. Do not "
+            "raise it to make the generation side look better: the "
+            "no-false-reject gate is measured on real tmQM, where 0.7 "
+            "already rejects nothing."
         ),
     )
     p.add_argument(
@@ -14420,6 +14539,13 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         # metal-detection rule.
         bond_z_metal_set=str(getattr(args, "bond_z_metal_set", "all7")),
         bond_z_table=str(getattr(args, "bond_z_table", "pt")),
+        # Wf-A113 (2026-10-27) — the collapse rule.  Read through getattr so a
+        # checkpoint written before these flags existed rebuilds with the same
+        # defaults its trainer used (ON / 0.7), not with a silent off.
+        bond_clash_reject=bool(getattr(args, "bond_clash_reject", True)),
+        bond_clash_ratio=float(
+            getattr(args, "bond_clash_ratio", DEFAULT_BOND_CLASH_RATIO)
+        ),
         # Wf-A69 W2 (2026-10-17) Fix 3 — split-head topology.
         # Default ``"single"`` is bit-exact Wf-A67/68/W1.
         bond_head_kind=str(getattr(args, "bond_head_kind", "single")),
@@ -17159,6 +17285,16 @@ def main() -> int:
                     "PASS. Read molecule_validity for the single-fragment + "
                     "seed-metal predicate."
                 )
+                # Wf-A113 (2026-10-27) — the candidate-set rule this epoch
+                # was DECODED under.  Recorded on every epoch, not only when
+                # the pool is written, because a reader comparing two pools
+                # needs to know whether they even scored the same edge list.
+                _gen_chem["bond_clash_reject"] = bool(
+                    getattr(model.head, "clash_reject", True)
+                )
+                _gen_chem["bond_clash_ratio"] = float(
+                    getattr(model.head, "clash_ratio", DEFAULT_BOND_CLASH_RATIO)
+                )
                 _gen_chem["n_decode_error"] = int(_gen_errs)
                 if _gen_first_err:
                     _gen_chem["decode_error_example"] = _gen_first_err
@@ -18315,6 +18451,18 @@ def main() -> int:
                 ),
                 "metal_placement": str(
                     getattr(args, "metal_placement", "bonded")
+                ),
+                # Wf-A113 (2026-10-27) — the candidate-set rule.  This is the
+                # FIRST feature-schema entry that changes which PAIRS exist
+                # rather than how an existing pair is featurised: a decode
+                # with clash_reject on and one with it off do not even score
+                # the same edge list, so a reader must be able to tell which
+                # one produced a checkpoint.
+                "bond_clash_reject": bool(
+                    getattr(model.head, "clash_reject", True)
+                ),
+                "bond_clash_ratio": float(
+                    getattr(model.head, "clash_ratio", DEFAULT_BOND_CLASH_RATIO)
                 ),
             }
             _ckpt_state_a30 = {

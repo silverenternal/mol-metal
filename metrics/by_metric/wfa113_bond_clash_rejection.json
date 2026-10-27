@@ -1,0 +1,74 @@
+{
+ "metric": "wfa113_bond_clash_rejection",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T48: the candidate-distance clamp ran before the cutoff test, so two collapsed atoms became a pair at exactly 1.0 A and entered the is_short cell the head learned to read as a bond. This records what the new predicate rejects on real geometry, on the synthetic collapse, and at the two distances cfm_generated_geometry_defect.json measured.",
+ "artifact_for": "todo.json SA-28 / D48 / T48",
+ "code_change": [
+  "yuelbond_decoder.py: _CORDERO_RCOV + pair_collapse_mask(); mask is now `d_raw < cutoff` (clamp kept for features only); all three forwards drop collapsed pairs",
+  "train_cfm_yuelbond_wasserstein.py: --bond-clash-reject (default ON) / --bond-clash-ratio (default 0.7); threaded into CFMJointModel and all four head classes",
+  "feature schema gains bond_clash_reject / bond_clash_ratio; the per-epoch generation block gains the same two keys",
+  "YuelBondDecodeResult gains clash_rejected_pairs, populated on both the normal and the empty-edge return"
+ ],
+ "radius_table": {
+  "source": "Cordero et al. 2008, copied from molmetal/scripts/wf_blkc_l3_guidance_probe.py::RCOV",
+  "why_copied_not_imported": "a library module must not import a script; a test asserts the two dicts are equal",
+  "unknown_element_radius": 1.3,
+  "note": "deliberately generous: an unknown element is rejected less often, which fails toward keeping a candidate"
+ },
+ "measurements": {
+  "real_tmqm": {
+   "clouds": 8,
+   "candidate_pairs_rejected": 0,
+   "heads": [
+    "YuelBondDecoderHead",
+    "YuelBondEdgeMPNNHead"
+   ],
+   "result": "PASS (no_false_reject)"
+  },
+  "synthetic_collapse": {
+   "cloud": "3 carbons at 0.0 / 0.4 / 0.8 A (all three pairs inside the 3.5 A cutoff)",
+   "rule_on": {
+    "edges": 0,
+    "rejected": 3
+   },
+   "rule_off": {
+    "edges": 3,
+    "rejected": 0,
+    "clamped_distance": 1.0,
+    "is_short": true
+   },
+   "decode_rule_on": {
+    "bonds": 0,
+    "bridges": 0,
+    "clash_rejected_pairs": 3
+   },
+   "decode_rule_off_with_prior": {
+    "bonds": 2,
+    "smiles": "CCC"
+   },
+   "result": "PASS (no_ring3_from_clash)",
+   "note": "the rule-off row is the pre-A113 behaviour: a 0.4 A contact decoded as a C-C bond, and the connectivity prior chained two of them into CCC"
+  },
+  "artifact_mean_distances": [
+   {
+    "pair": "C-C",
+    "d": 0.5702152846818632,
+    "source": "cfm_generated_geometry_defect.json generated_mean",
+    "rejected": true
+   },
+   {
+    "pair": "C-C",
+    "d": 1.171822339266011,
+    "source": "cfm_generated_geometry_defect.json real_mean",
+    "rejected": false
+   }
+  ]
+ },
+ "not_measured": {
+  "the_143_generated_pairs": "cfm_generated_geometry_defect.json counted 143 hard-clash pairs on 24 generated clouds that were never written to disk, so they cannot be replayed. The predicate is pinned at the artifact's two measured means instead, and the population check stays UNMEASURED.",
+  "effect_on_a_shipped_pool": "needs a re-decode against a checkpoint (T29). Not inferred from the synthetic case."
+ },
+ "regression_guard": "restoring `mask = d < self.cutoff` or dropping the collapse term turns test_collapsed_triangle_loses_every_pair / test_real_tmqm_clouds_lose_no_candidate red",
+ "tests": "molmetal/tests/test_wfa113_bond_clash_rejection.py"
+}

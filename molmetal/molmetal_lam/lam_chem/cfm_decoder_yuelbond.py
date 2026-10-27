@@ -512,6 +512,11 @@ class YuelBondDecodeResult:
     bonds_accepted: int = 0
     bonds_rejected_overvalent: int = 0
     bonds_added_connectivity: int = 0
+    #: Wf-A113 (2026-10-27) — candidate pairs the bond head dropped because
+    #: their UNCLAMPED distance was below ``clash_ratio*(r_i+r_j)``.  Reported
+    #: here rather than left on the head so a generated pool can record the
+    #: effect of the rule instead of asserting it worked.
+    clash_rejected_pairs: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -802,6 +807,16 @@ class YuelBondBondDecoder:
             bonds_accepted=n_kept + n_bridges,
             bonds_rejected_overvalent=n_overvalent,
             bonds_added_connectivity=n_bridges,
+            # Wf-A113 — read from the head that produced yres.  A head that
+            # does not implement the rule reports 0, which is the truth for a
+            # pre-A113 checkpoint loaded with clash_reject off.
+            clash_rejected_pairs=int(
+                getattr(
+                    getattr(self._decoder, "head", None),
+                    "last_clash_rejected_pairs",
+                    0,
+                )
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -1382,6 +1397,18 @@ class YuelBondBondDecoder:
             yuelbond_result=yres,
             bonds_accepted=0,
             bonds_rejected_overvalent=0,
+            # Wf-A113 — this early return is the case the collapse rule
+            # CREATES: a cloud whose every pair was rejected has an empty
+            # edge list, so it lands here with ``decode_succeeded=False`` and
+            # ``reason="empty_or_failed"``.  Reporting 0 there would hide the
+            # rule exactly where it fired hardest.
+            clash_rejected_pairs=int(
+                getattr(
+                    getattr(self._decoder, "head", None),
+                    "last_clash_rejected_pairs",
+                    0,
+                )
+            ),
         )
 
     # ------------------------------------------------------------------

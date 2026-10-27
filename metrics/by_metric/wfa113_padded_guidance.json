@@ -1,0 +1,45 @@
+{
+ "metric": "wfa113_padded_guidance",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T44 (SA-24): the padded sampling branch never read bond_length_guidance_weight, so pad_groups:on sampled without the term while pad_groups:off sampled with it, silently. T37: the same branch ran without torch.no_grad while the grouped branch had it.",
+ "artifact_for": "todo.json SA-24 / D44 / T44 + T37",
+ "code_change": [
+  "_BondLengthGuidance gains node_mask; radius_edge_index is called with it instead of None",
+  "trainer: _with_bond_length_guidance() is now the ONE place the wrapper is built; both branches call it",
+  "the padded loop body is wrapped in torch.no_grad()"
+ ],
+ "measurements": {
+  "guidance_constructed_padded_branch": {
+   "calls": 1,
+   "weight": 0.1,
+   "result": "PASS"
+  },
+  "guidance_constructed_grouped_branch": {
+   "calls": 1,
+   "weight": 0.1,
+   "result": "PASS"
+  },
+  "padding_does_not_leak": {
+   "setup": "6 real atoms + 3 padding atoms placed INSIDE the cutoff of the real ones",
+   "measured": "real-atom guidance force identical with and without the padding present (atol 1e-6); padding atoms receive exactly zero",
+   "result": "PASS"
+  },
+  "grad_disabled": {
+   "padded": true,
+   "grouped": true,
+   "result": "PASS"
+  }
+ },
+ "red_check": {
+  "method": "temporarily reverted each fix and re-ran the file",
+  "revert_mask_to_None": "1 failed (test_guidance_does_not_leak_padding)",
+  "revert_padded_branch": "2 failed (constructs_the_guidance, runs_without_grad)"
+ },
+ "honest_limits": [
+  "The equivalence is measured at the VELOCITY level on the real atoms, not as an end-to-end coordinate comparison. The two paths draw their noise from torch.randn calls of different shapes, so a coordinate comparison needs an injected x0 the sampler does not expose.",
+  "test_cfm_pad_groups_equivalence.py's docstring claimed it compared generated coordinates between the two paths; it never did. The claim is corrected in that file and the gap is recorded here rather than closed.",
+  "No GPU run. The no_grad change reduces peak memory but no number here quantifies by how much."
+ ],
+ "tests": "molmetal/tests/test_wfa113_padded_guidance.py"
+}

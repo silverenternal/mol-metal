@@ -107,3 +107,42 @@ def test_n_train_zero_means_every_row():
     assert len(out_neg) == len(rows)
     capped = trainer._stratified_row_sample(rows, 4, seed=0)
     assert len(capped) == 4
+
+
+# ---------------------------------------------------------------------------
+# Wf-A113 (2026-10-27) / T47 — the metal set is ONE definition, and it has Pt
+# ---------------------------------------------------------------------------
+
+
+def test_pt_only_decode_counts_as_containing_metal():
+    """MEASURED defect this pins: ``metal_z`` was a hand-written
+    ``{44, 45, 75, 76, 77}`` that omitted Pt (78), so a Pt-only decode scored
+    ``decode_metal_ratio = 0.0`` — "no metal" for the metal the project is
+    named after — and ``wf_a53_eval_cfm_test_split`` re-published that number
+    under the bare name ``metal_ratio``.
+    """
+    pytest.importorskip("rdkit")
+    out = trainer._decoded_smiles_stats(["[Pt](N)(N)(Cl)Cl"])
+    assert out["decode_n_with_metal"] == 1.0
+    assert out["decode_metal_ratio"] == 1.0
+
+
+def test_metal_cohort_is_the_target_cohort_and_is_reported():
+    """The cohort is ``_TARGET_METALS``, and it travels with the number."""
+    pytest.importorskip("rdkit")
+    out = trainer._decoded_smiles_stats(["[Pt](N)(N)(Cl)Cl", "CCO"])
+    assert out["decode_metal_cohort"] == sorted(trainer._TARGET_METALS)
+    assert 78 in out["decode_metal_cohort"]
+    empty = trainer._decoded_smiles_stats([])
+    assert empty["decode_metal_cohort"] == sorted(trainer._TARGET_METALS)
+
+
+def test_no_five_element_metal_literal_remains_in_the_trainer():
+    """A second literal would re-create the divergence silently."""
+    src = (
+        _REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
+    ).read_text(encoding="utf-8")
+    for literal in ("{44, 45, 75, 76, 77}", "{44,45,75,76,77}"):
+        assert literal not in src, (
+            f"{literal} is a 5-metal set without Pt; use _TARGET_METALS"
+        )
