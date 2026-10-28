@@ -12521,8 +12521,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--tmqm-coord-number",
         type=int,
-        default=4,
-        help="Coordination number filter (4 = square-planar; 6 = octahedral). -1 = any.",
+        default=-1,
+        help=(
+            "Coordination-number filter on the tmQM cohort: keep only "
+            "complexes whose tmQM coord_number EQUALS this value. -1 "
+            "(default) = no filter.  Wf-A113 (T73, 2026-10-28): the default "
+            "used to be 4, which is a FILTER, not a target.  Every one of the "
+            "14 tmqm configs on disk overrides it to -1, so nothing measured "
+            "changed -- but a new config that forgot the key would have "
+            "silently kept only four-coordinate complexes, and by the corpus "
+            "that is 81.8% of Pt against 0.3% of Ru (28/9,800), i.e. a "
+            "'five-metal' cohort that is one metal.  Same footgun as the "
+            "n_train=256 default in T67; a filter's default must be 'off'."
+        ),
     )
     # Wf-A41-fixup-1 (2026-10-15) C11 fix — `--tmqm-min-per-metal` dest.
     # The 2026-10-12 zero-Pt finding patched `load_tmqm_clouds(min_per_metal=...)`
@@ -15660,7 +15671,7 @@ def main() -> int:
         _tmqm_metals = [s.strip() for s in _candidate if isinstance(s, str) and s.strip()]
         if not _tmqm_metals:
             _tmqm_metals = ["Pt"]
-        _cn = int(getattr(args, "tmqm_coord_number", 4))
+        _cn = int(getattr(args, "tmqm_coord_number", -1))
         # 2026-10-04 — DISJOINT split.  Calling this twice with different
         # seeds LEAKS: MEASURED, the val candidate pool (160) was a strict
         # subset of the train pool (480), 160/160, because both stream from

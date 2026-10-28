@@ -3663,6 +3663,31 @@
         "molmetal/tests/test_wfa113_t72_metal_coordination_cap.py",
         "molmetal/tests/test_cfm_yuelbond.py"
       ]
+    },
+    {
+      "id": "T73",
+      "priority": 1,
+      "title": "--tmqm-coord-number 默认 4 是一个精确过滤：新 config 忘了写这一键就只剩 83.4% Pt / 0.34% Ru",
+      "what": "tmqm_clouds.py:1034 对 coord_number 做的是精确相等过滤，不是目标值。trainer 的 argparse 默认是 4，而语料里 CN=4 的 Ru 只有 28/9800。14 个 dataset: tmqm 的 config 全都显式写了 -1，所以已测数字没变；但默认值本身是 T67 同款陷阱（默认 n_train=256 → 纯 Re）。处理：默认改 -1，并加测试要求每个 tmqm config 显式声明该键。",
+      "addresses": [
+        "D73"
+      ],
+      "done_when": "parse_args([]) 的 tmqm_coord_number 为 -1；所有 dataset: tmqm 的 config 都显式声明该键。",
+      "gate": {
+        "default_off": "parse_args([]) -> -1",
+        "configs_declare": "14/14 个 tmqm config 显式写该键",
+        "measured": "CN=4 队列 Pt 83.37% / Ru 0.34%；不过滤 Pt 24.75% / Ru 29.32%"
+      },
+      "kill": "若将来把该键改成区间过滤（min/max CN），删除本条 gate 并重写语义。",
+      "device": "cpu",
+      "cost": "CPU 0.1 h",
+      "status": "FIXED",
+      "evidence": "metrics/by_metric/wfa113_t73_cohort_filter.json",
+      "files": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+        "molmetal/scripts/wfa113_t73_cohort_filter_probe.py",
+        "molmetal/tests/test_wfa113_t73_coord_number_default.py"
+      ]
     }
   ],
   "acceptance": {
@@ -4583,6 +4608,15 @@
         "impact": "对 30% 的 cloud，解码器无论 bond head 预测得多准都无法拼出正确分子；η6 配合物必然断成多片段，molecule_validity 恒为 False。这是「解码率 1.000 但单片段率 0.203」的一个结构性来源。",
         "status": "FIXED",
         "task": "T72"
+      },
+      {
+        "id": "SA-47",
+        "finding": "tmQM 队列的配位数过滤默认值是 4，而它是精确相等过滤：一个没写 tmqm_coord_number 的 config 会得到 83.4% Pt、0.34% Ru 的「五金属」队列。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::--tmqm-coord-number + molmetal/data/tmqm_clouds.py:1034 + molmetal/scripts/wfa113_t73_cohort_filter_probe.py",
+        "measured": "tmqm_parsed.csv 33,429 行：CN=4 过滤后 8,118 行，Pt 83.37% / Rh 11.76% / Ir 3.84% / Os 0.37% / Ru 0.34% / Re 0.31%；不过滤 Pt 24.75% / Ru 29.32% / Ir 15.65% / Rh 13.88% / Re 12.48% / Os 3.92%。",
+        "impact": "与 T67（默认 n_train=256 → 纯 Re）、T71（Pt-only 词表）同族：一个「默认值」把队列悄悄变成单金属，而所有下游指标照常产出。当前 14 个 tmqm config 都写了 -1，所以历史数字不受影响；风险在于新 config。",
+        "status": "FIXED",
+        "task": "T73"
       }
     ],
     "reproduce": [
