@@ -3688,6 +3688,29 @@
         "molmetal/scripts/wfa113_t73_cohort_filter_probe.py",
         "molmetal/tests/test_wfa113_t73_coord_number_default.py"
       ]
+    },
+    {
+      "id": "T74",
+      "priority": 1,
+      "title": "生成半程只生成坐标，不生成组成：templates 取自 val cloud，原子类型原样拷贝，所以「新分子」只可能是已知组成的另一个构象",
+      "what": "generate_clouds_from_noise 的 docstring 与代码一致：每个 template 只提供 composition 与原子数，坐标从噪声重画；返回的 AtomCloud 用 g.atomic_numbers。CFMJointModel 里没有任何原子类型头（2400-3900 行内无 atom_logits / sample_atom）。evaluate_generation_validity 的 templates=val_clouds_d，template_offset 只是在 val 集内滑动。因此生成池的每个样本与某个 val cloud 同组成，novelty 在组成层面恒为 0，n_distinct 只能反映键图差异。需要决定：把叙事限定为「给定组成的构象/键图生成」，或增加一个等变分类流（atom-type flow）把组成也生成出来。",
+      "addresses": [
+        "D74"
+      ],
+      "done_when": "要么论文与 docs/00_MODEL_NARRATIVE.md 明确写成 composition-conditioned 并给出该口径下的指标；要么实现 atom-type flow 并有 n≥1000 的组成新颖性测量。",
+      "gate": {
+        "doc_scope": "文档与 config 注释写明 composition-conditioned",
+        "or_flow": "若实现 atom-type flow，须给出 novel-composition 比例与 RDKit validity"
+      },
+      "kill": "若确认长期只做构象生成，删除本条的 or_flow 分支，并在 data card 里写明。",
+      "device": "cpu",
+      "cost": "决策 0.5 h；实现 atom-type flow 另计",
+      "status": "PLANNED",
+      "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::generate_clouds_from_noise + evaluate_generation_validity",
+      "files": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+        "docs/00_MODEL_NARRATIVE.md"
+      ]
     }
   ],
   "acceptance": {
@@ -4617,6 +4640,15 @@
         "impact": "与 T67（默认 n_train=256 → 纯 Re）、T71（Pt-only 词表）同族：一个「默认值」把队列悄悄变成单金属，而所有下游指标照常产出。当前 14 个 tmqm config 都写了 -1，所以历史数字不受影响；风险在于新 config。",
         "status": "FIXED",
         "task": "T73"
+      },
+      {
+        "id": "SA-48",
+        "finding": "生成半程是 composition-conditioned：templates 来自 val cloud，原子类型直接拷贝，模型没有原子类型头。组成层面不可能产生新分子。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::generate_clouds_from_noise(8240) / evaluate_generation_validity(8831)",
+        "measured": "代码事实：AtomCloud(positions=x1, atomic_numbers=g.atomic_numbers)（两处分支均如此）；pool = _all[_off:_off+n]，_all=val_clouds_d；2400-3900 行内无 atom-type logits。",
+        "impact": "「生成模型」在组成维度上是检索而不是生成；novelty / diversity 指标只反映同一组成的键图与构象差异。这不是 bug，是口径问题，但如果不写清楚，论文的生成主张会被审稿人按 de novo 读。",
+        "status": "OPEN",
+        "task": "T74"
       }
     ],
     "reproduce": [
