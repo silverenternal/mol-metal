@@ -10890,6 +10890,28 @@ def build_csv_cohort(
             else:
                 ox_val = None
             rows.append((smi, metal_str, ox_val))
+    # Wf-A113 (T64, 2026-10-28) — deduplicate by (ligand SMILES, metal).
+    #
+    # The corpus stores one row per (complex, cell line) measurement:
+    # MEASURED 26,632 rows but only 7,011 distinct (SMILES, Metal, split) keys,
+    # and the train split has 18,137 rows against 4,786 distinct complexes with
+    # one compound appearing 403 times.  That is correct for a toxicity model,
+    # where the duplicates carry different labels, and it is a weighting
+    # artefact for a generative one: the same 3D structure is drawn again and
+    # again, so the flow-matching loss is dominated by whichever scaffold was
+    # assayed the most.  Deduplicate before sampling, keeping first occurrence
+    # so the seeded shuffle stays predictable.
+    _seen_keys: set = set()
+    _deduped: List[Tuple[str, str, Optional[int]]] = []
+    for _r in rows:
+        _key = (_r[0], _r[1])
+        if _key in _seen_keys:
+            continue
+        _seen_keys.add(_key)
+        _deduped.append(_r)
+    n_duplicate_rows = len(rows) - len(_deduped)
+    rows = _deduped
+
     if n_clouds is not None:
         # Wf-A89 — proportional, seeded selection.  The CSV is grouped by
         # metal, so a plain prefix is a single-metal cohort (see
@@ -10954,6 +10976,7 @@ def build_csv_cohort(
     print(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
+        f"deduped {n_duplicate_rows} duplicate row(s); "
         f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable + "
         f"{n_fragment_fail} un-separable + {n_no_ligand} no-ligand; "
         f"filtered {n_skipped_no_smiles_col} no-smiles-col + "

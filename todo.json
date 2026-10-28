@@ -1630,7 +1630,7 @@
    "addressed_by": [
     "T64"
    ],
-   "status": "OPEN"
+   "status": "ADDRESSED"
   }
  ],
  "modules": [
@@ -3445,10 +3445,18 @@
    "kill": "若去重后 train split 的配合物数少于 4,000（说明重复行本身就是不同配合物的唯一记录），则不改，改为在数据卡里写明。",
    "device": "cpu",
    "cost": "CPU 0.5 h",
-   "status": "PLANNED",
+   "status": "DONE",
    "evidence": [
     "metrics/by_metric/wfa113_t60_donor_count.json"
-   ]
+   ],
+   "result": "build_csv_cohort 在抽样前按 (SMILES_Ligands, Metal) 去重，保留首次出现，并在 cohort 摘要里打印 deduped N duplicate row(s)。实测：train split 18,137 行去掉 13,351 行重复，剩 4,786 个配合物；n=64 时 64 个 cloud 全不相同（原来 63-64）；n=400 时 399 个 cloud 里 392 个不同 SMILES（原来 363）。去重改变每个金属的配额（n=400 时 Ru 275 -> 263），因为原来的配额是按行数分的。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "tests": "molmetal/tests/test_wfa113_t64_dedup.py",
+   "gate_result": {
+    "measured": "PASS — 13,351 行重复被去掉，4,786 个配合物保留",
+    "decision": "PASS — 采用去重（生成模型按结构计权，不按测量次数计权）"
+   },
+   "decision": "去重。理由：这一条线是生成模型，同一个 3D 结构重复出现只是把 flow-matching 损失向被测定次数最多的骨架加权；重复行只对毒性预测有意义，而 CFM 不读 activity 列。代价是每个金属的配额按配合物数重算，与按行数分的老队列不完全同分布。"
   }
  ],
  "acceptance": {
