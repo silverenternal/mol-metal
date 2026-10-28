@@ -1,0 +1,76 @@
+{
+ "metric": "wfa113_t57_fragment_layout",
+ "tag": "MEASURED",
+ "date": "2026-10-28",
+ "config": "configs/wfa108l_geom_smoke_2026_10_25.yaml",
+ "cohort": "400 clouds of metalcytotox_5metal_multitask_v3.csv, split=train, metal_placement=bonded",
+ "device": "cpu",
+ "probe": "molmetal/scripts/wfa113_t57_fragment_layout_probe.py",
+ "defects": {
+  "T57": {
+   "code": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py :: build_cloud_from_csv_row (no fragment separation)",
+   "mechanism": "RDKit EmbedMolecule embeds each disconnected fragment independently and translates them all to the same point. Two waters of identical topology get the SAME conformer at the SAME coordinates; [OH2]x6.[Ru] puts six oxygens on one point and the twelve hydrogens in six coincident pairs.",
+   "fix": "molmetal/data/fragment_layout.py::separate_fragments keeps the largest fragment and the metal's fragment fixed, then translates each other fragment along a deterministic Fibonacci direction until its closest contact with the placed atoms is >= 2.0 A."
+  },
+  "T58": {
+   "code": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py :: _place_metal_at_donor (heavy-only clearance set)",
+   "mechanism": "The metal was pushed along donor-minus-centroid until every HEAVY atom was >= 1.2 A away, with hydrogens excluded. A C-H or N-H sits exactly where 'straight out from the donor' lands, so the metal was placed on top of it. Pushing further out also walked the metal beyond the 2.6 A dative cutoff, leaving 21 clouds with a metal bonded to nothing.",
+   "fix": "_place_metal_at_donor now tests clearance against every atom (hydrogens included) and, when the straight-out position is blocked, searches tilted directions at the SAME 2.05 A bond length before falling back to pushing outward."
+  }
+ },
+ "before": {
+  "n_clouds": 399,
+  "n_metal_clouds": 399,
+  "coincident_pairs": 8782,
+  "clouds_with_coincident_atoms": 327,
+  "clouds_with_coincident_fraction": 0.8195488721804511,
+  "nonbonded_min_median_A": 0.0,
+  "nonbonded_min_p10_A": 0.0,
+  "nonbonded_min_A": 0.0,
+  "nonbonded_below_1A": 375,
+  "metal_h_min_median_A": 1.3525997400283813,
+  "metal_h_min_p10_A": 0.7603501081466675,
+  "metal_h_min_A": 0.1518937349319458,
+  "metal_h_below_1p17A": 104,
+  "metal_h_below_1p17A_fraction": 0.2606516290726817,
+  "dative_per_cloud_mean": 2.3734335899353027,
+  "clouds_with_zero_dative": 28
+ },
+ "after": {
+  "n_clouds": 399,
+  "n_metal_clouds": 399,
+  "coincident_pairs": 0,
+  "clouds_with_coincident_atoms": 0,
+  "clouds_with_coincident_fraction": 0.0,
+  "nonbonded_min_median_A": 1.4409700632095337,
+  "nonbonded_min_p10_A": 1.2241333723068237,
+  "nonbonded_min_A": 1.2003566026687622,
+  "nonbonded_below_1A": 0,
+  "metal_h_min_median_A": 1.4409700632095337,
+  "metal_h_min_p10_A": 1.2433797121047974,
+  "metal_h_min_A": 1.2003580331802368,
+  "metal_h_below_1p17A": 0,
+  "metal_h_below_1p17A_fraction": 0.0,
+  "dative_per_cloud_mean": 1.493734359741211,
+  "clouds_with_zero_dative": 0
+ },
+ "honest_limits": [
+  "The separated solvent layout is not physical: a solvent molecule's position in a crystal is a fact about the crystal, and this loader has no crystal. The claim is only that the layout no longer teaches the model that atoms overlap.",
+  "The 2.0 A inter-fragment clearance and the 1.2 A metal clearance are chosen, not fitted. 1.2 A is above the geometry term's M-H clash threshold (0.7 * (1.36 + 0.31) = 1.17 A) so the truth stops being a clash at the same threshold the loss uses.",
+  "nonbonded_min is measured against the full RDKit bond set with explicit hydrogens; the trainer's own bond graph drops H bonds, so an O-H at 0.96 A is a bond there and is not counted as a clash here.",
+  "The dative target is capped at 3 per metal and lands at 1.49 per complex on this cohort (T59). Fragment separation and metal placement fix the GEOMETRY; they do not fix how many M-L edges the loader believes exist."
+ ],
+ "dative_target": {
+  "note": "Measured on the same 399 clouds AFTER the fix. The metal-donor target is capped at dative_top_k_cap = 3 in build_cloud_from_row, and the post-placement 2.6 A filter cuts it further. The result is a bond head trained to predict 1.49 M-L edges per complex, on a cohort of Ru/Ir/Os/Re/Rh complexes that are 4- and 6-coordinate.",
+  "histogram_dative_per_cloud": {
+   "1": 228,
+   "2": 149,
+   "3": 18,
+   "4": 4
+  },
+  "total_dative_edges": 596,
+  "mean_per_cloud": 1.4937,
+  "cap": 3,
+  "status": "OPEN \u2014 recorded as T59, not changed here: the cap moves every archived bond-head target and needs a decision, not a silent edit."
+ }
+}

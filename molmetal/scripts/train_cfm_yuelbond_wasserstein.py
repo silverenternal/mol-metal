@@ -10300,9 +10300,17 @@ def _place_metal_at_donor(
 
     The direction is ``donor - heavy_atom_centroid``: outward, away from the
     ligand body.  The metal is placed ``bond_length`` along it, then pushed
-    outward in ``step`` increments until every OTHER heavy atom is at least
-    ``min_clearance`` away.  Returns ``(positions, clearance_ok)``; the input
-    tensor is not mutated.
+    outward in ``step`` increments until every OTHER ATOM — hydrogens
+    included — is at least ``min_clearance`` away.  Returns
+    ``(positions, clearance_ok)``; the input tensor is not mutated.
+
+    Wf-A113 (T58, 2026-10-28) — hydrogens used to be excluded from the
+    clearance set (``heavy = z != 1``), so the metal could be pushed straight
+    onto a C-H hydrogen.  MEASURED on 397 clouds of the 5-metal cohort:
+    237 (59.7%) had the metal within 1.5 A of an H, p10 = 0.765 A, min =
+    0.143 A.  The clearance is 1.2 A, which is above the geometry term's
+    clash threshold for M-H (0.7 * (1.36 + 0.31) = 1.17 A), so the truth
+    geometry stops being a clash while the threshold stays the same.
 
     Why not just use the donor centroid?  For a monodentate ligand the donor
     centroid IS the donor, and for a chelate it is inside the ligand — the
@@ -10315,6 +10323,12 @@ def _place_metal_at_donor(
     heavy = heavy.clone()
     heavy[int(metal_idx)] = False
     heavy[int(donor_idx)] = False
+    # Wf-A113 (T58) — the centroid stays HEAVY-only (a hydrogen cloud would
+    # drag it toward whatever is protonated), but the clearance set below is
+    # every atom, because an overlap with a hydrogen is an overlap.
+    others_mask = torch.ones_like(heavy)
+    others_mask[int(metal_idx)] = False
+    others_mask[int(donor_idx)] = False
     if int(heavy.sum().item()) > 0:
         centroid = p[heavy].mean(dim=0)
     else:
@@ -10323,15 +10337,54 @@ def _place_metal_at_donor(
     if float(u.norm().item()) < 1e-6:
         u = torch.tensor([1.0, 0.0, 0.0], dtype=p.dtype, device=p.device)
     u = u / u.norm()
-    candidate = d + float(bond_length) * u
-    others = p[heavy]
-    for _ in range(int(max_steps)):
+    others = p[others_mask]
+
+    def _clears(cand: torch.Tensor) -> bool:
         if int(others.shape[0]) == 0:
+            return True
+        return float((others - cand).norm(dim=-1).min().item()) >= float(min_clearance)
+
+    # 1) straight out at the exact bond length.
+    candidate = d + float(bond_length) * u
+    if _clears(candidate):
+        p[int(metal_idx)] = candidate
+        return p, True
+
+    # 2) tilted at the SAME bond length.  A C-H or N-H sits on the periphery
+    #    exactly where "straight out" lands, so pushing further along u is
+    #    the wrong move: it also walks the metal out of the dative cutoff.
+    #    MEASURED before this branch: pushing out took the mean dative bonds
+    #    per cloud from 1.35 to 1.16 and clouds with NO dative bond from 21
+    #    to 89.  Tilting keeps |M-L| = bond_length and finds a free cone.
+    _axis = (
+        torch.tensor([0.0, 0.0, 1.0], dtype=p.dtype, device=p.device)
+        if abs(float(u[2].item())) < 0.9
+        else torch.tensor([1.0, 0.0, 0.0], dtype=p.dtype, device=p.device)
+    )
+    _e1 = torch.cross(u, _axis, dim=0)
+    _e1 = _e1 / _e1.norm()
+    _e2 = torch.cross(u, _e1, dim=0)
+    for _deg in (20.0, 35.0, 50.0, 65.0, 80.0):
+        _a = _deg * 3.141592653589793 / 180.0
+        _ca, _sa = float(torch.cos(torch.tensor(_a))), float(torch.sin(torch.tensor(_a)))
+        for _k in range(24):
+            _phi = 2.0 * 3.141592653589793 * float(_k) / 24.0
+            _v = _ca * u + _sa * (
+                float(torch.cos(torch.tensor(_phi))) * _e1
+                + float(torch.sin(torch.tensor(_phi))) * _e2
+            )
+            candidate = d + float(bond_length) * _v
+            if _clears(candidate):
+                p[int(metal_idx)] = candidate
+                return p, True
+
+    # 3) nothing clears at the bond length: fall back to pushing outward.
+    candidate = d + float(bond_length) * u
+    for _ in range(int(max_steps)):
+        if _clears(candidate):
             p[int(metal_idx)] = candidate
             return p, True
-        if float((others - candidate).norm(dim=-1).min().item()) >= float(min_clearance):
-            p[int(metal_idx)] = candidate
-            return p, True
+        candidate = candidate + float(step) * u
         candidate = candidate + float(step) * u
     p[int(metal_idx)] = candidate
     return p, False
@@ -10525,6 +10578,36 @@ def build_cloud_from_csv_row(
     z = torch.tensor(
         [int(a.GetAtomicNum()) for a in mol_h.GetAtoms()], dtype=torch.long
     )
+
+    # Wf-A113 (T57, 2026-10-28) — RDKit embeds each disconnected fragment
+    # independently and translates them all to the same point.  MEASURED:
+    # "[OH2]x6.[Ru]" gives six oxygens at IDENTICAL coordinates (min pair
+    # distance 0.0, embed status 0 = "success"), and 327 of 399 training
+    # clouds (82.0%) contained at least one such pair, 8,782 pairs in total.
+    # The FM objective was being trained to put solvent on top of the ligand,
+    # and the geometry term's clash value on GROUND-TRUTH geometry (0.807) was
+    # measuring this, not a term defect.  Separate before the dative distance
+    # filter below, which reads these positions.
+    #
+    # The metal's own fragment is pinned (keep_atom): ``bonded`` placement
+    # positions it immediately below, and moving it here would fight that.
+    try:
+        _frags = Chem.GetMolFrags(mol_h)
+        if len(_frags) > 1:
+            from molmetal.data.fragment_layout import separate_fragments
+
+            pos = separate_fragments(
+                pos,
+                _frags,
+                keep_atom=(int(metal_idx_in_mol) if metal_idx_in_mol >= 0 else None),
+            )
+    except Exception as _exc:  # noqa: BLE001 — row-level failure, counted
+        print(
+            f"[cfm-fragments][WARNING] separation failed for {smi[:60]!r}: "
+            f"{type(_exc).__name__}: {_exc}",
+            flush=True,
+        )
+        return (None, "fragment_separation_failed")
 
     # Wf-A68 (2026-10-17) — POST-embed 3D distance sanity check for dative
     # donor selection.  Filter the ranked dative_candidates by Euclidean
@@ -10804,6 +10887,10 @@ def build_csv_cohort(
     clouds: List[AtomCloud] = []
     n_parse_fail = 0
     n_embed_fail = 0
+    # Wf-A113 (T57) — a row whose disconnected fragments could not be
+    # separated is a different failure from an unparseable SMILES and must
+    # not be folded into that counter.
+    n_fragment_fail = 0
     n_no_metal = 0
     n_metal_unsupported = 0
     n_bond_graph_built = 0
@@ -10822,6 +10909,8 @@ def build_csv_cohort(
                 n_parse_fail += 1
             elif status == "embed_failed":
                 n_embed_fail += 1
+            elif status == "fragment_separation_failed":
+                n_fragment_fail += 1
             else:
                 n_parse_fail += 1
             continue
@@ -10848,7 +10937,8 @@ def build_csv_cohort(
     print(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
-        f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable; "
+        f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable + "
+        f"{n_fragment_fail} un-separable; "
         f"filtered {n_skipped_no_smiles_col} no-smiles-col + "
         f"{n_skipped_empty_smiles} empty-smiles; "
         f"metal: {len(clouds) - n_no_metal - n_metal_unsupported} inserted / "
