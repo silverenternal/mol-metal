@@ -2608,6 +2608,12 @@ class CFMJointModel(nn.Module):
         # Wf-A67/68/W1).  ``"all6"`` widens to 18 entries covering 6
         # precious metals but reshapes ``atom_encoder`` so existing
         # checkpoints won't round-trip.
+        #
+        # Wf-A113 (T71, 2026-10-28) — this parameter was never stored.  The
+        # head's vocabulary is the ``z_table`` tuple, resolved from
+        # ``yuelbond_vocab``, so a config saying ``bond_z_table: pt`` read as
+        # "the head uses the Pt table" while the flag decided it
+        # independently.  It is now a consistency check on that tuple.
         bond_z_table: str = "pt",
         # Wf-A113 (2026-10-27) — reject collapsed candidate pairs before the
         # 1.0 A clamp can read them as short bonds.  Default ON: on real
@@ -2879,6 +2885,23 @@ class CFMJointModel(nn.Module):
         self.z_dim = len(z_table)
         self.z_table = list(z_table)
         self.z_to_idx = {z: i for i, z in enumerate(z_table)}
+        # Wf-A113 (T71, 2026-10-28) — ``bond_z_table`` used to be accepted and
+        # dropped, so a config could ask for ``all6`` and silently get ``pt``.
+        # Compare it against the table the head actually receives.  ``"pt"``
+        # is the default and is not treated as a request, so a caller that
+        # passes a widened ``z_table`` without touching this kwarg is fine.
+        if str(bond_z_table).strip().lower() != "pt":
+            from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+                get_z_table as _gzt,
+            )
+
+            if tuple(_gzt(str(bond_z_table).strip().lower())) != tuple(z_table):
+                raise ValueError(
+                    f"bond_z_table={bond_z_table!r} contradicts the z_table the "
+                    f"head receives ({len(z_table)} entries).  The head's "
+                    "vocabulary is decided by `yuelbond_vocab`; this kwarg only "
+                    "checks agreement."
+                )
         # Single-layer velocity-field probe: maps per-atom features
         # to a 3-D velocity vector (Å/step) used as the Wasserstein
         # anchor.
@@ -14845,6 +14868,43 @@ def parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # Model factory (Wf-A82, 2026-10-18)
 # ---------------------------------------------------------------------------
+def _assert_vocab_covers_cohort(z_table, clouds, preset: str) -> None:
+    """Refuse to train when a cohort metal is outside the atom vocabulary.
+
+    Wf-A113 (T71, 2026-10-28).  ``z_to_onehot`` maps an unknown Z to index 0,
+    the padding slot, so a Pt-only table on a Ru/Ir/Os/Rh/Re cohort encodes
+    every metal as "no atom" without raising.  The ``atom_vocab_size`` guard
+    cannot catch it because the two tables have the same width (13 == 13).
+
+    Only d-block metals are checked.  An organic element outside the table is
+    a known, documented limitation (it shares the padding embedding with every
+    other OOV species) and would make the guard fire on almost every corpus.
+    """
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+        _METAL_SET_PRESETS as _MSP,
+    )
+
+    metal_z = set(int(z) for z in _MSP["all7"])
+    table_z = set(int(z) for z in z_table)
+    seen = set()
+    for c in clouds:
+        z = c.atomic_numbers
+        for zz in metal_z:
+            if bool((z == zz).any()):
+                seen.add(zz)
+    missing = sorted(seen - table_z)
+    if missing:
+        raise SystemExit(
+            f"yuelbond_vocab={preset!r} does not cover the cohort: Z {missing} "
+            f"appear in the clouds but are absent from the {len(table_z)}-entry "
+            "table.  z_to_onehot maps an unknown Z to index 0, the PADDING "
+            "slot, so the bond head would see every such metal as 'no atom' "
+            "(MEASURED: 64/64 metal atoms OOV and onehot(Ru) == onehot(pad) on "
+            "the cfm_5metal_default cohort).  Set `model.yuelbond_vocab: all6` "
+            "(or `flow.yuelbond_vocab`) for a non-Pt cohort."
+        )
+
+
 def build_joint_model(args, device=None) -> "CFMJointModel":
     """THE construction site for `CFMJointModel`.
 
@@ -15827,6 +15887,26 @@ def main() -> int:
         f"[cfm-vocab] preset={getattr(args, 'yuelbond_vocab', 'pt')} "
         f"({len(_z_table)} entries, metals in table: "
         f"{[z for z in _z_table if z in (78, 44, 77, 45, 76, 75)]})"
+    )
+    # Wf-A113 (T71, 2026-10-28) — the atom vocabulary must cover the cohort.
+    #
+    # ``z_to_onehot`` maps any Z that is not in the table to index 0, the
+    # PADDING slot (``yuelbond_decoder.py:282``).  With the default ``pt``
+    # preset (13 entries, only metal = Pt) a Ru/Ir/Os/Rh/Re cohort encodes
+    # every metal as padding, so ``YuelBondDecoderHead`` cannot tell which
+    # metal it is looking at — and the ``atom_vocab_size`` guard above passes
+    # because 13 == 13.
+    #
+    # MEASURED: on ``cfm_5metal_default``'s cohort 64/64 metal atoms are OOV
+    # and ``onehot(Ru) == onehot(pad)``; 52 of 54 audited configs pair a
+    # 5-metal cohort with the Pt-only table; that run's log line reads
+    # ``[cfm-vocab] preset=pt (13 entries, metals in table: [78])`` and its
+    # ``bond_exact_type_rate`` never leaves 0.000 over 30 epochs
+    # (metrics/by_metric/wfa113_t71_vocab.json).
+    _assert_vocab_covers_cohort(
+        _z_table,
+        list(train_clouds) + list(val_clouds),
+        str(getattr(args, "yuelbond_vocab", "pt")),
     )
     _use_egnn = bool(getattr(args, "use_egnn_velocity", False))
     # Wf-A82 (2026-10-18) — the construction moved to `build_joint_model` so

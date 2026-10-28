@@ -1,0 +1,1390 @@
+{
+  "probe": "wfa113_t71_vocab",
+  "z_to_onehot_oov_behaviour": "unknown Z -> index 0 (padding)",
+  "configs_audited": 54,
+  "configs_with_oov_metal": 52,
+  "affected": [
+    {
+      "config": "cfm_5metal_default.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_default_log_normal_2026_10_16.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_smoke_2026_10_17.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_v5_full.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa68_smoke.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa70_w1_edge_mpnn.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa70_w2_temperature_pr_auc.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa70_w3_smoke.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa73_operators.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa74_residual.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa75_bond_guidance.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa75a_w000.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa75a_w002.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa75a_w005.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa75a_w020.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa77_allegro_scaffold.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa78_ring_prior.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa80_per_class_cpu_smoke.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_5metal_wfa80_per_class_decision.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "cfm_blk_c5_repair_2026_10_09.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_bond_head_30ep_onecycle.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_fm_ab_2026_10_09.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_fm_control_2026_10_09.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_full_retrain.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_gen_collapse_fm.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_pcgrad_off_2026_10_15.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_pcgrad_on_2026_10_14.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_per_innovation_ablation_p1.4.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "cfm_real_decode_lift_p1.3.yaml",
+      "dataset": "tmqm",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Pt",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "tmqm_metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": false
+    },
+    {
+      "config": "wfa107_control.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_count.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_count_w1e3.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_count_w1e4.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_edge_ring_w03.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_edge_ring_w1.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_features.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107_per_atom.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107e_fm_control.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107e_fm_edge_ring_w1.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107g_fm_sigma_control.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa107g_fm_sigma_edge_ring_w1.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108_radial_masked_centroid.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108b_budget20_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108b_liveness_probe.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108b_liveness_probe_e1.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108b_lr1e3_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108e_x1_cpu_smoke.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108h_b32_chunk2_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108h_b48_chunk2_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    },
+    {
+      "config": "wfa108h_b64_chunk2_vector_channels.yaml",
+      "dataset": "csv",
+      "preset": "pt",
+      "declared_atom_vocab_size": 13,
+      "actual_table_size": 13,
+      "cohort_metals": [
+        "Ir",
+        "Os",
+        "Re",
+        "Rh",
+        "Ru"
+      ],
+      "cohort_source": "cohort_filter.metals",
+      "table_metals": [
+        78
+      ],
+      "metals_oov": [
+        44,
+        45,
+        75,
+        76,
+        77
+      ],
+      "all_metals_oov": true
+    }
+  ],
+  "measured": {
+    "cfm_5metal_default.yaml": {
+      "preset": "pt",
+      "table_size": 13,
+      "table_metals": [
+        78
+      ],
+      "n_clouds": 64,
+      "n_atoms": 3317,
+      "n_oov_atoms": 65,
+      "oov_atom_frac": 0.019596020500452217,
+      "n_metal_atoms": 64,
+      "n_metal_oov": 64,
+      "metal_oov_frac": 1.0,
+      "oov_mapped_to_index": {
+        "0": 65
+      },
+      "onehot_Ru_equals_onehot_pad": true
+    }
+  }
+}

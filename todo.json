@@ -3602,6 +3602,32 @@
         "molmetal/tests/test_wfa113_t70_dead_bond_candidate_flags.py",
         "molmetal/tests/test_wfa69_w1_candidate_source.py"
       ]
+    },
+    {
+      "id": "T71",
+      "priority": 1,
+      "title": "5 金属队列配 Pt-only 原子词表：z_to_onehot 把 Ru/Ir/Os/Rh/Re 全映射到 padding，52/54 个 config 都是这样",
+      "what": "yuelbond_vocab 默认 pt（13 项，唯一金属是 Pt），z_to_onehot 对表外 Z 返回 index 0（padding 槽）。cfm_5metal_default / cfm_5metal_v5_full 等 52 个 config 的队列是 Ru/Ir/Os/Rh/Re 且没有 Pt，atom_vocab_size 守卫只比宽度（13==13）所以全过。处理：在 main() 里建 model 之前加 _assert_vocab_covers_cohort，队列里出现表外 d-block 金属就 SystemExit 并指名 model.yuelbond_vocab: all6；bond_z_table 这个从未被保存的构造参数改成一致性校验。",
+      "addresses": [
+        "D71"
+      ],
+      "done_when": "pt 表 + 5 金属队列启动即报错且信息含 all6；all6 + 同一队列通过；有机元素 OOV 不触发；守卫在 build_joint_model 之前。",
+      "gate": {
+        "encoding": "onehot(Ru)==onehot(pad) 在 pt 表下为真",
+        "fires": "cfm_5metal_default 启动即 SystemExit，消息含 Z [44,45,75,76,77]",
+        "passes": "all6 下同一队列不报错",
+        "order": "守卫调用点在 model = build_joint_model( 之前"
+      },
+      "kill": "若将来把词表改成按队列自动扩展（而不是报错），删除本守卫与对应测试，并在 decisions 里记录宽度随数据变化对 checkpoint 的影响。",
+      "device": "cpu",
+      "cost": "CPU 0.5 h",
+      "status": "FIXED",
+      "evidence": "metrics/by_metric/wfa113_t71_vocab.json + results/cfm_5metal_default/master.log:17",
+      "files": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+        "molmetal/scripts/wfa113_t71_vocab_probe.py",
+        "molmetal/tests/test_wfa113_t71_vocab_coverage.py"
+      ]
     }
   ],
   "acceptance": {
@@ -4504,6 +4530,15 @@
         "impact": "三个 flag 在 60+ 个 YAML 里写着，运行时什么都不做；「已经修过候选集错配」这条结论是假的，0.265 的真实原因还没找到。另外 radius_graph 分支在 2.4 Å 下会静默删掉 8.3% 的 M-L 键——如果谁真按文档打开它，金属配位键会从训练目标里消失。",
         "status": "FIXED",
         "task": "T70"
+      },
+      {
+        "id": "SA-45",
+        "finding": "CFM 的 5 金属队列用 Pt-only 原子词表训练：z_to_onehot 把表外 Z 映射到 padding 槽，所以 Ru/Ir/Os/Rh/Re 在 bond head 眼里和「空位」是同一个向量，金属身份不可学。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:267-283 + molmetal/scripts/wfa113_t71_vocab_probe.py + results/cfm_5metal_default/master.log:17",
+        "measured": "cfm_5metal_default 队列 64 个金属原子 64/64 OOV（100%），onehot(Ru)==onehot(pad)=True；54 个可判定队列的 config 里 52 个有表外金属，全部是 preset=pt + {44,45,75,76,77}；该 run 日志 [cfm-vocab] preset=pt (13 entries, metals in table: [78])；30 个 epoch 里 bond_exact_type_rate 恒为 0.000，bond_f1 最高 0.2743，bond_precision 最高 0.2153。",
+        "impact": "这条线所有 5 金属 run 的「metal-aware」主张在 bond head 上是空的：金属被编码成 padding，5 个金属之间没有区别。Wf-A69 记的 0.265 根因（候选集错配）已被 T70 推翻，词表覆盖是更直接的解释。",
+        "status": "FIXED",
+        "task": "T71"
       }
     ],
     "reproduce": [
