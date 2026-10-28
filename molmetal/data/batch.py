@@ -48,6 +48,55 @@ NO_METAL_INDEX: int = AtomCloud.NO_METAL_INDEX
 #: Maximum neighbour slots per atom — matches :attr:`AtomCloud.K_NEIGHBOURS`.
 K_NEIGHBOURS: int = AtomCloud.K_NEIGHBOURS
 
+# ---------------------------------------------------------------------------
+# Covalent radii — the fallback that keeps ``Batch.atomic_radius`` real
+# ---------------------------------------------------------------------------
+#: Cordero (2008) single-bond covalent radii, Angstrom.  SAME table as
+#: ``molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::_CORDERO_RCOV`` (which
+#: is itself pinned to the probe script's copy by a test).  Duplicated rather
+#: than imported because ``molmetal.data`` must not import a model module, and
+#: ``molmetal/tests/test_wfa113_geometry_radius.py`` asserts the two are equal
+#: so they cannot drift.
+#:
+#: WHY THIS EXISTS (Wf-A113 / T54, 2026-10-28).  ``Batch.collate_fn`` used to
+#: read ``getattr(cloud, "atomic_radius", None)``.  ``AtomCloud`` has no such
+#: field and no loader sets one, so the lookup always missed, every atom got
+#: ``PAD_R = 0.0``, and ``geometry_consistency`` clamps that to 0.3 A.  The
+#: equilibrium length ``eq = r_i + r_j`` was therefore 0.6 A for every pair of
+#: every element, and the bond-plausibility band ``[0.85, 1.25] * eq`` became
+#: [0.51, 0.75] A.  MEASURED on 64 clouds of the 5-metal cohort: 34 of 3,438
+#: true bonds (0.99%) were inside the band, mean squared deviation 0.637;
+#: with Cordero radii 2,966 (86.3%) are inside and the deviation is 0.0216.
+#: The term was pulling every bond toward 0.6 A.
+CORDERO_RCOV: Dict[int, float] = {
+    1: 0.31, 5: 0.84, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57, 14: 1.11, 15: 1.07,
+    16: 1.05, 17: 1.02, 33: 1.21, 35: 1.20, 53: 1.39, 78: 1.36, 44: 1.25,
+    77: 1.35, 45: 1.35, 76: 1.35, 75: 1.35,
+}
+#: Radius for an element outside the table.  Matches the decoder's
+#: ``_RCOV_UNKNOWN``: generous, so an unknown element is never reported as a
+#: clash by accident.
+RCOV_UNKNOWN: float = 1.3
+RCOV_MAX_Z: int = 92
+_RCOV_BY_Z = tuple(CORDERO_RCOV.get(z, RCOV_UNKNOWN) for z in range(RCOV_MAX_Z + 1))
+
+
+def _radius_field(cloud: AtomCloud, z: torch.Tensor) -> torch.Tensor:
+    """Per-atom covalent radius, from the cloud when it has one, else by Z.
+
+    The cloud's own value wins so a caller that carries a different radius
+    convention (e.g. a Pyykko table) is not overridden.  The fallback is what
+    makes the field real for every existing loader, none of which sets it.
+    """
+    n = int(z.shape[0])
+    val = getattr(cloud, "atomic_radius", None)
+    if val is not None and int(val.shape[0]) == n:
+        return val.float().view(-1)
+    table = torch.tensor(_RCOV_BY_Z, device=z.device, dtype=torch.float32)
+    zz = z.long().clamp(min=0, max=RCOV_MAX_Z)
+    return table[zz]
+
+
 
 # ---------------------------------------------------------------------------
 # Batch
@@ -167,9 +216,15 @@ class Batch:
             z = c.atomic_numbers.long().view(-1)
             positions_chunks.append(c.positions.float())
             z_chunks.append(z)
-            r_chunks.append(_per_atom_field(c, "atomic_radius", n, PAD_R))
+            r_chunks.append(_radius_field(c, z))
             fc_chunks.append(_per_atom_field(c, "formal_charge", n, PAD_CHARGE))
-            nc_chunks.append(_per_atom_field(c, "natural_charge", n, PAD_CHARGE))
+            # Wf-A113 (T55) — the field is ``natural_charges`` (plural) on
+            # ``AtomCloud``; this read used the singular, so ``getattr`` always
+            # missed and every atom got ``PAD_CHARGE = 0.0``.  The natural-charge
+            # MSE then regressed the head toward ZERO rather than toward the NBO
+            # charges, and reported a falling "natural_charge_term" while doing
+            # it.  Latent today: every shipped config sets the weight to 0.
+            nc_chunks.append(_per_atom_field(c, "natural_charges", n, PAD_CHARGE))
             bo_chunks.append(_per_atom_field(c, "bo_per_atom", n, PAD_BO))
             batch_idx_chunks.append(
                 torch.full((n,), cloud_idx, dtype=torch.long)

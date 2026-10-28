@@ -1,7 +1,7 @@
 {
  "schema": "molmetal-todo-v7",
  "created": "2026-10-22",
- "updated": "2026-10-28T12:00+08:00",
+ "updated": "2026-10-28T14:20+08:00",
  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
  "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
  "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -1513,6 +1513,50 @@
     "T52"
    ],
    "status": "ADDRESSED"
+  },
+  {
+   "id": "D54",
+   "symptom": "geometry_consistency 的平衡键长 eq = r_i + r_j 对所有元素都等于 0.6 Å，键长合理带变成 [0.51, 0.75] Å，于是每一条真键都被判成太长。",
+   "measured": "64 个 cloud、5 金属队列：uniform 0.3 Å 半径下 3,438 条真键只有 34 条（0.99%）落在带内，平均平方偏差 0.637；Cordero 半径下 2,966 条（86.3%）在带内，偏差 0.0216。term 的 bond 分量在真几何上从 5.72 降到 0.043。",
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "reading": "Batch.collate_fn 读 getattr(cloud, 'atomic_radius')，而 AtomCloud 没有这个字段、也没有任何 loader 设置它，所以每个原子都拿到 PAD_R = 0.0，被 geometry_consistency clamp 到 0.3。这不是超参问题：这个 term 从上线起就没见过真实半径。修法是在 collate 里按 Z 查 Cordero 表。",
+   "addressed_by": [
+    "T54"
+   ],
+   "status": "ADDRESSED"
+  },
+  {
+   "id": "D55",
+   "symptom": "natural_charge_mse_weight 一旦打开，项会训练 q_head 预测 0，而不是预测 NBO 电荷。",
+   "measured": "AtomCloud 的字段是 natural_charges（复数），Batch.collate_fn 读的是 natural_charge（单数），getattr 永远落空，每个原子填 PAD_CHARGE = 0.0；_to_device_cloud 又把 natural_charges 丢掉，所以 batch_ctx['natural_charge'] 恒缺。三原子云实测：cloud.natural_charges=[0.42,-0.21,-0.21]，batch.natural_charge=[0,0,0]，hasattr(cloud,'natural_charge')=False。",
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "reading": "两个独立缺陷各自都足以让这条链路失效：目标端读到全 0，输入端的条件通道读不到。今天所有 config 都是 0.0/false，所以是潜伏的，不是已发生的。修法是改成复数名，并让 _to_device_cloud 携带该字段。",
+   "addressed_by": [
+    "T55"
+   ],
+   "status": "ADDRESSED"
+  },
+  {
+   "id": "D56",
+   "symptom": "geometry_consistency 在多 cloud 批次里把每个 cloud 的键连到错误的原子上，真几何上报告 2,582 对 clash。",
+   "measured": "Batch.bonds 存的是 per-cloud 局部索引（collate 原样拼接、不加 offset；coordination_number_from_bonds 的 docstring 明说这一点）。geometry_consistency 却用它去索引扁平原子轴：64 个 cloud、3,438 条键只有 370 条（10.8%）落进 adj，其余被 ~adj 当成非键对。单 cloud 批次不受影响，所以单测全过。另：metal 项打分的是全部 M-X 对（2,893 对，仅 5.98% 在带内，中位 M-X 3.25 Å），而真 M-L 键只有 530 条。",
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "reading": "两个 frame 缺陷叠加：键表 frame 错、金属项作用域错。前者让 clash 在真几何上爆掉，后者把每个配体原子往金属上拽。修法是 geometry_consistency 接受 pair_cloud_idx 并在所属 cloud 的 frame 里建邻接，多 cloud 缺该参数直接 ValueError；金属项改为只打分真值 M-L 键。",
+   "addressed_by": [
+    "T56"
+   ],
+   "status": "ADDRESSED"
+  },
+  {
+   "id": "D57",
+   "symptom": "训练队列 82% 的 cloud 里有原子坐标完全重合，模型被训练成把溶剂压到配体上。",
+   "measured": "399 个 cloud（同一 CSV、metal_placement=bonded）：327 个（82.0%）至少有一对重合原子（<1e-3 Å），共 8,782 对；成分数分布 2..7，多出来的是 [OH2] 等溶剂片段。例：[OH2]x6.[Ru] 的 6 个 O 全部在原点，12 个 H 两两重合。",
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "reading": "RDKit ETKDG 对多片段 SMILES 的每个不相连片段独立嵌入后平移到原点，于是溶剂片段互相重叠、也和配体重叠。这是数据入口的缺陷，不是 term 的：geometry_consistency 的 clash 在真几何上仍是 0.807，主要就是这些对。",
+   "addressed_by": [
+    "T57"
+   ],
+   "status": "OPEN"
   }
  ],
  "modules": [
@@ -2998,6 +3042,118 @@
     "单个 seed、8 个 cloud。比值是初始化性质，seed 只通过被移除的 Linear 初始化起作用。",
     "偏置值 +2.0 本身仍与经验先验差 6.4 倍（0.649 vs 0.945），未修。"
    ]
+  },
+  {
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "evidence": [
+    "metrics/by_metric/wfa113_t54_geometry_radius.json"
+   ],
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "tests": "molmetal/tests/test_wfa113_geometry_radius.py",
+   "id": "T54",
+   "priority": 0,
+   "title": "让 Batch.atomic_radius 是真实半径，而不是 0.0",
+   "what": "Batch.collate_fn 的 _per_atom_field(cloud, 'atomic_radius', n, PAD_R) 永远落空（AtomCloud 没有该字段）。改成 _radius_field(cloud, z)：cloud 自带则用自带的，否则按 Z 查 Cordero 表；表与 yuelbond_decoder._CORDERO_RCOV 相等并由测试锁住。",
+   "addresses": [
+    "D54"
+   ],
+   "done_when": "8 cloud 队列上 collate 出来的每个原子半径 > 0；bond 合理带内的真键比例从 0.99% 升到 > 80%。",
+   "gate": {
+    "radius_nonzero": "每个原子半径 > 0",
+    "in_band": "真键在带内比例 > 0.8",
+    "table_equal": "与 decoder 的 Cordero 表逐项相等"
+   },
+   "kill": "若填了真实半径后带内比例仍 < 50%，说明 band 本身（0.85/1.25）与语料不符，应改查 band 而不是半径。",
+   "result": "新增 CORDERO_RCOV/RCOV_UNKNOWN/_radius_field；_per_atom_field 不再承担半径。实测 64 cloud：uniform 0.3 Å 下 34/3438（0.99%）在带内、平均平方偏差 0.637；Cordero 下 2,966/3438（86.3%）、0.0216。term 的 bond 分量在真几何上 5.72 -> 0.043。",
+   "gate_result": {
+    "radius_nonzero": "PASS — 三原子云 [78,6,1] 得到 [1.36,0.76,0.31]",
+    "in_band": "PASS — 0.0099 -> 0.8627",
+    "table_equal": "PASS — test_the_two_cordero_tables_cannot_drift"
+   }
+  },
+  {
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "evidence": [
+    "metrics/by_metric/wfa113_t54_geometry_radius.json"
+   ],
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "tests": "molmetal/tests/test_wfa113_geometry_radius.py",
+   "id": "T55",
+   "priority": 1,
+   "title": "修 natural_charge 的单复数错配，并让 _to_device_cloud 携带该字段",
+   "what": "Batch.collate_fn 读 'natural_charge'，AtomCloud 的字段是 'natural_charges'，于是目标恒为 PAD_CHARGE=0.0；_to_device_cloud 又丢掉该字段，使 batch_ctx['natural_charge'] 恒缺。改成复数名；_to_device_cloud 在原始 cloud 有该字段时携带它。",
+   "addresses": [
+    "D55"
+   ],
+   "done_when": "带 natural_charges 的三原子云 collate 后 batch.natural_charge 等于输入；_to_device_cloud 往返保留该字段；无电荷的云不凭空得到哨兵。",
+   "gate": {
+    "target_real": "batch.natural_charge 等于输入",
+    "roundtrip": "_to_device_cloud 保留字段",
+    "no_sentinel": "无电荷云仍为 None"
+   },
+   "kill": "若修正后 natural_charge_term 在某个打开的 config 上把损失推高到压过 FM 项，说明该队列的 .q 覆盖率不足，应改成带 mask 的版本而不是回退。",
+   "result": "单复数修正；_to_device_cloud 用原始 cloud 的 natural_charges 作为开关，避免给无电荷云造哨兵。实测：cloud.natural_charges=[0.42,-0.21,-0.21] -> batch.natural_charge 同值；往返保留；无电荷云仍 None。潜伏缺陷：所有 config 的权重都是 0.0。",
+   "gate_result": {
+    "target_real": "PASS",
+    "roundtrip": "PASS",
+    "no_sentinel": "PASS"
+   }
+  },
+  {
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "evidence": [
+    "metrics/by_metric/wfa113_t54_geometry_radius.json"
+   ],
+   "artifact": "metrics/by_metric/wfa113_t54_geometry_radius.json",
+   "tests": "molmetal/tests/test_wfa113_geometry_radius.py",
+   "id": "T56",
+   "priority": 0,
+   "title": "geometry_consistency 用对键表的 frame，并把金属项限定在真 M-L 键上",
+   "what": "Batch.bonds 是 per-cloud 局部索引，term 却用它索引扁平原子轴。加 pair_cloud_idx 参数，在所属 cloud 的 frame 里建邻接；n_clouds > 1 且缺该参数直接 ValueError。金属项从「全部 M-X 对」改为「真值 M-L 键」（ml & adj）。trainer 调用点传 batch.pair_cloud_idx。",
+   "addresses": [
+    "D56"
+   ],
+   "done_when": "64 cloud 批次里 adj 收到的键数等于真键数（去重后 1,719，原来 370）；真几何上的 clash 对不再包含真键；金属项打分数等于真 M-L 键数（265/160，取决于 placement）。",
+   "gate": {
+    "frame": "adj 键数 = 真键数",
+    "metal_scope": "n_metal_pairs = 真 M-L 键数",
+    "loud_failure": "多 cloud 缺参数报错而不是静默"
+   },
+   "kill": "若改成真值邻接后金属项在真几何上仍 > 1.0，说明 band 本身与语料不符，应改查 band 而不是作用域。",
+   "result": "geometry_consistency 新增 pair_cloud_idx；多 cloud 缺参数抛 ValueError；金属项改为 ml & adj。实测 64 cloud：adj 键数 370 -> 1,719（= 真键去重数）；n_metal_pairs 2,893 -> 265（legacy）/160（bonded）；bonded placement 下金属项在真几何上 3.27 -> 0.022。单测新增两条（frame、作用域）并改写两条旧用例。",
+   "gate_result": {
+    "frame": "PASS — 370 -> 1,719",
+    "metal_scope": "PASS — 2,893 -> 265/160",
+    "loud_failure": "PASS — test_a_multi_cloud_batch_needs_pair_cloud_idx"
+   }
+  },
+  {
+   "id": "T57",
+   "priority": 0,
+   "title": "修多片段 SMILES 的嵌入：82% 的训练 cloud 有重合原子",
+   "what": "RDKit ETKDG 对不相连片段各自独立嵌入后都平移到原点，于是 [OH2]x6.[Ru] 的六个 O 全在原点、H 两两重合。需要在嵌入后把每个非金属片段按确定性方向平移开（或改用带坐标的 fragment 布局），并在 cloud 上记录 fragment_count 与 min_pair_distance；对退化的纯溶剂行（配体只有水）单独标记。",
+   "addresses": [
+    "D57"
+   ],
+   "done_when": "399 个 cloud 里重合原子对从 8,782 降到 0；最小原子对距离的中位数 > 1.0 Å；成分数与 SMILES 的 '.' 计数一致（即没有片段被丢弃）。",
+   "gate": {
+    "no_coincident": "重合对数 = 0",
+    "min_distance": "最小对距中位数 > 1.0 Å",
+    "no_fragment_loss": "成分数守恒"
+   },
+   "kill": "若平移后最小对距仍 < 1.0 Å（说明配体自身嵌入就失败），则改为拒绝该行并在 cohort 日志里计数，而不是继续伪造几何。",
+   "device": "cpu",
+   "cost": "CPU 2 h",
+   "status": "PLANNED",
+   "evidence": [
+    "metrics/by_metric/wfa113_t54_geometry_radius.json"
+   ]
   }
  ],
  "acceptance": {
@@ -3386,6 +3542,10 @@
      "T41",
      "T42",
      "T52",
+     "T54",
+     "T56",
+     "T55",
+     "T57",
      "T43",
      "T44",
      "T45",
@@ -3772,6 +3932,42 @@
     "impact": "今天没有可观测后果，因为 valence cap 至少一样紧。但 covalent_valence_table 的 docstring 明确把 Pt_IV（cap=6）当作支持用法，那一刻这道门成为唯一的配位上限，而 11.84% 的金属键不计入它——多配位的 Pt 会被放过。属于「现在冗余、调一个参数就活」的一类，和惰性开关同源。",
     "status": "OPEN",
     "task": "T51"
+   },
+   {
+    "id": "SA-32",
+    "finding": "geometry_consistency 的半径从未存在：每个原子都是 PAD_R=0.0，eq 恒为 0.6 Å，每条真键都被判成太长。",
+    "evidence": "molmetal/data/batch.py:170",
+    "measured": "64 cloud：uniform 下 34/3438 在带内（0.99%），Cordero 下 2966/3438（86.3%）。",
+    "impact": "任何打开 geometry_consistency_weight 的 run（wfa108l 是唯一一个）都在优化一个把键拉到 0.6 Å 的目标。",
+    "status": "FIXED",
+    "task": "T54"
+   },
+   {
+    "id": "SA-33",
+    "finding": "Batch.natural_charge 恒为 0：读的是单数名，AtomCloud 的字段是复数。",
+    "evidence": "molmetal/data/batch.py:172",
+    "measured": "三原子云 batch.natural_charge=[0,0,0] 而 cloud.natural_charges=[0.42,-0.21,-0.21]。",
+    "impact": "打开 natural_charge_mse_weight 时项会把 q_head 训练成 0，同时报告在下降。今天潜伏（权重全 0）。",
+    "status": "FIXED",
+    "task": "T55"
+   },
+   {
+    "id": "SA-34",
+    "finding": "geometry_consistency 用 per-cloud 局部索引去索引扁平原子轴，多 cloud 批次的邻接全错。",
+    "evidence": "molmetal/loss/geometry_consistency.py:156",
+    "measured": "64 cloud、3438 条键只有 370 条落进 adj；真几何上报告 2,582 对 clash。",
+    "impact": "clash / bond / metal 三个分量在多 cloud 训练里都不是它们声称的量。单 cloud 单测全过，所以从未暴露。",
+    "status": "FIXED",
+    "task": "T56"
+   },
+   {
+    "id": "SA-35",
+    "finding": "82% 的训练 cloud 含坐标完全重合的原子，来源是多片段 SMILES 的嵌入。",
+    "evidence": "build_csv_cohort on metalcytotox_5metal_multitask_v3.csv",
+    "measured": "399 cloud 中 327 个（82.0%）有重合对，共 8,782 对；[OH2]x6.[Ru] 的六个 O 全在原点。",
+    "impact": "FM 目标在学「把溶剂压到配体上」；geometry_consistency 的 clash 在真几何上 0.807 主要来自这里。",
+    "status": "OPEN",
+    "task": "T57"
    }
   ],
   "reproduce": [

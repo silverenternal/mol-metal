@@ -81,6 +81,7 @@ def geometry_consistency(
     bond_lo: float = 0.85,
     bond_hi: float = 1.25,
     metal_bands: Optional[Dict[int, Tuple[float, float]]] = None,
+    pair_cloud_idx: Optional[torch.Tensor] = None,
 ) -> Dict[str, torch.Tensor]:
     """Score one predicted geometry (``x1_hat``) per cloud.
 
@@ -93,11 +94,26 @@ def geometry_consistency(
     batch_idx
         ``(N,)`` cloud index per atom.
     bonds
-        ``(2, E)`` global bonded pairs, or ``None``.
+        ``(2, E)`` bonded pairs.  FRAME: per-cloud LOCAL atom indices when
+        ``pair_cloud_idx`` is given (the ``Batch`` contract), otherwise global
+        flat indices (legacy, ``n_clouds == 1`` only).
     radius
         ``(N,)`` per-atom covalent radius (the batch's ``atomic_radius``).
     n_clouds
         number of clouds in the batch.
+    pair_cloud_idx
+        ``(E,)`` cloud index per bond.  REQUIRED whenever ``n_clouds > 1``.
+
+    Wf-A113 (T56, 2026-10-28) — the frame.  ``Batch.bonds`` is documented (and
+    consumed by ``coordination_number_from_bonds``) as per-cloud LOCAL
+    indices: ``collate_fn`` concatenates each cloud's ``(2, E_c)`` block
+    verbatim without adding the offset.  This function indexed the flat
+    ``batch_idx``/``pos_local`` arrays with those local indices, so for every
+    cloud except cloud 0 the adjacency landed on the WRONG atoms.  MEASURED on
+    64 clouds: 370 of 3,438 true bonds survived into ``adj`` (10.8%), the
+    surviving pairs were assigned to cloud 0, and ``~adj`` then marked real
+    bonds as non-bonded — 2,582 "clash" pairs on ground-truth geometry.  A
+    single-cloud batch is unaffected, which is why every unit test passed.
 
     Returns
     -------
@@ -113,6 +129,12 @@ def geometry_consistency(
     bands = METAL_ML_BAND_A if metal_bands is None else metal_bands
     n_total = int(x.shape[0])
     n_clouds = int(n_clouds)
+    if n_clouds > 1 and bonds is not None and bonds.numel() and pair_cloud_idx is None:
+        raise ValueError(
+            "geometry_consistency: n_clouds > 1 needs pair_cloud_idx — "
+            "Batch.bonds are per-cloud LOCAL indices, and indexing the flat "
+            "atom axis with them silently builds the wrong adjacency."
+        )
     zero = x.sum() * 0.0
     if n_total == 0 or n_clouds <= 0:
         return {
@@ -151,10 +173,27 @@ def geometry_consistency(
     adj = torch.zeros((n_clouds, A, A), dtype=torch.bool, device=x.device)
     if bonds is not None and bonds.numel():
         src, dst = bonds[0].long(), bonds[1].long()
-        ok = (src >= 0) & (src < n_total) & (dst >= 0) & (dst < n_total)
-        src, dst = src[ok], dst[ok]
-        adj[batch_idx[src], pos_local[src], pos_local[dst]] = True
-        adj[batch_idx[dst], pos_local[dst], pos_local[src]] = True
+        if pair_cloud_idx is not None:
+            # Batch frame: (i, j) index the OWNING cloud's atom axis.
+            cloud = pair_cloud_idx.long()
+            ok = (
+                (src >= 0)
+                & (dst >= 0)
+                & (src < A)
+                & (dst < A)
+                & (cloud >= 0)
+                & (cloud < n_clouds)
+            )
+            src, dst, cloud = src[ok], dst[ok], cloud[ok]
+            valid = mask[cloud, src] & mask[cloud, dst]
+            src, dst, cloud = src[valid], dst[valid], cloud[valid]
+            adj[cloud, src, dst] = True
+            adj[cloud, dst, src] = True
+        else:
+            ok = (src >= 0) & (src < n_total) & (dst >= 0) & (dst < n_total)
+            src, dst = src[ok], dst[ok]
+            adj[batch_idx[src], pos_local[src], pos_local[dst]] = True
+            adj[batch_idx[dst], pos_local[dst], pos_local[src]] = True
 
     eye = torch.eye(A, dtype=torch.bool, device=x.device)[None]
     nonbonded = pair_ok & ~adj & ~eye
@@ -175,10 +214,20 @@ def geometry_consistency(
     bond = dev_b.pow(2).sum() / float(2 * n_bond) if n_bond else zero
 
     # ---- metal: M-L pairs outside the measured per-metal band --------------
+    #
+    # Wf-A113 (T56) — only BONDED M-L pairs.  The mask used to be every
+    # metal/non-metal pair in the cloud, so a ligand atom on the far side of
+    # the complex was scored against a 1.87-2.47 A band it can never satisfy.
+    # MEASURED on 64 ground-truth clouds: 2,893 M-X pairs scored, of which
+    # 173 (5.98%) were inside the band; the median M-X distance was 3.25 A and
+    # p90 was 7.03 A, while the corpus has 530 truth M-L bonds.  The term was
+    # therefore pulling every ligand atom onto the metal.  The pair set is now
+    # the same truth adjacency the bond term uses, so a predicted 1.23 A metal
+    # bond still fires (it is bonded) and a distant atom is no longer scored.
     is_m = torch.zeros((n_clouds, A), dtype=torch.bool, device=x.device)
     for mz in METAL_Z:
         is_m |= (zp == int(mz)) & mask
-    ml = pair_ok & (is_m[:, :, None] ^ is_m[:, None, :])
+    ml = pair_ok & (is_m[:, :, None] ^ is_m[:, None, :]) & adj
     n_metal = int(ml.sum().item()) // 2
     if n_metal:
         lo = torch.zeros_like(d)

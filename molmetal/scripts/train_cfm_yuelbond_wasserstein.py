@@ -1938,6 +1938,15 @@ def _to_device_cloud(cloud: AtomCloud, device: torch.device) -> AtomCloud:
     # contract nobody checks.
     if getattr(batch, "metal_atom_index", None) is not None:
         kwargs["metal_atom_index"] = batch.metal_atom_index[0]
+    # Wf-A113 (T55) — ``natural_charges`` HAS a consumer in the training loop:
+    # the batch_ctx population below reads ``cloud.natural_charges`` on the
+    # object this helper returns, and this helper used to drop it, so
+    # ``batch_ctx["natural_charge"]`` was always absent and the model's
+    # charge-conditioning projection never saw a charge.  Gate on the ORIGINAL
+    # cloud so a cloud without charges stays without charges (no sentinel
+    # invented here); slice this cloud out of the flat ``Batch`` view.
+    if getattr(cloud, "natural_charges", None) is not None:
+        kwargs["natural_charges"] = batch.natural_charge[start:end]
     return AtomCloud(**kwargs)
 
 
@@ -6733,6 +6742,10 @@ def train_one_epoch(
                     batch.bonds,
                     batch.atomic_radius,
                     int(batch.n_clouds),
+                    # Wf-A113 (T56) — Batch.bonds are per-cloud LOCAL indices;
+                    # without this the adjacency is built from the wrong atoms
+                    # for every cloud after the first.
+                    pair_cloud_idx=batch.pair_cloud_idx,
                 )
                 geometry_term = float(geometry_consistency_weight) * (
                     float(geometry_clash_weight) * _geom["clash"]

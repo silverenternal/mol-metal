@@ -1,0 +1,124 @@
+{
+ "metric": "wfa113_t54_geometry_radius",
+ "tag": "MEASURED",
+ "date": "2026-10-28",
+ "why": "geometry_consistency_weight > 0 turns on a term whose equilibrium length eq = r_i + r_j is meant to be element-specific, and whose bond list is meant to be per-cloud. Neither held: AtomCloud has no atomic_radius field and no loader sets one (so every radius was PAD_R = 0.0, clamped to 0.3 A), and Batch.bonds is stored in per-cloud LOCAL indices while the term indexed the flat atom axis with them. Both defects are invisible on a single-cloud batch, which is why every unit test passed.",
+ "artifact_for": "todo.json T54 / T55 / T56 / D54 / D56",
+ "config": "configs/wfa108l_geom_smoke_2026_10_25.yaml",
+ "n_clouds": 64,
+ "rows": {
+  "uniform_0p3": {
+   "n_bonds": 3438,
+   "in_band": 34,
+   "in_band_fraction": 0.009889470622454915,
+   "mean_squared_deviation": 0.6371291756560595,
+   "rel_mean": 2.228701245167562
+  },
+  "cordero": {
+   "n_bonds": 3438,
+   "in_band": 2966,
+   "in_band_fraction": 0.8627108784176847,
+   "mean_squared_deviation": 0.0215705837658918,
+   "rel_mean": 0.8535672248172649
+  }
+ },
+ "geometry_consistency_term": {
+  "uniform_0p3": {
+   "bond": 1.2742583751678467,
+   "clash": 0.32680976390838623,
+   "metal": 3.2723379135131836,
+   "n_bond_pairs": 1719.0,
+   "n_clash_pairs": 1611.0,
+   "n_metal_pairs": 265.0
+  },
+  "cordero": {
+   "bond": 0.04314116761088371,
+   "clash": 0.7341492176055908,
+   "metal": 3.2723379135131836,
+   "n_bond_pairs": 1719.0,
+   "n_clash_pairs": 2450.0,
+   "n_metal_pairs": 265.0
+  }
+ },
+ "verdict": "If in_band_fraction is ~0 under uniform_0p3 and ~1 under Cordero, the term penalises EVERY true bond as too long and would pull the predicted geometry toward 0.5-0.75 A.",
+ "cohort": "64 clouds of metalcytotox_5metal_multitask_v3.csv, split=train, metal_placement=bonded",
+ "probe": "molmetal/scripts/wfa113_t54_geometry_radius_probe.py",
+ "defects": {
+  "T54_radius": {
+   "code": "molmetal/data/batch.py: _per_atom_field(cloud, 'atomic_radius', n, PAD_R)",
+   "mechanism": "AtomCloud has no atomic_radius field; the lookup always missed and PAD_R = 0.0 was clamped to 0.3 A by geometry_consistency. eq = 0.6 A for every pair of every element.",
+   "effect": "the bond-plausibility band [0.85, 1.25]*eq became [0.51, 0.75] A, so every true bond was scored as TOO LONG and the term pulled bonded atoms toward 0.6 A.",
+   "fix": "Batch.collate_fn now derives the Cordero radius from Z when the cloud carries none (_radius_field)."
+  },
+  "T55_charge": {
+   "code": "molmetal/data/batch.py: _per_atom_field(cloud, 'natural_charge', ...)",
+   "mechanism": "the AtomCloud field is 'natural_charges' (plural); getattr missed and every atom got PAD_CHARGE = 0.0. _to_device_cloud also dropped the field, so batch_ctx['natural_charge'] was always absent.",
+   "effect": "with the weight on, NaturalChargeLoss regressed the head toward ZERO and reported a falling term; the model's charge-conditioning input never saw a charge.",
+   "latent_because": "every shipped config sets natural_charge_mse_weight = 0.0 and use_natural_charges = false",
+   "fix": "plural field name; _to_device_cloud carries it when the cloud has it."
+  },
+  "T56_frame": {
+   "code": "molmetal/loss/geometry_consistency.py: adj[batch_idx[src], pos_local[src], pos_local[dst]]",
+   "mechanism": "Batch.bonds holds per-cloud LOCAL indices (documented, and used correctly by coordination_number_from_bonds); indexing the flat atom axis with them assigns every cloud-after-the-first's bonds to the wrong atoms.",
+   "measured_pre_fix": {
+    "bond_entries_in": 3438,
+    "bond_entries_surviving_into_adj": 370,
+    "surviving_fraction": 0.108,
+    "clash_pairs_on_ground_truth": 2582,
+    "note": "a single-cloud batch is unaffected, which is why test_geometry_consistency.py passed"
+   },
+   "fix": "geometry_consistency takes pair_cloud_idx and builds the adjacency in the owning cloud's frame; it raises for n_clouds > 1 without it."
+  },
+  "T56_metal_scope": {
+   "code": "molmetal/loss/geometry_consistency.py: ml = pair_ok & (is_m ^ is_m)",
+   "mechanism": "the metal band scored EVERY metal/non-metal pair in the cloud, not the coordinated ones.",
+   "measured": {
+    "m_x_pairs_scored": 2893,
+    "inside_band": 173,
+    "inside_fraction": 0.0598,
+    "median_m_x_A": 3.253,
+    "p90_m_x_A": 7.032,
+    "truth_m_l_bonds": 530
+   },
+   "effect": "94% of scored pairs could never satisfy the band, so the term pulled every ligand atom onto the metal.",
+   "fix": "the pair set is now the truth adjacency the bond term already uses (ml & adj)."
+  }
+ },
+ "placement_comparison": {
+  "note": "the CSV loader's own documented legacy placement (metal inside the ligand) is a separate defect; measured here so the term values are not read as a term problem.",
+  "legacy": {
+   "m_l_bonds": 530,
+   "median_m_l_A": 0.366,
+   "fraction_below_1A": 0.645,
+   "bond": 0.0431,
+   "clash": 0.7341,
+   "metal": 3.2723,
+   "n_bond_pairs": 1719,
+   "n_clash_pairs": 2450,
+   "n_metal_pairs": 265
+  },
+  "bonded": {
+   "m_l_bonds": 320,
+   "median_m_l_A": 2.05,
+   "fraction_below_1A": 0.0,
+   "bond": 0.0001,
+   "clash": 0.8068,
+   "metal": 0.0222,
+   "n_bond_pairs": 1614,
+   "n_clash_pairs": 1975,
+   "n_metal_pairs": 160
+  }
+ },
+ "open_defect": {
+  "id": "T57",
+  "finding": "82.0% of training clouds (327/399) contain at least one pair of atoms at the SAME coordinates, 8,782 such pairs in total.",
+  "cause": "RDKit ETKDG embeds each disconnected fragment of a multi-component SMILES independently and translates them all to the origin, so [OH2].[OH2]...[Ru] lands six waters on top of each other and on the ligand. The corpus rows carry solvent fragments (component counts 2..7).",
+  "evidence": "measured on 399 clouds built from the same CSV; per-cloud listings in the probe run of 2026-10-28",
+  "status": "OPEN \u2014 not fixed in this commit; the geometry term's clash value on ground truth (0.807) is largely this, not a term defect"
+ },
+ "honest_limits": [
+  "The in-band fractions are measured on 64 clouds of one split of one corpus; the corpus is the training distribution, not a reference geometry set.",
+  "The Cordero table covers 18 elements; anything else falls back to 1.3 A, which is generous and therefore under-reports clashes for exotic elements.",
+  "The clash value on ground truth is still 0.807 after the fixes, because 82% of clouds contain coincident atoms from fragment embedding (T57). The term is now measuring a real data defect, not a frame defect."
+ ]
+}
