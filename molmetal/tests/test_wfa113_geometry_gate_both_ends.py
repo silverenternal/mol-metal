@@ -1,30 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
-"""T51 — the coordination-geometry gate must count both ends of a bond.
+"""T51 → T72 — the metal bond ceiling must not depend on the metal's index.
 
-THE DEFECT
-----------
-``_select_bonds`` gates a metal's bond count against the coordination
-geometry's ``max_bonds``:
+HISTORY
+-------
+``_select_bonds`` used to carry a SECOND ceiling, from the coordination
+geometry's ``max_bonds``, computed as
 
     bonds_at_metal = sum(1 for (a, _, _) in bond_orders if a == metal_idx)
 
 Candidate pairs come from ``torch.triu_indices(n, n, offset=1)``, so every
-stored pair has ``a < b``.  A metal that sits at a HIGHER index than its
-partner is therefore never counted, and the gate never fires for it.
+stored pair has ``a < b``; a metal at a HIGHER index was never counted and the
+gate never fired for it.  MEASURED over 9,111 tmQM metal complexes: 7,700
+(84.5%) put the metal at heavy index 0, and 11.84% (5,729 of 48,371) of metal
+bonds have the metal at the higher index.
 
-MEASURED over 9,111 tmQM metal complexes: 7,700 (84.5%) put the metal at
-heavy index 0, and 11.84% (5,729 of 48,371) of metal bonds have the metal at
-the higher index.
+That gate is now GONE (Wf-A113 T72): it was redundant with ``_cap_for_z`` while
+the two tables agreed, and it became actively wrong once the valence caps were
+derived from the corpus, because ``_OCTAHEDRAL.max_bonds`` is 6 and would
+delete the sixth through ninth bonds of every eta6-arene complex.
 
-WHY THE DEFECT WAS INVISIBLE
-----------------------------
-The gate is redundant with ``_cap_for_z`` for every metal in the table —
-``max_bonds`` equals the covalent cap there, so the valence check just above
-already refuses the same bonds.  It becomes the binding constraint only when
-a caller raises the cap past the geometry, which is exactly the Pt_IV case
-(``valence_cap={78: 6}`` against square planar's 4).  The tests below use
-that configuration, because it is the only one where the gate decides
-anything.
+What remains is one ceiling, ``_COVALENT_VALENCE``, applied through
+``remaining[metal_idx]``.  This file pins the property the old gate broke:
+the number of bonds a metal ends up with is the same whether the metal sits at
+index 0 or index 5, and a ``valence_cap`` override is honoured rather than
+silently overridden by a second table.
 """
 
 from __future__ import annotations
@@ -116,67 +115,39 @@ def _decode(cloud: AtomCloud, *, valence_cap):
     return dec.decode(cloud), yres
 
 
-def _bonds_at_metal(bond_orders, metal_idx: int) -> tuple[int, int]:
-    """(count counting one end, count counting both ends)."""
-    one = sum(1 for (a, _, _) in bond_orders if a == metal_idx)
-    both = sum(1 for (a, b, _) in bond_orders if a == metal_idx or b == metal_idx)
-    return one, both
+def _bonds_at_metal(bond_orders, metal_idx: int) -> int:
+    return sum(1 for (a, b, _) in bond_orders if a == metal_idx or b == metal_idx)
 
 
 @pytest.mark.parametrize("metal_index", [0, 5])
-def test_the_gate_counts_both_ends_of_every_metal_bond(metal_index):
-    """The metal's bonds are counted the same whether it is index 0 or index 5.
-
-    With the old single-endpoint count, `metal_index=5` reported 0 bonds for
-    the whole decode, so the square-planar cap of 4 never fired.
-    """
+def test_default_pt_cap_stops_at_four_regardless_of_index(metal_index):
+    """Pt keeps 4 bonds whether it is atom 0 or atom 5."""
     cloud = _five_coordinate_cloud(metal_index)
-    out, _ = _decode(cloud, valence_cap={PT: 6})
-    one, both = _bonds_at_metal(out.decoded.bond_orders, metal_index)
-    assert both == 4, (
-        f"expected the geometry gate to stop the metal at 4 bonds, got {both} "
-        f"(bond_orders={out.decoded.bond_orders})"
-    )
-    if metal_index == 5:
-        assert one == 0, (
-            "this cloud no longer reproduces the defect: the metal is index 5 "
-            "and the one-end count should be blind to it"
-        )
-        assert out.bonds_rejected_overvalent >= 1, (
-            "the 5th Pt bond was not refused — the gate did not count it"
-        )
-
-
-def test_the_fifth_pt_bond_is_refused_when_the_cap_is_raised():
-    """Pt_IV: valence_cap={78: 6} lets the valence check pass 5 bonds.
-
-    Square planar allows 4, so the geometry gate is the only thing that can
-    refuse the fifth.  If it counts one end only, all five are kept.
-    """
-    cloud = _five_coordinate_cloud(metal_index=5)
-    out, _ = _decode(cloud, valence_cap={PT: 6})
-    pt_bonds = [
-        b for b in out.decoded.bond_orders if 5 in (b[0], b[1])
-    ]
-    assert len(pt_bonds) == 4, (
-        f"expected 4 Pt bonds under square planar, got {len(pt_bonds)}: "
-        f"{pt_bonds}"
-    )
+    out, _ = _decode(cloud, valence_cap=None)
+    assert _bonds_at_metal(out.decoded.bond_orders, metal_index) == 4
     assert out.bonds_rejected_overvalent >= 1
 
 
-def test_metal_at_index_zero_is_unchanged():
-    """The default construction is bit-identical: for metal-at-0 clouds the
-    one-end and two-end counts are the same number, so the gate cannot behave
-    differently there.
+@pytest.mark.parametrize("metal_index", [0, 5])
+def test_valence_cap_override_is_honoured(metal_index):
+    """``valence_cap={78: 6}`` must yield 6, not 4.
+
+    This is the Pt_IV case the override exists for.  Before T72 a second
+    (geometry) ceiling capped Pt at 4 anyway, so the documented override did
+    nothing — the same "knob with no effect" shape as T70.
     """
+    cloud = _five_coordinate_cloud(metal_index)
+    out, _ = _decode(cloud, valence_cap={PT: 6})
+    assert _bonds_at_metal(out.decoded.bond_orders, metal_index) == 5, (
+        "a raised cap must admit all five Pt-C bonds; got "
+        f"{out.decoded.bond_orders}"
+    )
+    assert out.bonds_rejected_overvalent == 0
+
+
+def test_metal_at_index_zero_is_unchanged():
+    """The default construction still stops at 4 (no regression for the
+    84.5% majority case where the metal is heavy index 0)."""
     cloud = _five_coordinate_cloud(metal_index=0)
     out, _ = _decode(cloud, valence_cap=None)
-    one, both = _bonds_at_metal(out.decoded.bond_orders, 0)
-    assert one == both, (
-        "on a metal-at-index-0 cloud the two counts must agree; if they do "
-        "not, the fix changed behaviour on the 84.5% majority case"
-    )
-    assert len(out.decoded.bond_orders) == 4, (
-        "the default cap (square planar, 4) must still stop the metal at 4"
-    )
+    assert len(out.decoded.bond_orders) == 4

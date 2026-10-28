@@ -242,6 +242,50 @@ TMQM_MEASURED_METAL_CAPS: Dict[int, float] = {
 }
 
 
+#: Decoder-side metal ceiling, in BOND-COUNT units.
+#:
+#: ``TMQM_MEASURED_METAL_CAPS`` above constrains ``metal_bo_sum`` (a sum of
+#: Wiberg bond orders) and is used by the soft-valence penalty in the loss.
+#: The DECODER cannot use it: it never sees a bond order, only a class, and
+#: every metal-ligand bond is class ``BOND_SINGLE`` with cost 1.0.  So its
+#: budget is a COUNT of metal bonds, and the matching corpus statistic is
+#: tmQM's ``coord_number`` (MND), not ``metal_bo_sum``.
+#:
+#: Using the bond-order cap as a bond-count cap is the same category error
+#: that ``molmetal/tests/test_cfm_metal_valence_caps.py`` documents in the
+#: other direction.  MEASURED (tmqm_parsed.csv, 33,429 rows):
+#:
+#:     metal     n     MND p50  p95  p99  max   bo_sum p50  p99
+#:     Pt     8275        4      6    6    9          3.25  4.54
+#:     Ru     9800        6      9   10   12          4.85  6.48
+#:     Ir     5232        6      8    9   11          4.04  5.42
+#:     Rh     4640        6      8   10   11          3.92  5.17
+#:     Os     1310        6      9   10   12          5.27  7.00
+#:     Re     4172        6      8    9   12          6.46  7.40
+#:
+#: The decoder's previous constant was 6 for Ru/Ir/Rh/Os/Re and 4 for Pt --
+#: i.e. the corpus MEDIAN for the first five and the p50 for Pt.  A cap set
+#: at the median is not a cap: it refuses half the cohort by construction.
+#: MEASURED on the 400-cloud c8 cohort, 29.75% of clouds exceed it and 9.9%
+#: of all metal bonds (230/2,323) are unrepresentable
+#: (metrics/by_metric/wfa113_t72_valence_cap.json).
+#:
+#: Pt stays at 4 deliberately, not statistically: 81.8% of the Pt corpus is
+#: four-coordinate, the project targets Pt(II) anticancer complexes, and a
+#: six-coordinate ceiling would let the decoder build Pt(IV) shapes on a
+#: Pt(II)-dominated prior.  The 17.7% of Pt complexes at MND >= 5 are
+#: therefore NOT representable; that is measured in the same artifact rather
+#: than assumed away.
+TMQM_MEASURED_METAL_COORDINATION_CAPS: Dict[int, int] = {
+    78: 4,   # Pt  p50 4, p99 6 -- pinned to the square-planar target, see above
+    44: 10,  # Ru  p99 10
+    77: 9,   # Ir  p99 9
+    45: 10,  # Rh  p99 10
+    76: 10,  # Os  p99 10
+    75: 9,   # Re  p99 9
+}
+
+
 # Pull the valences directly from the canonical Atom combinators if
 # the import succeeded.  This is a one-line mapping that respects
 # future updates to :data:`PRIMITIVE_ATOMS` / :data:`METAL_ATOMS`.

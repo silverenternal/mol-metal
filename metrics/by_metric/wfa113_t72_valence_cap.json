@@ -1,0 +1,328 @@
+{
+  "probe": "wfa113_t72_valence_cap",
+  "config": "configs/c8_fullgen_b64_2026_10_24.yaml",
+  "n_clouds": 400,
+  "per_metal": {
+    "Ir": {
+      "n_clouds": 63,
+      "valence_cap": 9,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "2": 1,
+        "3": 1,
+        "4": 3,
+        "5": 21,
+        "6": 32,
+        "7": 3,
+        "8": 2
+      },
+      "degree_mean": 5.571,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
+      "n_clouds_over_cap_before_t72": 5,
+      "metal_bonds_unrepresentable_before_t72": 7,
+      "metal_bonds_total": 351,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
+      "n_metal_carbon_bonds_hist": {
+        "0": 4,
+        "1": 5,
+        "2": 29,
+        "3": 4,
+        "4": 15,
+        "5": 6
+      },
+      "n_clouds_pi_bound": 21,
+      "frac_clouds_pi_bound": 0.3333
+    },
+    "Os": {
+      "n_clouds": 16,
+      "valence_cap": 10,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "4": 2,
+        "5": 3,
+        "6": 6,
+        "7": 4,
+        "8": 1
+      },
+      "degree_mean": 5.938,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
+      "n_clouds_over_cap_before_t72": 5,
+      "metal_bonds_unrepresentable_before_t72": 6,
+      "metal_bonds_total": 95,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
+      "n_metal_carbon_bonds_hist": {
+        "0": 4,
+        "1": 3,
+        "2": 4,
+        "3": 3,
+        "4": 1,
+        "6": 1
+      },
+      "n_clouds_pi_bound": 4,
+      "frac_clouds_pi_bound": 0.25
+    },
+    "Pt": {
+      "n_clouds": 102,
+      "valence_cap": 4,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "3": 1,
+        "4": 82,
+        "5": 2,
+        "6": 17
+      },
+      "degree_mean": 4.343,
+      "n_clouds_over_effective_cap": 19,
+      "frac_clouds_over_effective_cap": 0.1863,
+      "n_clouds_over_cap_before_t72": 19,
+      "metal_bonds_unrepresentable_before_t72": 36,
+      "metal_bonds_total": 443,
+      "metal_bonds_unrepresentable": 36,
+      "frac_metal_bonds_unrepresentable": 0.0813,
+      "n_metal_carbon_bonds_hist": {
+        "0": 51,
+        "1": 16,
+        "2": 24,
+        "3": 5,
+        "4": 5,
+        "6": 1
+      },
+      "n_clouds_pi_bound": 7,
+      "frac_clouds_pi_bound": 0.0686
+    },
+    "Re": {
+      "n_clouds": 50,
+      "valence_cap": 9,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "4": 3,
+        "5": 6,
+        "6": 24,
+        "7": 9,
+        "8": 6,
+        "9": 2
+      },
+      "degree_mean": 6.3,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
+      "n_clouds_over_cap_before_t72": 17,
+      "metal_bonds_unrepresentable_before_t72": 27,
+      "metal_bonds_total": 315,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
+      "n_metal_carbon_bonds_hist": {
+        "0": 11,
+        "1": 4,
+        "2": 4,
+        "3": 23,
+        "4": 4,
+        "5": 2,
+        "6": 1,
+        "8": 1
+      },
+      "n_clouds_pi_bound": 6,
+      "frac_clouds_pi_bound": 0.12
+    },
+    "Rh": {
+      "n_clouds": 53,
+      "valence_cap": 10,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "3": 1,
+        "4": 9,
+        "5": 9,
+        "6": 24,
+        "7": 3,
+        "8": 7
+      },
+      "degree_mean": 5.755,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
+      "n_clouds_over_cap_before_t72": 10,
+      "metal_bonds_unrepresentable_before_t72": 17,
+      "metal_bonds_total": 305,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
+      "n_metal_carbon_bonds_hist": {
+        "0": 7,
+        "1": 15,
+        "2": 6,
+        "3": 4,
+        "4": 8,
+        "5": 9,
+        "6": 4
+      },
+      "n_clouds_pi_bound": 22,
+      "frac_clouds_pi_bound": 0.4151
+    },
+    "Ru": {
+      "n_clouds": 116,
+      "valence_cap": 10,
+      "valence_cap_before_t72": 6,
+      "degree_hist": {
+        "4": 2,
+        "5": 15,
+        "6": 36,
+        "7": 16,
+        "8": 22,
+        "9": 23,
+        "10": 2
+      },
+      "degree_mean": 7.017,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
+      "n_clouds_over_cap_before_t72": 63,
+      "metal_bonds_unrepresentable_before_t72": 137,
+      "metal_bonds_total": 814,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
+      "n_metal_carbon_bonds_hist": {
+        "0": 22,
+        "1": 13,
+        "2": 14,
+        "3": 10,
+        "4": 9,
+        "5": 18,
+        "6": 23,
+        "7": 6,
+        "8": 1
+      },
+      "n_clouds_pi_bound": 62,
+      "frac_clouds_pi_bound": 0.5345
+    }
+  },
+  "examples": [
+    {
+      "cloud": 84,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 89,
+      "metal": "Pt",
+      "degree": 5,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 1
+    },
+    {
+      "cloud": 94,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 99,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 104,
+      "metal": "Pt",
+      "degree": 5,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 1
+    },
+    {
+      "cloud": 120,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 129,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 134,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 136,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 137,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 141,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    },
+    {
+      "cloud": 142,
+      "metal": "Pt",
+      "degree": 6,
+      "valence_cap": 4,
+      "geometry_max_bonds": 4,
+      "effective_cap": 4,
+      "lost": 2
+    }
+  ],
+  "geom_vs_valence": {
+    "Ir:geom<val": 63,
+    "Os:geom<val": 16,
+    "Pt:val<=geom": 102,
+    "Re:geom<val": 50,
+    "Rh:geom<val": 53,
+    "Ru:geom<val": 116
+  },
+  "pooled": {
+    "n_clouds": 400,
+    "n_clouds_over_effective_cap": 19,
+    "frac_clouds_over_effective_cap": 0.0475,
+    "metal_bonds_total": 2323,
+    "metal_bonds_unrepresentable": 36,
+    "frac_metal_bonds_unrepresentable": 0.0155,
+    "n_clouds_over_cap_before_t72": 119,
+    "frac_clouds_over_cap_before_t72": 0.2975,
+    "metal_bonds_unrepresentable_before_t72": 230,
+    "frac_metal_bonds_unrepresentable_before_t72": 0.099
+  }
+}

@@ -235,7 +235,14 @@ def test_covalent_valence_table_canonical_values():
     assert table[17] == 1, "Cl should be 1"
     # Metals
     assert table[78] == 4, "Pt_II should be 4 (square-planar)"
-    assert table[44] == 6, "Ru_II should be 6 (octahedral)"
+    # Wf-A113 (T72, 2026-10-28) — this used to assert Ru == 6 "octahedral".
+    # 6 is the corpus MEDIAN coordination number, not a ceiling: MEASURED on
+    # tmqm_parsed.csv, Ru MND p50/p99 is 6/10, and 53.4% of Ru clouds are
+    # pi-bound (an eta6-arene contributes six M-C bonds but three coordination
+    # sites).  A cap at 6 deleted three bonds from every such complex.  The
+    # ceiling is now the corpus p99; see
+    # molmetal/tests/test_wfa113_t72_metal_coordination_cap.py.
+    assert table[44] == 10, "Ru cap should be the corpus MND p99 (10)"
     # Override
     override = covalent_valence_table({78: 6})  # Pt_IV
     assert override[78] == 6, "Pt_IV override should be 6"

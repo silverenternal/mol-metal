@@ -219,8 +219,16 @@ def test_valence_table_covers_tmqm_elements_and_project_metals():
         )
     # Boron specifically: RDKit permits 3, so the default of 4 is wrong.
     assert _COVALENT_VALENCE[5] == 3
-    # The three newly-listed metals get a conservative octahedral ceiling. A
-    # cap that is too LOW only costs a bond; one that is too HIGH loses the
-    # whole decode.
-    for z in (45, 75, 76):
-        assert _COVALENT_VALENCE[z] == 6
+    # Wf-A113 (T72, 2026-10-28) — this used to assert 6 for Rh/Re/Os with the
+    # rationale "a cap that is too LOW only costs a bond; one that is too HIGH
+    # loses the whole decode".  Both halves are wrong for these elements.
+    # MEASURED: (a) 6 is the corpus MEDIAN coordination number (Rh p50 6,
+    # p99 10; Re 6/9; Os 6/10), so the cap refused half the cohort by
+    # construction — 29.75% of clouds and 9.9% of metal bonds unrepresentable
+    # on the 400-cloud c8 cohort; (b) RDKit 2026.03 sanitises a transition
+    # metal with ten single bonds, so a high cap does not lose the decode.
+    # The ceiling is now the corpus MND p99; see
+    # molmetal/tests/test_wfa113_t72_metal_coordination_cap.py.
+    assert _COVALENT_VALENCE[45] == 10  # Rh p99
+    assert _COVALENT_VALENCE[75] == 9  # Re p99
+    assert _COVALENT_VALENCE[76] == 10  # Os p99

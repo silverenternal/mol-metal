@@ -3381,17 +3381,23 @@
       "addresses": [
         "D62"
       ],
-      "done_when": "给出两种口径下的可用行数，并记录选择及其对训练集覆盖的影响。",
+      "done_when": "解码器的金属上限按语料 coord_number p99 取值（Ru 10 / Ir 9 / Rh 10 / Os 10 / Re 9），η6-芳烃的 6 条 M-C 键不再被 6 的常数砍掉；冗余的几何门删除；Pt 保持 4 并记录 17.7% 的 Pt(IV) 不可表示。",
       "gate": {
-        "measured": "两种口径的可用行数",
-        "decision": "写进 decisions"
+        "cap_covers_p99": "每个队列金属的解码上限 ≥ 语料 MND p99（Pt 除外，按化学钉死 4）",
+        "arene_kept": "Ru + η6-苯(6C) + 3N 的 9 条键全部保留",
+        "order_invariant": "金属键置信度最低时结果不变",
+        "still_bounded": "Pd / Pt 的第 5 条键仍被拒"
       },
-      "kill": "若把碳 donor 建模后金属-配体边数超过配位数、或 bond 头的类别分布明显偏移，则不改，改为排除。",
+      "kill": "若将来改成按氧化态/配位数逐云取上限（需要 oxidation_state 语义修正），删除本条的常数表并重写 gate。",
       "device": "cpu",
       "cost": "CPU 1 h",
-      "status": "PLANNED",
-      "evidence": [
-        "metrics/by_metric/wfa113_t60_donor_count.json"
+      "status": "FIXED",
+      "evidence": "metrics/by_metric/wfa113_t72_valence_cap.json",
+      "files": [
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py",
+        "molmetal/molmetal_lam/lam_chem/decoder_rework.py",
+        "molmetal/scripts/wfa113_t72_valence_cap_probe.py",
+        "molmetal/tests/test_wfa113_t72_metal_coordination_cap.py"
       ]
     },
     {
@@ -3627,6 +3633,35 @@
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
         "molmetal/scripts/wfa113_t71_vocab_probe.py",
         "molmetal/tests/test_wfa113_t71_vocab_coverage.py"
+      ]
+    },
+    {
+      "id": "T72",
+      "priority": 1,
+      "title": "解码器的金属上限等于语料配位数中位数：Ru/Rh/Os/Re/Ir 卡在 6，29.75% 的 cloud 与 9.9% 的金属键无法表示",
+      "what": "_COVALENT_VALENCE 给 Ru/Ir/Rh/Os/Re 的上限是 6，给 Pt 是 4。实测 tmqm_parsed.csv 的 coord_number：Ru p50/p99=6/10、Ir 6/9、Rh 6/10、Os 6/10、Re 6/9、Pt 4/6 —— 上限正好是中位数，等于按构造拒绝一半队列。物理原因是 hapticity：η6-芳烃在 Wiberg 图上贡献 6 条 M-C 键，但只算 3 个配位点，Ru 队列 53.4% 的 cloud 是 π 配位。处理：金属上限改用语料 MND p99；删掉与价上限重复、且在新上限下会重新砍掉 η6 键的几何门；Pt 按化学钉死 4 并记录 17.7% 的 Pt(IV)/5 配位不可表示。",
+      "addresses": [
+        "D72",
+        "T62"
+      ],
+      "done_when": "29.75% → 4.75%（只剩 Pt(IV)）；9.9% → 1.55% 金属键；η6-芳烃 9 条键全部保留；Pt/Pd 第 5 条键仍被拒。",
+      "gate": {
+        "cap_covers_p99": "Ru 10 / Ir 9 / Rh 10 / Os 10 / Re 9，均 ≥ 语料 p99",
+        "median_gone": "没有任何队列金属的上限 ≤ 语料中位数",
+        "arene_kept": "η6-苯 Ru + 3N = 9 条键",
+        "still_bounded": "Pd/Pt 4/5 保留"
+      },
+      "kill": "若改成逐云氧化态感知的上限，删除常数表并重写 gate。",
+      "device": "cpu",
+      "cost": "CPU 0.5 h",
+      "status": "FIXED",
+      "evidence": "metrics/by_metric/wfa113_t72_valence_cap.json",
+      "files": [
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py",
+        "molmetal/molmetal_lam/lam_chem/decoder_rework.py",
+        "molmetal/scripts/wfa113_t72_valence_cap_probe.py",
+        "molmetal/tests/test_wfa113_t72_metal_coordination_cap.py",
+        "molmetal/tests/test_cfm_yuelbond.py"
       ]
     }
   ],
@@ -4539,6 +4574,15 @@
         "impact": "这条线所有 5 金属 run 的「metal-aware」主张在 bond head 上是空的：金属被编码成 padding，5 个金属之间没有区别。Wf-A69 记的 0.265 根因（候选集错配）已被 T70 推翻，词表覆盖是更直接的解释。",
         "status": "FIXED",
         "task": "T71"
+      },
+      {
+        "id": "SA-46",
+        "finding": "解码器的金属配位上限被写成常数 6/4，而这两个数正好是语料的配位数中位数：一半以上的 Ru/Rh/Os 配合物在解码阶段结构上不可表示，η6-芳烃的 6 条 M-C 键被砍到只剩 6 条总键。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_COVALENT_VALENCE + molmetal/scripts/wfa113_t72_valence_cap_probe.py",
+        "measured": "400 个 tmQM cloud：修复前 119/400（29.75%）超上限、230/2323（9.9%）金属键不可表示；修复后 19/400（4.75%）、36/2323（1.55%），剩下的全部是 Pt(IV)/5 配位。π 配位占比 Ru 62/116=53.4%、Rh 22/53=41.5%、Ir 21/63=33.3%、Os 4/16=25%、Re 6/50=12%、Pt 7/102=6.9%。语料 MND p50/p99：Ru 6/10、Ir 6/9、Rh 6/10、Os 6/10、Re 6/9、Pt 4/6。",
+        "impact": "对 30% 的 cloud，解码器无论 bond head 预测得多准都无法拼出正确分子；η6 配合物必然断成多片段，molecule_validity 恒为 False。这是「解码率 1.000 但单片段率 0.203」的一个结构性来源。",
+        "status": "FIXED",
+        "task": "T72"
       }
     ],
     "reproduce": [

@@ -155,11 +155,33 @@ _COVALENT_VALENCE: Dict[int, int] = {
     34: 2,  # Se
     35: 1,  # Br
     53: 1,  # I
-    # Metals — coordination number (max sum of bond orders).
-    78: 4,  # Pt_II  (Pt_IV = 6; we use the conservative Pt_II cap)
-    44: 6,  # Ru_II  (octahedral)
+    # Metals — max number of metal-ligand bonds the selector may keep.
+    #
+    # Wf-A113 (T72, 2026-10-28) — these were 6 for Ru/Ir/Rh/Os/Re and 4 for Pt,
+    # i.e. the corpus MEDIAN coordination number for the first five.  A ceiling
+    # at the median refuses half the cohort by construction: MEASURED on
+    # tmqm_parsed.csv (33,429 rows), MND p50/p99 is Ru 6/10, Ir 6/9, Rh 6/10,
+    # Os 6/10, Re 6/9, Pt 4/6.  On the 400-cloud c8 cohort 29.75% of clouds and
+    # 9.9% of metal bonds (230/2,323) were unrepresentable
+    # (metrics/by_metric/wfa113_t72_valence_cap.json).
+    #
+    # The old comment justified the tight cap with "a cap that is too HIGH
+    # produces a molecule RDKit refuses".  That is false for these elements:
+    # RDKit 2026.03 sanitises [Ru] with ten single bonds and [Pt] with six
+    # (checked directly; transition metals carry no default valence).  The
+    # values below are the corpus p99, the same rule
+    # ``TMQM_MEASURED_METAL_CAPS`` already uses for the loss-side barrier.
+    #
+    # Pt stays at 4 as a chemistry choice, not a statistic: 81.8% of the Pt
+    # corpus is four-coordinate and the project targets Pt(II).  Pt(IV)/5-coord
+    # (17.7%) is a measured, documented limitation, not an oversight.
+    #
+    # Zn/Cu/Au/Pd/Fe/Ni are outside the six-metal cohort and keep their
+    # chemistry-first values.
+    78: 4,  # Pt_II  (p50 4, p99 6 — pinned to square-planar; see above)
+    44: 10,  # Ru   (p99 10)
     30: 4,  # Zn_II
-    77: 6,  # Ir_III
+    77: 9,  # Ir_III (p99 9)
     29: 4,  # Cu_II
     79: 4,  # Au_III
     46: 4,  # Pd_II
@@ -167,13 +189,9 @@ _COVALENT_VALENCE: Dict[int, int] = {
     28: 4,  # Ni_II
     # 2026-10-05 NEW — Rh, Re and Os.  These are THREE OF THE SIX METALS THIS
     # PROJECT TARGETS and they were absent, so they took the default of 4.
-    # MEASURED on a 200-cloud tmQM val sample: Rh appears 32x, Re 2x, Os 2x.
-    # An octahedral ceiling is the conservative choice — a cap that is too
-    # LOW only costs a bond, while a cap that is too HIGH produces a molecule
-    # RDKit refuses, and the decode is lost outright.
-    45: 6,  # Rh (octahedral — the common Rh(III) count)
-    75: 6,  # Re (octahedral)
-    76: 6,  # Os (octahedral)
+    45: 10,  # Rh (p99 10)
+    75: 9,  # Re (p99 9)
+    76: 10,  # Os (p99 10)
 }
 
 
@@ -961,61 +979,28 @@ class YuelBondBondDecoder:
             if cost > cap_i or cost > cap_j:
                 n_overvalent += 1
                 continue
-            # Wf-A55 W7-P1 — decoder-side geometry constraint.  AFTER the
-            # valence gate (so we never weaken an already-correct cap),
-            # BEFORE the bond is appended.  Queries
-            # ``_geometry_constraint_for_z`` for each endpoint; if either
-            # is constrained, count the bonds already attached to the
-            # constrained metal and reject if the new bond would push
-            # past the geometry's ``max_bonds``.  Non-metal endpoints
-            # return ``None`` and this branch costs two ``next(...)``
-            # probes (~O(1)).
-            zi_pre = int(z_list[i])
-            zj_pre = int(z_list[j])
-            gc_i = _geometry_constraint_for_z(zi_pre)
-            gc_j = _geometry_constraint_for_z(zj_pre)
-            if gc_i is not None or gc_j is not None:
-                gc = gc_i if gc_i is not None else gc_j
-                # ``metal_idx`` is whichever endpoint carries the
-                # constraint; ``partner_idx`` is the other end.  When
-                # BOTH endpoints are constrained (rare: bimetallic
-                # complexes), take the tighter cap.
-                metal_idx = i if gc_i is not None else j
-                if gc_i is not None and gc_j is not None:
-                    gc = gc_i if gc_i.max_bonds <= gc_j.max_bonds else gc_j
-                # Wf-A113 (2026-10-27) — count BOTH endpoints.
-                #
-                # This used to be ``sum(1 for (a, _, _) in bond_orders if a
-                # == metal_idx)``.  Candidates come from
-                # ``torch.triu_indices(n, n, offset=1)``, so every stored
-                # pair has a < b; a metal that sits at a HIGHER index than
-                # its partner is never counted, and the gate silently never
-                # fires for it.  MEASURED over 9,111 tmQM metal complexes:
-                # 7,700 (84.5%) put the metal at heavy index 0, and 11.84%
-                # (5,729 of 48,371) of metal bonds have the metal at the
-                # higher index.
-                #
-                # The gate is REDUNDANT with ``_cap_for_z`` for every metal in
-                # the table, but not because the two numbers are always equal:
-                # MEASURED, ``max_bonds`` equals the covalent cap for
-                # Ru/Rh/Pd/Ag/Re/Os/Ir/Pt/Au/Zn/Cd, and EXCEEDS it for Fe
-                # (octahedral 6 vs cap 4).  In the equal case both refuse at
-                # the same point; in the Fe case the valence check refuses
-                # first.  Either way this gate never decides anything on the
-                # default table, and it becomes the binding constraint only
-                # when a caller raises a cap past the geometry — e.g.
-                # ``valence_cap={78: 6}`` for Pt_IV, where square planar
-                # allows 4.  Kept rather than deleted for exactly that case,
-                # and because the comment records why its silence was
-                # invisible.
-                bonds_at_metal = sum(
-                    1
-                    for (a, b, _) in bond_orders
-                    if a == metal_idx or b == metal_idx
-                )
-                if bonds_at_metal >= gc.max_bonds:
-                    n_overvalent += 1
-                    continue
+            # Wf-A113 (T72, 2026-10-28) — the per-metal GEOMETRY gate that
+            # used to sit here has been removed.
+            #
+            # It rejected a bond when the constrained metal already carried
+            # ``gc.max_bonds`` bonds.  That was redundant with ``_cap_for_z``
+            # while the two tables agreed (the comment that stood here said so
+            # itself, measured across Ru/Rh/Pd/Ag/Re/Os/Ir/Pt/Au/Zn/Cd), and
+            # it became ACTIVELY WRONG once the valence caps were set from the
+            # corpus: ``_OCTAHEDRAL.max_bonds`` is 6, so an eta6-arene Ru with
+            # three other donors -- true degree 9, coordination number 6 --
+            # would still lose three bonds at the geometry gate after the
+            # valence gate had been fixed.  MEASURED: 53.4% of Ru clouds
+            # (62/116) are pi-bound, as are 41.5% of Rh, 33.3% of Ir, 25% of
+            # Os, 12% of Re and 6.9% of Pt
+            # (metrics/by_metric/wfa113_t72_valence_cap.json).
+            #
+            # The ceiling now lives in exactly one place, ``_COVALENT_VALENCE``,
+            # which is derived from the corpus.  ``_geometry_constraint_for_z``
+            # still describes the ideal ANGLES and is used by the angular
+            # prior; ``max_bonds`` is kept on the dataclass for callers that
+            # want the shape, but it no longer gates bond count.  Pd(5th bond)
+            # and Pt(5th bond) are still refused -- by the valence cap.
             # Wf-A111 (MOD4) — ring-size gate.  AFTER valence and geometry
             # (so it never weakens a correctness cap), BEFORE the bond is
             # committed.  Refusing here declines to close a cycle; the path
