@@ -1,0 +1,140 @@
+{
+ "metric": "wfa113_t42_bond_ce_decomposition",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T42 (D42). bond_ce was read as a transient (15.92 at epoch 0 falling to 1.59) and the hypothesis was that the class-weight denominator inflates it early, because the weighted CE is only comparable to the unweighted one when the predicted distribution matches the prior. Recording both at the same epoch was supposed to show the weighted value falling while the unweighted one stays flat.",
+ "artifact_for": "todo.json D42 / T42",
+ "decision": "The hypothesis is REFUTED and the task's kill clause fired. bond_ce_unweighted is as large as bond_ce at epoch 0 (16.60 vs 13.51), so the transient is not the weight denominator. The kill clause says to check the bond head's output-layer initialisation, which produced T52: the pair head sets a +2.0 NO_BOND bias but never zeroes the output weight, so the bias is swamped by a random projection and the head starts at CE 16.0 instead of 0.56.",
+ "measurements": {
+  "runs": [
+   {
+    "run": "wfa108j budget36, lr 1e-3",
+    "artifact": "molmetal/reports/wfa113_t42_bond_ce/wfa113_t42/per_epoch_metrics.json",
+    "config": "configs/wfa108j_budget36_2026_10_25.yaml",
+    "device": "cpu",
+    "n_epochs": 7,
+    "rows": [
+     {
+      "epoch": 0,
+      "bond_ce": 13.5135,
+      "bond_ce_unweighted": 16.6028,
+      "ratio": 0.8139,
+      "grad_norm": 475.39
+     },
+     {
+      "epoch": 1,
+      "bond_ce": 10.7831,
+      "bond_ce_unweighted": 12.9918,
+      "ratio": 0.83,
+      "grad_norm": 375.06
+     },
+     {
+      "epoch": 2,
+      "bond_ce": 7.8864,
+      "bond_ce_unweighted": 9.2,
+      "ratio": 0.8572,
+      "grad_norm": 347.9
+     },
+     {
+      "epoch": 3,
+      "bond_ce": 4.9784,
+      "bond_ce_unweighted": 5.3951,
+      "ratio": 0.9228,
+      "grad_norm": 310.37
+     },
+     {
+      "epoch": 4,
+      "bond_ce": 2.4397,
+      "bond_ce_unweighted": 2.1031,
+      "ratio": 1.16,
+      "grad_norm": 255.95
+     },
+     {
+      "epoch": 5,
+      "bond_ce": 1.6471,
+      "bond_ce_unweighted": 0.6963,
+      "ratio": 2.3653,
+      "grad_norm": 151.7
+     },
+     {
+      "epoch": 6,
+      "bond_ce": 1.4705,
+      "bond_ce_unweighted": 0.5394,
+      "ratio": 2.726,
+      "grad_norm": 191.02
+     }
+    ],
+    "crossover_epoch": 4,
+    "ep0_minus_ep6_unweighted": 16.0634
+   },
+   {
+    "run": "wfa108j budget36, lr 0 (control)",
+    "artifact": "molmetal/reports/wfa113_t42_bond_ce/wfa113_t42_lr0/per_epoch_metrics.json",
+    "device": "cpu",
+    "n_epochs": 2,
+    "rows": [
+     {
+      "epoch": 0,
+      "bond_ce": 15.2631,
+      "bond_ce_unweighted": 18.7597,
+      "ratio": 0.8136,
+      "grad_norm": 532.84
+     },
+     {
+      "epoch": 1,
+      "bond_ce": 16.1721,
+      "bond_ce_unweighted": 19.8156,
+      "ratio": 0.8161,
+      "grad_norm": 539.44
+     }
+    ],
+    "note": "With lr 0 the CE does not fall at all, which confirms the decline in the lr 1e-3 run is the optimiser, not a batch-composition artefact. It also confirms the init value is ~16-19 and is not a first-batch spike."
+   }
+  ],
+  "class_statistics": {
+   "counts": [
+    10610,
+    243,
+    31,
+    4,
+    378
+   ],
+   "prior": [
+    0.945,
+    0.019,
+    0.003,
+    0.0004,
+    0.033
+   ],
+   "weights_at_power_0.5": [
+    0.75,
+    5.33,
+    13.83,
+    38.39,
+    4.02
+   ],
+   "invariant": "sum_c p_c w_c == 1, so the weighted CE has the same EXPECTED value as the unweighted one whenever the prediction matches the prior",
+   "observed_ep0_ratio": 0.8139,
+   "interpretation": "ratio < 1 at epoch 0 means the prediction does NOT match the prior, and it does not: with the pair head at its as-built init the class-0 share is 0.037, not 0.945. The ratio only exceeds 1 after epoch 4, once the head has learned the base rate. The denominator is therefore visible in the ratio but is not what makes the value large."
+  }
+ },
+ "verdict": {
+  "hypothesis": "the epoch-0 bond_ce transient is the class-weight denominator",
+  "result": "REFUTED",
+  "evidence": "unweighted CE at ep0 is 16.60 (lr 1e-3) / 18.76 (lr 0), i.e. LARGER than the weighted 13.51 / 15.26. Removing the weights makes the number worse, not better.",
+  "kill_clause": "\u82e5 bond_ce_unweighted \u4e0e bond_ce \u5728 ep0 \u540c\u6837\u5927\uff0c\u8bf4\u660e\u77ac\u6001\u4e0d\u662f\u6743\u91cd\u5206\u6bcd\u9020\u6210\u7684\uff0c\u6539\u67e5 bond \u5934\u7684\u8f93\u51fa\u5c42\u521d\u59cb\u5316\uff0c\u5e76\u628a\u672c\u4efb\u52a1\u7684\u7ed3\u8bba\u5199\u6210\u5426\u5b9a\u3002",
+  "kill_clause_outcome": "Followed. The pair head sets pair_head[-1].bias[BOND_NO_BOND] = +2.0 but never zeroes pair_head[-1].weight, so the bias is a 6% perturbation of a random projection. MEASURED at init on 8 clouds: CE 16.0048 / |logit|max 32.64 as built, CE 0.5645 / |logit|max 2.00 with the weight zeroed. See metrics/by_metric/wfa113_t52_bond_head_init.json.",
+  "done_when_status": "VIOLATED. T42's done_when asked for |bond_ce_unweighted(ep0) - bond_ce_unweighted(ep6)| < 0.2; the measured difference is 16.06. The gate was written on the assumption that the unweighted CE is stable across epochs, which is false for a head that starts 28x away from its prior."
+ },
+ "what_is_kept": {
+  "instrumentation": "bond_ce_unweighted, bond_ce_n_batches, bond_class_counts/weights/prior/weight_power are now in every epoch record and every EpochMetrics. They cost one extra cross_entropy per batch under no_grad and they are what made the refutation possible.",
+  "m9": "M9 reports bond_ce_at_epoch0 and bond_ce_unweighted_at_epoch0 and emits a WARN (not a FAIL) when one non-aggregate term exceeds 50% of the objective at epoch 0, because at epoch 0 that is usually an initialisation transient.",
+  "ratio": "The weighted/unweighted ratio is a free diagnostic of prediction-vs-prior match and is reported rather than gated."
+ },
+ "honest_limits": [
+  "Both runs are 7 and 2 epochs on CPU with a single seed. They are enough to refute the denominator hypothesis (the unweighted CE is larger at ep0, not flat) but not to characterise convergence.",
+  "The lr 0 control is 2 epochs, not 7: it only needs to show the init value does not move.",
+  "The class counts come from the training cohort of this config; a different cohort moves the weights and the ratio."
+ ],
+ "tests": "molmetal/tests/test_wfa113_t42_bond_ce_decomposition.py"
+}

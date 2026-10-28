@@ -294,6 +294,51 @@ _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 #: callers unpack the 5-tuple from `train_one_epoch`).
 _LAST_EPOCH_TERM_MEANS: Dict[str, float] = {}
 
+#: Wf-A113 (T42/D42) — the bond CE decomposed into its weighted and unweighted
+#: halves, plus the class statistics that produced the weights.
+#:
+#: ``bond_ce`` is a class-weighted cross-entropy whose weights are
+#: ``(N / (K * n_c)) ** power`` renormalised so that ``sum_c p_c w_c == 1``.
+#: That renormalisation keeps the EXPECTED value comparable to the unweighted
+#: CE, but only when the model's predicted distribution matches the cohort
+#: prior.  MEASURED at initialisation on a 64-cloud Pt cohort: weighted 1.692
+#: against unweighted 1.257 (ratio 1.346), so the identity is approximate even
+#: at init.  Under a mismatched prediction the rare classes carry weights up to
+#: 40x, and the weighted number grows far faster than the unweighted one —
+#: which is why a run can report ``bond_ce`` 15.92 -> 1.59 over six epochs
+#: (results/wfa108j_budget36) without the head learning anything at that rate.
+#:
+#: Recording both, on the same logits, is what separates "the objective is
+#: unbalanced" from "the reported number is a weighted one".  Same
+#: no-return-signature rule as ``_LAST_EPOCH_TERM_MEANS``: three external
+#: callers unpack the 5-tuple from ``train_one_epoch``.
+_LAST_BOND_CE_AUX: Dict[str, Any] = {}
+
+#: The class counts / weights / prior the run actually used, filled once in
+#: ``main()`` and written into every epoch record.  Empty when
+#: ``bond_class_weights`` is off, which is itself the answer to "why are the
+#: two CE columns identical".
+_BOND_CLASS_STATS: Dict[str, List[float]] = {}
+
+
+def _bond_ce_aux_fields() -> Dict[str, Any]:
+    """Wf-A113 (T42/D42) — the per-epoch fields for the two epoch records.
+
+    One function because there are two construction sites (the JSONL event and
+    the per-epoch artifact) and a field added to one but not the other is
+    exactly how ``fm_term`` came to be absent from one of them.
+    """
+    return {
+        "bond_ce_unweighted": float(_LAST_BOND_CE_AUX.get("bond_ce_unweighted", 0.0)),
+        "bond_ce_n_batches": int(_LAST_BOND_CE_AUX.get("bond_ce_n_batches", 0)),
+        "bond_class_counts": list(_BOND_CLASS_STATS.get("counts") or []),
+        "bond_class_weights": list(_BOND_CLASS_STATS.get("weights") or []),
+        "bond_class_prior": list(_BOND_CLASS_STATS.get("prior") or []),
+        "bond_class_weight_power": (
+            float(_BOND_CLASS_STATS["power"][0]) if _BOND_CLASS_STATS.get("power") else None
+        ),
+    }
+
 #: One-shot result of :func:`fm_prior_scale_check` on the FIRST FM batch of the
 #: run (Wf-A107g, 2026-10-22).  Written by :func:`train_one_epoch`, read when
 #: the run artifact is assembled.  Empty means the FM objective never ran, so
@@ -1824,6 +1869,26 @@ class EpochMetrics:
     # cannot be decomposed is not an auditable number (the Wf-A105 defect
     # class, §6.148).
     loss_terms: Dict[str, float] = field(default_factory=dict)
+    # Wf-A113 (T42/D42) — the bond CE with and without its class weights, plus
+    # the statistics that produced the weights.
+    #
+    # `bond_ce` (and `bond_ce_loss`) is the WEIGHTED cross-entropy.  Its
+    # magnitude is a property of the cohort's class balance and of
+    # `bond_class_weight_power`, not of how well the head fits, so it is not
+    # comparable across cohorts and can fall 10x over six epochs
+    # (results/wfa108j_budget36: 15.92 -> 1.59) while the unweighted value
+    # barely moves.  Recording both makes the difference visible instead of
+    # leaving a reader to interpret a weighted number as an error rate.
+    #
+    # `bond_ce_unweighted` is `F.cross_entropy(logits, targets)` with no
+    # weight, no focal term and no label smoothing, measured on the same
+    # logits and the same sampled pairs, BEFORE the Menon logit adjustment.
+    bond_ce_unweighted: float = 0.0
+    bond_ce_n_batches: int = 0
+    bond_class_counts: list = field(default_factory=list)
+    bond_class_weights: list = field(default_factory=list)
+    bond_class_prior: list = field(default_factory=list)
+    bond_class_weight_power: float | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -2543,6 +2608,28 @@ class CFMJointModel(nn.Module):
         # least one hard clash, 143 pairs total).
         bond_clash_reject: bool = True,
         bond_clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
+        # Wf-A113 (T52, 2026-10-27) — zero the pair head's OUTPUT WEIGHT at
+        # init so the hand-set +2.0 NO_BOND bias is the actual prior.
+        #
+        # The head has always done
+        #     pair_head[-1].bias.zero_(); pair_head[-1].bias[NO_BOND] = +2.0
+        # intending softmax([2,0,0,0,0]) — p(NO_BOND) = 0.649, p(bonded) =
+        # 0.351 — against a 0.945 empirical NO_BOND rate.  It never zeroed the
+        # weight, so ``nn.Linear``'s default init adds a +-0.125 projection of
+        # the hidden activation on top and the bias is a rounding error
+        # inside it.
+        #
+        # MEASURED, 8 clouds of metalcytotox_5metal_multitask_v3.csv, init,
+        # seed 0: as built CE 16.0048 / |logit|max 32.64 / p(NO_BOND) 0.037;
+        # weight zeroed (bias kept) CE 0.5645 / |logit|max 2.00 / p(NO_BOND)
+        # 0.649 — a 28x reduction, and the first six epochs of a real run
+        # (wfa108j, CPU) spend themselves climbing down from that transient
+        # (ep0 bond_ce 13.51 -> ep6 1.47).
+        #
+        # Default True for the trainer path; the decoder classes keep
+        # ``zero_init_pair_out=False`` so direct constructor calls and every
+        # existing checkpoint stay bit-exact.
+        bond_head_zero_out: bool = True,
         # Wf-A69 W2 (2026-10-17) Fix 3 — bond-head topology.  Default
         # ``"single"`` (bit-exact Wf-A67/68/W1) is the 5-class softmax
         # CE.  ``"split"`` wraps the head into
@@ -2710,6 +2797,9 @@ class CFMJointModel(nn.Module):
                 n_rbf=int(n_rbf),
                 clash_reject=bool(bond_clash_reject),
                 clash_ratio=float(bond_clash_ratio),
+                # T52 — only the YuelBond pair heads have the +2.0 NO_BOND
+                # prior this makes real; DMPNNBondHead has no such bias.
+                zero_init_pair_out=bool(bond_head_zero_out),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn":
             # Wf-A70 W1 (2026-10-17) — Fix 6: YuelBond B.1 edge-state
@@ -2734,6 +2824,9 @@ class CFMJointModel(nn.Module):
                 n_rbf=int(n_rbf),
                 clash_reject=bool(bond_clash_reject),
                 clash_ratio=float(bond_clash_ratio),
+                # T52 — only the YuelBond pair heads have the +2.0 NO_BOND
+                # prior this makes real; DMPNNBondHead has no such bias.
+                zero_init_pair_out=bool(bond_head_zero_out),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn_residual":
             # Wf-A74 (2026-10-18) — Architecture 1 (3-layer residual
@@ -2763,6 +2856,9 @@ class CFMJointModel(nn.Module):
                 n_rbf=int(n_rbf),
                 clash_reject=bool(bond_clash_reject),
                 clash_ratio=float(bond_clash_ratio),
+                # T52 — only the YuelBond pair heads have the +2.0 NO_BOND
+                # prior this makes real; DMPNNBondHead has no such bias.
+                zero_init_pair_out=bool(bond_head_zero_out),
             )
         else:
             raise ValueError(
@@ -5315,6 +5411,14 @@ def train_one_epoch(
     model.train()
     global _FM_VELOCITY_CALLS
     bond_losses, w2_losses, total_losses, grad_norms = [], [], [], []
+    # Wf-A113 (T42/D42) — the same CE with weight=None, accumulated beside
+    # ``bond_losses``.  The reported ``bond_ce`` is class-weighted, so its
+    # magnitude depends on the cohort's class balance and on the weight
+    # exponent; two runs with different weights are not comparable on it, and
+    # neither are two epochs of one run if the batch composition shifts.  The
+    # unweighted value is the plain cross-entropy of the head's own output and
+    # is comparable across both.
+    bond_losses_unweighted: List[float] = []
     # The per-stage timer and the forward counter are process-wide, so they are
     # reset HERE, at the top of the epoch, rather than after the print.  The
     # dict has to still hold the epoch's numbers when the caller reads it back
@@ -5556,6 +5660,18 @@ def train_one_epoch(
                 _sel = torch.cat([_sel_pos, _sel_neg], dim=0)
                 all_logits = all_logits[_sel]
                 all_targets = all_targets[_sel]
+        # Wf-A113 (T42/D42) — the unweighted reference, measured on the SAME
+        # logits and targets the weighted CE is about to see, and BEFORE the
+        # Menon logit adjustment (which shifts the logits for the loss but not
+        # for this diagnostic).  ``no_grad`` because it must not add an edge to
+        # the graph; ``detach`` because the head's output may still be part of
+        # the objective's graph.  Recorded unconditionally: when no class
+        # weights and no focal/smoothing are in play the two columns are equal,
+        # and "equal" is a fact worth being able to see.
+        with torch.no_grad():
+            bond_losses_unweighted.append(
+                float(F.cross_entropy(all_logits.detach(), all_targets))
+            )
         # Wf-R41 — soft-valence term.  Reuses valence_log_barrier() from
         # decoder_rework.py.  Per-cloud loop, same shape as the assemble
         # term.  When the weight is 0 or no clouds made it through, the
@@ -7741,6 +7857,19 @@ def train_one_epoch(
     _LAST_EPOCH_TERM_MEANS.clear()
     _LAST_EPOCH_TERM_MEANS.update(
         {k: float(np.mean(v)) for k, v in _term_acc.items() if v}
+    )
+    # Wf-A113 (T42/D42) — the weighted/unweighted CE pair, epoch means over the
+    # same batches the objective saw.  Written here rather than returned,
+    # because the 5-tuple return is unpacked by three external callers.
+    _LAST_BOND_CE_AUX.clear()
+    _LAST_BOND_CE_AUX.update(
+        {
+            "bond_ce": float(np.mean(bond_losses) if bond_losses else 0.0),
+            "bond_ce_unweighted": float(
+                np.mean(bond_losses_unweighted) if bond_losses_unweighted else 0.0
+            ),
+            "bond_ce_n_batches": float(len(bond_losses_unweighted)),
+        }
     )
     # The per-stage timer has existed since the 940 ms/step mis-attribution
     # (see ``_stage_tick``) but had no caller, so it could not be switched on
@@ -11413,6 +11542,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-head-zero-out",
+        dest="bond_head_zero_out",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Wf-A113 (T52, 2026-10-27): zero the YuelBond pair head's output "
+            "WEIGHT at init so its hand-set +2.0 NO_BOND bias is the real "
+            "prior.  The head has always set that bias (softmax over 5 "
+            "classes: p(NO_BOND)=0.649, p(bonded)=0.351) but left nn.Linear's "
+            "default weight in place, whose +-0.125 projection of the hidden "
+            "state reaches |32| on the 5-metal CSV cohort.  MEASURED at init, "
+            "8 clouds, seed 0: as built CE 16.0048 / |logit|max 32.64 / "
+            "p(NO_BOND) 0.037; weight zeroed CE 0.5645 / |logit|max 2.00 / "
+            "p(NO_BOND) 0.649.  A real CPU run then spent six epochs climbing "
+            "out of the transient (ep0 bond_ce 13.51 -> ep6 1.47).  Applies "
+            "to yuelbond / yuelbond_edge_mpnn / yuelbond_edge_mpnn_residual; "
+            "DMPNNBondHead has no such bias and ignores it.  Turn OFF only "
+            "to reproduce a pre-T52 run."
+        ),
+    )
+    p.add_argument(
         "--bond-z-table",
         dest="bond_z_table",
         choices=("pt", "all6"),
@@ -14573,6 +14723,9 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         bond_clash_ratio=float(
             getattr(args, "bond_clash_ratio", DEFAULT_BOND_CLASH_RATIO)
         ),
+        # Wf-A113 (T52) — read through getattr so a checkpoint written before
+        # the flag rebuilds with the value its trainer used.
+        bond_head_zero_out=bool(getattr(args, "bond_head_zero_out", True)),
         # Wf-A69 W2 (2026-10-17) Fix 3 — split-head topology.
         # Default ``"single"`` is bit-exact Wf-A67/68/W1.
         bond_head_kind=str(getattr(args, "bond_head_kind", "single")),
@@ -15588,6 +15741,18 @@ def main() -> int:
             # (Menon 2020).  ``_p`` is already on the right device; the
             # CE call site in train_one_epoch moves it to logits.device.
             _bond_class_prior = _p.to(device)
+            # Wf-A113 (T42/D42) — the statistics that produced the weights, so
+            # the artifact can answer "why is bond_ce 15.92" without the
+            # launcher log.  Written once; every epoch record carries them.
+            _BOND_CLASS_STATS.clear()
+            _BOND_CLASS_STATS.update(
+                {
+                    "counts": [float(x) for x in _counts.tolist()],
+                    "weights": [float(x) for x in _bond_class_weights.tolist()],
+                    "prior": [float(x) for x in _bond_class_prior.tolist()],
+                    "power": [float(_power)],
+                }
+            )
             print(
                 "[cfm-bond-weights] class counts="
                 + str(_counts.tolist())
@@ -16251,6 +16416,20 @@ def main() -> int:
             f"[cfm-head] bond_features=OFF "
             f"({type(_head_obj).__name__}: raw d + is_short/is_long only; "
             f"pre-Wf-A107 architecture)"
+        )
+    # Wf-A113 (T52, 2026-10-27) — the pair head's init.  The head has always
+    # set `pair_head[-1].bias[NO_BOND] = +2.0` as its prior and never zeroed
+    # the weight, so `nn.Linear`'s default init added a random projection of
+    # the hidden state on top and the prior was 28x swamped (MEASURED at init,
+    # 8 clouds, seed 0: CE 16.0048 as built vs 0.5645 with the weight zeroed).
+    # A CPU run then spent six epochs climbing out of that transient
+    # (ep0 bond_ce 13.51 -> ep6 1.47).  Print the resolved value because the
+    # difference is invisible in every metric after epoch 6.
+    if type(_head_obj).__name__.startswith("YuelBond"):
+        _zo = bool(getattr(args, "bond_head_zero_out", True))
+        print(
+            f"[cfm-head] pair_head_out={'zero-init (bias is the prior)' if _zo else 'DEFAULT-INIT (bias swamped by weight)'}"
+            f" via --bond-head-zero-out={_zo}"
         )
     # Wf-A113 (2026-10-27) — T40.  The SO(3)-averaged FM term is a SCALED COPY
     # of the FM MSE, not a separate objective.
@@ -18249,6 +18428,8 @@ def main() -> int:
             # Wf-A108e — every term that entered the objective, so the total
             # is decomposable from the artifact alone.
             loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
+            # Wf-A113 (T42/D42) — the CE pair and the class statistics.
+            **_bond_ce_aux_fields(),
             # Wf-R43 m4 — real SA on generated molecules.
             gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
             gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
@@ -18433,6 +18614,8 @@ def main() -> int:
                 fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
                 # Wf-A108e — see the primary site.
                 loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
+                # Wf-A113 (T42/D42) — see the primary site.
+                **_bond_ce_aux_fields(),
                 # Wf-R43 m4 — real SA on generated molecules (see the
                 # EpochMetrics field docs for why `gen_sa_observed` is the
                 # field to branch on).

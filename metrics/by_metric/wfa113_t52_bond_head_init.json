@@ -1,0 +1,58 @@
+{
+ "metric": "wfa113_t52_bond_head_init",
+ "tag": "MEASURED",
+ "date": "2026-10-27",
+ "why": "T42's kill clause fired: bond_ce and bond_ce_unweighted are BOTH large at epoch 0 (13.51 vs 16.60 on wfa108j), so the transient is not the class-weight denominator.  The kill clause says to check the bond head's output-layer initialisation instead.",
+ "artifact_for": "todo.json T42 (kill branch) / T52",
+ "config": "configs/wfa108j_budget36_2026_10_25.yaml",
+ "cohort": "8 clouds of .data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+ "rows": [
+  {
+   "tag": "zero_init_on",
+   "bond_head_zero_out_flag": true,
+   "head_class": "YuelBondDecoderHead",
+   "pair_head_out_weight_abs_sum": 0.0,
+   "pair_head_out_bias": [
+    2.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bond_ce": 0.5645086169242859,
+   "logit_abs_max": 2.0,
+   "logit_std": 0.8000227212905884,
+   "pred_class_0_share": 0.6487855911254883,
+   "n_pairs": 3519,
+   "n_clouds": 8
+  },
+  {
+   "tag": "zero_init_off",
+   "bond_head_zero_out_flag": false,
+   "head_class": "YuelBondDecoderHead",
+   "pair_head_out_weight_abs_sum": 27.493165969848633,
+   "pair_head_out_bias": [
+    2.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bond_ce": 16.004764556884766,
+   "logit_abs_max": 32.63847351074219,
+   "logit_std": 9.75223159790039,
+   "pred_class_0_share": 0.037432946264743805,
+   "n_pairs": 3519,
+   "n_clouds": 8
+  }
+ ],
+ "delta": {
+  "bond_ce_ratio_off_over_on": 28.351674495398157,
+  "logit_abs_max_ratio_off_over_on": 16.319236755371094
+ },
+ "conclusion": "The +2.0 NO_BOND bias was never a prior: the output weight was left at nn.Linear's default init, whose projection of the hidden state reaches |32| and swamps the bias.  Zeroing the weight at init drops the CE from the off-row to the on-row value on the identical cohort.",
+ "honest_limits": [
+  "Initialisation only. It shows the head starts where the prior says it should; it does not show the run converges better, which needs a training run the standing directive forbids.",
+  "One seed, 8 clouds. The ratio is an init property, so seed spread matters only through the Linear init it removes."
+ ]
+}

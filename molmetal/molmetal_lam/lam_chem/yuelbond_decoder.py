@@ -666,6 +666,29 @@ class YuelBondDecoderHead(nn.Module):
         # it removes the pairs the clamp was manufacturing bonds from.
         clash_reject: bool = True,
         clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
+        # Wf-A113 (T52) — zero-initialise the pair head's OUTPUT WEIGHT.
+        #
+        # The +2.0 BOND_NO_BOND bias below is meant to be the head's prior at
+        # init: softmax([2, 0, 0, 0, 0]) puts p(NO_BOND) = 0.649 and
+        # p(bonded) = 0.351, against a 0.945 empirical NO_BOND rate.  It is
+        # only a prior if the weight term is zero, and it is not —
+        # ``nn.Linear``'s default init leaves a +-0.125 projection of the
+        # hidden activation, which on the 5-metal CSV cohort reaches |32|.
+        # MEASURED on 8 clouds of metalcytotox_5metal_multitask_v3.csv, at
+        # init, seed 0: as built, CE 16.0048 / |logit|max 32.64 /
+        # p(NO_BOND) 0.037; with this weight zeroed and the bias kept, CE
+        # 0.5645 / |logit|max 2.00 / p(NO_BOND) 0.649.  The hand-set prior was
+        # 28x swamped.
+        #
+        # The residual gap (0.649 vs 0.945) is the bias VALUE, not the weight:
+        # matching the empirical rate over 5 classes needs +4.23, not +2.0.
+        # Left as is here — changing it moves every archived run's epoch-0
+        # decode, and the weight was the 28x term.
+        #
+        # Default False keeps every existing checkpoint and every direct
+        # constructor call bit-exact; the trainer turns it ON for new runs
+        # (``--bond-head-zero-out``, default on).
+        zero_init_pair_out: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -759,6 +782,12 @@ class YuelBondDecoderHead(nn.Module):
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
             self.pair_head[-1].bias[BOND_NO_BOND] = +2.0
+            if zero_init_pair_out:
+                # T52 — make the bias above an actual prior.  Without this
+                # the default Linear init supplies a random logit offset of
+                # up to +-|h|/sqrt(hidden_dim) per class and the prior is
+                # swamped (MEASURED: CE 16.0048 -> 0.5645 at init).
+                self.pair_head[-1].weight.zero_()
         # Wf-A68 (2026-10-17) — optional residual skip from atom_encoder
         # output to the message-passing output.  When use_skip is True, an
         # extra Linear(hidden_dim, hidden_dim) projection is registered
@@ -1311,6 +1340,8 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # which head is plugged in.
         clash_reject: bool = True,
         clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
+        # Wf-A113 (T52) — same zero-init as :class:`YuelBondDecoderHead`.
+        zero_init_pair_out: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -1421,6 +1452,12 @@ class YuelBondEdgeMPNNHead(nn.Module):
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
             self.pair_head[-1].bias[BOND_NO_BOND] = +2.0
+            if zero_init_pair_out:
+                # T52 — make the bias above an actual prior.  Without this
+                # the default Linear init supplies a random logit offset of
+                # up to +-|h|/sqrt(hidden_dim) per class and the prior is
+                # swamped (MEASURED: CE 16.0048 -> 0.5645 at init).
+                self.pair_head[-1].weight.zero_()
 
     def forward(self, cloud: AtomCloud) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Return ``(E, NUM_BOND_CLASSES)`` logits over candidate edges.
@@ -1707,6 +1744,8 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
         # class of bug this project keeps paying for.
         clash_reject: bool = True,
         clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
+        # Wf-A113 (T52) — same pass-through rule as ``clash_reject`` above.
+        zero_init_pair_out: bool = False,
     ) -> None:
         super().__init__(
             hidden_dim=hidden_dim,
@@ -1723,6 +1762,7 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
             donor_zs=donor_zs,
             clash_reject=clash_reject,
             clash_ratio=clash_ratio,
+            zero_init_pair_out=zero_init_pair_out,
         )
 
 

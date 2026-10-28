@@ -1132,6 +1132,13 @@ def _term_share_rows(doc: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
                     "terms": terms,
                     "shares": {k: v / total for k, v in terms.items()},
                     "total": total,
+                    # Wf-A113 (T42/D42) — the CE pair lives at the top level of
+                    # the epoch row, not inside loss_terms, so it is carried
+                    # separately.  ``None`` (rather than 0.0) when the run
+                    # predates the field, because "not recorded" and
+                    # "measured zero" are different claims.
+                    "bond_ce": e.get("bond_ce"),
+                    "bond_ce_unweighted": e.get("bond_ce_unweighted"),
                 }
             )
         return rows, "loss_terms"
@@ -1154,6 +1161,8 @@ def _term_share_rows(doc: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
                 "terms": terms,
                 "shares": {k: v / total for k, v in terms.items()},
                 "total": total,
+                "bond_ce": e.get("bond_ce"),
+                "bond_ce_unweighted": e.get("bond_ce_unweighted"),
             }
         )
     return rows, "flat_keys"
@@ -1308,6 +1317,41 @@ def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "no_term_above_90pct": worst_share <= 0.90,
         "every_contributing_term_has_a_declared_weight": len(weightless) == 0,
     }
+    # Wf-A113 (T42/D42) — a WARN, not a check.  A term owning more than half
+    # the objective at epoch 0 is usually an initialisation transient.  The
+    # cause is NOT the class-weight denominator: MEASURED on wfa108j, the
+    # UNWEIGHTED bond CE is larger at epoch 0 than the weighted one (16.60 vs
+    # 13.51), so dropping the weights makes it worse.  The cause is the pair
+    # head's output-layer init (T52: CE 16.0 as built vs 0.56 with the output
+    # weight zeroed).  Either way the epoch-0 share is worth surfacing — a
+    # reader who sees only the epoch-0 total will conclude the objective is
+    # unbalanced — but it is not a defect on its own, so it must not fail.
+    _ep0 = rows[0]
+    _ep0_over_half = sorted(
+        k for k, v in _ep0["shares"].items() if abs(v) > 0.5
+    )
+    _warnings: List[str] = []
+    if _ep0_over_half:
+        _warnings.append(
+            "term_share_at_epoch0: "
+            + ", ".join(
+                f"{k}={abs(_ep0['shares'][k]):.3f}" for k in _ep0_over_half
+            )
+            + " — more than half of the epoch-0 objective in a single term. "
+            "Check the per-term trajectory before reading the epoch-0 total "
+            "as objective imbalance."
+        )
+    _ce_w = _ep0.get("bond_ce")
+    _ce_u = _ep0.get("bond_ce_unweighted")
+    if _ce_w is not None and _ce_u is not None and float(_ce_u) > 0.0:
+        _ratio = float(_ce_w) / float(_ce_u)
+        if _ratio > 2.0:
+            _warnings.append(
+                f"bond_ce_at_epoch0: weighted={float(_ce_w):.4f} vs "
+                f"unweighted={float(_ce_u):.4f} (ratio {_ratio:.2f}). The "
+                "reported bond_ce is the weighted one; its magnitude is a "
+                "property of the class weights, not of how well the head fits."
+            )
     return {
         "measured": {
             "path": str(p),
@@ -1317,6 +1361,10 @@ def gate_m9(ctx: Dict[str, Any]) -> Dict[str, Any]:
             "max_share_by_term": max_share_by_term,
             "worst_term": worst_term,
             "worst_share": worst_share,
+            "term_share_at_epoch0": _ep0_over_half,
+            "bond_ce_at_epoch0": _ce_w,
+            "bond_ce_unweighted_at_epoch0": _ce_u,
+            "warnings": _warnings,
             "declared_nonzero_weights": weights,
             "terms_contributing_without_a_weight": weightless,
             "unobservable_weights": unobservable,
