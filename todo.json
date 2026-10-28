@@ -3760,6 +3760,24 @@
         "measured": "metrics/by_metric/wfa113_t77_metal_bond_cost_units.json"
       },
       "status": "FIXED"
+    },
+    {
+      "id": "T78",
+      "priority": 1,
+      "title": "芳香键一律按 1.5 计费：N 61.7% / O 30.7% 的原子在语料自身图上就超 cap，解码器重建不出训练真值",
+      "what": "_CLASS_VALENCE_COST[aromatic]=1.5 是 Kekulé 平均，只对碳成立。N/O/S 按 1.0 计；P cap 3→5（语料是磷酸酯）。六金属队列（去氢）上 N 61.7%→3.6%、O 30.7%→9.2%、P 98.2%→0.03%，碳不变 1.2%。",
+      "addresses": [
+        "D78"
+      ],
+      "done_when": "芳香杂原子计 1.0、碳仍 1.5（有对照测试）；P cap=5；before/after 落盘。",
+      "gate": {
+        "pyrrole": "test_pyrrole_nitrogen_keeps_three_bonds",
+        "furan": "test_furan_oxygen_keeps_both_ring_bonds",
+        "carbon_control": "test_carbon_still_pays_the_kekule_average",
+        "phosphate": "test_phosphate_phosphorus_keeps_four_bonds",
+        "measured": "metrics/by_metric/wfa113_t78_element_cost_fit.json"
+      },
+      "status": "FIXED"
     }
   ],
   "acceptance": {
@@ -4735,6 +4753,16 @@
         "status": "FIXED",
         "task": "T77",
         "resolution": "_select_bonds 与 _bridge_components 对金属端点一律按 1.0/键计费，配体端点保留键级成本；decoder_rework 的注释改为实测分布。测试 test_wfa113_t77_metal_budget_units.py（3 条，已验证旧记账下 Re 只保留 6/9）。"
+      },
+      {
+        "id": "SA-52",
+        "finding": "芳香键在所有元素上都按 1.5 计费，但 1.5 只是 Kekulé 单/双键的平均，只对碳成立。N/O/S 在芳环里按孤对电子或无双取代的 Kekulé 双键承担该键，按 1.5 计会多收 0.5/键，选择器于是丢掉真实键。另有 P 的 cap=3，而语料是磷酸酯（P 四单键）。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_CLASS_VALENCE_COST / _COVALENT_VALENCE[15]",
+        "measured": "metrics/by_metric/wfa113_t78_element_cost_fit.json（六金属队列 33,429 配合物，键阈值 0.3，按 load_tmqm_clouds 的口径去掉氢）：超 cap 比例 N 61.73%→3.64%、O 30.73%→9.18%、P 98.18%→0.03%、S 49.63%→34.72%、Se 36.76%→26.29%；碳 1.23% 不变（对照）。典型反例：呋喃 O 2×1.5=3.0>2、芳基酰胺 N 1.5+1+1=3.5>3、磷酸 P 四单键>3。",
+        "impact": "解码器无法重建它自己训练用的真值图：N 与 O 是配体里最常见的杂原子（六金属队列中 N 3.23%、O 2.27% 的原子），掉一条环键就断环、变多片段，直接压低 gen_validity 与 bond_exact_type_rate。P 在 7.7% 的配合物里出现。",
+        "status": "FIXED",
+        "task": "T78",
+        "resolution": "芳香键对 Z∈{5,7,8,15,16,33,34} 计 1.0（碳保持 1.5）；P cap 3→5（RDKit 允许 3 或 5）。测试 test_wfa113_t78_heteroatom_aromatic_cost.py（4 条，已验证旧规则下呋喃 O 只留 1/2、磷酸 P 只留 3/4）。残余 B 85.2%（碳硼烷型 5-6 配位）与 As 90.5%（409 原子）记录为实测限制，未修。"
       }
     ],
     "reproduce": [

@@ -131,6 +131,40 @@ _CLASS_VALENCE_COST: Dict[int, float] = {
     4: 1.5,  # BOND_AROMATIC
 }
 
+#: Elements whose aromatic bonds are charged 1.0, not 1.5.
+#:
+#: Wf-A113 (T78, 2026-10-28) — 1.5 is the average of the Kekulé single/double
+#: pair, which is right for CARBON: benzene C = 2 x 1.5 + 1 H = 4 = its cap.
+#: It is wrong for a heteroatom, which carries the aromatic bond either as a
+#: lone pair (pyrrole N, furan O, thiophene S) or as the Kekulé double-bond
+#: partner without a second substituent (pyridine N).  Charging 1.5 there
+#: over-bills every ring by 0.5 per bond, and the selector then drops a real
+#: bond:
+#:
+#:     pyrrole N    2 x 1.5 + 1 H = 4.0  >  cap 3
+#:     furan O      2 x 1.5       = 3.0  >  cap 2
+#:     amide N      1.5 + 1 + 1   = 3.5  >  cap 3   (aryl-NH-C=O)
+#:
+#: MEASURED on the six-metal cohort (33,429 complexes, every bond >= 0.3,
+#: hydrogens dropped the way ``load_tmqm_clouds`` drops them — the decoder
+#: never sees an H, so a cap measured on an H-bearing graph measures a
+#: different molecule): 61.7% of N atoms and 30.7% of O atoms exceeded their
+#: cap on the CORPUS's own graph, i.e. the decoder could not rebuild the truth
+#: it was trained on.  With this rule: N 3.6%, O 9.2%, S 34.7%, Se 26.3%.
+#: Carbon is unchanged at 1.2%, which is the control: the rule must not touch
+#: it (``metrics/by_metric/wfa113_t78_element_cost_fit.json``).
+_AROMATIC_HETERO_ZS: frozenset = frozenset(
+    {
+        5,   # B
+        7,   # N
+        8,   # O
+        15,  # P
+        16,  # S
+        33,  # As
+        34,  # Se
+    }
+)
+
 
 _COVALENT_VALENCE: Dict[int, int] = {
     1: 1,  # H
@@ -148,7 +182,9 @@ _COVALENT_VALENCE: Dict[int, int] = {
     # Si 4, As 3.
     5: 3,  # B
     14: 4,  # Si
-    15: 3,  # P
+    15: 5,  # P (Wf-A113 T78 — RDKit permits 3 or 5; the corpus is phosphate,
+    #          P with four single bonds, so 3 refused the 4th bond on 98.8% of
+    #          P atoms in the six-metal cohort, and P is in 7.7% of complexes)
     16: 2,  # S
     17: 1,  # Cl
     33: 3,  # As
@@ -986,8 +1022,22 @@ class YuelBondBondDecoder:
             # the cap was set from.
             zi = int(z_list[i])
             zj = int(z_list[j])
-            cost_i = 1.0 if self._is_metal_z(zi) else cost
-            cost_j = 1.0 if self._is_metal_z(zj) else cost
+            if int(order) == BOND_AROMATIC:
+                # T78 — a heteroatom's aromatic bond is Kekulé-single for
+                # valence purposes; only carbon averages to 1.5.
+                cost_i = (
+                    1.0
+                    if self._is_metal_z(zi) or zi in _AROMATIC_HETERO_ZS
+                    else cost
+                )
+                cost_j = (
+                    1.0
+                    if self._is_metal_z(zj) or zj in _AROMATIC_HETERO_ZS
+                    else cost
+                )
+            else:
+                cost_i = 1.0 if self._is_metal_z(zi) else cost
+                cost_j = 1.0 if self._is_metal_z(zj) else cost
             cap_i = remaining[i]
             cap_j = remaining[j]
             # Wf-A49 arch_fix_7 — compare against the actual remaining

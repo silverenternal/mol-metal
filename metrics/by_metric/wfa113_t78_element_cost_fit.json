@@ -1,0 +1,736 @@
+{
+  "wave": "Wf-A113",
+  "task": "T78",
+  "date": "2026-10-28",
+  "question": "does _CLASS_VALENCE_COST exceed _COVALENT_VALENCE on the CORPUS's own bond graph, i.e. can the decoder rebuild the truth it was trained on?",
+  "fix": {
+    "aromatic_cost_at_heteroatoms": "1.5 -> 1.0 for Z in {5,7,8,15,16,33,34}",
+    "P_cap": "3 -> 5 (corpus is phosphate: P with four single bonds)"
+  },
+  "measured": {
+    "cohort": "six project metals",
+    "max_complexes_per_shard": 0,
+    "n_complexes": 33429,
+    "n_atoms_total": 1215726,
+    "per_element": {
+      "N": {
+        "cap_now": 3,
+        "n_atoms": 73302,
+        "frac_over_before": 0.6172682873591444,
+        "frac_over_after": 0.03639736978527189,
+        "class_mix": {
+          "single": 121581,
+          "aromatic": 73265,
+          "double": 2738,
+          "triple": 2129
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsinglesingle",
+            "n": 26609
+          },
+          {
+            "pattern": "aromaticaromaticsingle",
+            "n": 15281
+          },
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 1470
+          }
+        ],
+        "examples": [
+          {
+            "csd": "GEWHEZ",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "GEWHEZ",
+            "cost": 3.5,
+            "cap": 3.0
+          },
+          {
+            "csd": "GEWHEZ",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "P": {
+        "cap_now": 5,
+        "n_atoms": 27102,
+        "frac_over_before": 0.9818463582023467,
+        "frac_over_after": 0.00029518116744151724,
+        "class_mix": {
+          "single": 104560,
+          "aromatic": 2900,
+          "double": 409,
+          "triple": 9
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 23941
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 1427
+          },
+          {
+            "pattern": "aromaticaromaticsinglesingle",
+            "n": 504
+          }
+        ],
+        "examples": [
+          {
+            "csd": "CIYJIG",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "CUDBOS",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "WEXCUB",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "O": {
+        "cap_now": 2,
+        "n_atoms": 51561,
+        "frac_over_before": 0.30734469851244156,
+        "frac_over_after": 0.09179418552782141,
+        "class_mix": {
+          "single": 44769,
+          "double": 15225,
+          "aromatic": 20596
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsingle",
+            "n": 11114
+          },
+          {
+            "pattern": "doublesingle",
+            "n": 4377
+          },
+          {
+            "pattern": "singlesinglesingle",
+            "n": 348
+          }
+        ],
+        "examples": [
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          }
+        ]
+      },
+      "C": {
+        "cap_now": 4,
+        "n_atoms": 964011,
+        "frac_over_before": 0.012276830866037836,
+        "frac_over_after": 0.012276830866037836,
+        "class_mix": {
+          "aromatic": 1312689,
+          "double": 19027,
+          "single": 789287,
+          "triple": 5119
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 8826
+          },
+          {
+            "pattern": "aromaticaromaticaromatic",
+            "n": 1317
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 647
+          }
+        ],
+        "examples": [
+          {
+            "csd": "PAGPAR",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "VEYYUX",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "YIYXUZ",
+            "cost": 4.5,
+            "cap": 4.0
+          }
+        ]
+      },
+      "B": {
+        "cap_now": 3,
+        "n_atoms": 9889,
+        "frac_over_before": 0.8597431489533826,
+        "frac_over_after": 0.8518555971281222,
+        "class_mix": {
+          "single": 45083,
+          "aromatic": 106,
+          "double": 6
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesinglesingle",
+            "n": 6863
+          },
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 1276
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 260
+          }
+        ],
+        "examples": [
+          {
+            "csd": "VUMNUP",
+            "cost": 3.5,
+            "cap": 3.0
+          },
+          {
+            "csd": "TISHUC",
+            "cost": 5.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "TISHUC",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "S": {
+        "cap_now": 2,
+        "n_atoms": 11159,
+        "frac_over_before": 0.4962810287660185,
+        "frac_over_after": 0.34716372434805987,
+        "class_mix": {
+          "single": 22905,
+          "aromatic": 4683,
+          "double": 554
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsingle",
+            "n": 1633
+          },
+          {
+            "pattern": "singlesinglesingle",
+            "n": 1563
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 708
+          }
+        ],
+        "examples": [
+          {
+            "csd": "ERUFII",
+            "cost": 2.5,
+            "cap": 2.0
+          },
+          {
+            "csd": "MUMBEE",
+            "cost": 5.5,
+            "cap": 2.0
+          },
+          {
+            "csd": "POYLOH",
+            "cost": 3.0,
+            "cap": 2.0
+          }
+        ]
+      },
+      "Pt": {
+        "cap_now": 4,
+        "n_atoms": 8275,
+        "frac_over_before": 0.17474320241691843,
+        "frac_over_after": 0.17474320241691843,
+        "class_mix": {
+          "single": 35356,
+          "aromatic": 43,
+          "double": 2
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 1054
+          },
+          {
+            "pattern": "singlesinglesinglesinglesingle",
+            "n": 350
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 22
+          }
+        ],
+        "examples": [
+          {
+            "csd": "VACHOA",
+            "cost": 5.0,
+            "cap": 4.0
+          },
+          {
+            "csd": "TILKOS",
+            "cost": 6.0,
+            "cap": 4.0
+          },
+          {
+            "csd": "ERUMOW",
+            "cost": 6.0,
+            "cap": 4.0
+          }
+        ]
+      },
+      "As": {
+        "cap_now": 3,
+        "n_atoms": 409,
+        "frac_over_before": 0.9046454767726161,
+        "frac_over_after": 0.9046454767726161,
+        "class_mix": {
+          "single": 1590,
+          "triple": 1,
+          "aromatic": 11
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 360
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 4
+          },
+          {
+            "pattern": "aromaticaromaticsinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "KINXUE",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "KINXUE",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "NODSAE",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "Re": {
+        "cap_now": 9,
+        "n_atoms": 4172,
+        "frac_over_before": 0.08197507190795782,
+        "frac_over_after": 0.08197507190795782,
+        "class_mix": {
+          "aromatic": 6613,
+          "single": 18284,
+          "double": 1498,
+          "triple": 76
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticaromaticaromaticsinglesinglesinglesinglesingle",
+            "n": 240
+          },
+          {
+            "pattern": "aromaticaromaticaromaticsinglesinglesinglesinglesinglesingle",
+            "n": 71
+          },
+          {
+            "pattern": "aromaticaromaticaromaticsinglesinglesinglesinglesinglesinglesingle",
+            "n": 14
+          }
+        ],
+        "examples": [
+          {
+            "csd": "UTANIP",
+            "cost": 10.5,
+            "cap": 9.0
+          },
+          {
+            "csd": "OHEJOC",
+            "cost": 9.5,
+            "cap": 9.0
+          },
+          {
+            "csd": "TATCEX",
+            "cost": 9.5,
+            "cap": 9.0
+          }
+        ]
+      },
+      "Se": {
+        "cap_now": 2,
+        "n_atoms": 544,
+        "frac_over_before": 0.36764705882352944,
+        "frac_over_after": 0.26286764705882354,
+        "class_mix": {
+          "single": 1145,
+          "aromatic": 74,
+          "double": 4
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesingle",
+            "n": 132
+          },
+          {
+            "pattern": "aromaticsingle",
+            "n": 54
+          },
+          {
+            "pattern": "aromaticsinglesingle",
+            "n": 4
+          }
+        ],
+        "examples": [
+          {
+            "csd": "MIRGUT",
+            "cost": 2.5,
+            "cap": 2.0
+          },
+          {
+            "csd": "CIJGIP",
+            "cost": 2.5,
+            "cap": 2.0
+          },
+          {
+            "csd": "CIJGIP",
+            "cost": 2.5,
+            "cap": 2.0
+          }
+        ]
+      },
+      "Cl": {
+        "cap_now": 1,
+        "n_atoms": 22025,
+        "frac_over_before": 0.006265607264472191,
+        "frac_over_after": 0.006265607264472191,
+        "class_mix": {
+          "single": 22121,
+          "aromatic": 26
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 108
+          },
+          {
+            "pattern": "aromatic",
+            "n": 25
+          },
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "YARVEW",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JERXAJ",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JERXAJ",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "Ru": {
+        "cap_now": 10,
+        "n_atoms": 9800,
+        "frac_over_before": 0.013877551020408163,
+        "frac_over_after": 0.013877551020408163,
+        "class_mix": {
+          "single": 64704,
+          "aromatic": 3027,
+          "double": 176,
+          "triple": 9
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticaromaticsinglesinglesinglesinglesinglesinglesinglesingle",
+            "n": 78
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesinglesinglesinglesinglesinglesingle",
+            "n": 30
+          },
+          {
+            "pattern": "aromaticsinglesinglesinglesinglesinglesinglesinglesinglesingle",
+            "n": 14
+          }
+        ],
+        "examples": [
+          {
+            "csd": "SALQAX",
+            "cost": 11.0,
+            "cap": 10.0
+          },
+          {
+            "csd": "BOYRAL",
+            "cost": 11.0,
+            "cap": 10.0
+          },
+          {
+            "csd": "SALQIF",
+            "cost": 11.0,
+            "cap": 10.0
+          }
+        ]
+      },
+      "Si": {
+        "cap_now": 4,
+        "n_atoms": 1805,
+        "frac_over_before": 0.02326869806094183,
+        "frac_over_after": 0.02326869806094183,
+        "class_mix": {
+          "single": 6992,
+          "aromatic": 48,
+          "double": 1
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 39
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "GUWXUU",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "BEWQIF",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "MOVLUH",
+            "cost": 4.5,
+            "cap": 4.0
+          }
+        ]
+      },
+      "I": {
+        "cap_now": 1,
+        "n_atoms": 2025,
+        "frac_over_before": 0.010864197530864197,
+        "frac_over_after": 0.010864197530864197,
+        "class_mix": {
+          "single": 2052,
+          "aromatic": 1
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 19
+          },
+          {
+            "pattern": "singlesinglesingle",
+            "n": 2
+          },
+          {
+            "pattern": "aromaticsinglesinglesinglesinglesingle",
+            "n": 1
+          }
+        ],
+        "examples": [
+          {
+            "csd": "YOBGED",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "XEFVIN",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "FUJLAX",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "Br": {
+        "cap_now": 1,
+        "n_atoms": 2691,
+        "frac_over_before": 0.004830917874396135,
+        "frac_over_after": 0.004830917874396135,
+        "class_mix": {
+          "single": 2704
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 13
+          }
+        ],
+        "examples": [
+          {
+            "csd": "DECCOD",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "XEFVEJ",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "RIZYIK",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "F": {
+        "cap_now": 1,
+        "n_atoms": 15774,
+        "frac_over_before": 0.0003803727653100038,
+        "frac_over_after": 0.0003803727653100038,
+        "class_mix": {
+          "single": 15775
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 6
+          }
+        ],
+        "examples": [
+          {
+            "csd": "SUYPUX",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "NIVDIF",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JELREY",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "Os": {
+        "cap_now": 10,
+        "n_atoms": 1310,
+        "frac_over_before": 0.0030534351145038168,
+        "frac_over_after": 0.0030534351145038168,
+        "class_mix": {
+          "single": 6778,
+          "aromatic": 452,
+          "triple": 42,
+          "double": 222
+        },
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticaromaticsinglesinglesinglesinglesinglesinglesinglesingle",
+            "n": 2
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesinglesinglesinglesinglesinglesingle",
+            "n": 2
+          }
+        ],
+        "examples": [
+          {
+            "csd": "FALZEZ",
+            "cost": 11.0,
+            "cap": 10.0
+          },
+          {
+            "csd": "MOJTOW",
+            "cost": 11.0,
+            "cap": 10.0
+          },
+          {
+            "csd": "OJEGER",
+            "cost": 11.0,
+            "cap": 10.0
+          }
+        ]
+      },
+      "Ir": {
+        "cap_now": 9,
+        "n_atoms": 5232,
+        "frac_over_before": 0.0,
+        "frac_over_after": 0.0,
+        "class_mix": {
+          "single": 29758,
+          "aromatic": 551,
+          "double": 8,
+          "triple": 1
+        },
+        "top_over_patterns_before": [],
+        "examples": []
+      },
+      "Rh": {
+        "cap_now": 10,
+        "n_atoms": 4640,
+        "frac_over_before": 0.0,
+        "frac_over_after": 0.0,
+        "class_mix": {
+          "single": 25502,
+          "aromatic": 599,
+          "double": 2
+        },
+        "top_over_patterns_before": [],
+        "examples": []
+      }
+    }
+  },
+  "script": "molmetal/scripts/wfa113_t78_element_cost_fit_probe.py"
+}
