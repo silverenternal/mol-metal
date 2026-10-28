@@ -1574,11 +1574,9 @@
    "symptom": "bond 头的 M-L 目标平均每个金属 1.49 条边，而队列里的金属是 4/6 配位。",
    "measured": "399 cloud：dative/cloud 分布 1:228, 2:149, 3:18, 4:4，合计 596 条边，均值 1.49；cap=3。",
    "artifact": "metrics/by_metric/wfa113_t57_fragment_layout.json",
-   "reading": "目标端被 dative_top_k_cap=3 截断，放置后的 2.6 Å 过滤再砍一遍。这不是几何缺陷（T57/T58 修的是几何），是「loader 认为存在几条 M-L 边」的口径问题。改它会移动每一条归档 run 的 bond-head 目标，需要显式决策。",
-   "addressed_by": [
-    "T59"
-   ],
-   "status": "OPEN"
+   "reading": "证伪：dative_pairs 的截断用的是 coordination_capacity（6），不是 dative_top_k_cap（3）；后者只决定候选池 max(cap,3)=6。1.49（T60 后 1.30）边/配合物的原因是 2.6 Å 距离过滤只放进 1.36 个 donor，即金属放置（T63），不是 cap。",
+   "addressed_by": [],
+   "status": "REFUTED"
   },
   {
    "id": "D60",
@@ -1618,11 +1616,10 @@
    "symptom": "72% 的配合物在几何上只连着 1 个 donor，而重建的 SMILES 声称有最多 6 个。",
    "measured": "399 cloud：金属 2.6 Å 内 donor 数 {1:287, 2:84, 3:24, 4:4}；最近 donor 2.050 Å、第二近 3.484 Å、第三近 4.225 Å；全队列 donor 原子 6.89/cloud，dative 边 1.30/cloud。",
    "artifact": "metrics/by_metric/wfa113_t57_fragment_layout.json",
-   "reading": "金属放置只有「top donor 外侧 2.05 Å」一种模式，是单齿假设；而配体选取按配位数 6 装了多个 donor。两者从未对齐，于是配合物被画成「一个键 + 几个漂着的配体」。bond 头在这上面学到的 M-L 边数上限就是放置方式给的，不是化学给的。",
-   "addressed_by": [
-    "T63"
-   ],
-   "status": "OPEN"
+   "reading": "金属放置只有「top donor 外侧 2.05 Å」一种模式，是单齿假设；而配体选取按配位数 6 装了多个 donor。两者从未对齐，于是配合物被画成「一个键 + 几个漂着的配体」。bond 头在这上面学到的 M-L 边数上限就是放置方式给的，不是化学给的。 【2026-10-28 按文献实现后放弃】Architector 的做法是「按配位数选对称性 -> 把配体 donor 放到多面体顶点 -> 用 xTB/UFF 松弛」。前三步实现了，第四步做不到：RDKit UFF 只覆盖 Re，不覆盖 Ru/Ir/Os/Rh，xTB 未安装。不做第四步时 88% 的 cloud 出现 <1 Å 接触，比现状（0 个）差，因此保留现状。",
+   "addressed_by": [],
+   "status": "BLOCKED",
+   "decision": "保留 T58 的单齿放置；见 metrics/by_metric/wfa113_t63_coordination_sphere.json"
   },
   {
    "id": "D64",
@@ -3297,9 +3294,18 @@
    "kill": "若语料本身无法支持配位数推断（没有配体齿数信息），则不改 cap，改为在 bond 头上游加一个「M-L 边数」显式条件变量。",
    "device": "cpu",
    "cost": "CPU 1 h",
-   "status": "PLANNED",
+   "status": "DONE",
    "evidence": [
-    "metrics/by_metric/wfa113_t57_fragment_layout.json"
+    "metrics/by_metric/wfa113_t63_coordination_sphere.json"
+   ],
+   "result": "证伪。dative_pairs 的最终截断是 _filtered[:cap]，cap = coordination_capacity(...) = 6；dative_top_k_cap = 3 只决定候选池大小 max(cap, 3) = 6，不影响最终边数。所以「cap=3 把目标截断到 1.49」是错的：真正的约束是 2.6 Å 距离过滤，而距离是 T63 的放置方式决定的（2.6 Å 内只有 1.36 个 donor）。把 cap 从 3 提到 6 不会改变任何一条边。",
+   "gate_result": {
+    "measured": "PASS — 代码路径与实测一致：cap 用的是配位数 6，不是 3",
+    "decision_recorded": "PASS — 结论写成否定，真正的原因归到 T63"
+   },
+   "artifact": "metrics/by_metric/wfa113_t63_coordination_sphere.json",
+   "honest_limits": [
+    "dative_top_k_cap = 3 的注释说「never take more than this from the ranked list」，但它实际只限制候选池；注释与行为不符，已在结果里写明，代码未改（改了也不改变任何输出）。"
    ]
   },
   {
@@ -3405,11 +3411,23 @@
    "kill": "若质心放置后非键最小距离 < 1.0 Å 的 cloud 超过 10%，说明没有配体取向搜索就无法同时满足配位与避让，应改为拒绝多配体行，而不是继续伪造几何。",
    "device": "cpu",
    "cost": "CPU 2 h",
-   "status": "PLANNED",
+   "status": "BLOCKED",
    "evidence": [
-    "metrics/by_metric/wfa113_t57_fragment_layout.json"
+    "metrics/by_metric/wfa113_t63_coordination_sphere.json"
    ],
-   "note": "T57 的片段分离让这个缺陷更明显：分离前各配体叠在一起，2.6 Å 内塞进了更多 donor（dative 均值 2.37），分离后第二配体被推到 3.5 Å 外（dative 均值 1.49，T60 后 1.30）。两个数都是错的，只是错法不同。"
+   "note": "T57 的片段分离让这个缺陷更明显：分离前各配体叠在一起，2.6 Å 内塞进了更多 donor（dative 均值 2.37），分离后第二配体被推到 3.5 Å 外（dative 均值 1.49，T60 后 1.30）。两个数都是错的，只是错法不同。",
+   "result": "按 Architector（Taylor et al., Nat Commun 14, 2786, 2023）的做法实现并实测了三档：刚体装配（把配体 donor 映射到八面体顶点）-> 加二齿镜像翻转 + 单齿自旋搜索 -> 再加调和键长+排斥松弛。三档的非键最小距离中位数是 0.586 / 0.635 / 0.980 Å，< 1 Å 的 cloud 是 374 / 350 / 243（共 399）。保留的 T58 单齿放置是 1.010 Å、0 个 cloud 冲突。放弃的原因是 Architector 的最后一步（GFN2-xTB / UFF 松弛）在这里做不到：RDKit UFFHasAllMoleculeParams 对 Re 为真，对 Ru/Ir/Os/Rh 全为假，xTB 未安装。没有松弛的刚体装配比现状更差，所以不换。",
+   "artifact": "metrics/by_metric/wfa113_t63_coordination_sphere.json",
+   "gate_result": {
+    "measured": "PASS — 三档装配的 donor 距离阶梯与冲突率都已记录",
+    "coordination": "FAIL — 2.6 Å 内 donor 数中位仍为 1（最好一档为 4，但 243 个 cloud 有 <1 Å 冲突）",
+    "no_new_overlap": "FAIL — 最好一档 243/399 有 <1 Å 冲突，现状 0"
+   },
+   "decision": "不建配位球。保持 T58 的单齿放置；把「M-L 目标只有 1.30 边/配合物」记为语料限制，要修必须先离线跑一次带这些金属参数的松弛（GFN2-xTB 或覆盖 Ru/Ir/Os/Rh 的力场）。",
+   "honest_limits": [
+    "负结论只在一个队列（399 cloud、seed 0）上测过。",
+    "松弛只约束键长、不约束键角与二面角，所以 0.980 Å 是真实力场能达到的上界，不是对 Architector 流程的公平检验。"
+   ]
   },
   {
    "id": "T64",
@@ -4266,9 +4284,9 @@
     "id": "SA-37",
     "finding": "bond 头的 M-L 目标被 cap=3 截断到均值 1.49 条边/金属，而队列是 4/6 配位。",
     "evidence": "build_cloud_from_row: dative_top_k_cap = 3",
-    "measured": "399 cloud：1:228, 2:149, 3:18, 4:4；合计 596 条。",
-    "impact": "bond 头在学一个少算 3-4 倍的配位图，decode 出来的金属配位必然偏少。",
-    "status": "OPEN",
+    "measured": "dative_pairs = _filtered[:cap]，cap = coordination_capacity = 6；dative_top_k_cap 只限制候选池。",
+    "impact": "无：cap 不是约束，2.6 Å 距离过滤才是；归入 T63。",
+    "status": "REFUTED",
     "task": "T59"
    },
    {

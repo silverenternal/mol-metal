@@ -1,0 +1,54 @@
+{
+ "metric": "wfa113_t63_coordination_sphere",
+ "tag": "NEGATIVE",
+ "date": "2026-10-28",
+ "artifact_for": "todo.json T63 / D63 / SA-40",
+ "decision": "Do NOT build a coordination sphere in this loader. Keep the T58 monodentate placement. Recorded as a limitation of the corpus, not a fixed defect.",
+ "defect": {
+  "statement": "_place_metal_at_donor places the metal 2.05 A outside ONE donor. The reconstruction loads up to 6 donors into the SMILES according to the coordination capacity. The two were never reconciled.",
+  "measured": {
+   "donors_within_2p6A_per_cloud": {"1": 287, "2": 84, "3": 24, "4": 4},
+   "nearest_donor_median_A": 2.05,
+   "second_nearest_donor_median_A": 3.484,
+   "third_nearest_donor_median_A": 4.225,
+   "donor_atoms_per_cloud": 6.89,
+   "dative_edges_per_cloud": 1.3,
+   "cohort": "399 clouds, split=train, metal_placement=bonded, after T57/T58/T60"
+  }
+ },
+ "literature": {
+  "reference": "Taylor et al., Architector, Nat Commun 14, 2786 (2023); molSimplify 2.0 (Kulik group)",
+  "method": [
+   "choose a metal-centre symmetry from the coordination number (coreCN / coreType, e.g. octahedral)",
+   "assign each ligand's coordinating atoms to vertices of that polyhedron (coordList; the README example core is six +/-2.0 vectors on the axes)",
+   "assemble the fragments onto those vertices",
+   "fill remaining vertices with water (fill_ligand default 'water')",
+   "relax with GFN2-xTB (default), GFN-FF or UFF"
+  ],
+  "why_the_last_step_matters": "The assembly is a rigid-body construction; without the relaxation the ligands interpenetrate."
+ },
+ "attempt": {
+  "what_was_built": "molmetal/data/coordination.py: octahedral vertex set, ligand-to-vertex assignment by donor-distance-matrix match, Kabsch rigid fit, mirror flip for bidentate, 24-step spin for monodentate, plus a harmonic bond + one-sided repulsion relaxation (Adam, 300 steps, metal and donors pinned).",
+  "results": [
+   {"stage": "rigid assembly only", "donors_within_2p6A": "{0: 167, 1: 20, 2: 21, 3: 14, 4: 55, 5: 22, 6: 94, 7: 2, 8: 4}", "min_pair_median_A": 0.586, "clouds_below_1A": 374},
+   {"stage": "rigid + mirror + 24-step spin", "donors_within_2p6A": "{0: 21, 1: 42, 2: 85, 3: 82, 4: 77, 5: 49, 6: 39, 7: 3, 8: 1}", "min_pair_median_A": 0.635, "clouds_below_1A": 350},
+   {"stage": "rigid + mirror + harmonic relaxation", "donors_within_2p6A": "{0: 9, 1: 34, 2: 87, 3: 64, 4: 88, 5: 49, 6: 64, 8: 4}", "min_pair_median_A": 0.98, "clouds_below_1A": 243, "mean_M_donor_max_A": 11.154}
+  ],
+  "baseline_kept": {"placement": "T58 monodentate", "donors_within_2p6A": "{1: 287, 2: 84, 3: 24, 4: 4}", "min_pair_median_A": 1.01, "clouds_below_1A": 0, "note": "min_pair here is over ALL pairs, so ~1.0 A is the O-H bond length; 0 clouds below 1 A means no clash"}
+ },
+ "why_the_attempt_was_rejected": {
+  "1_no_relaxation_engine": "RDKit UFFHasAllMoleculeParams is True for Re and FALSE for Ru, Ir, Os, Rh (and for Pt, Pd, Cu, Zn). xTB is not installed. Architector's final step cannot be reproduced here, and the assembly without it puts 88% of clouds into a sub-1 A contact.",
+  "2_the_ligands_are_too_large_for_rigid_placement": "The coordinating fragments are 20-45 heavy atoms. Three of them on an octahedron at 2.05 A cannot avoid interpenetration without a conformational search; our harmonic relaxation only recovered the min pair distance from 0.586 to 0.980 and pushed one complex's mean M-donor distance to 11.15 A.",
+  "3_worse_than_the_status_quo": "The kept placement has 0 clashing clouds; the best attempt has 243 of 399."
+ },
+ "consequence": {
+  "bond_head": "The M-L target remains 1.30 edges per cloud against 6.89 donor atoms. The bond head can only learn the coordination the geometry shows it.",
+  "fm_objective": "The flow-matching target shows a metal touching one atom. That is a limitation of the corpus, not of the model.",
+  "what_would_fix_it": "A relaxation engine with parameters for these metals (GFN2-xTB, or a UFF/MMFF parameter set covering Ru/Ir/Os/Rh), run once as an offline data-generation step. That is a data-generation project, not a training-loop change."
+ },
+ "honest_limits": [
+  "The negative result is measured on one cohort (399 clouds, seed 0) with the current donor set; a different donor set or a smaller ligand class could behave differently.",
+  "The harmonic relaxation used bond-length restraints only (no angles or torsions), so its 0.980 A median is an upper bound on what a real force field would achieve, not a fair test of the Architector pipeline.",
+  "No claim is made that a coordination sphere is unnecessary; only that this loader cannot build one honestly."
+ ]
+}
