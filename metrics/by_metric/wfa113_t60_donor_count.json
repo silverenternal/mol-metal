@@ -1,0 +1,70 @@
+{
+ "metric": "wfa113_t60_donor_count",
+ "tag": "MEASURED",
+ "date": "2026-10-28",
+ "config": "configs/wfa108l_geom_smoke_2026_10_25.yaml",
+ "cohort": "400 clouds of metalcytotox_5metal_multitask_v3.csv, split=train, metal_placement=bonded",
+ "device": "cpu",
+ "probe": "molmetal/scripts/wfa113_t60_donor_count_probe.py",
+ "defect": {
+  "code": "molmetal/data/metal_smiles.py::count_donors (regex over the SMILES text)",
+  "mechanism": "The counter scanned for [A-Z][a-z]? in the string. SMILES writes aromatic nitrogen as lowercase n, so 1,10-phenanthroline (c1cnc2c(c1)ccc1cccnc12) counted zero donors. _select_ligands then dropped the fragment, and step 4 padded the empty ligand list with [OH2] until the coordination capacity (6 for every metal here) was reached. The ligand was deleted and six waters invented.",
+  "fix": "count_donors and _donor_score read the parsed molecule (_donor_symbols, lru_cached): N/O/S/P plus halides, excluding positively charged atoms, anionic halides, and aromatic N that carries an H (pyrrole/indole put that lone pair in the ring)."
+ },
+ "before": {
+  "rows": {
+   "n_rows": 26632,
+   "rows_with_zero_donors": 5687,
+   "rows_with_zero_donor_fraction": 0.2135401021327726,
+   "rows_kept_no_ligand": 5687,
+   "rows_that_become_all_water": 5687,
+   "rows_that_become_all_water_fraction": 0.2135401021327726,
+   "water_padding_per_row_mean": 3.230850105136678
+  },
+  "cohort": {
+   "n_clouds": 399,
+   "unique_smiles": 290,
+   "atoms_total": 18455,
+   "atoms_per_cloud_mean": 46.2531328320802,
+   "water_atoms": 3912,
+   "water_atom_fraction": 0.21197507450555406,
+   "clouds_at_least_90pct_water": 86,
+   "clouds_at_least_90pct_water_fraction": 0.21553884711779447,
+   "dative_bonds_total": 596,
+   "dative_per_cloud_mean": 1.493734335839599
+  }
+ },
+ "after": {
+  "rows": {
+   "n_rows": 26632,
+   "rows_with_zero_donors": 150,
+   "rows_with_zero_donor_fraction": 0.005632322018624211,
+   "rows_kept_no_ligand": 150,
+   "rows_that_become_all_water": 150,
+   "rows_that_become_all_water_fraction": 0.005632322018624211,
+   "water_padding_per_row_mean": 1.1475668368879544
+  },
+  "cohort": {
+   "n_clouds": 399,
+   "unique_smiles": 363,
+   "atoms_total": 22419,
+   "atoms_per_cloud_mean": 56.18796992481203,
+   "water_atoms": 1500,
+   "water_atom_fraction": 0.06690753378830457,
+   "clouds_at_least_90pct_water": 0,
+   "clouds_at_least_90pct_water_fraction": 0.0,
+   "dative_bonds_total": 520,
+   "dative_per_cloud_mean": 1.3032581453634084
+  }
+ },
+ "honest_limits": [
+  "The donor count is still a heuristic: it counts donor ATOMS, not chelate rings, so a bidentate ligand is assumed to use all its donors.",
+  "Water padding still happens for complexes whose ligands genuinely supply fewer than 6 donors; it is now 6.7% of atoms rather than 21.2%, not zero.",
+  "Changing the counter changes every cloud in every run. Every archived CFM number was produced on the old corpus and is not comparable to a run on this one."
+ ],
+ "t61_ligand_less_rows": {
+  "finding": "After the T60 fix, 150 of 26,632 rows (0.56%) still reach the water-padding step because their only fragments carry no donor at all. All 150 are eta6-arene Ru half-sandwich complexes (Cc1c(C)c(C)[c-](C)c1C.Cc1ccccc1) whose donors are CARBONS, which the donor set does not represent.",
+  "fix": "has_coordinating_ligand() and a rejection at the trainer boundary: build_cloud_from_csv_row returns (None, 'no_coordinating_ligand') and build_csv_cohort counts it separately from unparseable / un-embeddable / un-separable rows.",
+  "status": "FIXED (rejection); representing carbon donors is NOT done \u2014 see T62"
+ }
+}

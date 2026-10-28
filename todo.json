@@ -1,7 +1,7 @@
 {
  "schema": "molmetal-todo-v7",
  "created": "2026-10-22",
- "updated": "2026-10-28T17:40+08:00",
+ "updated": "2026-10-28T19:10+08:00",
  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
  "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
  "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -1577,6 +1577,39 @@
    "reading": "目标端被 dative_top_k_cap=3 截断，放置后的 2.6 Å 过滤再砍一遍。这不是几何缺陷（T57/T58 修的是几何），是「loader 认为存在几条 M-L 边」的口径问题。改它会移动每一条归档 run 的 bond-head 目标，需要显式决策。",
    "addressed_by": [
     "T59"
+   ],
+   "status": "OPEN"
+  },
+  {
+   "id": "D60",
+   "symptom": "21.4% 的训练行被重建为 [OH2]x6.[Ru]：配体被删掉，凭空补六个水。",
+   "measured": "26,632 行里 5,687 行（21.4%）donor 计数为 0；399 cloud 队列水原子 21.2%，86 个 cloud（21.6%）≥90% 是水；修复后分别是 0.56% / 6.7% / 0。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "reading": "count_donors 用正则扫 SMILES 文本，只认大写元素符号；芳香氮在 SMILES 里是小写 n，于是 1,10-菲咯啉这类配体算出 0 个 donor。_select_ligands 丢掉配体后用 [OH2] 补到配位数，把「没有配体」变成了「六个水」。这是这批数据里 Ru/Ir 抗癌药最主要的配体类别，被删掉的正是模型最该学的那部分化学。",
+   "addressed_by": [
+    "T60"
+   ],
+   "status": "ADDRESSED"
+  },
+  {
+   "id": "D61",
+   "symptom": "修好 donor 计数后，仍有 150 行被补成六水合物。",
+   "measured": "150/26,632（0.56%），全部是 Ru 的 η6-芳烃半夹心，donor 是碳。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "reading": "补水逻辑本身不判断「有没有配体」，只看 donor 总数够不够。应在重建前拒绝无配体的行。",
+   "addressed_by": [
+    "T61"
+   ],
+   "status": "ADDRESSED"
+  },
+  {
+   "id": "D62",
+   "symptom": "碳 donor 的配合物（η6-芳烃、环戊二烯基）无法表示，只能被拒绝。",
+   "measured": "150 行；全语料 0.56%，Ru 段的 0.8%。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "reading": "donor 集合是元素级的，π 配位和碳负离子都不在内。是否建模是表示选择，不是 bug。",
+   "addressed_by": [
+    "T62"
    ],
    "status": "OPEN"
   }
@@ -3245,6 +3278,92 @@
    "evidence": [
     "metrics/by_metric/wfa113_t57_fragment_layout.json"
    ]
+  },
+  {
+   "id": "T60",
+   "priority": 0,
+   "title": "donor 计数改成读分子：芳香 N 以前完全不可见，21.4% 的行被换成六水合物",
+   "what": "count_donors / _donor_score 用正则扫 SMILES 文本（[A-Z][a-z]?），而 SMILES 里芳香氮是小写 n，所以 1,10-菲咯啉（c1cnc2c(c1)ccc1cccnc12）算出 0 个 donor。_select_ligands 因此丢掉配体，第 4 步再用 [OH2] 把空的配体表补到配位数 6——配体被删除，凭空造出六个水。改为 _donor_symbols（lru_cache，读解析后的分子）：N/O/S/P + 卤素，排除正电荷原子、阴离子卤素、带 H 的芳香 N（吡咯/吲哚的孤对在环里）。count_donors 与 _donor_score 都走它。",
+   "addresses": [
+    "D60"
+   ],
+   "done_when": "菲咯啉算出 2 个 donor；语料里 donor=0 的行从 5,687（21.4%）降到 < 1%；399 cloud 队列的水原子占比从 21.2% 降到 < 10%；≥90% 是水的 cloud 从 86 降到 0。",
+   "gate": {
+    "aromatic_n": "菲咯啉 = 2，联吡啶 = 2，吡咯 = 0",
+    "rows_fixed": "donor=0 的行 < 1%",
+    "cohort_water": "水原子占比 < 10%，≥90% 水的 cloud = 0",
+    "no_regression": "旧的 test_metal_smiles 全过"
+   },
+   "kill": "若改成读分子后水原子占比仍 > 15%，说明补水的来源不是 donor 漏计而是配体本身齿数不足，应改查 _best_donor_subset 而不是继续加 donor 类型。",
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "result": "新增 _donor_symbols/_DONOR_Z/_HALIDE_Z；count_donors 与 _donor_score 都改为读分子。实测（成对，用 monkeypatch 还原旧实现）：donor=0 的行 5,687（21.4%）-> 150（0.56%）；每行平均补水 3.23 -> 1.15；399 cloud 队列水原子 3,912/18,455（21.2%）-> 1,500/22,419（6.7%）；≥90% 是水的 cloud 86（21.6%）-> 0；队列里不同的 SMILES 290 -> 363（旧实现把 109 个 cloud 压成同一个 [OH2]x6.[Ru] 串）；原子/cloud 46.3 -> 56.2。旧的 test_metal_smiles 24 条全过。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "probe": "molmetal/scripts/wfa113_t60_donor_count_probe.py",
+   "tests": "molmetal/tests/test_wfa113_t60_donor_count.py",
+   "evidence": [
+    "metrics/by_metric/wfa113_t60_donor_count.json"
+   ],
+   "gate_result": {
+    "aromatic_n": "PASS — 菲咯啉 2，联吡啶 2，吡咯 0，呋喃 1，[NH4+] 0",
+    "rows_fixed": "PASS — 21.4% -> 0.56%",
+    "cohort_water": "PASS — 21.2% -> 6.7%，≥90% 水的 cloud 86 -> 0",
+    "no_regression": "PASS — test_metal_smiles 24 passed"
+   },
+   "honest_limits": [
+    "donor 计数仍是启发式：数的是 donor 原子，不是螯合环，双齿配体按全部 donor 计。",
+    "换掉计数器等于换掉语料。所有归档 CFM 数字都是在旧语料上跑的，与新语料不可比。"
+   ]
+  },
+  {
+   "id": "T61",
+   "priority": 0,
+   "title": "拒绝没有配体的行，而不是把它变成 [OH2]x6.[M]",
+   "what": "修好 donor 计数后仍有 150 行（0.56%）没有 donor 片段，全部是 η6-芳烃 Ru 半夹心（Cc1c(C)c(C)[c-](C)c1C.Cc1ccccc1），donor 是碳。reconstruct 的补水步骤会把它们变成 [OH2]x6.[Ru]。新增 has_coordinating_ligand()，build_cloud_from_csv_row 在重建前拒绝，返回 (None, 'no_coordinating_ligand')；build_csv_cohort 单独计数并打印。",
+   "addresses": [
+    "D61"
+   ],
+   "done_when": "零 donor 的行不再产出 cloud；cohort 摘要里能看到 no-ligand 计数；不并进 unparseable。",
+   "gate": {
+    "rejected": "该行返回 (None, 'no_coordinating_ligand')",
+    "counted": "摘要单独计数"
+   },
+   "kill": "若拒绝后 train split 少于 90% 的行可用，说明 donor 集合漏了一大类，应回去扩 donor 而不是继续丢行。",
+   "device": "cpu",
+   "cost": "CPU 0.2 h",
+   "status": "DONE",
+   "result": "新增 has_coordinating_ligand（含 __all__ 与 molmetal.data 导出）；trainer 在 metal_z>0 时先判，不满足即返回 no_coordinating_ligand；cohort 摘要增加 no-ligand 计数。实测：全语料 150 行被拒（0.56%），train split 仍 99.4% 可用；400 行抽样里 0 行命中（这些行都在 Ru 段，抽样未覆盖）。",
+   "artifact": "metrics/by_metric/wfa113_t60_donor_count.json",
+   "tests": "molmetal/tests/test_wfa113_t60_donor_count.py",
+   "evidence": [
+    "metrics/by_metric/wfa113_t60_donor_count.json"
+   ],
+   "gate_result": {
+    "rejected": "PASS — test_the_trainer_rejects_a_ligand_less_row",
+    "counted": "PASS — 摘要打印 no-ligand"
+   }
+  },
+  {
+   "id": "T62",
+   "priority": 1,
+   "title": "碳 donor：η6-芳烃 / 环戊二烯基 Ru 配合物目前无法表示",
+   "what": "150 行 η6-芳烃 Ru 半夹心配合物的 donor 是碳（芳环 π 与 [c-] 碳负离子），donor 集合只含 N/O/S/P/卤素。这些行现在被 T61 拒绝，等于从训练集里消失。需要决定：把芳环 π 与碳负离子建模成 donor（会引入「一条边代表一个环」的表示问题），还是显式把这类配合物排除在生成线之外并写进数据卡。",
+   "addresses": [
+    "D62"
+   ],
+   "done_when": "给出两种口径下的可用行数，并记录选择及其对训练集覆盖的影响。",
+   "gate": {
+    "measured": "两种口径的可用行数",
+    "decision": "写进 decisions"
+   },
+   "kill": "若把碳 donor 建模后金属-配体边数超过配位数、或 bond 头的类别分布明显偏移，则不改，改为排除。",
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "PLANNED",
+   "evidence": [
+    "metrics/by_metric/wfa113_t60_donor_count.json"
+   ]
   }
  ],
  "acceptance": {
@@ -3639,6 +3758,9 @@
      "T57",
      "T58",
      "T59",
+     "T60",
+     "T61",
+     "T62",
      "T43",
      "T44",
      "T45",
@@ -4079,6 +4201,24 @@
     "impact": "bond 头在学一个少算 3-4 倍的配位图，decode 出来的金属配位必然偏少。",
     "status": "OPEN",
     "task": "T59"
+   },
+   {
+    "id": "SA-38",
+    "finding": "donor 计数用正则扫 SMILES 文本，芳香 N 不可见，21.4% 的行被换成六水合物。",
+    "evidence": "molmetal/data/metal_smiles.py::count_donors",
+    "measured": "5,687/26,632 行 donor=0；队列水原子 21.2% -> 6.7%。",
+    "impact": "多吡啶 Ru/Ir 配合物——这类数据最主要的配体——被整类删除，模型在学六个水的位置。",
+    "status": "FIXED",
+    "task": "T60"
+   },
+   {
+    "id": "SA-39",
+    "finding": "无配体的行被补水逻辑变成 [OH2]x6.[M]，而不是被拒绝。",
+    "evidence": "molmetal/data/metal_smiles.py::_select_ligands 第 4 步",
+    "measured": "修复 donor 计数后仍有 150 行（0.56%）走到这里。",
+    "impact": "训练集里混入 150 个不存在的配合物。",
+    "status": "FIXED",
+    "task": "T61"
    }
   ],
   "reproduce": [

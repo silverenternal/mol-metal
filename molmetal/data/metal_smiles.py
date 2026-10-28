@@ -67,7 +67,12 @@ https://www.fishersci.com — cisplatin CAS 15663-27-1, canonical SMILES
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
+
+from rdkit import Chem, RDLogger
+
+RDLogger.DisableLog("rdApp.*")
 
 # ---------------------------------------------------------------------------
 # Coordination lookup table
@@ -113,6 +118,12 @@ _DEFAULT_COORDINATION = 6  # octahedral
 # coordinating to d-block metals, plus halides that act as X-type ligands
 # in cisplatin-like Pt(II) square-planar complexes).
 _DONOR_ATOMS = {"N", "O", "S", "P", "Cl", "Br", "I", "F"}
+
+#: Atomic numbers of the donor elements (the parsed-molecule form of
+#: ``_DONOR_ATOMS``).  Wf-A113 (T60) — the counter reads the MOLECULE, not the
+#: SMILES text, so aromatic ``n``/``o``/``s`` are visible.
+_DONOR_Z = frozenset({7, 8, 15, 16, 9, 17, 35, 53})
+_HALIDE_Z = frozenset({9, 17, 35, 53})
 
 # Donor strength ordering (higher = kept first under truncation).
 # Halides are typically "softer" donors than N for the d8 metals we target,
@@ -181,57 +192,59 @@ def _is_solvent(fragment: str) -> bool:
     return fragment.strip() in _SOLVENT_FRAGMENTS
 
 
+@lru_cache(maxsize=4096)
+def _donor_symbols(fragment: str) -> Tuple[str, ...]:
+    """Symbols of the atoms in ``fragment`` that can donate a lone pair.
+
+    Wf-A113 (T60, 2026-10-28) — this used to be a REGEX SCANNER over the
+    SMILES TEXT (``[A-Z][a-z]?``), so every aromatic heteroatom was invisible:
+    SMILES writes aromatic nitrogen as lowercase ``n``, and 1,10-phenanthroline
+    (``c1cnc2c(c1)ccc1cccnc12``) contains no uppercase ``N`` at all.  MEASURED
+    on ``metalcytotox_5metal_multitask_v3.csv``: 5,687 of 26,632 rows (21.4%)
+    had a donor count of ZERO and were turned into ``[OH2]x6.[Ru]`` by the
+    water-padding step below — the ligand was deleted and six waters invented
+    in its place.  Those are the polypyridyl complexes that make up most of the
+    Ru/Ir anticancer literature.
+
+    The rules, applied to the parsed molecule rather than to the string:
+      * N/O/S/P and the halides count;
+      * a positively charged atom does not (ammonium, pyridinium);
+      * an anionic halide does not (``[Cl-]`` is a counter-ion here, and the
+        caller has already dropped standalone ones);
+      * an aromatic N carrying an H does not — pyrrole/indole put that lone
+        pair into the ring.
+    """
+    if not fragment:
+        return ()
+    mol = Chem.MolFromSmiles(fragment)
+    if mol is None:
+        return ()
+    out: List[str] = []
+    for atom in mol.GetAtoms():
+        z = atom.GetAtomicNum()
+        if z not in _DONOR_Z:
+            continue
+        charge = atom.GetFormalCharge()
+        if z in _HALIDE_Z:
+            if charge != 0:
+                continue
+        elif charge > 0:
+            continue
+        if z == 7 and atom.GetIsAromatic() and atom.GetTotalNumHs() > 0:
+            continue
+        out.append(atom.GetSymbol())
+    return tuple(out)
+
+
 def count_donors(fragment: str) -> int:
-    """Count donor atoms (N/O/S/P) in ``fragment``.
+    """Count donor atoms (N/O/S/P + halides) in ``fragment``.
 
     The count is *per occurrence* (so ethylenediamine ``NCCN`` counts 2).
     This is a deliberate simplification: for bidentate ligands we would
     ideally count unique donor atoms, but distinguishing "1,2-N,N chelate"
-    from "two independent amines" requires full ring detection which is
-    out of scope for a heuristic parser.
+    from "two independent amines" requires full ring detection.
     """
-    if not fragment:
-        return 0
-    count = 0
-    # Bracket atoms: look at the first symbol inside the brackets.
-    for match in _BRACKET_RE.finditer(fragment):
-        inside = match.group(1)
-        # Strip leading H-count, charge, isotope; keep first element.
-        atom = inside[0] if inside and inside[0].isalpha() else ""
-        # Handle two-letter symbols (Cl, Br, …) — those are NOT donors.
-        if (
-            len(inside) >= 2
-            and inside[1].islower()
-            and inside[:2]
-            in {
-                "Cl",
-                "Br",
-                "Si",
-                "Se",
-                "As",
-            }
-        ):
-            continue
-        if atom in _DONOR_ATOMS:
-            count += 1
-    # Bare atoms: scan tokens.  Use finditer to walk left-to-right, skipping
-    # over the bracket atoms we just counted.
-    pos = 0
-    text = fragment
-    for match in _BRACKET_RE.finditer(text):
-        bare_chunk = text[pos : match.start()]
-        for tok in _BARE_ATOM_RE.finditer(bare_chunk):
-            sym = tok.group(1)
-            if sym in _DONOR_ATOMS:
-                count += 1
-            # Skip organic subset (C, etc.) — not a donor.
-        pos = match.end()
-    # Trailing bare-atom chunk after the last bracket
-    for tok in _BARE_ATOM_RE.finditer(text[pos:]):
-        sym = tok.group(1)
-        if sym in _DONOR_ATOMS:
-            count += 1
-    return count
+    return len(_donor_symbols(fragment))
 
 
 def _donor_score(fragment: str) -> int:
@@ -241,14 +254,7 @@ def _donor_score(fragment: str) -> int:
     coordination capacity.  Higher = kept first.  Score =
     ``sum(strength)`` over donor atoms.
     """
-    score = 0
-    for atom, strength in _DONOR_STRENGTH.items():
-        # Count occurrences of this donor atom (bracket or bare).
-        score += strength * (
-            len(re.findall(rf"\[{atom}", fragment))
-            + len(re.findall(rf"(?<!\[){atom}", fragment))
-        )
-    return score
+    return sum(_DONOR_STRENGTH.get(sym, 0) for sym in _donor_symbols(fragment))
 
 
 def _best_donor_subset(fragments: List[str], capacity: int) -> List[str]:
@@ -308,6 +314,30 @@ def _select_ligands(
     while sum(count_donors(l) for l in ligands) < capacity:
         ligands.append("[OH2]")
     return ligands, metal_sym, capacity
+
+
+def has_coordinating_ligand(
+    smiles_ligands: str,
+    metal: str,
+    oxidation_state: int,
+) -> bool:
+    """True when ``smiles_ligands`` contributes at least one real ligand.
+
+    Wf-A113 (T61, 2026-10-28) — ``_select_ligands`` answers "no donor
+    fragment" by padding the empty ligand list with ``[OH2]`` until the
+    coordination capacity is reached.  For a row whose only fragments are
+    counter-ions or non-donors that turns the row into ``[OH2]x6.[Ru]``: the
+    ligand is deleted and six waters are invented in its place.
+
+    MEASURED after the T60 donor-count fix: 150 rows of
+    ``metalcytotox_5metal_multitask_v3.csv`` still reach that state.  All 150
+    are eta6-arene Ru half-sandwich complexes (``Cc1c(C)c(C)[c-](C)c1C.
+    Cc1ccccc1``) whose donors are CARBONS, which the donor set does not
+    represent.  Callers should reject the row instead of fabricating a
+    complex; see T61.
+    """
+    ligands, metal_sym, _cap = _select_ligands(smiles_ligands, metal, oxidation_state)
+    return bool(metal_sym) and any(lig != "[OH2]" for lig in ligands)
 
 
 def reconstruct_multi_component(
@@ -402,6 +432,7 @@ def reconstruct_metal_complex(
 __all__ = [
     "coordination_capacity",
     "count_donors",
+    "has_coordinating_ligand",
     "reconstruct_metal_complex",
     "reconstruct_multi_component",
 ]

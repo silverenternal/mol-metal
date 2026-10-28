@@ -10444,6 +10444,7 @@ def build_cloud_from_csv_row(
 
     from molmetal.data.metal_smiles import (
         coordination_capacity as _coordination_capacity,
+        has_coordinating_ligand as _has_coordinating_ligand,
         reconstruct_multi_component as _reconstruct_mc,
     )
     from molmetal.adapters.flow_matching_lipman import (
@@ -10467,6 +10468,17 @@ def build_cloud_from_csv_row(
         ox = _DEFAULT_OXIDATION_STATE.get(metal_sym, 2)
 
     metal_z = _METAL_SYMBOL_TO_Z.get(metal_sym, 0)
+
+    # Wf-A113 (T61, 2026-10-28) — a row whose fragments carry no donor cannot
+    # form a complex.  ``_select_ligands`` answers that case by padding the
+    # empty ligand list with ``[OH2]`` until the coordination capacity is
+    # reached, so the row becomes ``[OH2]x6.[Ru]``: the ligand is deleted and
+    # six waters are invented.  MEASURED after the T60 donor fix: 150 rows of
+    # the corpus still reach it, and all 150 are eta6-arene Ru half-sandwich
+    # complexes whose donors are carbons.  Reject the row and count it rather
+    # than train on a complex that does not exist.
+    if metal_z > 0 and not _has_coordinating_ligand(smi, metal_sym, ox):
+        return (None, "no_coordinating_ligand")
 
     # Reconstruct full complex SMILES: "L1.L2...Ln.[M]".
     if metal_z > 0:
@@ -10891,6 +10903,9 @@ def build_csv_cohort(
     # separated is a different failure from an unparseable SMILES and must
     # not be folded into that counter.
     n_fragment_fail = 0
+    # Wf-A113 (T61) — a row with no donor fragment is not a complex; it is
+    # counted here instead of being turned into [OH2]x6.[M].
+    n_no_ligand = 0
     n_no_metal = 0
     n_metal_unsupported = 0
     n_bond_graph_built = 0
@@ -10911,6 +10926,8 @@ def build_csv_cohort(
                 n_embed_fail += 1
             elif status == "fragment_separation_failed":
                 n_fragment_fail += 1
+            elif status == "no_coordinating_ligand":
+                n_no_ligand += 1
             else:
                 n_parse_fail += 1
             continue
@@ -10938,7 +10955,7 @@ def build_csv_cohort(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
         f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable + "
-        f"{n_fragment_fail} un-separable; "
+        f"{n_fragment_fail} un-separable + {n_no_ligand} no-ligand; "
         f"filtered {n_skipped_no_smiles_col} no-smiles-col + "
         f"{n_skipped_empty_smiles} empty-smiles; "
         f"metal: {len(clouds) - n_no_metal - n_metal_unsupported} inserted / "

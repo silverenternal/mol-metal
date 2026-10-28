@@ -19,6 +19,7 @@ from molmetal.data.cytotox import MetalCytotoxDataset, CytotoxFilter
 from molmetal.data.metal_smiles import (
     coordination_capacity,
     count_donors,
+    has_coordinating_ligand,
     reconstruct_metal_complex,
 )
 from molmetal.data.splits import (
@@ -88,6 +89,7 @@ __all__ = [
     "CytotoxFilter",
     "coordination_capacity",
     "count_donors",
+    "has_coordinating_ligand",
     "reconstruct_metal_complex",
     "RandomSplitter",
     "TemporalSplitter",
