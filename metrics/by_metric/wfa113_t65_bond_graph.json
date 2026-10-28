@@ -1,0 +1,51 @@
+{
+  "metric": "wfa113_t65_bond_graph",
+  "tag": "MEASURED",
+  "date": "2026-10-28",
+  "probe": "molmetal/scripts/wfa113_t65_bond_graph_probe.py",
+  "cohort": "399 clouds of metalcytotox_5metal_multitask_v3.csv, split=train, metal_placement=bonded (the CSV/ETKDG path)",
+  "purpose": "Confirm the bond graph the head is trained on has no silently-overwritten pair labels, and record its class balance.",
+  "measured": {
+    "probe": "wfa113_t65_bond_graph",
+    "config": "configs/wfa108l_geom_smoke_2026_10_25.yaml",
+    "n_clouds": 399,
+    "n_clouds_without_bonds": 0,
+    "edges_directed": 26344,
+    "edges_per_cloud": 66.02506265664161,
+    "pairs_unique": 13172,
+    "pairs_unique_per_cloud": 33.012531328320804,
+    "class_histogram_directed": {
+      "SINGLE": 7390,
+      "AROMATIC": 18030,
+      "DOUBLE": 912,
+      "TRIPLE": 12
+    },
+    "class_histogram_unique_pairs": {
+      "SINGLE": 3695,
+      "AROMATIC": 9015,
+      "DOUBLE": 456,
+      "TRIPLE": 6
+    },
+    "aromatic_edges": 18030,
+    "aromatic_fraction_of_directed": 0.6844063164287884,
+    "zero_class_edges": 0,
+    "edges_at_metal": 1038,
+    "dative_flags_true": 1038,
+    "dative_pairs": 519,
+    "clouds_with_conflicting_pair_labels": 0,
+    "conflicting_pairs": 0,
+    "conflict_examples": [],
+    "metal_index_mismatch": 0,
+    "note_duplicate_dative": "A covalent M-L bond (bo=1.0, class SINGLE, is_dative=False) and a synthetic dative edge (bo=0.5, class SINGLE, is_dative=True) carry the SAME class, so a duplicate pair would not appear as a label conflict. It would only show as a doubled pair count. The metal is a disconnected fragment in the reconstructed SMILES, so no RDKit bond touches it and the duplicate cannot arise; edges_at_metal == dative_flags_true confirms it."
+  },
+  "findings": [
+    "0 conflicting pair labels in 399 clouds: the dense truth table's last-write-wins symmetry never discards a label.",
+    "68.4% of directed bond labels are AROMATIC (18,030/26,344); SINGLE 7,390, DOUBLE 912, TRIPLE 12, and 0 BOND_NO_BOND edges (the cloud carries only true bonds, negatives come from the radius-graph candidates).",
+    "edges_at_metal (1,038 directed) equals dative_flags_true exactly, so no dative edge duplicates a covalent RDKit bond — the metal is a disconnected fragment in the reconstructed SMILES.",
+    "metal_atom_index agrees with the coordinate frame in 399/399 clouds."
+  ],
+  "honest_limits": [
+    "A covalent M-L bond and a synthetic dative edge both carry class SINGLE, so a duplicate pair would not show as a label conflict; it is excluded here by construction (the metal has no RDKit bonds), not by the conflict check.",
+    "Measured on the CSV path. The tmQM path is measured separately (wfa113_t66_tmqm_cohort.json)."
+  ]
+}

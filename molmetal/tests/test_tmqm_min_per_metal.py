@@ -122,15 +122,24 @@ def test_min_per_metal_enforces_one_pt_in_seed0_val_window():
 
 
 @pytest.mark.skipif(not _HAVE_TMQM, reason="tmQM corpus not present")
-def test_min_per_metal_zero_is_backward_compatible():
-    """Pin: when min_per_metal is unset/0, the seed=0 val window at n_clouds=192
-    must match the original Ru64/Ir45/Re38/Rh35/Os10/Pt=0 distribution.
+def test_default_window_is_metal_representative():
+    """The default (``min_per_metal=0``) cohort must not be single-metal.
 
-    MEASURED on the same seed/split before the patch; this is the
-    regression sentinel that prevents the patch from accidentally
-    altering the default behaviour. If this test ever goes red WITHOUT
-    test 2 also going red, that's a behaviour change and needs a
-    corresponding entry in cfm_todo.json.
+    Wf-A113 (T67, 2026-10-28) — this replaces
+    ``test_min_per_metal_zero_is_backward_compatible``, which pinned the
+    opposite: ``{"Rh": 35, "Re": 38, "Ru": 64, "Ir": 45, "Os": 10}`` with
+    ``Pt == 0``.  That "backward compatible" distribution was the defect, not
+    the baseline: the loader reservoir-sampled the first ``5 * n_clouds``
+    candidates of a METAL-BLOCKED file order, so the seed=0 val window at
+    n_clouds=192 was drawn from a Re/Ru/Os-only prefix.  Pinning it meant the
+    bug could never be fixed without a red test.
+
+    MEASURED before the fix, on the shipped corpus: the first 512 filtered
+    candidates are 100% Re and the first 4096 contain no Pt at all, while Pt
+    is 24.5% of the filtered pool (1641/6714 in the val split).
+
+    The invariant asserted here is the one that actually matters: every
+    requested metal is present, and the composition tracks the pool.
     """
     from molmetal.data.tmqm_clouds import load_tmqm_clouds
 
@@ -142,19 +151,24 @@ def test_min_per_metal_zero_is_backward_compatible():
         split="val",
         val_frac=0.2,
     )
+    assert len(clouds) == 192
     mc = _metal_counts(clouds)
-    # When Pt is missing, it is absent from the dict; the seed=0 val
-    # window has Pt=0 -- the zero-Pt finding, pre-patch.
-    expected = {"Rh": 35, "Re": 38, "Ru": 64, "Ir": 45, "Os": 10}
-    assert mc == expected, (
-        f"min_per_metal=0 (default) regression: expected {expected}, "
-        f"got {mc}. A change here means the seed=0 baseline shifted."
+    for m in SIX_METALS:
+        assert mc.get(m, 0) >= 1, (
+            f"default cohort is missing {m} entirely: {mc}.  This is the "
+            "zero-Pt finding, which the metal-stratified draw exists to "
+            "prevent."
+        )
+    # Pool share in the val split is Pt 1641/6714 = 24.4%; allow the draw to
+    # land anywhere in a broad band around it, and require that no single
+    # metal swallows the cohort.
+    pt = mc.get("Pt", 0)
+    assert 0.15 * len(clouds) <= pt <= 0.35 * len(clouds), (
+        f"Pt is {pt}/{len(clouds)} of the default cohort; the pool share is "
+        f"24.4%. full distribution = {mc}."
     )
-    assert mc.get("Pt", 0) == 0, (
-        f"min_per_metal=0 should reproduce the zero-Pt finding; "
-        f"got Pt count = {mc.get('Pt', 0)}. This is exactly the cohort "
-        "the original cfm_todo.json::BLK-C-OBJ::zero_platinum_BLOCKER "
-        "entry cited."
+    assert max(mc.values()) <= 0.45 * len(clouds), (
+        f"one metal dominates the default cohort: {mc}."
     )
 
 

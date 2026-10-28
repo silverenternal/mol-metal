@@ -3427,7 +3427,8 @@
    "honest_limits": [
     "负结论只在一个队列（399 cloud、seed 0）上测过。",
     "松弛只约束键长、不约束键角与二面角，所以 0.980 Å 是真实力场能达到的上界，不是对 Architector 流程的公平检验。"
-   ]
+   ],
+   "scope_correction": "Wf-A113 (T66/T67, 2026-10-28) — 这条只对 CSV（ETKDG）路径成立。tmQM 路径的配位球是 DFT 几何：2.6 Å 内 donor 均值 3.44 个（直方图 {0:17,1:18,2:48,3:165,4:51,5:42,6:59}），M-L 最近距离中位 2.118 Å，dative 2.92 对/cloud，最近原子对 1.13 Å。c8 用的是 tmQM 路径，所以生成侧的连通性问题不能归因到配位球。"
   },
   {
    "id": "T64",
@@ -3457,6 +3458,48 @@
     "decision": "PASS — 采用去重（生成模型按结构计权，不按测量次数计权）"
    },
    "decision": "去重。理由：这一条线是生成模型，同一个 3D 结构重复出现只是把 flow-matching 损失向被测定次数最多的骨架加权；重复行只对毒性预测有意义，而 CFM 不读 activity 列。代价是每个金属的配额按配合物数重算，与按行数分的老队列不完全同分布。"
+  },
+  {
+   "id": "T67",
+   "priority": 0,
+   "title": "tmQM 队列是按文件顺序的金属块抽的：n_train≤1023 时队列里一个 Pt 都没有",
+   "what": "load_tmqm_clouds 用 reservoir 采样「前 _CAP = 5*n_clouds 个候选」，而 iter_tmqm_blocks 按 tmQM_X1→X2→X3 的文件顺序走，这些分片是金属分块的。实测：过滤后的流里前 512 个候选 100% 是 Re，第一个 Pt 出现在 0-based 索引 5118。所以 n_train ≤ 176 是纯 Re 队列，n_train ≤ 1023 是零 Pt 队列。DEFAULT_TRAIN_CLOUDS=256，14 个 dataset:tmqm 的 config 里有 13 个没有声明 n_train。改为 _stratified_code_draw：先按金属在池里的占比分配 n_clouds（最大余数法，每个金属保底 1，min_per_metal 作为更强的下限），再对每个金属用 random.Random(f'{seed}|{metal}') 抽子集；loader 只流过抽中的 code，并在每次运行打印返回队列的金属直方图。",
+   "addresses": [
+    "D67"
+   ],
+   "done_when": "n=64/256/400/1024/2000 的队列里六个金属都在场且占比与池一致；同样的 seed 得到同样的队列；运行日志里有 metal mix 一行。",
+   "gate": {
+    "six_metals": "n≥6 时每个金属 ≥1",
+    "share": "每个金属的配额与池占比相差 ≤1 个百分点（n=1000）",
+    "deterministic": "同 seed 同队列，换 seed 换队列",
+    "log": "每次运行都打印 metal mix"
+   },
+   "kill": "若按金属分层后小队列的步数/显存代价明显上升（>2 倍启动时间），则退回「按金属分块轮转取前缀」的廉价版本，但必须保留 metal mix 打印。",
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "result": "新增 _stratified_code_draw（按金属占比分配 + 最大余数 + 每金属保底 1 + min_per_metal 下限 + 每金属独立 RNG）与 loader 里的抽签/裁剪/直方图打印。实测（旧选择按 loader 自己的 rng 调用序列精确重放）：n=64 旧 {Re:64} → 新 {Ru:24, Pt:20, Ir:14, Rh:13, Re:12, Os:6}；n=256 旧 {Re:170, Ru:73, Os:13}（零 Pt）→ 新 {Ru:94, Pt:79, Ir:50, Rh:45, Re:40, Os:14}；n=400 旧 {Ru:199, Re:169, Os:32}（零 Pt）→ 新 {Ru:147, Pt:124, Ir:79, Rh:69, Re:63, Os:20}；n=1024 旧 {Ru:369, Ir:238, Re:187, Rh:178, Os:52}（仍零 Pt）→ 新 六金属齐。池：33,429 个六金属复合物，Ru 9800 / Pt 8275 / Ir 5232 / Rh 4640 / Re 4172 / Os 1310。第一个 Pt 在流索引 5118，第一个非 Re 在索引 880。",
+   "artifact": "metrics/by_metric/wfa113_t67_tmqm_draw.json",
+   "probe": "molmetal/scripts/wfa113_t67_tmqm_draw_probe.py",
+   "tests": "molmetal/tests/test_wfa113_t67_stratified_draw.py + molmetal/tests/test_tmqm_min_per_metal.py::test_default_window_is_metal_representative",
+   "evidence": [
+    "metrics/by_metric/wfa113_t67_tmqm_draw.json",
+    "molmetal/reports/wf299_cfm_main/wave_a/train.log",
+    "molmetal/reports/cfm_round3_retrain/d1_smoke/smoke.log"
+   ],
+   "gate_result": {
+    "six_metals": "PASS — n=6..2000 六金属齐",
+    "share": "PASS — 10 条单测",
+    "deterministic": "PASS",
+    "log": "PASS — 每次 load 都打印 metal mix"
+   },
+   "honest_limits": [
+    "旧队列的金属构成是按 loader 自己的随机数调用序列重放的，不是重新加载；因为本语料 build 阶段 skipped 0 + 0，重放对金属计数是精确的。",
+    "新队列是抽签后的配额；若某个抽中的复合物 build 失败，loader 会打印 WARNING 指明金属与缺口。",
+    "启动时间从约 5 s 变成约 40-55 s（要走到文件深处的 Pt 块）。train 与 val 各一次。",
+    "所有归档的 tmQM 数字都是在金属偏置队列上跑的，与修复后的队列不可比。"
+   ],
+   "decision": "采用分层抽签。理由：语料的物理顺序是金属分块的，任何「取前 N 个」的抽样都会退化成单金属队列；而项目的标题金属是 Pt，零 Pt 队列使「金属条件化无效」这类结论不可解释。代价是启动多花 40 s。"
   }
  ],
  "acceptance": {
@@ -4317,12 +4360,21 @@
    },
    {
     "id": "SA-40",
-    "finding": "金属放置是单齿假设：72% 的 cloud 只有 1 个 donor 在 2.6 Å 内。",
+    "finding": "CSV 路径的金属放置是单齿假设：72% 的 cloud 只有 1 个 donor 在 2.6 Å 内。tmQM 路径不受影响（实测 donor 3.44 个/cloud，M-L 中位 2.118 Å）。",
     "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::_place_metal_at_donor",
-    "measured": "donor 距离阶梯 2.050 / 3.484 / 4.225 Å；dative 1.30 边/cloud，donor 6.89 个/cloud。",
-    "impact": "bond 头与 FM 目标都学「金属只连一个原子」，与真实 4/6 配位不符。",
+    "measured": "CSV 路径：donor 距离阶梯 2.050 / 3.484 / 4.225 Å；dative 1.30 边/cloud，donor 6.89 个/cloud。tmQM 路径（c8 实际用的）：2.6 Å 内 donor 直方图 {0:17,1:18,2:48,3:165,4:51,5:42,6:59}，均值 3.44；M-L 最近距离 p10 1.766 / 中位 2.118 / p90 2.341 Å；dative 2.92 对/cloud；最近原子对 1.13 Å，0 个 cloud 有 <1 Å 的对。",
+    "impact": "只有 CSV（ETKDG）路径的几何是假的。tmQM 路径是 DFT 优化的 CSD 结构，配位球是真的；c8 用的就是这条路径，所以「生成出来的配合物不连通」不能归因到配位球。",
     "status": "OPEN",
     "task": "T63"
+   },
+   {
+    "id": "SA-41",
+    "finding": "tmQM 训练队列是按文件顺序的金属块抽的：n_train≤176 纯 Re，n_train≤1023 零 Pt，而 13/14 个 tmqm config 继承默认 n_train=256。",
+    "evidence": "molmetal/data/tmqm_clouds.py::load_tmqm_clouds（reservoir over the first 5*n candidates）+ molmetal/scripts/wfa113_t67_tmqm_draw_probe.py",
+    "measured": "过滤后池 33,429（Ru 9800 / Pt 8275 / Ir 5232 / Rh 4640 / Re 4172 / Os 1310）。流里前 512 个候选 100% Re，第一个非 Re 在索引 880，第一个 Pt 在索引 5118。旧选择在 n=256 是 {Re:170, Ru:73, Os:13}，n=400 是 {Ru:199, Re:169, Os:32}，n=1024 是 {Ru:369, Ir:238, Re:187, Rh:178, Os:52} —— 三个都没有 Pt。运行日志佐证：wf299 wave_a 256 clouds / 1280 candidates，d1_smoke 400 / 2000。",
+    "impact": "所有小 n 的 tmQM 消融都是单金属或零 Pt 队列；与 cfm_tmqm_all6（26715）的对比把队列大小与金属多样性混在一起；M2 的「换金属原子序数只动 0.74%」是在可能只见过一种金属的 checkpoint 上测的。",
+    "status": "FIXED",
+    "task": "T67"
    }
   ],
   "reproduce": [

@@ -1,0 +1,322 @@
+{
+  "metric": "wfa113_t67_tmqm_draw",
+  "tag": "MEASURED",
+  "date": "2026-10-28",
+  "probe": "molmetal/scripts/wfa113_t67_tmqm_draw_probe.py",
+  "corpus": ".data/molmetal/tmQM",
+  "filtered_pool_size": 33429,
+  "filtered_pool_mix": {
+    "Ru": 9800,
+    "Pt": 8275,
+    "Ir": 5232,
+    "Rh": 4640,
+    "Re": 4172,
+    "Os": 1310
+  },
+  "first_pt_candidate_index": 5118,
+  "largest_pt_free_n_clouds": 1023,
+  "largest_re_only_n_clouds": 176,
+  "defect": {
+    "code": "molmetal/data/tmqm_clouds.py::load_tmqm_clouds (reservoir over a metal-blocked prefix)",
+    "mechanism": "iter_tmqm_blocks walks tmQM_X1/X2/X3 in file order, and the shards are metal-blocked. The reservoir sampled the first _CAP = 5 * n_clouds candidates of that order, so a small cohort is a sample of one metal's block, not of the corpus.",
+    "fix": "_stratified_code_draw allocates n_clouds across metals by pool share (largest-remainder rounding, floor 1 per metal, min_per_metal as a stronger floor) and draws each metal's subset with random.Random(f'{seed}|{metal}'). The loader then streams only the drawn codes and reports the metal mix of the returned cohort on every run."
+  },
+  "stream_prefix_composition": {
+    "64": {
+      "n": 64,
+      "mix": {
+        "Re": 64
+      },
+      "pt_present": false
+    },
+    "128": {
+      "n": 128,
+      "mix": {
+        "Re": 128
+      },
+      "pt_present": false
+    },
+    "256": {
+      "n": 256,
+      "mix": {
+        "Re": 256
+      },
+      "pt_present": false
+    },
+    "400": {
+      "n": 400,
+      "mix": {
+        "Re": 400
+      },
+      "pt_present": false
+    },
+    "512": {
+      "n": 512,
+      "mix": {
+        "Re": 512
+      },
+      "pt_present": false
+    },
+    "1024": {
+      "n": 1024,
+      "mix": {
+        "Re": 881,
+        "Ru": 127,
+        "Os": 16
+      },
+      "pt_present": false
+    },
+    "2048": {
+      "n": 2048,
+      "mix": {
+        "Ru": 1003,
+        "Re": 881,
+        "Os": 164
+      },
+      "pt_present": false
+    },
+    "4096": {
+      "n": 4096,
+      "mix": {
+        "Ru": 1773,
+        "Re": 881,
+        "Ir": 688,
+        "Rh": 474,
+        "Os": 280
+      },
+      "pt_present": false
+    },
+    "8192": {
+      "n": 8192,
+      "mix": {
+        "Re": 2201,
+        "Ru": 1773,
+        "Pt": 1754,
+        "Ir": 1294,
+        "Rh": 890,
+        "Os": 280
+      },
+      "pt_present": true
+    },
+    "16384": {
+      "n": 16384,
+      "mix": {
+        "Ru": 7297,
+        "Re": 4172,
+        "Pt": 1754,
+        "Ir": 1294,
+        "Os": 977,
+        "Rh": 890
+      },
+      "pt_present": true
+    },
+    "33429": {
+      "n": 33429,
+      "mix": {
+        "Ru": 9800,
+        "Pt": 8275,
+        "Ir": 5232,
+        "Rh": 4640,
+        "Re": 4172,
+        "Os": 1310
+      },
+      "pt_present": true
+    }
+  },
+  "draws": [
+    {
+      "n_clouds": 64,
+      "old_stream_window": 320,
+      "old_mix": {
+        "Re": 64
+      },
+      "old_distinct_metals": 1,
+      "old_pt": 0,
+      "new_mix": {
+        "Ru": 24,
+        "Pt": 20,
+        "Ir": 14,
+        "Rh": 13,
+        "Re": 12,
+        "Os": 6
+      },
+      "new_quota": {
+        "Ir": 10,
+        "Os": 2,
+        "Pt": 16,
+        "Re": 8,
+        "Rh": 9,
+        "Ru": 19
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 20
+    },
+    {
+      "n_clouds": 256,
+      "old_stream_window": 1280,
+      "old_mix": {
+        "Re": 170,
+        "Ru": 73,
+        "Os": 13
+      },
+      "old_distinct_metals": 3,
+      "old_pt": 0,
+      "new_mix": {
+        "Ru": 94,
+        "Pt": 79,
+        "Ir": 50,
+        "Rh": 45,
+        "Re": 40,
+        "Os": 14
+      },
+      "new_quota": {
+        "Ir": 40,
+        "Os": 10,
+        "Pt": 63,
+        "Re": 32,
+        "Rh": 36,
+        "Ru": 75
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 79
+    },
+    {
+      "n_clouds": 400,
+      "old_stream_window": 2000,
+      "old_mix": {
+        "Ru": 199,
+        "Re": 169,
+        "Os": 32
+      },
+      "old_distinct_metals": 3,
+      "old_pt": 0,
+      "new_mix": {
+        "Ru": 147,
+        "Pt": 124,
+        "Ir": 79,
+        "Rh": 69,
+        "Re": 63,
+        "Os": 20
+      },
+      "new_quota": {
+        "Ir": 63,
+        "Os": 16,
+        "Pt": 99,
+        "Re": 50,
+        "Rh": 55,
+        "Ru": 117
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 124
+    },
+    {
+      "n_clouds": 819,
+      "old_stream_window": 4095,
+      "old_mix": {
+        "Ru": 369,
+        "Re": 183,
+        "Ir": 129,
+        "Rh": 90,
+        "Os": 48
+      },
+      "old_distinct_metals": 5,
+      "old_pt": 0,
+      "new_mix": {
+        "Ru": 300,
+        "Pt": 254,
+        "Ir": 160,
+        "Rh": 143,
+        "Re": 128,
+        "Os": 40
+      },
+      "new_quota": {
+        "Ir": 128,
+        "Os": 32,
+        "Pt": 203,
+        "Re": 102,
+        "Rh": 114,
+        "Ru": 240
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 254
+    },
+    {
+      "n_clouds": 1024,
+      "old_stream_window": 5120,
+      "old_mix": {
+        "Ru": 369,
+        "Ir": 238,
+        "Re": 187,
+        "Rh": 178,
+        "Os": 52
+      },
+      "old_distinct_metals": 5,
+      "old_pt": 0,
+      "new_mix": {
+        "Ru": 375,
+        "Pt": 318,
+        "Ir": 200,
+        "Rh": 178,
+        "Re": 160,
+        "Os": 50
+      },
+      "new_quota": {
+        "Ir": 160,
+        "Os": 40,
+        "Pt": 254,
+        "Re": 128,
+        "Rh": 142,
+        "Ru": 300
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 318
+    },
+    {
+      "n_clouds": 2000,
+      "old_stream_window": 10000,
+      "old_mix": {
+        "Re": 801,
+        "Ru": 371,
+        "Pt": 364,
+        "Ir": 254,
+        "Rh": 156,
+        "Os": 54
+      },
+      "old_distinct_metals": 6,
+      "old_pt": 364,
+      "new_mix": {
+        "Ru": 733,
+        "Pt": 619,
+        "Ir": 392,
+        "Rh": 348,
+        "Re": 313,
+        "Os": 98
+      },
+      "new_quota": {
+        "Ir": 313,
+        "Os": 78,
+        "Pt": 495,
+        "Re": 250,
+        "Rh": 278,
+        "Ru": 586
+      },
+      "new_distinct_metals": 6,
+      "new_pt": 619
+    }
+  ],
+  "run_log_evidence": [
+    "molmetal/reports/wf299_cfm_main/wave_a/train.log: '256 cloud(s) from 1280 candidate(s)' — DEFAULT_TRAIN_CLOUDS, window 1280, 100% Re by the prefix table",
+    "molmetal/reports/cfm_round3_retrain/d1_smoke/smoke.log: '400 cloud(s) from 2000 candidate(s)' — Ru/Re/Os, zero Pt",
+    "molmetal/reports/cfm_tmqm_all6_retrain/train.log: '26715 cloud(s) from 26715 candidate(s)' — the only cohort that was ever representative"
+  ],
+  "consequences": [
+    "Every tmQM run with n_train <= 1023 trained on a cohort with ZERO Pt (the old window is the first 5*n candidates and the first Pt sits at index 5118). n_train <= 176 is 100% Re. 13 of the 14 dataset:tmqm configs inherit DEFAULT_TRAIN_CLOUDS=256, which lands inside both regions.",
+    "Any A/B between a small-n arm and cfm_tmqm_all6 (26715) conflates cohort size with metal diversity.",
+    "The M2 measurement 'swapping the metal's atomic number moved the velocity by 0.74%' was taken on a checkpoint that may never have seen more than one metal, so it cannot be read as 'the metal channel is weak'."
+  ],
+  "honest_limits": [
+    "The old mix is simulated, not re-loaded: the simulation reproduces the loader's own rng call sequence (randrange(n_seen) per candidate) over the filtered stream, and the build step skips 0 complexes on this corpus (measured: 'skipped 0 + 0'), so the simulation is exact for the metal counts.",
+    "The new draw's mix is the quota applied to the real pool; the loader can still come up short if a drawn complex fails to build, and it prints a WARNING naming the metal and the shortfall when that happens.",
+    "Every archived tmQM number was produced on a metal-biased cohort. None of them is comparable to a run on the fixed draw."
+  ]
+}

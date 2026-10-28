@@ -1,0 +1,81 @@
+{
+  "metric": "wfa113_t66_tmqm_cohort",
+  "tag": "MEASURED",
+  "date": "2026-10-28",
+  "probe": "molmetal/scripts/wfa113_t66_tmqm_cohort_probe.py",
+  "config": "configs/c8_fullgen_b64_2026_10_24.yaml",
+  "purpose": "Measure the tmQM (production, DFT-geometry) cohort on the same axes T57-T63 used for the CSV/ETKDG cohort, to decide whether T63's fake coordination sphere applies to the path the generated pool was actually trained on.",
+  "measured": {
+    "probe": "wfa113_t66_tmqm_cohort",
+    "tag": "MEASURED",
+    "date": "2026-10-28",
+    "config": "configs/c8_fullgen_b64_2026_10_24.yaml",
+    "tmqm_dir": ".data/molmetal/tmQM",
+    "metals_requested": [
+      "Pt",
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "coord_number_filter": -1,
+    "n_clouds": 400,
+    "n_clouds_without_metal_index": 0,
+    "metal_atomic_numbers": {
+      "44": 210,
+      "75": 153,
+      "76": 37
+    },
+    "donors_within_2p6_histogram": {
+      "0": 17,
+      "1": 18,
+      "2": 48,
+      "3": 165,
+      "4": 51,
+      "5": 42,
+      "6": 59
+    },
+    "donors_within_2p6_mean": 3.4425,
+    "clouds_with_one_donor_fraction": 0.045,
+    "clouds_with_ge4_donors_fraction": 0.38,
+    "metal_ligand_min_A": {
+      "min": 1.626106858253479,
+      "p10": 1.7664909362792969,
+      "median": 2.1184427738189697,
+      "p90": 2.340740203857422,
+      "max": 2.5877983570098877
+    },
+    "min_pair_A": {
+      "min": 1.1269336938858032,
+      "p01": 1.1336419582366943,
+      "median": 1.213188648223877,
+      "max": 1.5234838724136353
+    },
+    "clouds_with_pair_below_1A": 0,
+    "pairs_below_1A": 0,
+    "clouds_without_bonds": 0,
+    "bond_class_histogram": {
+      "1": 7831,
+      "2": 493,
+      "3": 40,
+      "4": 9097
+    },
+    "aromatic_fraction": 0.5209896340415784,
+    "edges_at_metal": 2621,
+    "dative_flags_true": 2334,
+    "dative_pairs": 1167,
+    "dative_pairs_per_cloud": 2.9175
+  },
+  "findings": [
+    "The tmQM cohort has a REAL coordination sphere: 3.44 donors within 2.6 A per cloud (histogram {0:17,1:18,2:48,3:165,4:51,5:42,6:59}), M-L nearest distance p10 1.766 / median 2.118 / p90 2.341 A, dative 2.92 pairs per cloud.",
+    "Geometry is DFT-optimised: minimum atom-pair distance 1.127 A, 0 of 400 clouds has a pair below 1 A. Compare the CSV path, where T57 found 8,782 coincident pairs before the fix.",
+    "T63's '72% of clouds have one donor' is a CSV-path defect only. c8 -- the only run that ever produced a generated pool -- trained on tmQM, so the disconnected-SMILES failure cannot be attributed to a fake coordination sphere.",
+    "52.1% of bond labels are AROMATIC on tmQM (vs 68.4% on the CSV path); dative is 2.92 pairs/cloud vs 1.30.",
+    "This 400-cloud draw is itself metal-biased (Ru/Re/Os, zero Pt) -- see wfa113_t67_tmqm_draw.json; the coordination statistics are not sensitive to that, but the metal mix is."
+  ],
+  "honest_limits": [
+    "400 clouds, seed 0, scaffold train split. The donor count uses the builder's element set (N/O/S/P + halides), not the Wiberg BO graph.",
+    "donors_within_2.6 is a distance proxy; the bond graph's own dative count (2.92) is the label the head sees."
+  ]
+}

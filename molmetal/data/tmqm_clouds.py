@@ -106,6 +106,8 @@ _COMMON_Z: Dict[str, int] = {
     "Au": 79, "Hg": 80, "Tl": 81, "Pb": 82, "Bi": 83,
 }
 _SYMBOL_TO_Z: Dict[str, int] = {**_COMMON_Z, **TMQM_METAL_Z}
+#: Inverse map, used only to report the metal composition of a cohort.
+_Z_TO_SYMBOL: Dict[int, str] = {z: s for s, z in _SYMBOL_TO_Z.items()}
 
 
 def load_tmqm_metadata(parsed_csv: str | Path) -> Dict[str, dict]:
@@ -732,6 +734,90 @@ def iter_bo_continuous(
             yield code, _bo_continuous_pairs(atoms)
 
 
+def _stratified_code_draw(
+    meta: Dict[str, Dict[str, str]],
+    codes: Iterable[str],
+    n_clouds: int,
+    seed: int,
+    min_per_metal: int = 0,
+    slack: float = 0.25,
+) -> Tuple[List[str], Dict[str, int], Dict[str, int]]:
+    """Draw ``n_clouds`` codes with the metal composition of the pool.
+
+    Wf-A113 (T67, 2026-10-28) — why this replaces the stream-order reservoir.
+
+    ``load_tmqm_clouds`` used to stream the XYZ shards in file order and keep
+    the first ``_CAP = 5 * n_clouds`` candidates in a reservoir.  The shards
+    are **metal-blocked**: MEASURED on the shipped corpus, the first 512
+    filtered candidates are 100% Re, the first 4096 contain no Pt at all, and
+    Pt does not appear until candidate ~4200.  So a 256-cloud cohort
+    (``DEFAULT_TRAIN_CLOUDS``) was 256 Re complexes and a 400-cloud cohort was
+    Ru/Re/Os with zero Pt -- while Pt is 24.7% of the filtered pool and the
+    headline metal of the project.  The run logs carry the evidence
+    (``[tmqm-clouds] ... 256 cloud(s) from 1280 candidate(s)``).
+
+    The draw is proportional by metal with largest-remainder rounding, a
+    per-metal ``min_per_metal`` floor, and a per-metal ``random.Random`` keyed
+    on ``f"{seed}|{metal}"`` so it is deterministic across processes.  ``slack``
+    oversamples each metal because a drawn complex can still fail to build; the
+    caller trims to the quota in draw order.
+
+    Returns ``(drawn_codes, quota, pool_size)``.
+    """
+    import math
+
+    by_metal: Dict[str, List[str]] = {}
+    for code in sorted(codes):
+        metal = str(meta.get(code, {}).get("metal", "")).strip()
+        by_metal.setdefault(metal, []).append(code)
+    total = sum(len(v) for v in by_metal.values())
+    if total <= 0:
+        return [], {}, {}
+    n = int(n_clouds)
+    metals = sorted(by_metal)
+
+    raw = {m: n * len(by_metal[m]) / total for m in metals}
+    quota = {m: int(math.floor(raw[m])) for m in metals}
+    # Largest-remainder: hand the leftover seats to the largest fractional
+    # parts, ties broken by metal symbol so the result never depends on dict
+    # iteration order.
+    leftover = n - sum(quota.values())
+    if leftover > 0:
+        ranked = sorted(metals, key=lambda m: (-(raw[m] - quota[m]), m))
+        for m in ranked[:leftover]:
+            quota[m] += 1
+    # Floors: a cohort must never silently omit a metal that exists in the
+    # pool (that is the zero-Pt finding at a smaller scale), so every metal
+    # gets one seat whenever the request can afford it.  ``min_per_metal``
+    # raises the floor.  Then trim back down if the floors oversubscribe.
+    floor = max(1 if n >= len(metals) else 0, int(min_per_metal))
+    for m in metals:
+        quota[m] = max(quota[m], floor)
+    while sum(quota.values()) > n:
+        donor = max(
+            (m for m in metals if quota[m] > floor),
+            key=lambda m: (quota[m], m),
+            default=None,
+        )
+        if donor is None:
+            break
+        quota[donor] -= 1
+    # Never ask for more than a metal has.
+    for m in metals:
+        quota[m] = min(quota[m], len(by_metal[m]))
+
+    drawn: List[str] = []
+    for m in metals:
+        pool = by_metal[m]
+        want = quota[m]
+        if want <= 0:
+            continue
+        k = min(len(pool), want + max(4, int(math.ceil(slack * want))))
+        rng = random.Random(f"{int(seed)}|{m}")
+        drawn.extend(rng.sample(pool, k))
+    return drawn, quota, {m: len(v) for m, v in by_metal.items()}
+
+
 def load_tmqm_clouds(
     tmqm_dir: str | Path,
     metals: Optional[Iterable[str]] = None,
@@ -1061,6 +1147,37 @@ def load_tmqm_clouds(
             f"coord_number={coord_number}"
         )
 
+    # Wf-A113 (T67, 2026-10-28) — metal-stratified draw BEFORE the stream.
+    #
+    # The reservoir below used to sample the first `_CAP = 5 * n_clouds`
+    # candidates in FILE order, and the shards are metal-blocked: the first 512
+    # filtered candidates are 100% Re, and Pt does not appear until ~4200.  A
+    # 256-cloud run therefore trained on 256 Re complexes and a 400-cloud run
+    # on Ru/Re/Os with zero Pt (MEASURED; see `_stratified_code_draw`).  The
+    # draw now fixes the metal composition up front, so the stream only has to
+    # find codes that are already known to be wanted.
+    _draw_quota: Dict[str, int] = {}
+    _pool_by_metal: Dict[str, int] = {}
+    if n_clouds is not None and len(keep_codes) > int(n_clouds):
+        _drawn, _draw_quota, _pool_by_metal = _stratified_code_draw(
+            meta,
+            keep_codes,
+            int(n_clouds),
+            int(seed),
+            int(min_per_metal),
+        )
+        if _drawn:
+            keep_codes = set(_drawn)
+            print(
+                "[tmqm-clouds] metal-stratified draw: "
+                + ", ".join(
+                    f"{m} {_draw_quota.get(m, 0)}/{_pool_by_metal.get(m, 0)}"
+                    for m in sorted(_pool_by_metal)
+                )
+                + f" (requested {int(n_clouds)} of {sum(_pool_by_metal.values())})",
+                flush=True,
+            )
+
     xyz = sorted(root.glob("tmQM_X*.xyz.gz"))
     if not xyz:
         raise FileNotFoundError(f"no tmQM_X*.xyz.gz under {root}")
@@ -1163,9 +1280,19 @@ def load_tmqm_clouds(
     # scanning the entire filtered pool. Without that, the only option is to
     # exit early and report ZERO for that metal — which is the very defect
     # this knob exists to fix.
-    _cap_active = n_clouds is not None and int(min_per_metal) <= 0
+    _cap_active = (
+        n_clouds is not None and int(min_per_metal) <= 0 and not _draw_quota
+    )
     rng = random.Random(int(seed))
     reservoir: List["object"] = []
+    # Wf-A113 (T67) — when the metal-stratified draw ran, the stream collects
+    # EVERY drawn code and the quota is applied afterwards, in draw order.  A
+    # reservoir here would re-randomise the already-drawn subset and could
+    # still end up short on a metal.
+    _order: Dict[str, int] = (
+        {code: i for i, code in enumerate(_drawn)} if _draw_quota else {}
+    )
+    _built: Dict[str, "object"] = {}
     n_seen = 0
     n_skip_symbol = 0
     n_skip_no_metal = 0
@@ -1264,6 +1391,11 @@ def load_tmqm_clouds(
             n_skip_symbol += 1
             continue
         n_seen += 1
+        if _order:
+            _built[code] = cloud
+            if len(_built) >= len(_order):
+                break
+            continue
         if n_clouds is None:
             reservoir.append(cloud)
         elif len(reservoir) < int(n_clouds):
@@ -1275,11 +1407,54 @@ def load_tmqm_clouds(
         if _CAP is not None and n_seen >= _CAP:
             break
 
+    if _order:
+        # Apply the per-metal quota in draw order.  `_order` was built from the
+        # per-metal `random.Random` draws, so taking the lowest indices is a
+        # uniform sample of each metal's pool, independent of file order.
+        _by_metal_built: Dict[str, List[str]] = {}
+        for code in _built:
+            metal = str(meta.get(code, {}).get("metal", "")).strip()
+            _by_metal_built.setdefault(metal, []).append(code)
+        _taken: List[str] = []
+        _short: List[str] = []
+        for metal in sorted(_by_metal_built):
+            codes_m = sorted(_by_metal_built[metal], key=lambda c: _order[c])
+            want = int(_draw_quota.get(metal, 0))
+            if len(codes_m) < want:
+                _short.append(f"{metal} {len(codes_m)}/{want}")
+            _taken.extend(codes_m[:want])
+        _taken.sort(key=lambda c: _order[c])
+        reservoir = [_built[c] for c in _taken]
+        if _short:
+            print(
+                "[tmqm-clouds][WARNING] metal quota not filled after build: "
+                + ", ".join(_short)
+                + f" — cohort is {len(reservoir)} not {int(n_clouds)}",
+                flush=True,
+            )
+
+    # Wf-A113 (T67) — print the metal histogram of what was actually returned.
+    # This is the durable half of the fix: the old summary line reported only
+    # `N cloud(s) from M candidate(s)`, so a cohort that was 100% Re could not
+    # be told from a representative one without opening the geometry.
+    _hist: Dict[str, int] = {}
+    for _c in reservoir:
+        _mi = getattr(_c, "metal_atom_index", None)
+        if _mi is None:
+            continue
+        _idx = int(_mi.item()) if hasattr(_mi, "item") else int(_mi)
+        if _idx < 0:
+            continue
+        _z = int(_c.atomic_numbers[_idx].item())
+        _sym = _Z_TO_SYMBOL.get(_z, str(_z))
+        _hist[_sym] = _hist.get(_sym, 0) + 1
+
     print(
         f"[tmqm-clouds] metals={sorted(wanted_metals)} coord_number={coord_number}: "
         f"{len(reservoir)} cloud(s) from {n_seen} candidate(s); "
         f"skipped {n_skip_symbol} (unmapped element) + {n_skip_no_metal} "
-        f"(metal missing from geometry)"
+        f"(metal missing from geometry); metal mix="
+        + str(dict(sorted(_hist.items(), key=lambda kv: -kv[1])))
     )
     # Wf-A30-2 B2 (2026-10-14) — surface the n_smiles_empty cohort.
     # Earlier, ~9.8% of tmQM rows have an empty SMILES column and the
