@@ -4463,8 +4463,9 @@
         "evidence": "results/wfa108j_budget36/per_epoch_metrics.json + .csv、molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/、results/cfm_5metal_default/、results/cfm_5metal_wfa75_bond_guidance/",
         "measured": "budget36 best.epoch=0 best.bond_f1=0.2264，CSV ep0=0.1087 ep35=0.2264；30ep best.epoch=0 best.bond_f1=0.6593，CSV ep0=0.4541 ep29=0.6593；cfm_5metal_default best.epoch=26 best.bond_f1=0.2650，CSV ep26=0.2743 ep29=0.2650。90 个同时有 CSV 与 JSON 的 run 中 87 个不一致。",
         "impact": "任何按 best.epoch 去 CSV 取同一 epoch 其它指标的分析，拿到的 bond 数是别的 epoch 的。best_bond 是自洽的那一份，但 artifact 不说明该读哪个；短 run 因为两个 epoch 重合而看不出差别，所以这个缺陷跨 87 个文件存在了很久。",
-        "status": "OPEN",
-        "task": "T41"
+        "status": "RESOLVED",
+        "task": "T41",
+        "resolution": "已修（Wf-A113 2026-10-27）：best 块的五个 bond 字段改读 resolve_best_block_bond_source() 返回的选中 epoch 行（train_cfm_yuelbond_wasserstein.py:19395 / 19693-19704），并新增 bond_fields_from_epoch 与 epochs_mixed 两个自述字段；选中 epoch 无行时 epochs_mixed=true 明说块内不自洽，不再静默。代码核对：五处 .get 全部走 _best_bond_src，无一处再读 _bond_acc。"
       },
       {
         "id": "SA-21",
