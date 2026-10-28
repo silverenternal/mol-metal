@@ -1,0 +1,130 @@
+{
+  "wave": "Wf-A113",
+  "task": "T76",
+  "date": "2026-10-28",
+  "question": "is the trainer's bond_exact_type_rate computed against the same truth as the bench's exact_type?",
+  "definitions": {
+    "corpus": "tmqm_clouds.bo_to_bond_class \u2014 <1.25 single | 1.25-1.75 aromatic | 1.75-2.50 double | >=2.50 triple",
+    "bench": "bench_tmqm_bond_perception.bo_to_type \u2014 nearest of {1.0 single, 2.0 double, 3.0 triple}"
+  },
+  "measured": {
+    "max_complexes_per_shard": 3000,
+    "n_pairs": 626396,
+    "n_label_disagreements": 152837,
+    "disagreement_frac": 0.24399421452244266,
+    "corpus_label_counts": {
+      "single": 461221,
+      "aromatic": 152837,
+      "triple": 646,
+      "double": 11692
+    },
+    "disagreement_pairs": {
+      "aromatic->single": 141758,
+      "aromatic->double": 11079
+    },
+    "per_shard": [
+      {
+        "shard": "tmQM_X1.BO.gz",
+        "n_pairs_ge_0.3": 228792,
+        "n_disagree": 52724,
+        "disagree_frac": 0.23044512045875729
+      },
+      {
+        "shard": "tmQM_X2.BO.gz",
+        "n_pairs_ge_0.3": 191299,
+        "n_disagree": 41452,
+        "disagree_frac": 0.21668696647656288
+      },
+      {
+        "shard": "tmQM_X3.BO.gz",
+        "n_pairs_ge_0.3": 206305,
+        "n_disagree": 58661,
+        "disagree_frac": 0.28434114539153194
+      }
+    ],
+    "examples": [
+      {
+        "csd": "WELROW",
+        "pair": [
+          2,
+          8
+        ],
+        "bo": 1.313,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          3,
+          8
+        ],
+        "bo": 1.331,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          4,
+          9
+        ],
+        "bo": 1.274,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          5,
+          9
+        ],
+        "bo": 1.263,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          6,
+          10
+        ],
+        "bo": 1.324,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          7,
+          10
+        ],
+        "bo": 1.319,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          13,
+          14
+        ],
+        "bo": 1.392,
+        "corpus": "aromatic",
+        "bench": "single"
+      },
+      {
+        "csd": "WELROW",
+        "pair": [
+          13,
+          22
+        ],
+        "bo": 1.383,
+        "corpus": "aromatic",
+        "bench": "single"
+      }
+    ]
+  },
+  "verdict": "the two exact_type numbers are computed against different truth label sets on every bond in the aromatic band, so they are not comparable as printed",
+  "script": "molmetal/scripts/wfa113_t76_truth_label_divergence_probe.py"
+}

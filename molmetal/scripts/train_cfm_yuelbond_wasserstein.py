@@ -1680,6 +1680,10 @@ class EpochMetrics:
     # keeping. Existence is nearly solved by classical toolkits; TYPE is not.
     bond_type_macro_f1_pooled: float = 0.0
     bond_exact_type_rate: float = 0.0
+    # Wf-A113 (T75, 2026-10-28) — set-only exactness, the bench's ``exact``.
+    # `bond_exact_type_rate` is set + order; reporting only that leaves the
+    # reader unable to tell a connectivity failure from a typing failure.
+    bond_set_exact_rate: float = 0.0
     # Wf-A70 W2 (2026-10-17) Fix 9 — per-class threshold-free ranking.
     # Without these fields the per-class PR-AUC computed in
     # `_bond_ranking_report_per_class` (line 6782) is silently dropped
@@ -9335,8 +9339,11 @@ def evaluate_bond_accuracy(
 
       * ``bond_precision`` / ``bond_recall`` / ``bond_f1`` — over bond
         EXISTENCE,
+      * ``bond_set_exact_rate`` — the fraction of clouds whose bond SET matches
+        the truth exactly, ignoring bond order (the bench's ``exact``),
       * ``bond_exact_match`` — the fraction of clouds whose bond set AND every
-        class match the truth exactly,
+        class match the truth exactly.  An alias of
+        ``bond_exact_type_rate``; both are the bench's ``exact_type``,
       * ``n_truth_bonds`` — so an empty prediction cannot look good.
 
     Clouds without ``bonds`` are skipped and counted in ``n_scored``, so a
@@ -9358,6 +9365,7 @@ def evaluate_bond_accuracy(
     alt_tp = alt_fp = alt_fn = 0
     exact = 0
     exact_type = 0
+    exact_set = 0
     n_scored = 0
     n_truth_bonds = 0
     # Bond-TYPE bookkeeping.  2026-10-04 — existence F1 alone cannot answer
@@ -9494,13 +9502,30 @@ def evaluate_bond_accuracy(
             alt_tp += len(set(pred_set_alt) & set(truth))
             alt_fp += len(set(pred_set_alt) - set(truth))
             alt_fn += len(set(truth) - set(pred_set_alt))
+            if set(pred_set) == set(truth):
+                exact_set += 1
             if set(pred_set) == set(truth) and all(
                 pred_set[k] == truth[k] for k in truth
             ):
                 exact += 1
-            # TYPE: exact requires the bond set AND every class to match, the
-            # same definition `bench_tmqm_bond_perception.score_bonds` uses for
-            # `exact_type`, so the two tables mean the same thing.
+            # Wf-A113 (T75, 2026-10-28) — this branch used to be a COPY of the
+            # one above, so `bond_exact_match` and `bond_exact_type_rate` were
+            # bit-identical in every archived run (MEASURED: 903 rows across
+            # 103 `per_epoch_metrics.json` files, 903 identical, 0 differing).
+            # That
+            # made the pair look like a decomposition when it was one number
+            # printed twice, and it left the trainer unable to say WHICH half
+            # of the problem was failing.  The bench has always reported both
+            # levels (`exact` = set only, `exact_type` = set + order,
+            # `bench_tmqm_bond_perception.py:537-539`), so the trainer now does
+            # too: `bond_set_exact_rate` is the bench's `exact`, and
+            # `bond_exact_type_rate` is the bench's `exact_type`.
+            #
+            # Naming: "exact match" for a whole molecule conventionally means
+            # atoms + bonds + bond orders all match (the strictest reading, as
+            # in the molecular-generation literature).  So `bond_exact_match`
+            # keeps the strict meaning and is an ALIAS of
+            # `bond_exact_type_rate`; the set-only quantity is the new key.
             if set(pred_set) == set(truth) and all(
                 pred_set[k] == truth[k] for k in truth
             ):
@@ -9543,7 +9568,14 @@ def evaluate_bond_accuracy(
     # legitimate and they are not interchangeable, so the field name says
     # which one it is.  `bond_exact_type_rate` is the fraction of clouds whose
     # bond set and every class match, which is aggregation-free and therefore
-    # directly comparable to the bench's `exact_type`.
+    # directly comparable to the bench's `exact_type` — but only to a bench run
+    # written after Wf-A113 (T76, 2026-10-28).  Before T76 the bench rounded a
+    # BO to the nearest of {single 1.0, double 2.0, triple 3.0}, with no
+    # aromatic class, while this trainer's truth (cloud.bond_types, from
+    # tmqm_clouds.bo_to_bond_class) has an aromatic band at 1.25-1.75: MEASURED
+    # 152,837 / 626,396 corpus bonds (24.4%) were labelled differently by the
+    # two, so a pre-T76 bench row and this number were not the same quantity.
+    # Archived tmqm_bond_perception*.json carry no `protocol.truth_definition`.
     classes = sorted(set(truth_pairs_by_type) | set(pred_pairs_by_type))
     f1s = []
     for cls in classes:
@@ -9553,6 +9585,11 @@ def evaluate_bond_accuracy(
         f1s.append(0.0 if not (t_c or p_c) else 2 * tp_t / (len(t_c) + len(p_c)))
     out["bond_type_macro_f1_pooled"] = float(sum(f1s) / len(f1s)) if f1s else 0.0
     out["bond_exact_type_rate"] = float(exact_type / n_scored) if n_scored else 0.0
+    # Wf-A113 (T75) — the set-only half, i.e. the bench's `exact`.  Reported
+    # separately so a run where the connectivity is right and the typing is
+    # wrong reads differently from one where the connectivity is wrong: the
+    # product-only reporting this replaces could not distinguish them.
+    out["bond_set_exact_rate"] = float(exact_set / n_scored) if n_scored else 0.0
     out["bond_type_n_classes"] = float(len(classes))
     # Wf-A70 W2 (2026-10-17) Fix 9 — per-class threshold-free ranking
     # report.  Replaces the legacy ``_bond_ranking_report(pair_scores,
@@ -18498,6 +18535,9 @@ def main() -> int:
             bond_exact_type_rate=float(
                 _bond_acc.get("bond_exact_type_rate", 0.0)
             ),
+            bond_set_exact_rate=float(
+                _bond_acc.get("bond_set_exact_rate", 0.0)
+            ),
             # Wf-A70 W2 (2026-10-17) Fix 9 — per-class PR-AUC plumbing.
             # Source dict emits `n_pos` as float; we coerce to int here
             # since these are COUNTS (one-vs-rest positives for class c).
@@ -18791,6 +18831,9 @@ def main() -> int:
                 bond_recall=float(_bond_acc.get("bond_recall", 0.0)),
                 bond_exact_type_rate=float(
                     _bond_acc.get("bond_exact_type_rate", 0.0)
+                ),
+                bond_set_exact_rate=float(
+                    _bond_acc.get("bond_set_exact_rate", 0.0)
                 ),
                 # Wf-A70 W3 (2026-10-18) — per-class PR-AUC + macro F1
                 # in events.jsonl so the TUI dashboard can chart the
@@ -19292,6 +19335,7 @@ def main() -> int:
             "bond_f1": float(_best_bond.bond_f1),
             "bond_exact_match": float(_best_bond.bond_exact_match),
             "bond_exact_type_rate": float(_best_bond.bond_exact_type_rate),
+            "bond_set_exact_rate": float(_best_bond.bond_set_exact_rate),
             "bond_type_macro_f1_pooled": float(
                 _best_bond.bond_type_macro_f1_pooled
             ),
@@ -19878,6 +19922,7 @@ def main() -> int:
                 "bond_f1",
                 "bond_exact_match",
                 "bond_exact_type_rate",
+                "bond_set_exact_rate",
                 "bond_type_macro_f1_pooled",
                 "bond_pr_auc",
                 # Wf-A99 — the definition travels with the number, in the
@@ -19944,6 +19989,7 @@ def main() -> int:
                     f"{m.bond_f1:.4f}",
                     f"{m.bond_exact_match:.4f}",
                     f"{m.bond_exact_type_rate:.4f}",
+                    f"{m.bond_set_exact_rate:.4f}",
                     f"{m.bond_type_macro_f1_pooled:.4f}",
                     f"{m.bond_pr_auc:.4f}",
                     m.bond_pr_auc_definition,

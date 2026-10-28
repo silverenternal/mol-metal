@@ -104,14 +104,38 @@ def test_exact_type_requires_both():
 
 
 def test_bo_to_type_boundaries():
-    """Wiberg BO -> nearest of single/double/triple."""
+    """Wiberg BO -> corpus bands (single | aromatic | double | triple).
+
+    Wf-A113 (T76, 2026-10-28) — this test used to pin "nearest of 1/2/3",
+    which put BO 1.4 in ``single``.  The trainer's truth
+    (``tmqm_clouds.bo_to_bond_class``) calls 1.4 AROMATIC, so the bench and the
+    trainer disagreed on 24.4% of corpus bonds (MEASURED, 152,837 / 626,396).
+    The bench now delegates to the corpus, and this test pins the shared
+    boundaries rather than a local rounding.
+    """
+    assert bo_to_type(0.3) == "single"
     assert bo_to_type(0.9) == "single"
     assert bo_to_type(1.0) == "single"
-    assert bo_to_type(1.4) == "single"
-    assert bo_to_type(1.6) == "double"
+    assert bo_to_type(1.24) == "single"
+    assert bo_to_type(1.25) == "aromatic"
+    assert bo_to_type(1.4) == "aromatic"
+    assert bo_to_type(1.45) == "aromatic"
+    assert bo_to_type(1.74) == "aromatic"
+    assert bo_to_type(1.75) == "double"
     assert bo_to_type(2.0) == "double"
-    assert bo_to_type(2.6) == "triple"
+    assert bo_to_type(2.49) == "double"
+    assert bo_to_type(2.50) == "triple"
     assert bo_to_type(3.0) == "triple"
+
+
+def test_bench_truth_agrees_with_trainer_truth():
+    """The two truth mappers must be the same function, not two similar ones."""
+    from molmetal.data.tmqm_clouds import bo_to_bond_class
+
+    names = {1: "single", 2: "double", 3: "triple", 4: "aromatic"}
+    for i in range(30, 351):  # BO 0.30 .. 3.50 in 0.01 steps
+        bo = i / 100.0
+        assert bo_to_type(bo) == names[bo_to_bond_class(bo)], bo
 
 
 def test_offsets_do_not_displace_precision_and_recall():

@@ -246,10 +246,21 @@ TMQM_MEASURED_METAL_CAPS: Dict[int, float] = {
 #:
 #: ``TMQM_MEASURED_METAL_CAPS`` above constrains ``metal_bo_sum`` (a sum of
 #: Wiberg bond orders) and is used by the soft-valence penalty in the loss.
-#: The DECODER cannot use it: it never sees a bond order, only a class, and
-#: every metal-ligand bond is class ``BOND_SINGLE`` with cost 1.0.  So its
-#: budget is a COUNT of metal bonds, and the matching corpus statistic is
-#: tmQM's ``coord_number`` (MND), not ``metal_bo_sum``.
+#: The DECODER's budget is a COUNT of metal bonds, and the matching corpus
+#: statistic is tmQM's ``coord_number`` (MND), not ``metal_bo_sum``.
+#:
+#: Wf-A113 (T77, 2026-10-28) — this block used to justify the count budget by
+#: asserting that "every metal-ligand bond is class BOND_SINGLE with cost 1.0".
+#: That is false on the corpus: MEASURED over all 86k complexes, 30.7% of Re's
+#: metal-incident bonds are classed aromatic (6,613, cost 1.5) or double (1,498,
+#: cost 2.0), and 4.4% of Ru's are aromatic (3,027)
+#: (``metrics/by_metric/wfa113_t77_metal_bond_cost_units.json``).  Charging the
+#: class cost against a count ceiling made the sum exceed the bond count in
+#: 92.3% of Re complexes (median 7.5 against 6.0) and 27.8% of Ru ones, so the
+#: selector stopped short of the coordination number the cap was derived from.
+#: The selector now charges a metal bond 1.0 regardless of class — the ceiling
+#: and the unit finally agree — and the ligand endpoint keeps its own order
+#: cost.
 #:
 #: Using the bond-order cap as a bond-count cap is the same category error
 #: that ``molmetal/tests/test_cfm_metal_valence_caps.py`` documents in the

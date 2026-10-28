@@ -1,0 +1,25 @@
+{
+  "wave": "Wf-A113",
+  "task": "T75",
+  "date": "2026-10-28",
+  "question": "are `bond_exact_match` and `bond_exact_type_rate` a decomposition or the same number printed twice?",
+  "measured": {
+    "n_rows": 903,
+    "n_files": 103,
+    "n_identical": 903,
+    "n_differing": 0,
+    "n_nonzero_exact_match": 204,
+    "max_exact_match": 0.43744414655942804
+  },
+  "verdict": "identical in every row \u2014 the two keys were one number under two names, and the trainer had no set-only quantity at all",
+  "definitions": {
+    "bench_exact": "bond SET only (connectivity), bench_tmqm_bond_perception.score_bonds",
+    "bench_exact_type": "bond set AND every bond order",
+    "trainer_bond_set_exact_rate": "bench_exact (added by T75)",
+    "trainer_bond_exact_type_rate": "bench_exact_type",
+    "trainer_bond_exact_match": "alias of bond_exact_type_rate (strict reading of 'exact match')"
+  },
+  "fix": "split the counter: `exact_set` is incremented on set equality alone, `exact_type` keeps the per-class `all(...)` guard; the set-only rate is emitted as `bond_set_exact_rate` and carried through EpochMetrics, events.jsonl and the per-epoch CSV",
+  "test": "molmetal/tests/test_wfa113_t75_exact_match_decomposition.py",
+  "script": "molmetal/scripts/wfa113_t75_exact_alias_probe.py"
+}

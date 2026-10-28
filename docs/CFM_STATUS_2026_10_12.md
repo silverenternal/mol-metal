@@ -35,6 +35,19 @@ Every margin is 5×–24× the between-seed std, so none of the three is a seed
 artefact.
 → `metrics/by_metric/tmqm_bond_perception_3seed.json`
 
+**Truth definition, added 2026-10-28 (Wf-A113 T76).** This table was scored
+against a truth that rounded each Wiberg bond order to the nearest of
+single 1.0 / double 2.0 / triple 3.0, with no aromatic class, while the
+trainer's truth (`tmqm_clouds.bo_to_bond_class`) carries an aromatic band at
+1.25–1.75. Measured on 626,396 corpus bonds, 152,837 (24.4%) were labelled
+differently by the two mappers
+(`metrics/by_metric/wfa113_t76_truth_label_divergence.json`). The bench now
+delegates to the corpus bands, so the rows above are under the old definition
+and a re-run is required before they are put beside any trainer number. The
+effect is one-directional and against the model here: a bond called
+"aromatic" was scored wrong, and the classical baseline that calls it "single"
+was scored right.
+
 **It wins two axes and loses the third.** The axis it loses — macro-F1 over bond
 TYPE — is the one the bond head exists to win. That is the honest-negative of
 this line.

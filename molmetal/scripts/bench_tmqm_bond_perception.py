@@ -108,8 +108,10 @@ _BO_FILES = ("tmQM_X1.BO.gz", "tmQM_X2.BO.gz", "tmQM_X3.BO.gz")
 #: BO-based perception literature.
 DEFAULT_BO_THRESHOLD = 0.3
 
-#: Bond-order class centres a BO magnitude is rounded to.
-_BO_TYPE_CENTRES = (("single", 1.0), ("double", 2.0), ("triple", 3.0))
+#: Bond-order class centres are NOT defined here any more.  Wf-A113 (T76) made
+#: :func:`bo_to_type` delegate to ``tmqm_clouds.bo_to_bond_class`` so this bench
+#: and the trainer score against one truth; the local 3-centre rounding it
+#: replaced labelled 24.4% of corpus bonds differently (see that docstring).
 
 
 # ---------------------------------------------------------------------------
@@ -181,8 +183,60 @@ def ground_truth_bonds(
 
 
 def bo_to_type(bo: float) -> str:
-    """Nearest bond-order class for a Wiberg BO magnitude."""
-    return min(_BO_TYPE_CENTRES, key=lambda kv: abs(kv[1] - float(bo)))[0]
+    """Bond-order magnitude -> class name, under the CORPUS's bands.
+
+    Wf-A113 (T76, 2026-10-28) — this used to take the nearest of
+    {single 1.0, double 2.0, triple 3.0}, i.e. it had no aromatic centre.  The
+    corpus the trainer scores against
+    (:func:`molmetal.data.tmqm_clouds.bo_to_bond_class`) has an aromatic band at
+    1.25-1.75, so the same Wiberg bond was labelled differently by the two
+    tables: MEASURED on 626,396 corpus bonds, 152,837 (24.4%) disagree —
+    141,758 aromatic->single and 11,079 aromatic->double
+    (``metrics/by_metric/wfa113_t76_truth_label_divergence.json``).
+
+    The consequence was not cosmetic.  A head that called a delocalised C-C
+    bond "aromatic" — the corpus's label, and the chemically correct reading of
+    BO ~1.45 — was scored WRONG by this bench and RIGHT by the trainer.  The
+    bench therefore under-reported every method that resolves aromaticity,
+    which is precisely the axis this table exists to compare.  The bands now
+    come from the corpus, so ``exact_type`` here and
+    ``bond_exact_type_rate`` in the trainer are the same quantity.
+
+    Archived ``tmqm_bond_perception*.json`` files were written under the old
+    3-class truth and are stamped ``legacy_3class_nearest`` in
+    ``protocol.truth_definition`` going forward; do not put their
+    ``exact_type_rate_of_successes`` beside a new run's.
+    """
+    return _BO_CLASS_NAME[_corpus_bo_to_class(float(bo))]
+
+
+_BO_CLASS_NAME = {1: "single", 2: "double", 3: "triple", 4: "aromatic"}
+
+
+def _corpus_bo_to_class(bo: float) -> int:
+    """``tmqm_clouds.bo_to_bond_class``, imported once.
+
+    Lazy on purpose: the corpus module pulls torch, and the two classical
+    baselines (rdkit_stripped, openbabel) are a numpy/OpenBabel path that should
+    not pay for it.  The first bond scored binds the symbol; the loop over ~10^6
+    bonds then pays a dict lookup, not an import.
+    """
+    global _CORPUS_BO_TO_CLASS
+    if _CORPUS_BO_TO_CLASS is None:
+        from molmetal.data.tmqm_clouds import bo_to_bond_class
+
+        _CORPUS_BO_TO_CLASS = bo_to_bond_class
+    return _CORPUS_BO_TO_CLASS(float(bo))
+
+
+#: Bound on the first :func:`_corpus_bo_to_class` call.
+_CORPUS_BO_TO_CLASS = None
+
+
+#: Stamp written into every result payload so a reader can tell which truth
+#: mapper produced the numbers.  Anything older than Wf-A113 carries no stamp
+#: and was scored under ``legacy_3class_nearest``.
+TRUTH_DEFINITION = "corpus_bo_bands_v1"
 
 
 # ---------------------------------------------------------------------------
@@ -524,6 +578,15 @@ def score_bonds(
     version here wrote ``pred_keys = set(pred) & set(truth)``, which forces
     precision to 1.0 by construction and reported a perfect F1(exist) for a
     method that was in fact missing bonds.  Filter the scope, never the truth.
+
+    Naming, because the two keys are easy to swap across tables: ``exact``
+    here is SET-ONLY (connectivity), and ``exact_type`` adds the bond orders.
+    The trainer's ``bond_exact_match`` is the STRICT one — it equals
+    ``bond_exact_type_rate``, i.e. this function's ``exact_type`` — while the
+    trainer's ``bond_set_exact_rate`` is this function's ``exact``.  Wf-A113
+    (T75, 2026-10-28) made that explicit; before it the trainer had no
+    set-only quantity at all and its two "exact" keys were one number printed
+    twice.
     """
     scope = None if restrict_to is None else set(restrict_to)
     truth = {
@@ -772,7 +835,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "ground_truth": "tmQM_X{1,2,3}.BO.gz Wiberg bond orders (same atom "
                              "indexing as the .xyz.gz geometries)",
             "bo_threshold": args.bo_threshold,
-            "bond_type": "nearest of single(1.0)/double(2.0)/triple(3.0) by BO",
+            "truth_definition": TRUTH_DEFINITION,
+            "bond_type": "corpus bands via tmqm_clouds.bo_to_bond_class "
+                         "(<1.25 single | 1.25-1.75 aromatic | 1.75-2.50 double "
+                         "| >=2.50 triple); Wf-A113 T76. Artefacts written before "
+                         "this used the nearest of {1,2,3} and are NOT comparable",
             "metrics": ["success_rate", "exact_type_rate_of_successes",
                         "f1_exist_of_successes", "macro_f1_type_of_successes"],
             "note": "each baseline is scored on the bond subset it can address; "

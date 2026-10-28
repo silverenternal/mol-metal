@@ -968,6 +968,26 @@ class YuelBondBondDecoder:
             # 24/24 decodes.  The head had, in fact, been predicting the right
             # classes.
             cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
+            # Wf-A113 (T77, 2026-10-28) — a METAL's budget is a COUNT of
+            # metal-ligand bonds (tmQM MND p99, see
+            # ``decoder_rework.TMQM_MEASURED_METAL_COORDINATION_CAPS``), so a
+            # metal bond is charged 1.0 whatever class the head gave it.  The
+            # ligand endpoint still pays its own order cost, because a carbon's
+            # cap really is a bond-order sum.
+            #
+            # Charging the class cost to the metal made a 10-bond ceiling
+            # unreachable in exactly the complexes that need it.  MEASURED on
+            # the full corpus (metrics/by_metric/wfa113_t77_metal_bond_cost_units.json):
+            # 6,613 of Re's 26,688 metal-incident bonds are classed aromatic
+            # (1.5 each) and 1,498 double (2.0), so the cost sum exceeds the
+            # bond count in 92.3% of Re complexes (median cost 7.5 against
+            # median count 6.0) and 27.8% of Ru ones.  Under the old
+            # accounting the selector stopped short of the coordination number
+            # the cap was set from.
+            zi = int(z_list[i])
+            zj = int(z_list[j])
+            cost_i = 1.0 if self._is_metal_z(zi) else cost
+            cost_j = 1.0 if self._is_metal_z(zj) else cost
             cap_i = remaining[i]
             cap_j = remaining[j]
             # Wf-A49 arch_fix_7 — compare against the actual remaining
@@ -976,7 +996,7 @@ class YuelBondBondDecoder:
             # aromatic bonds (a cap of 1.5 sits between 1.0 and 2.0; the
             # prior ``< 1.0`` check let every aromatic bond through
             # regardless of remaining budget).
-            if cost > cap_i or cost > cap_j:
+            if cost_i > cap_i or cost_j > cap_j:
                 n_overvalent += 1
                 continue
             # Wf-A113 (T72, 2026-10-28) — the per-metal GEOMETRY gate that
@@ -1013,8 +1033,8 @@ class YuelBondBondDecoder:
             if _ring_adj is not None:
                 _ring_adj[i].add(j)
                 _ring_adj[j].add(i)
-            remaining[i] -= cost
-            remaining[j] -= cost
+            remaining[i] -= cost_i
+            remaining[j] -= cost_j
             n_kept += 1
             # Wf-A55 W7-P5 — anti-aromatic ring probe.  Only fires on
             # aromatic bonds (the cost of a BFS cycle search is wasted on
@@ -1025,8 +1045,8 @@ class YuelBondBondDecoder:
             if order == BOND_AROMATIC:
                 _detect_and_demote_anti_aromatic(bond_orders)
             # Dative flag — same convention as BondAwareDecoder.
-            zi = int(z_list[i])
-            zj = int(z_list[j])
+            # (``zi`` / ``zj`` were resolved above, when the metal's bond was
+            # charged at unit cost.)
             dative_ok = order == BOND_SINGLE and self._is_dative_pair_at(
                 cloud, i, j, zi, zj, dative_truth
             )
@@ -1140,8 +1160,12 @@ class YuelBondBondDecoder:
         ]
         for i, j, order in bond_orders:
             cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
-            remaining[i] -= cost
-            remaining[j] -= cost
+            # Wf-A113 (T77) — same unit rule as ``_select_bonds``: a metal's
+            # budget counts bonds, so a metal bond is charged 1.0 whatever its
+            # class.  The two sites must agree or the bridge adds a bond the
+            # selector would have refused.
+            remaining[i] -= 1.0 if self._is_metal_z(z_list[i]) else cost
+            remaining[j] -= 1.0 if self._is_metal_z(z_list[j]) else cost
 
         # --- candidate bridging edges, scored by the head's own logit -------
         # `max(logits[:, 1:])` is the same confidence the selector uses, so

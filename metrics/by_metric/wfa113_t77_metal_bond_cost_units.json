@@ -1,0 +1,162 @@
+{
+  "wave": "Wf-A113",
+  "task": "T77",
+  "date": "2026-10-28",
+  "question": "does the decoder spend a COUNT ceiling (metal MND p99) in bond-ORDER units (_CLASS_VALENCE_COST, aromatic = 1.5)?",
+  "measured": {
+    "max_complexes_per_shard": 0,
+    "metal_bond_class_counts": {
+      "Ir:aromatic": 551,
+      "Ir:double": 8,
+      "Ir:single": 30636,
+      "Ir:triple": 1,
+      "Os:aromatic": 452,
+      "Os:double": 222,
+      "Os:single": 7245,
+      "Os:triple": 42,
+      "Pd:aromatic": 6,
+      "Pd:double": 1,
+      "Pd:single": 42861,
+      "Pt:aromatic": 43,
+      "Pt:double": 2,
+      "Pt:single": 35466,
+      "Re:aromatic": 6613,
+      "Re:double": 1498,
+      "Re:single": 18501,
+      "Re:triple": 76,
+      "Rh:aromatic": 599,
+      "Rh:double": 2,
+      "Rh:single": 25804,
+      "Ru:aromatic": 3027,
+      "Ru:double": 176,
+      "Ru:single": 65879,
+      "Ru:triple": 9
+    },
+    "per_metal": {
+      "Ir": {
+        "n_complexes": 5232,
+        "count_p50": 6.0,
+        "count_p99": 8.0,
+        "cost_p50": 6.0,
+        "cost_p99": 8.0,
+        "n_cost_exceeds_count": 479,
+        "frac_cost_exceeds_count": 0.0915519877675841,
+        "coord_cap": 9,
+        "n_count_exceeds_cap_after_fix": 0,
+        "frac_count_exceeds_cap_after_fix": 0.0
+      },
+      "Os": {
+        "n_complexes": 1310,
+        "count_p50": 6.0,
+        "count_p99": 9.0,
+        "cost_p50": 6.5,
+        "cost_p99": 9.0,
+        "n_cost_exceeds_count": 559,
+        "frac_cost_exceeds_count": 0.4267175572519084,
+        "coord_cap": 10,
+        "n_count_exceeds_cap_after_fix": 2,
+        "frac_count_exceeds_cap_after_fix": 0.0015267175572519084
+      },
+      "Pd": {
+        "n_complexes": 10696,
+        "count_p50": 4.0,
+        "count_p99": 6.0,
+        "cost_p50": 4.0,
+        "cost_p99": 6.0,
+        "n_cost_exceeds_count": 7,
+        "frac_cost_exceeds_count": 0.0006544502617801048,
+        "coord_cap": null,
+        "n_count_exceeds_cap_after_fix": 0,
+        "frac_count_exceeds_cap_after_fix": 0.0
+      },
+      "Pt": {
+        "n_complexes": 8275,
+        "count_p50": 4.0,
+        "count_p99": 6.0,
+        "cost_p50": 4.0,
+        "cost_p99": 6.0,
+        "n_cost_exceeds_count": 40,
+        "frac_cost_exceeds_count": 0.004833836858006042,
+        "coord_cap": 4,
+        "n_count_exceeds_cap_after_fix": 1434,
+        "frac_count_exceeds_cap_after_fix": 0.17329305135951661
+      },
+      "Re": {
+        "n_complexes": 4172,
+        "count_p50": 6.0,
+        "count_p99": 9.0,
+        "cost_p50": 7.5,
+        "cost_p99": 10.5,
+        "n_cost_exceeds_count": 3850,
+        "frac_cost_exceeds_count": 0.9228187919463087,
+        "coord_cap": 9,
+        "n_count_exceeds_cap_after_fix": 19,
+        "frac_count_exceeds_cap_after_fix": 0.004554170661553212
+      },
+      "Rh": {
+        "n_complexes": 4640,
+        "count_p50": 6.0,
+        "count_p99": 8.0,
+        "cost_p50": 6.0,
+        "cost_p99": 8.0,
+        "n_cost_exceeds_count": 563,
+        "frac_cost_exceeds_count": 0.12133620689655172,
+        "coord_cap": 10,
+        "n_count_exceeds_cap_after_fix": 0,
+        "frac_count_exceeds_cap_after_fix": 0.0
+      },
+      "Ru": {
+        "n_complexes": 9800,
+        "count_p50": 7.0,
+        "count_p99": 10.0,
+        "cost_p50": 7.0,
+        "cost_p99": 11.0,
+        "n_cost_exceeds_count": 2725,
+        "frac_cost_exceeds_count": 0.2780612244897959,
+        "coord_cap": 10,
+        "n_count_exceeds_cap_after_fix": 50,
+        "frac_count_exceeds_cap_after_fix": 0.00510204081632653
+      }
+    },
+    "examples_cost_gt_count": [
+      {
+        "csd": "UTANIP",
+        "metal": "Re",
+        "n_bonds": 9,
+        "cost_sum": 10.5
+      },
+      {
+        "csd": "GEWHEZ",
+        "metal": "Re",
+        "n_bonds": 6,
+        "cost_sum": 7.5
+      },
+      {
+        "csd": "ERUFII",
+        "metal": "Re",
+        "n_bonds": 8,
+        "cost_sum": 9.0
+      },
+      {
+        "csd": "JOFFUJ",
+        "metal": "Re",
+        "n_bonds": 6,
+        "cost_sum": 7.5
+      },
+      {
+        "csd": "BUHXIM",
+        "metal": "Re",
+        "n_bonds": 6,
+        "cost_sum": 7.5
+      },
+      {
+        "csd": "ZAZBUB",
+        "metal": "Re",
+        "n_bonds": 6,
+        "cost_sum": 7.5
+      }
+    ]
+  },
+  "verdict": "the units differ whenever a metal-incident bond is not classed single; the corpus shows how often that is, and the p99 cost vs count gap is the budget the selector loses",
+  "script": "molmetal/scripts/wfa113_t77_metal_bond_cost_units_probe.py"
+}

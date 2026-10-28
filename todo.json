@@ -3711,6 +3711,55 @@
         "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
         "docs/00_MODEL_NARRATIVE.md"
       ]
+    },
+    {
+      "id": "T75",
+      "priority": 2,
+      "title": "bond_exact_match 与 bond_exact_type_rate 是同一个数：训练侧没有「集合对、键级错」的诊断层",
+      "what": "evaluate_bond_accuracy 里 exact 与 exact_type 用逐字相同的条件自增，导致 903 行 artifact 两键完全一致。bench 侧一直是两层（exact=仅集合，exact_type=集合+键级）。处理：exact_set 单独计数，新增 bond_set_exact_rate 贯通 EpochMetrics / events.jsonl / CSV；bond_exact_match 保持严格语义并声明为 exact_type_rate 的别名。",
+      "addresses": [
+        "D75"
+      ],
+      "done_when": "bond_set_exact_rate 出现在 per_epoch_metrics.json、events.jsonl 与 per-epoch CSV；两个计数器由不同条件守卫（有测试）；bench 与 trainer 的命名对应关系写在两处 docstring。",
+      "gate": {
+        "distinct_guards": "test_set_only_and_type_counters_use_different_guards",
+        "plumbing": "EpochMetrics 有该字段且 asdict 携带",
+        "measured": "metrics/by_metric/wfa113_t75_exact_match_alias.json"
+      },
+      "status": "FIXED"
+    },
+    {
+      "id": "T76",
+      "priority": 1,
+      "title": "bench 与 trainer 的 exact_type 真值不同：24.4% 的键被两边标成不同类，且方向不利于模型",
+      "what": "bench 的 bo_to_type 只取 {1,2,3} 最近邻，没有芳香中心；语料与 trainer 的 bo_to_bond_class 有 1.25-1.75 芳香带。626,396 条键里 152,837 条（24.4%）两边不一致。处理：bench 委托语料函数，加 truth_definition 戳记，旧数字标注 legacy。",
+      "addresses": [
+        "D76"
+      ],
+      "done_when": "bench 与 trainer 的真值映射逐 BO 一致（有测试）；payload 带 truth_definition；旧 artifact 的可比性说明写进 docs。",
+      "gate": {
+        "same_mapper": "test_bench_truth_agrees_with_trainer_truth",
+        "stamped": "protocol.truth_definition == corpus_bo_bands_v1",
+        "measured": "metrics/by_metric/wfa113_t76_truth_label_divergence.json"
+      },
+      "status": "FIXED"
+    },
+    {
+      "id": "T77",
+      "priority": 1,
+      "title": "金属预算用配位数上限、却按键级扣费：Re 92% 的配合物在到达配位数前就把预算花光",
+      "what": "_COVALENT_VALENCE 的金属值是 MND p99（键数），_CLASS_VALENCE_COST 却对 aromatic 扣 1.5、double 扣 2.0。语料中 Re 有 30.7% 的金属键不是 single，所以 92.3% 的 Re 配合物 cost 和 > 键数。修复：金属端点每键扣 1.0，配体端点不变；两处记账（_select_bonds / _bridge_components）同步。",
+      "addresses": [
+        "D77"
+      ],
+      "done_when": "金属端点按 1.0/键计费且两处一致；旧记账下失败的用例在新记账下通过；decoder_rework 注释与实测一致。",
+      "gate": {
+        "re_keeps_nine": "test_re_keeps_nine_bonds_when_six_are_aromatic_class",
+        "ligand_unchanged": "test_ligand_endpoint_still_pays_the_order_cost",
+        "bridge_agrees": "test_bridge_component_uses_the_same_unit_rule",
+        "measured": "metrics/by_metric/wfa113_t77_metal_bond_cost_units.json"
+      },
+      "status": "FIXED"
     }
   ],
   "acceptance": {
@@ -4323,8 +4372,9 @@
         "evidence": "metrics/by_metric/cfm_pad_groups_mcnemar.json、molmetal/tests/test_cfm_pad_groups_equivalence.py、train_cfm_yuelbond_wasserstein.py:7880,10727",
         "measured": "A/B 文件自述「Coordinates are NOT compared and cannot be」；grouped decode_rate 0.1927 vs padded 0.2708，63 个不一致格。测试只有四条断言，没有一条比较生成坐标。radial 头的 centroid 是 x_t.mean(dim=1)，包含 padding（_fm_padding_invariant 注释自述）。",
         "impact": "三处注释/help 声称存在一个不存在的验证。任何用 pad_groups 跑出的池（cfm_property_panel.py:1255、wf_a53_eval_cfm_test_split.py:699 都硬编码 True）都可能带批次组成依赖。",
-        "status": "OPEN",
-        "task": "T35"
+        "status": "RESOLVED",
+        "task": "T35",
+        "resolution": "已复核：molmetal/tests/test_cfm_pad_groups_equivalence.py 4 个测试全过，且比较的是生成坐标本身（docstring 8329 行明确写 compare generated coordinates against the grouped path, not just the decode outcome）。2026-10-28 验证。"
       },
       {
         "id": "SA-13",
@@ -4431,8 +4481,9 @@
         "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7932-7972 与 :7997-8019、:8455、:16817",
         "measured": "非 padded 分支构造 _BondLengthGuidance 并包装 _vf；padded 分支直接交 _conditioned_velocity_fn 给 ODE，全程不读该参数。evaluate_generation_validity 无条件传它。当前 3 个权重非零的 config 都没设 gen_pad_groups，故未触发。",
         "impact": "两条分支行为不等价，而注释与 docstring 都在论证等价。为了省显存打开 pad_groups 的 run 会同时失去导引，而 gen_* 指标不会说明原因。",
-        "status": "OPEN",
-        "task": "T44"
+        "status": "RESOLVED",
+        "task": "T44",
+        "resolution": "已复核：padded 分支与 grouped 分支都调用 _with_bond_length_guidance(..., bond_length_guidance_weight, node_mask)，两处都在 torch.no_grad() 内（8381 / 8430）。2026-10-28 验证。"
       },
       {
         "id": "SA-25",
@@ -4458,8 +4509,9 @@
         "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4131 与 :8038、molmetal/scripts/wf_a53_eval_cfm_test_split.py:653、molmetal/scripts/wf_generated_to_activity.py:281",
         "measured": "metal_z = {44,45,75,76,77} 对 _TARGET_METALS = {44,45,75,76,77,78}；_decoded_smiles_stats 用它算 decode_metal_ratio，wf_a53 原样报成 metal_ratio；现有测试只断言 1/3 且样本不含 Pt。",
         "impact": "Pt 是这条线的标题金属。只含 Pt 的解码会被记成「没有金属」。每 epoch 的 gen_metal_ratio 走另一条路所以看不出来，因此这个错误只在 wf_a53 的 held-out 评估里显形——而那条路径目前没有注册产物，等于还没人踩到。",
-        "status": "OPEN",
-        "task": "T47"
+        "status": "RESOLVED",
+        "task": "T47",
+        "resolution": "已复核：_TARGET_METALS = frozenset({44,45,75,76,77,78}) 含 Pt；wf_generated_to_activity.PRECIOUS_Z 同样含 78。2026-10-28 验证。"
       },
       {
         "id": "SA-28",
@@ -4467,8 +4519,9 @@
         "evidence": "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:778、:1368；molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2067（DMPNNBondHead 同一行）",
         "measured": "d = norm(...).clamp(min=1.0) 发生在 mask = d < 3.5 之前，所以 clamp 后的值同时进入 d、is_short(d<1.7)、is_long(d>3.0) 与 RBF。真实 tmQM_X1 前 4000 个复合物：最近原子对 mean 1.0616 / median 1.0778 / p01 0.9632 / min 0.9563，9.0% 的复合物有一对 < 1.0 Å，0 个 < 0.9 Å。生成侧（cfm_generated_geometry_defect.json，24 云）：最近原子对 mean 0.5702 / median 0.5599，24/24 云至少一对硬接触，共 143 对，真实对照 0/24。",
         "impact": "同一行在训练分布上是数值保护，在采样分布上把塌陷搬进「短键」格子。头的全部距离分辨力都在 1.7 Å 以下，clamp 恰好抹掉这一段，所以塌陷对不会因为「太近」被拒，只会因为「够近」被接受。这不等于证明它造成了 3-ring 爆炸（那一步没测），但它确实去掉了候选层唯一能拒绝塌陷的信号，而且去的方式随分布变化。",
-        "status": "OPEN",
-        "task": "T48"
+        "status": "RESOLVED",
+        "task": "T48",
+        "resolution": "已复核：yuelbond_decoder.py:203-205 明确要求 d_raw 必须是未 clamp 的距离，并新增 clash 拒绝规则（clash_reject 默认 True）把重叠对整对剔除，而不是压成短键。2026-10-28 验证。"
       },
       {
         "id": "SA-29",
@@ -4476,8 +4529,9 @@
         "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:767（if self.connectivity_prior and bond_orders:）与 :1008（_bridge_components 对空输入本身是正确的）",
         "measured": "c7 池 molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv 共 12,669 行，其中 302 行（2.38%）满足 n_frags_raw>1 且 largest_frag_frac == 1/n_frags_raw——每个片段都是单原子，即解码出 0 根键。c8 池 2,112 行里这一类为 0（143 个单片段行与「全单原子」计数完全相等），所以缺陷只在 c7 那一批显形。_bridge_components 的 union-find 以 parent=list(range(n)) 起手，空 bond_orders 时 n_components=len(heavy)、候选来自 edge_index，逻辑上可以直接补桥。",
         "impact": "先验的入口条件放在失败的一侧：越需要连通，越不执行。302 行占 c7 池 2.4%，而 c7 池是验收表第 3/4 行唯一的来源，所以这两行的 now 值里混着一批本可连通的空图。",
-        "status": "OPEN",
-        "task": "T49"
+        "status": "RESOLVED",
+        "task": "T49",
+        "resolution": "已复核：cfm_decoder_yuelbond.py 的 connectivity prior 守卫已改成 if self.connectivity_prior（不再要求 bond_orders 非空），test_wfa113_connectivity_prior_zero_bonds.py 通过。2026-10-28 验证。"
       },
       {
         "id": "SA-30",
@@ -4485,8 +4539,9 @@
         "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2083-2087、:17983、:2543-2548",
         "measured": "DMPNNBondHead.forward 里 is_dative = ((z_i==7)|(z_i==8)|(z_i==16)) & (z_j==78)，既不含 Ru/Rh/Re/Os/Ir，也不含 Wf-A94/A95 加的卤素与碳，且只测一个方向。同一类的 YuelBondDecoderHead 与 YuelBondEdgeMPNNHead 都已改成 metal_set+donor_zs 的对称规则。DMPNNBondHead 没有 metal_set / donor_zs 两个属性，而 :17983 写的是 model.head.metal_set（无 getattr），解码侧的 _is_metal_z/_is_donor 也直接读这两个属性。configs/ 里 39 个含 bond_predictor 的 YAML 中 0 个选 dmpnn，所以今天潜伏：一旦有人用 --bond-predictor dmpnn，崩点是第一次存权重，不是训练。",
         "impact": "三个实现、三套 dative 规则，其中一套是 Wf-A69 修过的那个 bug 的原样。谁按 README 把 bond_predictor 换成 dmpnn，得到的不是「稍弱的头」，而是一个把 5 个目标金属的配位键全部标成非 dative 的头，且存盘即崩。",
-        "status": "OPEN",
-        "task": "T50"
+        "status": "RESOLVED",
+        "task": "T50",
+        "resolution": "已复核：DMPNNBondHead 已有 metal_set / donor_zs / clash_reject 三个参数（2182-2230），不再写死 Pt。2026-10-28 验证。"
       },
       {
         "id": "SA-31",
@@ -4494,8 +4549,9 @@
         "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:960；molmetal/molmetal_lam/priors/metal_geometry.py:415-432；同文件 :132 起的 _COVALENT_VALENCE",
         "measured": "bonds_at_metal = sum(1 for (a, _, _) in bond_orders if a == metal_idx)，而 bond_orders 的 (i,j) 直接来自 head 的 triu_indices，i<j 恒成立。tmQM_X1 的 9,111 个含金属复合物：7,700 个（84.5%）金属在重原子索引 0，11.84%（5,729/48,371）的金属键金属处于较高索引，对这些键计数恒为 0。同时 max_bonds 与 _cap_for_z 对表内每个金属等紧：Pt 4/4、Pd 4/4、Au 4/4、Cu 4/4、Zn 4/4、Ru 6/6、Ir 6/6、Rh 6/6、Re 6/6、Os 6/6。",
         "impact": "今天没有可观测后果，因为 valence cap 至少一样紧。但 covalent_valence_table 的 docstring 明确把 Pt_IV（cap=6）当作支持用法，那一刻这道门成为唯一的配位上限，而 11.84% 的金属键不计入它——多配位的 Pt 会被放过。属于「现在冗余、调一个参数就活」的一类，和惰性开关同源。",
-        "status": "OPEN",
-        "task": "T51"
+        "status": "RESOLVED",
+        "task": "T51",
+        "resolution": "T72 删除了这道几何门，计数只覆盖第一个端点的问题随之消失；价上限成为唯一约束。"
       },
       {
         "id": "SA-32",
@@ -4649,6 +4705,36 @@
         "impact": "「生成模型」在组成维度上是检索而不是生成；novelty / diversity 指标只反映同一组成的键图与构象差异。这不是 bug，是口径问题，但如果不写清楚，论文的生成主张会被审稿人按 de novo 读。",
         "status": "OPEN",
         "task": "T74"
+      },
+      {
+        "id": "SA-49",
+        "finding": "训练侧的 bond_exact_match 与 bond_exact_type_rate 是同一分支、同一条件下的两次自增，所以两个键在每个 artifact 里数值完全相同；训练器根本没有「集合对、键级错」这一层诊断。bench 的 exact（仅集合）与 exact_type（集合+键级）一直是两层。",
+        "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::evaluate_bond_accuracy（原 9494-9507 两个 if 条件逐字相同）；molmetal/scripts/bench_tmqm_bond_perception.py:537-539",
+        "measured": "metrics/by_metric/wfa113_t75_exact_match_alias.json：903 行 / 103 个 per_epoch_metrics.json，903 行两键完全相同、0 行不同；其中 204 行非零，最大 0.4374（= cfm_r10_fix_plan 里的 exact_type 0.4374）。",
+        "impact": "一个 run 无法区分「连通性错」与「键级错」，而这正是 0.44 → 更低那一段的主要成因；同时 bond_exact_match 这个名字在 bench 里对应的是 exact（仅集合），跨表比较会拿严格量对宽松量。",
+        "status": "FIXED",
+        "task": "T75",
+        "resolution": "拆成两个计数器：exact_set 只在集合相等时自增，exact_type 保留逐类 all(...) 守卫；新增 bond_set_exact_rate 并贯通 _bond_accuracy → EpochMetrics → events.jsonl → per-epoch CSV；bond_exact_match 保留严格语义（= exact_type_rate 的别名），docstring 与 bench docstring 互相点名。测试 molmetal/tests/test_wfa113_t75_exact_match_decomposition.py（4 条）。"
+      },
+      {
+        "id": "SA-50",
+        "finding": "bench 与 trainer 的 exact_type 用的是两套真值映射：bench 取 {single 1.0, double 2.0, triple 3.0} 最近邻（无芳香类），trainer 用 tmqm_clouds.bo_to_bond_class（1.25-1.75 芳香带）。同一条 Wiberg 键在两边标签不同，而 trainer 的 docstring 声称两者可直接比较。",
+        "evidence": "molmetal/scripts/bench_tmqm_bond_perception.py::bo_to_type（原 _BO_TYPE_CENTRES 三项）vs molmetal/data/tmqm_clouds.py::bo_to_bond_class（_BO_TYPE_BANDS 四项）",
+        "measured": "metrics/by_metric/wfa113_t76_truth_label_divergence.json：626,396 条 BO>=0.3 的键，152,837 条（24.40%）两边标签不同；141,758 条 aromatic→single，11,079 条 aromatic→double。分 shard 22-28%。",
+        "impact": "方向对模型不利：把 1.45 的芳香 C-C 判成 aromatic 的模型被 bench 记错、被 trainer 记对；判成 single 的经典基线被 bench 记对。0.0956 vs OpenBabel 0.0300 这张表因此不是同一把尺子量出来的，而且压低的是我们主张的那条轴（TYPE）。",
+        "status": "FIXED",
+        "task": "T76",
+        "resolution": "bench 的 bo_to_type 改为委托 tmqm_clouds.bo_to_bond_class（惰性导入，避免 numpy 基线路径拉 torch）；payload 写入 protocol.truth_definition='corpus_bo_bands_v1'；旧 artifact 无该戳记即为 legacy_3class_nearest。测试 test_bo_to_type_boundaries 改为钉语料分带，新增 test_bench_truth_agrees_with_trainer_truth（0.30-3.50 逐 0.01 对齐）。docs/CFM_STATUS_2026_10_12.md §1 表下加真值定义变更说明：旧数字需重跑后才能与 trainer 并列。"
+      },
+      {
+        "id": "SA-51",
+        "finding": "解码器把金属的配位数上限（MND p99，单位=键数）当键级和来花：_CLASS_VALENCE_COST 对 aromatic 记 1.5、double 记 2.0。语料里 30.7% 的 Re 金属键不是 single，于是预算在到达配位数之前就被花光。decoder_rework 的注释还写着「every metal-ligand bond is class BOND_SINGLE with cost 1.0」，这个前提是假的。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_select_bonds / _bridge_components；molmetal/molmetal_lam/lam_chem/decoder_rework.py::TMQM_MEASURED_METAL_COORDINATION_CAPS 注释块",
+        "measured": "metrics/by_metric/wfa113_t77_metal_bond_cost_units.json（全语料 86k 配合物）：cost 和 > 键数的配合物占比 Re 92.3%、Ru 27.8%、Rh 12.1%、Pt 0.48%。Re 金属键 26,688 条中 aromatic 6,613 / double 1,498 / triple 76；Ru 69,091 条中 aromatic 3,027。修复后超出上限的只剩 Pt 17.3%（故意钉在 4）、Re 0.46%、Ru 0.51%、Rh 0%。",
+        "impact": "Re 配合物平均只能拿到 6 条金属键，而 cap 是按配位数 9 定的；等于把 T72 刚修好的上限又用单位错误抵消掉，且只打击芳香/多重键多的金属（Re、Ru），不打击 Pt —— 与「五金属同一把尺子」直接冲突。",
+        "status": "FIXED",
+        "task": "T77",
+        "resolution": "_select_bonds 与 _bridge_components 对金属端点一律按 1.0/键计费，配体端点保留键级成本；decoder_rework 的注释改为实测分布。测试 test_wfa113_t77_metal_budget_units.py（3 条，已验证旧记账下 Re 只保留 6/9）。"
       }
     ],
     "reproduce": [
