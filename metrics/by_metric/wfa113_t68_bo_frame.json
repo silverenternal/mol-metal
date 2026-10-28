@@ -1,0 +1,108 @@
+{
+  "metric": "wfa113_t68_bo_frame",
+  "tag": "MEASURED",
+  "date": "2026-10-28",
+  "probe": "molmetal/scripts/wfa113_t68_bo_frame_probe.py",
+  "cohort": "48 clouds drawn by _stratified_code_draw from the 33429 six-metal tmQM complexes, split=None, seed=0",
+  "defect": {
+    "code": "molmetal/data/tmqm_clouds.py::_build_cloud_from_kept (cont_lookup keyed by raw tmQM indices)",
+    "mechanism": "pairs_with_class is remapped through old_to_new because hydrogens are dropped, but cont_lookup was built from pairs_continuous with the RAW indices and then queried with the remapped ones. tmQM interleaves H with heavy atoms, so almost every heavy index shifts and .get(..., 0.0) returned 0.0 — or another bond's order.",
+    "fix": "Map both endpoints of every pairs_continuous entry through old_to_new before keying the lookup, and skip entries whose endpoint is a dropped hydrogen."
+  },
+  "n_bonds": 2079,
+  "before": {
+    "zero_bo_bonds": 1109,
+    "zero_bo_fraction": 0.5334,
+    "per_cloud_zero_fraction_mean": 0.541,
+    "by_class": {
+      "SINGLE": {
+        "n": 1012,
+        "mean": 0.3798,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 1.474,
+        "fraction_zero": 0.582
+      },
+      "DOUBLE": {
+        "n": 29,
+        "mean": 0.6068,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 2.368,
+        "fraction_zero": 0.6552
+      },
+      "TRIPLE": {
+        "n": 3,
+        "mean": 2.18,
+        "median": 2.789,
+        "min": 0.962,
+        "max": 2.789,
+        "fraction_zero": 0.0
+      },
+      "AROMATIC": {
+        "n": 1035,
+        "mean": 0.6224,
+        "median": 0.933,
+        "min": 0.0,
+        "max": 1.752,
+        "fraction_zero": 0.4841
+      }
+    },
+    "dative_directed_flags": 255
+  },
+  "after": {
+    "zero_bo_bonds": 0,
+    "zero_bo_fraction": 0.0,
+    "per_cloud_zero_fraction_mean": 0.0,
+    "by_class": {
+      "SINGLE": {
+        "n": 1012,
+        "mean": 0.9327,
+        "median": 0.9895,
+        "min": 0.308,
+        "max": 1.249,
+        "fraction_zero": 0.0
+      },
+      "DOUBLE": {
+        "n": 29,
+        "mean": 2.0433,
+        "median": 2.134,
+        "min": 1.751,
+        "max": 2.368,
+        "fraction_zero": 0.0
+      },
+      "TRIPLE": {
+        "n": 3,
+        "mean": 2.7297,
+        "median": 2.789,
+        "min": 2.611,
+        "max": 2.789,
+        "fraction_zero": 0.0
+      },
+      "AROMATIC": {
+        "n": 1035,
+        "mean": 1.4041,
+        "median": 1.415,
+        "min": 1.25,
+        "max": 1.741,
+        "fraction_zero": 0.0
+      }
+    },
+    "dative_directed_flags": 241
+  },
+  "metal_edges_directed": 271,
+  "self_validation": {
+    "recomputed_matches_cloud": 2079,
+    "recomputed_mismatch": 0,
+    "note": "The probe's post-fix lookup is asserted to reproduce the shipped cloud's bond_orders_continuous exactly; a nonzero mismatch means the probe's model of the builder is wrong and the before/after numbers should not be trusted."
+  },
+  "consequences": [
+    "The BO regression target (chemistry_losses.bond_order_loss, and the trainer's linear aux MSE at flow.bond_aux_mse_weight > 0 — several configs set 0.1) was fitted against a vector that is 55% zeros on real bonds and otherwise another bond's order.",
+    "is_dative_pair is derived from `v < 1.0`, so the dative flag was determined by the wrong number. Both the bond head's dative supervision and the decoder's dative marking read it.",
+    "bond_orders_continuous is also logged into the per-epoch artifact (model.last_bond_orders_continuous), so archived BO numbers are readings of the corrupted vector."
+  ],
+  "honest_limits": [
+    "One cohort, split=None, seed 0. The pre-fix value is recomputed from the BO shards with the pre-fix keying, not by restoring the old code; the self-validation block is what licenses that.",
+    "bo_per_atom sums over pairs_continuous with NO threshold, so it legitimately exceeds the sum over the thresholded bond list; the two are not expected to match and the probe does not compare them."
+  ]
+}

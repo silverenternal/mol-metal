@@ -3500,6 +3500,80 @@
     "所有归档的 tmQM 数字都是在金属偏置队列上跑的，与修复后的队列不可比。"
    ],
    "decision": "采用分层抽签。理由：语料的物理顺序是金属分块的，任何「取前 N 个」的抽样都会退化成单金属队列；而项目的标题金属是 Pt，零 Pt 队列使「金属条件化无效」这类结论不可解释。代价是启动多花 40 s。"
+  },
+  {
+   "id": "T68",
+   "priority": 0,
+   "title": "Wiberg BO 目标查错了原子坐标系：53.3% 的真键读到 0.0，其余读到别的键",
+   "what": "_build_cloud_from_kept 在 include_hydrogens=False 时丢掉 H，并把每条键对通过 old_to_new 重映射。但 bond_orders_continuous 的查表 cont_lookup 是用 tmQM 原始（含 H）索引建的，却用重映射后的索引去查。tmQM 的原子顺序把 H 与重原子交错（实测第一个 H 出现在索引 2），所以几乎每个重原子的索引都会下移，查表全部落空。落空不报错，因为用的是 .get(..., 0.0)：真键的 bond_orders_continuous 有 53.3% 是 0.0，其余是别的键的 BO；而 is_dative_pair 由 v < 1.0 推出，于是金属键无论真实键级都被标成 dative。",
+   "addresses": [
+    "D68"
+   ],
+   "done_when": "同一队列上 0 个真键读到 0.0；SINGLE/DOUBLE/TRIPLE/AROMATIC 四类的 BO 中位数分别落在 ~1.0 / ~2.0 / ~2.7 / ~1.4；dative 标志只由真实键级决定。",
+   "gate": {
+    "no_zero": "真键里 BO=0 的比例 = 0",
+    "chemically_sane": "四类 BO 中位数落在化学值附近",
+    "validate": "探针重算的修复后 BO 与 cloud 上的值逐元素相等"
+   },
+   "kill": "若修复后某一类的 BO 中位数仍然离谱（例如芳香键中位数 < 1.0），说明 BO 文件本身与几何的原子顺序不一致，问题不在查表坐标系，应改查 _bo_continuous_pairs 的解析。",
+   "device": "cpu",
+   "cost": "CPU 1 h",
+   "status": "DONE",
+   "result": "cont_lookup 的两个端点都先过 old_to_new（端点是被丢掉的 H 就跳过）。实测（同一 48-cloud 队列，split=None，seed 0，2,079 条键；探针重算的修复后值与 cloud 上的 bond_orders_continuous 逐元素 2079/2079 相等）：BO=0 的真键 1,109（53.3%）-> 0；SINGLE 中位数 0.0 -> 0.9895，DOUBLE 0.0 -> 2.134，TRIPLE 2.789 -> 2.789，AROMATIC 0.933 -> 1.415；每 cloud 的零值比例均值 0.541 -> 0.0；金属键 271 条里 dative 标志 255 -> 241（14 条真实键级 ≥1.0 的金属键不再被标成配位键）。",
+   "artifact": "metrics/by_metric/wfa113_t68_bo_frame.json",
+   "probe": "molmetal/scripts/wfa113_t68_bo_frame_probe.py",
+   "tests": "molmetal/tests/test_wfa113_t68_bo_frame.py",
+   "evidence": [
+    "metrics/by_metric/wfa113_t68_bo_frame.json"
+   ],
+   "gate_result": {
+    "no_zero": "PASS — 53.3% -> 0",
+    "chemically_sane": "PASS — 1.00 / 2.13 / 2.79 / 1.42",
+    "validate": "PASS — 2079/2079"
+   },
+   "honest_limits": [
+    "只测了一个队列（split=None，seed 0，48 cloud）。修复前的值是按修复前的键法从 BO 分片重算的，不是还原旧代码；self_validation 那一段是这个做法成立的前提。",
+    "bo_per_atom 累加的是未过阈值的全部 pair，天然大于过阈值键表的和，两者本来就不该相等，探针不比较它们。",
+    "bond_orders_continuous 也是 per-epoch artifact 里 last_bond_orders_continuous 的来源，所以归档的 BO 数字读的是被污染的那一版。"
+   ],
+   "decision": "修查表坐标系，不修 BO 分片。理由：self_validation 证明修复后的值与 cloud 逐元素一致，且四类 BO 的中位数全部落到化学上合理的值（单键 ~1.0、双键 ~2.0、三键 ~2.7、芳香 ~1.4），说明 BO 文件与几何的原子顺序是一致的，错的只是查表用的坐标系。"
+  },
+  {
+   "id": "T69",
+   "priority": 2,
+   "title": "coord_geom_class 用去掉 H 之后的索引查原始索引的邻居表，14.6% 的 cloud 被按氢的度数分类",
+   "what": "_build_cloud_from_kept 里 metal_cn = len(per_atom_nbr_zsets.get(metal_idx_in_kept, []))。per_atom_nbr_zsets 以 tmQM 原始索引为键，metal_idx_in_kept 是去掉 H 之后的帧。只要金属前面有 H，两者就不同，几何类就被某个碳或氢的度数决定。改为 keep_idx[metal_idx_in_kept]。",
+   "addresses": [
+    "D69"
+   ],
+   "done_when": "金属前面有 H 时，class 由金属自己的配位数决定；没有 H 在金属前面时结果不变；CN 不在映射表里时仍为 None。",
+   "gate": {
+    "frame": "H 在前时 CN 取金属的",
+    "no_change": "金属在索引 0 时结果不变",
+    "none_ok": "CN=7/8 仍为 None"
+   },
+   "kill": "若这个字段仍然没有任何消费者，则在 docs 里标 DECLARED_INERT，而不是继续维护它。",
+   "device": "cpu",
+   "cost": "CPU 0.5 h",
+   "status": "DONE",
+   "result": "改为 keep_idx[metal_idx_in_kept]。实测 48 cloud（split=None，seed 0）：两种帧的 CN 在 41/48 上相同（金属通常就在索引 0），7/48 不同（14.6%），其中 6 个修复前拿到 CN=1（氢的唯一邻居）。class 分布：修复前 {None:29, octahedral:9, square_planar:8, square_pyramidal:2} -> 修复后 {None:26, octahedral:11, square_planar:7, square_pyramidal:3, trigonal_bipyramidal:1}。",
+   "artifact": "metrics/by_metric/wfa113_t69_coord_geom_frame.json",
+   "probe": "molmetal/scripts/wfa113_t69_coord_geom_frame_probe.py",
+   "tests": "molmetal/tests/test_wfa113_t69_coord_geom_frame.py",
+   "evidence": [
+    "metrics/by_metric/wfa113_t69_coord_geom_frame.json"
+   ],
+   "gate_result": {
+    "frame": "PASS",
+    "no_change": "PASS",
+    "none_ok": "PASS"
+   },
+   "honest_limits": [
+    "AtomCloud.coord_geom_class 目前在仓库里没有任何消费者（_to_device_cloud 也不带它），所以这个修复不改变任何已训练数字。",
+    "metal_cn 数的是 Wiberg BO 块里列出的全部邻居（上限 12），不是过阈值的键表，所以可能大于 bond graph 的金属度数。",
+    "修复前后 class 分布只差 3 个 cloud，影响很小；记录它是因为这个字段被写成 MOD5 的条件化槽位。"
+   ],
+   "decision": "修索引，不删字段。理由：字段被文档标为 MOD5 的条件化输入；现在接上会喂给模型「碳的度数」而名义上是「金属配位几何」。同时把「无消费者」写进 honest_limits，避免以后误以为它已被使用。"
   }
  ],
  "acceptance": {
@@ -4375,6 +4449,24 @@
     "impact": "所有小 n 的 tmQM 消融都是单金属或零 Pt 队列；与 cfm_tmqm_all6（26715）的对比把队列大小与金属多样性混在一起；M2 的「换金属原子序数只动 0.74%」是在可能只见过一种金属的 checkpoint 上测的。",
     "status": "FIXED",
     "task": "T67"
+   },
+   {
+    "id": "SA-42",
+    "finding": "Wiberg BO 目标按原始 tmQM 索引建表、按去掉 H 之后的索引查询，53.3% 的真键读到 0.0，其余读到别的键的 BO；is_dative_pair 由这个错误值推出。",
+    "evidence": "molmetal/data/tmqm_clouds.py::_build_cloud_from_kept（cont_lookup）+ molmetal/scripts/wfa113_t68_bo_frame_probe.py",
+    "measured": "48-cloud 队列 2,079 条键：修复前 BO=0 的真键 1,109（53.3%），SINGLE/DOUBLE 中位数 0.0/0.0，AROMATIC 0.933；修复后 0 条为 0，SINGLE/DOUBLE/TRIPLE/AROMATIC 中位数 0.9895/2.134/2.789/1.415。金属键 271 条，dative 标志 255 -> 241。探针重算值与 cloud 上的 bond_orders_continuous 2079/2079 相等。",
+    "impact": "BO 回归头（chemistry_losses.bond_order_loss 与 flow.bond_aux_mse_weight>0 时的线性 aux MSE，多个 config 设 0.1）一直在拟合一个 53% 是 0、其余是别的键的向量；bond 头的 dative 监督与解码器的 dative 标记都读这个标志；per-epoch artifact 里的 BO 读数也是这个向量。",
+    "status": "FIXED",
+    "task": "T68"
+   },
+   {
+    "id": "SA-43",
+    "finding": "coord_geom_class 用 kept 帧的索引查 raw 帧的邻居表，14.6% 的 cloud 被按氢/碳的度数分类。",
+    "evidence": "molmetal/data/tmqm_clouds.py::_build_cloud_from_kept + molmetal/scripts/wfa113_t69_coord_geom_frame_probe.py",
+    "measured": "48 cloud：两帧 CN 相同 41/48，不同 7/48；修复前 6 个 cloud 的「金属 CN」=1。class 分布 {None:29, octahedral:9, square_planar:8, square_pyramidal:2} -> {None:26, octahedral:11, square_planar:7, square_pyramidal:3, trigonal_bipyramidal:1}。",
+    "impact": "今天为零：这个字段全仓库没有消费者。但它是 MOD5 的条件化槽位，接上就会把碳的度数当金属几何喂给模型。",
+    "status": "FIXED",
+    "task": "T69"
    }
   ],
   "reproduce": [

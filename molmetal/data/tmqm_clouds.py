@@ -354,9 +354,28 @@ def _build_cloud_from_kept(
             # the source of truth for the float, even if the int-class
             # bond is below the threshold — but since `pairs_with_class`
             # is itself threshold-filtered, the float will exist for them).
+            #
+            # Wf-A113 (T68, 2026-10-28) — the lookup MUST be keyed in the
+            # KEPT-ATOM frame.  `bo_info.pairs_continuous` carries the tmQM
+            # (full, hydrogen-included) indices, and `pairs` above was already
+            # remapped through `old_to_new`.  Keying the lookup by the raw
+            # tmQM indices and then querying it with the remapped ones missed
+            # almost every bond, because tmQM's atom order interleaves
+            # hydrogens (MEASURED: the first H sits at index 2 in one of the
+            # first complexes) so nearly every heavy atom shifts down.
+            #
+            # The miss did not raise: `.get(..., 0.0)` returned 0.0, so
+            # `bond_orders_continuous` was 0.0 on 55.2% of real bonds and
+            # carried another bond's order on the rest, and `is_dative_pair`
+            # — derived from `v < 1.0` — was true for every metal bond
+            # regardless of its real order.
             cont_lookup: Dict[Tuple[int, int], float] = {}
             for i, j, v in bo_info.pairs_continuous:
-                a, b = (i, j) if i < j else (j, i)
+                ni = old_to_new.get(i)
+                nj = old_to_new.get(j)
+                if ni is None or nj is None:
+                    continue
+                a, b = (ni, nj) if ni < nj else (nj, ni)
                 # MAX of symmetric entries (matches _bo_continuous_pairs)
                 if (a, b) not in cont_lookup or v > cont_lookup[(a, b)]:
                     cont_lookup[(a, b)] = v
@@ -426,7 +445,14 @@ def _build_cloud_from_kept(
         and metal_idx_in_kept is not None
         and bo_info is not None
     ):
-        metal_cn = len(bo_info.per_atom_nbr_zsets.get(metal_idx_in_kept, []))
+        # Wf-A113 (T69, 2026-10-28) — `per_atom_nbr_zsets` is keyed by the RAW
+        # tmQM index; `metal_idx_in_kept` is an index in the kept (hydrogen
+        # dropped) frame.  Reading the raw dict with the kept index returned
+        # another atom's neighbour list, so the geometry class was classified
+        # from a carbon's degree rather than the metal's coordination number.
+        metal_cn = len(
+            bo_info.per_atom_nbr_zsets.get(keep_idx[metal_idx_in_kept], [])
+        )
         if metal_cn >= 2 and metal_cn <= 12:
             from molmetal.data.coord_geometry import classify_coord_geometry
             coord_geom_class = classify_coord_geometry(metal_cn, int(metal_z))

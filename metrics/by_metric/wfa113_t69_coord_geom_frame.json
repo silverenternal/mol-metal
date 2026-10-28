@@ -1,0 +1,56 @@
+{
+  "metric": "wfa113_t69_coord_geom_frame",
+  "tag": "MEASURED",
+  "date": "2026-10-28",
+  "probe": "molmetal/scripts/wfa113_t69_coord_geom_frame_probe.py",
+  "cohort": "48 clouds, split=None, seed=0",
+  "defect": {
+    "code": "molmetal/data/tmqm_clouds.py::_build_cloud_from_kept (coord_geom_class)",
+    "mechanism": "metal_cn was read from per_atom_nbr_zsets with metal_idx_in_kept (kept-atom frame) while the dict is keyed by the raw tmQM index, so the degree of an arbitrary atom was classified as the metal's coordination number.",
+    "fix": "Look up keep_idx[metal_idx_in_kept] instead."
+  },
+  "n_clouds": 48,
+  "metal_cn_matches_between_frames": 41,
+  "metal_cn_before": {
+    "1": 6,
+    "4": 8,
+    "5": 2,
+    "6": 9,
+    "7": 6,
+    "8": 7,
+    "9": 6,
+    "10": 1,
+    "11": 1,
+    "12": 2
+  },
+  "metal_cn_after": {
+    "4": 7,
+    "5": 4,
+    "6": 11,
+    "7": 6,
+    "8": 8,
+    "9": 8,
+    "10": 1,
+    "11": 1,
+    "12": 2
+  },
+  "class_before": {
+    "None": 29,
+    "octahedral": 9,
+    "square_planar": 8,
+    "square_pyramidal": 2
+  },
+  "class_after": {
+    "None": 26,
+    "octahedral": 11,
+    "square_planar": 7,
+    "square_pyramidal": 3,
+    "trigonal_bipyramidal": 1
+  },
+  "consumer": "NONE — AtomCloud.coord_geom_class is written and never read; _to_device_cloud does not carry it.",
+  "impact": "No trained number changes today.  The fix matters because the field is documented as a MOD5 conditioning slot: wiring it up against the pre-fix values would feed the model a carbon's degree under the name 'metal coordination geometry'.",
+  "honest_limits": [
+    "metal_cn counts every neighbour listed in the Wiberg BO block (up to 12), not the thresholded bond list, so it can exceed the bond graph's metal degree.",
+    "The class is None whenever (Z, CN) is unmapped; tmQM genuinely has 7- and 8-coordinate complexes, so None is not an error."
+  ]
+}
