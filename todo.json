@@ -1,7 +1,7 @@
 {
  "schema": "molmetal-todo-v7",
  "created": "2026-10-22",
- "updated": "2026-10-28T19:10+08:00",
+ "updated": "2026-10-28T20:05+08:00",
  "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
  "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
  "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -1612,6 +1612,17 @@
     "T62"
    ],
    "status": "OPEN"
+  },
+  {
+   "id": "D63",
+   "symptom": "72% 的配合物在几何上只连着 1 个 donor，而重建的 SMILES 声称有最多 6 个。",
+   "measured": "399 cloud：金属 2.6 Å 内 donor 数 {1:287, 2:84, 3:24, 4:4}；最近 donor 2.050 Å、第二近 3.484 Å、第三近 4.225 Å；全队列 donor 原子 6.89/cloud，dative 边 1.30/cloud。",
+   "artifact": "metrics/by_metric/wfa113_t57_fragment_layout.json",
+   "reading": "金属放置只有「top donor 外侧 2.05 Å」一种模式，是单齿假设；而配体选取按配位数 6 装了多个 donor。两者从未对齐，于是配合物被画成「一个键 + 几个漂着的配体」。bond 头在这上面学到的 M-L 边数上限就是放置方式给的，不是化学给的。",
+   "addressed_by": [
+    "T63"
+   ],
+   "status": "OPEN"
   }
  ],
  "modules": [
@@ -3220,7 +3231,8 @@
    },
    "honest_limits": [
     "分离后的溶剂布局不是物理布局：晶体里溶剂的位置是关于晶体的事实，这个 loader 没有晶体。声称的只有「布局不再教模型把原子叠在一起」。",
-    "2.0 Å 的片段间 clearance 是选的，不是拟合的。"
+    "2.0 Å 的片段间 clearance 是选的，不是拟合的。",
+    "片段分离把「第二配体」推到了 3.5 Å 外，于是 2.6 Å 内的 donor 数从 2.37/cloud 降到 1.49/cloud。这不是分离做错了，而是暴露了金属放置本来就是单齿的（见 T63）。"
    ]
   },
   {
@@ -3364,6 +3376,29 @@
    "evidence": [
     "metrics/by_metric/wfa113_t60_donor_count.json"
    ]
+  },
+  {
+   "id": "T63",
+   "priority": 0,
+   "title": "金属只贴着一个 donor：72% 的 cloud 里 2.6 Å 内只有 1 个 donor，配位几何是假的",
+   "what": "_place_metal_at_donor 把金属放在「top donor 外侧 2.05 Å」，这是单齿假设。重建出来的 SMILES 却按配位数 6 装了最多 6 个 donor。实测 399 cloud：2.6 Å 内的 donor 数分布 {1:287, 2:84, 3:24, 4:4}，最近 donor 恒为 2.050 Å，第二近 3.484 Å，第三近 4.225 Å。也就是 72% 的配合物被画成「金属只连一个原子，其余配体漂在 3.5-4.2 Å 外」。正确做法是把金属放到 top-k donor 的质心（必要时再整体外推避让），让配位球真的是配位球；同时要和 T59（cap=3）一起决定 k。",
+   "addresses": [
+    "D63"
+   ],
+   "done_when": "给出 top-k 质心放置下的 donor 距离阶梯与 dative 边数分布；2.6 Å 内 donor 数的中位数 >= 4；非键最小距离仍 >= 1.2 Å。",
+   "gate": {
+    "measured": "两种放置方式的 donor 距离阶梯",
+    "coordination": "2.6 Å 内 donor 数中位 >= 4",
+    "no_new_overlap": "非键最小距离 >= 1.2 Å"
+   },
+   "kill": "若质心放置后非键最小距离 < 1.0 Å 的 cloud 超过 10%，说明没有配体取向搜索就无法同时满足配位与避让，应改为拒绝多配体行，而不是继续伪造几何。",
+   "device": "cpu",
+   "cost": "CPU 2 h",
+   "status": "PLANNED",
+   "evidence": [
+    "metrics/by_metric/wfa113_t57_fragment_layout.json"
+   ],
+   "note": "T57 的片段分离让这个缺陷更明显：分离前各配体叠在一起，2.6 Å 内塞进了更多 donor（dative 均值 2.37），分离后第二配体被推到 3.5 Å 外（dative 均值 1.49，T60 后 1.30）。两个数都是错的，只是错法不同。"
   }
  ],
  "acceptance": {
@@ -3761,6 +3796,7 @@
      "T60",
      "T61",
      "T62",
+     "T63",
      "T43",
      "T44",
      "T45",
@@ -4219,6 +4255,15 @@
     "impact": "训练集里混入 150 个不存在的配合物。",
     "status": "FIXED",
     "task": "T61"
+   },
+   {
+    "id": "SA-40",
+    "finding": "金属放置是单齿假设：72% 的 cloud 只有 1 个 donor 在 2.6 Å 内。",
+    "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::_place_metal_at_donor",
+    "measured": "donor 距离阶梯 2.050 / 3.484 / 4.225 Å；dative 1.30 边/cloud，donor 6.89 个/cloud。",
+    "impact": "bond 头与 FM 目标都学「金属只连一个原子」，与真实 4/6 配位不符。",
+    "status": "OPEN",
+    "task": "T63"
    }
   ],
   "reproduce": [
