@@ -20,9 +20,14 @@ that gate for Wf-A69 W1.
 References (disk-traced):
   - Wf-A67 MEASURED baseline: bond_f1=0.265
     (results/cfm_5metal_default/per_epoch_metrics.json:2255)
-  - Wf-A69 W1 DESIGN fix-1: candidate-list divergence is the disaster
-    area; truth-only (100% positive) train + ~95% NO_BOND eval is the
-    structural defect that produced the 0.265 baseline.
+  - Wf-A69 W1 DESIGN fix-1 claimed truth-only (100% positive) train +
+    ~95% NO_BOND eval was the structural defect behind that baseline.
+    Wf-A113 (T70, 2026-10-28) REFUTED that for the production trainer: it
+    never calls ``LipmanFlowMatchingAdapter.train_step``, and its bond
+    target already uses the head's 3.5 A pair list at 30.5% positive
+    (metrics/by_metric/wfa113_t70_candidate_sets.json).  The flags below
+    are therefore inert in ``train_cfm_yuelbond_wasserstein``; these tests
+    cover the adapter method they DO gate.
   - Wf-A68 (2026-10-17) ultracode: Spot 3 subsampling wire-in already
     in the trainer path (train_one_epoch, line 3609-3631) but is a
     no-op when ``bond_sample_balance=0``.  This file's subsampling test

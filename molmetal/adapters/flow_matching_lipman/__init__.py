@@ -3074,21 +3074,24 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         accept_only_connected: bool = True,
         keep_empty_connected: bool = True,
         cutoff: float = 5.0,
-        # Wf-A69 (2026-10-17) W1 — bond-candidate source switch.
+        # Wf-A69 (2026-10-17) W1 — bond-candidate source switch for THIS
+        # adapter's own ``train_step``.
         # ``truth_only`` (default) reproduces the pre-A69 candidate
-        # construction at :meth:`train_step` line ~2599-2641: every
-        # candidate edge is read from ``m.bonds`` so the per-pair
-        # CE is 100% positive by construction. ``radius_graph``
-        # builds candidates from a distance-cutoff ``triu_indices``
-        # (matching :class:`YuelBondDecoderHead`'s eval cutoff) and
+        # construction: every candidate edge is read from ``m.bonds`` so the
+        # per-pair CE is 100% positive by construction. ``radius_graph``
+        # builds candidates from a distance-cutoff ``triu_indices`` and
         # labels them with truth via the same ``m.bonds`` lookup.
-        # 2026-10-17 measured: Wf-A67 bond_f1=0.265 was reported by
-        # an evaluation whose candidate set (~90-95% NO_BOND,
-        # distance cutoff) the trainer never saw during training
-        # (truth-only, 100% positive). ``radius_graph`` aligns train
-        # and eval so the head sees the negative class.
-        # Default ``truth_only`` preserves Wf-A67 bit-exact backward
-        # compat.  Opt-in via YAML ``flow.bond_candidate_source``.
+        #
+        # Wf-A113 (T70, 2026-10-28) — this switch does NOT reach the CFM
+        # YuelBond trainer.  That trainer builds ``CFMJointModel`` and never
+        # calls ``train_step``, so its bond targets come from
+        # ``_bond_target_for_clean_cloud`` over ``YuelBondDecoderHead``'s
+        # pair list, which is the distance-cutoff set (3.5 A, 30.5%
+        # positive, MEASURED on 400 tmQM clouds:
+        # metrics/by_metric/wfa113_t70_candidate_sets.json).  The Wf-A69
+        # note that "the trainer never saw the negative class" is therefore
+        # false for the production path; it applies only to the r10-style
+        # scripts that call this method directly.
         bond_candidate_source: str = "truth_only",
         bond_candidate_cutoff: float = 2.4,
         # Wf-A69 W1 — subsample negatives to neg:pos = N (4:1 typical).
@@ -3451,14 +3454,18 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 # candidate construction: every candidate edge is read
                 # from ``m.bonds`` so the per-pair CE is 100% positive.
                 # ``radius_graph`` builds candidates from a
-                # distance-cutoff ``triu_indices`` (matching
-                # ``YuelBondDecoderHead``'s eval cutoff, default 2.4 Å
-                # matching ``BondOrderHead.bond_cutoff``) and labels
-                # them with truth via the same ``m.bonds`` lookup.
-                # Pairs NOT in ``m.bonds`` get ``BOND_NO_BOND=0`` so the
-                # head sees the negative class at training.
-                # Truth bonds are NEVER dropped (kept on top of the
-                # distance filter so the positive rate is preserved).
+                # distance-cutoff ``triu_indices`` and labels them with
+                # truth via the same ``m.bonds`` lookup.  Pairs NOT in
+                # ``m.bonds`` get ``BOND_NO_BOND=0`` so the head sees the
+                # negative class at training.
+                #
+                # Truth bonds are NEVER dropped: they are appended on top
+                # of the distance filter so a long coordination bond stays
+                # a positive.  Wf-A113 (T70) MEASURED what the filter alone
+                # does at the 2.4 A default — 199 of 16,167 truth bonds sit
+                # beyond it and 193 of those are metal-ligand, i.e. 8.3% of
+                # all M-L bonds would vanish from the training target
+                # (metrics/by_metric/wfa113_t70_candidate_sets.json).
                 _candidate_source = str(self._bond_candidate_source)
                 _cutoff = float(self._bond_candidate_cutoff)
                 # Build truth lookup on canonical (min, max) keys so a
@@ -3486,6 +3493,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                     _src_all = _triu[0].tolist()
                     _dst_all = _triu[1].tolist()
                     _coords_np = m.coords.detach().cpu().tolist()
+                    _emitted: set = set()
                     for k in range(len(_src_all)):
                         s_idx = int(_src_all[k])
                         d_idx = int(_dst_all[k])
@@ -3498,11 +3506,24 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                             continue
                         _key = (min(s_idx, d_idx), max(s_idx, d_idx))
                         label = _truth_lookup.get(_key, 0)  # 0 = BOND_NO_BOND
+                        _emitted.add(_key)
                         edge_src_list.append(s_idx)
                         edge_dst_list.append(d_idx)
                         edge_z_i_list.append(int(zi_np[s_idx]))
                         edge_z_j_list.append(int(zi_np[d_idx]))
                         edge_label_list.append(int(label))
+                    # A truth bond beyond the cutoff is still a positive the
+                    # head has to learn; the distance filter decides the
+                    # NEGATIVES, not whether a real bond exists.
+                    for _key, _label in _truth_lookup.items():
+                        if _label == 0 or _key in _emitted:
+                            continue
+                        _s, _d = _key
+                        edge_src_list.append(_s)
+                        edge_dst_list.append(_d)
+                        edge_z_i_list.append(int(zi_np[_s]))
+                        edge_z_j_list.append(int(zi_np[_d]))
+                        edge_label_list.append(int(_label))
                 else:
                     # ``truth_only`` path (default, bit-exact pre-A69).
                     for k in range(len(bs_np)):

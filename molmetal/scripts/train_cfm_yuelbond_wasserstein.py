@@ -12137,36 +12137,29 @@ def parse_args() -> argparse.Namespace:
             "yaml `flow.use_bond_head_skip` key."
         ),
     )
-    # Wf-A69 W1 (2026-10-17) — bond-candidate source switch (DISASTER
-    # AREA FIX).  ``truth_only`` reproduces the pre-Wf-A69 candidate
-    # construction at LipmanFlowMatchingAdapter.train_step line ~2628:
-    # every candidate edge is read from ``m.bonds`` so the per-pair CE
-    # is 100% positive by construction.  ``radius_graph`` builds
-    # candidates from a distance-cutoff ``triu_indices`` (matching
-    # YuelBondDecoderHead's eval cutoff) and labels them with truth via
-    # the same ``m.bonds`` lookup.  Pairs NOT in ``m.bonds`` get
-    # BOND_NO_BOND so the head sees the negative class at training.
-    # 2026-10-17 measured: Wf-A67 bond_f1=0.265 was reported by an
-    # evaluation whose candidate set (~90-95% NO_BOND) the trainer
-    # never saw during training.  ``radius_graph`` aligns train and
-    # eval so the head sees the negative class.  Default ``truth_only``
-    # preserves Wf-A67 bit-exact backward compat.  Driven by the YAML
-    # ``flow.bond_candidate_source`` key.
+    # Wf-A69 W1 (2026-10-17) added a bond-candidate source switch here.
+    # Wf-A113 (T70, 2026-10-28) found it inert: it gates
+    # ``LipmanFlowMatchingAdapter.train_step``, and this trainer's model is
+    # ``CFMJointModel``, which never calls that method.  The candidate pairs
+    # this trainer actually trains on are the ones ``YuelBondDecoderHead``
+    # emits (every pair within ``--edge-cutoff``, truth-labelled with
+    # BOND_NO_BOND elsewhere) — i.e. the distance-cutoff set the flag was
+    # meant to introduce was already the only set in use.  MEASURED on 400
+    # tmQM clouds: 52,963 candidates, 30.5% positive
+    # (metrics/by_metric/wfa113_t70_candidate_sets.json).  The three flags
+    # are kept so existing YAMLs still resolve, print as INERT on every run,
+    # and reject a non-default value (see the guard in ``parse_args``).
     p.add_argument(
         "--bond-candidate-source",
         dest="bond_candidate_source",
         choices=("truth_only", "radius_graph"),
         default="truth_only",
         help=(
-            "2026-10-17 NEW (Wf-A69 W1): bond-pair candidate source. "
-            "'truth_only' reads candidates from m.bonds (100% positive "
-            "by construction, bit-exact pre-Wf-A69).  'radius_graph' "
-            "builds candidates from a distance-cutoff triu_indices "
-            "(matching YuelBondDecoderHead's eval cutoff) and labels "
-            "them with truth — pairs not in m.bonds get BOND_NO_BOND so "
-            "the head sees the negative class.  Default 'truth_only' "
-            "preserves Wf-A67 backward compat.  Driven by the YAML "
-            "``flow.bond_candidate_source`` key."
+            "INERT (Wf-A113 T70, 2026-10-28).  Registered only so existing "
+            "YAMLs keep resolving to a dest.  The candidate set this trainer "
+            "trains on comes from YuelBondDecoderHead (all pairs within "
+            "--edge-cutoff, truth-labelled), not from this flag.  A "
+            "non-default value is rejected at startup."
         ),
     )
     p.add_argument(
@@ -12175,14 +12168,8 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=2.4,
         help=(
-            "2026-10-17 NEW (Wf-A69 W1): distance cutoff (Å) for the "
-            "radius_graph candidate source.  Pairs at distance >= "
-            "cutoff are NOT included in the candidate list.  Default "
-            "2.4 Å matches BondOrderHead.bond_cutoff and "
-            "YuelBondDecoderHead.cutoff=2.4 (chemically: a single bond "
-            "radius + 0.4 Å tolerance).  Only used when "
-            "bond_candidate_source='radius_graph'.  Driven by the YAML "
-            "``flow.bond_candidate_cutoff`` key."
+            "INERT (Wf-A113 T70, 2026-10-28) — see --bond-candidate-source.  "
+            "The live radius is --edge-cutoff (default 3.5 A)."
         ),
     )
     p.add_argument(
@@ -12191,13 +12178,8 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help=(
-            "2026-10-17 NEW (Wf-A69 W1): when > 0 and "
-            "bond_candidate_source='radius_graph', subsample the "
-            "negative pairs to keep neg:pos == subsample_neg_ratio. "
-            "Default 0 = no subsampling (every candidate pair used).  "
-            "4:1 is the canonical ~95% NO_BOND prior recipe (PepForge "
-            "bioRxiv 2026 + GraViti arXiv 2605.16668).  Driven by the "
-            "YAML ``flow.subsample_neg_ratio`` key."
+            "INERT (Wf-A113 T70, 2026-10-28) — see --bond-candidate-source.  "
+            "The live knob is --bond-sample-balance."
         ),
     )
     p.add_argument(
@@ -14813,7 +14795,48 @@ def parse_args() -> argparse.Namespace:
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
 
-    return apply_yaml_overrides(p, args, args.config)
+    args = apply_yaml_overrides(p, args, args.config)
+
+    # Wf-A113 (T70, 2026-10-28) — the bond-candidate trio is INERT here.
+    #
+    # ``--bond-candidate-source`` / ``--bond-candidate-cutoff`` /
+    # ``--subsample-neg-ratio`` were added by Wf-A69 W1 to
+    # ``LipmanFlowMatchingAdapter.train_step``.  This trainer never calls
+    # that method: its model is ``CFMJointModel``, whose bond targets come
+    # from ``_bond_target_for_clean_cloud``, and the candidate pairs there
+    # are the ones ``YuelBondDecoderHead`` already emitted — every pair
+    # (both directions) within ``--edge-cutoff`` (default 3.5 A), labelled
+    # from the corpus truth with BOND_NO_BOND elsewhere.
+    #
+    # So the recorded Wf-A69 root cause ("the trainer saw a 100%-positive
+    # candidate set while eval used ~95% NO_BOND") is false for this
+    # trainer: MEASURED on 400 tmQM clouds the production candidate set is
+    # 52,963 pairs at 30.5% positive, and the three flags changed nothing
+    # (metrics/by_metric/wfa113_t70_candidate_sets.json).  Leaving them
+    # settable is what let that story survive review, so a non-default
+    # request is now an error instead of a silent no-op, and the live knobs
+    # are named in the message.
+    _bc_src = str(getattr(args, "bond_candidate_source", "truth_only"))
+    _bc_cut = float(getattr(args, "bond_candidate_cutoff", 2.4))
+    _bc_ratio = int(getattr(args, "subsample_neg_ratio", 0))
+    if _bc_src != "truth_only" or abs(_bc_cut - 2.4) > 1e-9 or _bc_ratio != 0:
+        raise SystemExit(
+            "flow.bond_candidate_source / flow.bond_candidate_cutoff / "
+            "flow.subsample_neg_ratio have no consumer in this trainer "
+            f"(got source={_bc_src!r}, cutoff={_bc_cut}, "
+            f"subsample_neg_ratio={_bc_ratio}).  They were wired into "
+            "LipmanFlowMatchingAdapter.train_step, which CFMJointModel never "
+            "calls.  The live knobs are flow.edge_cutoff (the YuelBond head's "
+            "candidate radius, default 3.5 A) and flow.bond_sample_balance "
+            "(negative subsampling, default 0 = keep every pair)."
+        )
+    print(
+        "[cfm-bond-cand] source=truth_only cutoff=2.4 subsample=0 are INERT; "
+        "candidates come from YuelBondDecoderHead at "
+        f"edge_cutoff={getattr(args, 'edge_cutoff', 3.5)} A "
+        "(live knobs: flow.edge_cutoff, flow.bond_sample_balance)"
+    )
+    return args
 
 
 # ---------------------------------------------------------------------------
