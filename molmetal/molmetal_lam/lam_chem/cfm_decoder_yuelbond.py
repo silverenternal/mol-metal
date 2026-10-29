@@ -587,6 +587,188 @@ def _demote_small_ring_aromatic(mol, min_size: int = 5):
     return mol
 
 
+def _ring_bond_indices(mol) -> List[List[int]]:
+    """One list of bond indices per SSSR ring; empty when perception fails.
+
+    Wf-A113 (T83).  ``Chem.GetSSSR`` both finds the rings and initialises
+    ``RingInfo``; calling ``GetRingInfo().AtomRings()`` first raises on an
+    unsanitised mol (RDKit 2026.03.6), the same trap Wf-A79 hit.
+    """
+    from rdkit import Chem
+
+    try:
+        Chem.GetSSSR(mol)
+    except Exception:
+        return []
+    out: List[List[int]] = []
+    for ring in mol.GetRingInfo().AtomRings():
+        n = len(ring)
+        idxs: List[int] = []
+        for k in range(n):
+            bond = mol.GetBondBetweenAtoms(int(ring[k]), int(ring[(k + 1) % n]))
+            if bond is None:
+                idxs = []
+                break
+            idxs.append(bond.GetIdx())
+        if len(idxs) == n:
+            out.append(idxs)
+    return out
+
+
+def _demote_bond_set(mol, bond_indices) -> int:
+    """Rewrite a specific set of bonds to SINGLE; return how many changed.
+
+    Atom aromatic flags are cleared only for atoms left with no aromatic bond,
+    so demoting one ring of a fused system leaves the rest aromatic.
+    """
+    from rdkit import Chem
+
+    changed = 0
+    touched = set()
+    for idx in bond_indices:
+        bond = mol.GetBondWithIdx(int(idx))
+        if bond.GetBondType() != Chem.BondType.AROMATIC:
+            continue
+        bond.SetBondType(Chem.BondType.SINGLE)
+        bond.SetIsAromatic(False)
+        touched.add(bond.GetBeginAtomIdx())
+        touched.add(bond.GetEndAtomIdx())
+        changed += 1
+    for atom_idx in touched:
+        atom = mol.GetAtomWithIdx(atom_idx)
+        if not atom.GetIsAromatic():
+            continue
+        if any(b.GetBondType() == Chem.BondType.AROMATIC for b in atom.GetBonds()):
+            continue
+        atom.SetIsAromatic(False)
+    return changed
+
+
+def _resolve_partial_rings(mol) -> int:
+    """Resolve every partial-aromatic ring as a whole; return how many.
+
+    Wf-A113 (T83).  A ring whose bonds are *partly* in the Wiberg aromatic
+    band cannot be kekulized: RDKit needs every aromatic atom to sit in a
+    CLOSED conjugated system, and a path is not one.  The ring is the unit,
+    so each one is decided whole — promoted to aromatic when at least half
+    its bonds already are, demoted otherwise.
+
+    Promotion is the right call for the dominant case.  A delocalised ring's
+    C-C bonds sit near 1.4 and land in the aromatic band, while its C-N /
+    C-O / C-S bonds sit near 1.2 and land in SINGLE, so pyridine arrives as
+    4 aromatic + 2 single and furan as 4 aromatic + 1 single.  Demoting those
+    turns pyridine into piperidine.  MEASURED against the corpus's own
+    reference SMILES on 400 X1 complexes: demote-only reproduced the
+    reference aromatic-ring count on 19/400, this rule on 66/400
+    (metrics/by_metric/wfa113_t83_truth_roundtrip.json).
+    """
+    from rdkit import Chem
+
+    n = 0
+    for idxs in _ring_bond_indices(mol):
+        types = [mol.GetBondWithIdx(i).GetBondType() for i in idxs]
+        n_arom = sum(1 for t in types if t == Chem.BondType.AROMATIC)
+        if not (0 < n_arom < len(idxs)):
+            continue
+        if n_arom * 2 >= len(idxs):
+            _promote_bond_set(mol, idxs)
+        else:
+            _demote_bond_set(mol, idxs)
+        n += 1
+    return n
+
+
+def _promote_bond_set(mol, bond_indices) -> int:
+    """Rewrite a set of ring bonds to AROMATIC and flag their atoms."""
+    from rdkit import Chem
+
+    changed = 0
+    for idx in bond_indices:
+        bond = mol.GetBondWithIdx(int(idx))
+        if bond.GetBondType() == Chem.BondType.AROMATIC:
+            continue
+        bond.SetBondType(Chem.BondType.AROMATIC)
+        bond.SetIsAromatic(True)
+        bond.GetBeginAtom().SetIsAromatic(True)
+        bond.GetEndAtom().SetIsAromatic(True)
+        changed += 1
+    return changed
+
+
+def _aromatic_components(mol) -> List[List[int]]:
+    """Connected components of the aromatic-bond subgraph, smallest first.
+
+    Wf-A113 (T83).  A ring is not a safe unit of repair:
+    ``Chem.GetSSSR`` returns a *smallest* set of smallest rings, so a ring
+    fused into a larger system can be absent from it, and a residual aromatic
+    bond then survives every demotion.  MEASURED on ERUFII / JOFFUJ / ZAZBUB
+    (tmQM X1): 5-10 aromatic bonds still present after the SSSR-driven loop
+    had demoted everything it could see, and the kekulizer still refused.
+    Components are exhaustive by construction — demoting all of them is
+    exactly ``_demote_all_aromatic`` — so the loop below always terminates in
+    a sanitizable state if one exists.
+    """
+    from rdkit import Chem
+
+    arom = [
+        b.GetIdx()
+        for b in mol.GetBonds()
+        if b.GetBondType() == Chem.BondType.AROMATIC
+    ]
+    if not arom:
+        return []
+    parent = {i: i for i in arom}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    by_atom: Dict[int, int] = {}
+    for idx in arom:
+        bond = mol.GetBondWithIdx(idx)
+        for atom_idx in (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()):
+            if atom_idx in by_atom:
+                ra, rb = find(by_atom[atom_idx]), find(idx)
+                if ra != rb:
+                    parent[ra] = rb
+            else:
+                by_atom[atom_idx] = idx
+    groups: Dict[int, List[int]] = {}
+    for idx in arom:
+        groups.setdefault(find(idx), []).append(idx)
+    out = list(groups.values())
+    out.sort(key=len)
+    return out
+
+
+def _RDKIT_AROMATIC():
+    """``Chem.BondType.AROMATIC`` without importing RDKit at module scope."""
+    from rdkit import Chem
+
+    return Chem.BondType.AROMATIC
+
+
+def _try_sanitize(mol) -> Optional[str]:
+    """Sanitize ``mol`` in place; return ``None`` on success, else the error.
+
+    Wf-A113 (T83).  ``SanitizeMol`` MUTATES the molecule and, when the
+    kekulizer refuses, rewrites every aromatic bond to SINGLE before raising.
+    A repair pass that inspects the molecule after a failed sanitize is
+    therefore looking at a molecule RDKit has already stripped.  Callers must
+    run each attempt on ``Chem.Mol(base)`` and use this helper rather than
+    catching the exception themselves.
+    """
+    from rdkit import Chem
+
+    try:
+        Chem.SanitizeMol(mol)
+        return None
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+
+
 def _demote_all_aromatic(mol):
     """Demote EVERY aromatic bond/atom to single; return the mol.
 
@@ -1147,10 +1329,11 @@ class YuelBondBondDecoder:
             #
             # The ceiling now lives in exactly one place, ``_COVALENT_VALENCE``,
             # which is derived from the corpus.  ``_geometry_constraint_for_z``
-            # still describes the ideal ANGLES and is used by the angular
-            # prior; ``max_bonds`` is kept on the dataclass for callers that
-            # want the shape, but it no longer gates bond count.  Pd(5th bond)
-            # and Pt(5th bond) are still refused -- by the valence cap.
+            # is still re-exported from this module (the tests import it here)
+            # and still describes the ideal shape, but nothing in this decoder
+            # reads it: there is no angular prior in this file, and
+            # ``max_bonds`` no longer gates bond count.  Pd(5th bond) and
+            # Pt(5th bond) are still refused -- by the valence cap.
             # Wf-A111 (MOD4) — ring-size gate.  AFTER valence and geometry
             # (so it never weakens a correctness cap), BEFORE the bond is
             # committed.  Refusing here declines to close a cycle; the path
@@ -1477,6 +1660,15 @@ class YuelBondBondDecoder:
         # "not in a ring" test leaves it alone.  MEASURED on a 1-epoch
         # checkpoint: "Can't kekulize mol. Unkekulized atoms: 0 1 2".
         mol = _demote_small_ring_aromatic(mol)
+        # Wf-A113 (T83) — snapshot the molecule BEFORE the first sanitize.
+        # ``Chem.SanitizeMol`` mutates in place and, on a kekulize failure,
+        # rewrites every aromatic bond to SINGLE while leaving the atom
+        # aromatic flags set.  A repair chain that copies ``mol`` after the
+        # exception therefore inherits a molecule with no aromatic bonds but
+        # twelve aromatic atoms, finds nothing to demote, and reports the
+        # failure as unfixable — which is how 63.7% of the cohort ended up in
+        # the demote-everything bucket.
+        base = Chem.Mol(mol)
         try:
             Chem.SanitizeMol(mol)
             sanitized = True
@@ -1485,24 +1677,81 @@ class YuelBondBondDecoder:
             sanitized = False
             smiles = ""
             sanitize_error = f"{type(exc).__name__}: {exc}"
-            # Wf-A84 (2026-10-19) — last resort: keep the molecule, drop the
-            # aromaticity.  Wf-A79 + Wf-A83 already removed the two classes
-            # of aromatic bond that CAN be repaired locally; whatever the
-            # kekulizer still refuses is a ring it cannot Kekulize as a
-            # whole.  Demoting every aromatic bond to SINGLE makes the graph
-            # sanitizable at the cost of the ring's unsaturation, so the
-            # result is recorded as a REPAIR (trainer bucket
-            # `ok_repaired:kekulize_demoted_all`), never as a clean decode.
+            # Wf-A113 (T83, 2026-10-29) — the repair chain below used to run
+            # on ``mol`` AFTER ``SanitizeMol`` had already raised, and that is
+            # a no-op: RDKit's kekulizer rewrites every aromatic bond to
+            # SINGLE in place BEFORE it throws, so ``_demote_all_aromatic``
+            # found nothing to demote and the "repair" merely re-sanitised a
+            # molecule RDKit had already stripped.  MEASURED on the corpus's
+            # own bond classes: 63.7% of the six-metal cohort took that path,
+            # i.e. every aromatic ring was destroyed on molecules the head had
+            # reproduced exactly (metrics/by_metric/wfa113_t83_truth_roundtrip.json).
+            #
+            # Each attempt now runs on a FRESH COPY, so the pre-failure
+            # aromatic state survives for the next attempt to inspect.
             if "Kekulize" in type(exc).__name__:
-                mol = _demote_all_aromatic(mol)
-                try:
-                    Chem.SanitizeMol(mol)
-                    sanitized = True
-                    smiles = Chem.MolToSmiles(mol)
-                    sanitize_error = None
-                    repair = "kekulize_demoted_all"
-                except Exception as exc2:
-                    sanitize_error = f"{type(exc2).__name__}: {exc2}"
+                # ``state`` is never sanitised: every attempt runs on a copy,
+                # and the accepted copy is what the caller gets back.  This
+                # keeps the accumulated demotions visible to the next attempt,
+                # which a failed in-place ``SanitizeMol`` would erase.
+                state = Chem.Mol(base)
+                # Wf-A113 (T83) — repair 1: a ring that is only PARTIALLY
+                # aromatic (some of its bonds in the Wiberg aromatic band,
+                # some not) is not a closed conjugated system, so the
+                # kekulizer cannot close it.  Resolve each such ring as a
+                # whole: promote it when at least half its bonds are already
+                # aromatic, demote it otherwise.
+                #
+                # Promotion is the right call for the dominant case.  A
+                # delocalised ring's C-C bonds sit near 1.4 and land in the
+                # aromatic band, while its C-N / C-O / C-S bonds sit near
+                # 1.2 and land in SINGLE, so pyridine arrives as 4 aromatic
+                # + 2 single and furan as 4 aromatic + 1 single.  Demoting
+                # those turns pyridine into piperidine.  MEASURED against the
+                # corpus's own reference SMILES on 400 X1 complexes: the
+                # demote-only rule reproduced the reference aromatic-ring
+                # count on 19/400, this rule on 66/400.
+                n_partial = _resolve_partial_rings(state)
+                if n_partial:
+                    cand = Chem.Mol(state)
+                    if _try_sanitize(cand) is None:
+                        mol, sanitized, smiles, sanitize_error = (
+                            cand, True, Chem.MolToSmiles(cand), None
+                        )
+                        repair = "kekulize_resolved_partial_rings"
+                # Wf-A113 (T83) — repair 2: a FULL aromatic fragment RDKit
+                # still refuses.  Demote them one at a time, smallest first,
+                # and keep each demotion, so a benzene elsewhere in the
+                # molecule survives and only the fragment that actually
+                # blocks the kekulizer is lost.
+                if not sanitized:
+                    for comp in _aromatic_components(state):
+                        _demote_bond_set(state, comp)
+                        cand = Chem.Mol(state)
+                        if _try_sanitize(cand) is None:
+                            mol, sanitized, smiles, sanitize_error = (
+                                cand, True, Chem.MolToSmiles(cand), None
+                            )
+                            repair = (
+                                "kekulize_resolved_partial_rings"
+                                if n_partial
+                                else "kekulize_demoted_one_ring"
+                            )
+                            break
+                # Wf-A84 (2026-10-19) — last resort: keep the molecule, drop
+                # the aromaticity.  Everything local has been tried; a decode
+                # saved this way is valid, not correct, which is why the
+                # trainer counts it in `ok_repaired:kekulize_demoted_all`.
+                if not sanitized:
+                    cand = _demote_all_aromatic(Chem.Mol(state))
+                    err = _try_sanitize(cand)
+                    if err is None:
+                        mol, sanitized, smiles, sanitize_error = (
+                            cand, True, Chem.MolToSmiles(cand), None
+                        )
+                        repair = "kekulize_demoted_all"
+                    else:
+                        sanitize_error = err
         return DecodedMol(
             mol=mol,
             smiles=smiles,

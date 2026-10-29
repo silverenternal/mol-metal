@@ -1,0 +1,82 @@
+{
+  "wave": "Wf-A113",
+  "task": "T84",
+  "date": "2026-10-29",
+  "question": "the decoder's ceiling on the corpus's true bond classes is 34.1% clean (T83).  Is the binding constraint the model, or the label scheme's per-bond aromatic band?",
+  "method": "same harness as T83: true bond graph -> _assemble_mol, head replaced by the answer.  'smiles' takes the ligand bond classes from tmqm_parsed.csv's reference SMILES via ligand-subgraph isomorphism; metal bonds keep the Wiberg class.",
+  "n_complexes": 900,
+  "relabel_coverage": {
+    "complexes_with_a_usable_reference": 812,
+    "frac": 0.9022222222222223
+  },
+  "decode_ceiling": {
+    "bo_band": {
+      "n": 900,
+      "clean": 314,
+      "repaired": 566,
+      "failed": 20,
+      "clean_frac": 0.3488888888888889,
+      "clean_or_repaired_frac": 0.9777777777777777
+    },
+    "smiles": {
+      "n": 900,
+      "clean": 309,
+      "repaired": 209,
+      "failed": 382,
+      "clean_frac": 0.3433333333333333,
+      "clean_or_repaired_frac": 0.5755555555555556
+    },
+    "smiles_drop": {
+      "n": 812,
+      "clean": 284,
+      "repaired": 156,
+      "failed": 372,
+      "clean_frac": 0.3497536945812808,
+      "clean_or_repaired_frac": 0.541871921182266
+    }
+  },
+  "aromatic_ring_agreement_with_reference": {
+    "n": 842,
+    "bo_band": {
+      "-8": 2,
+      "-7": 4,
+      "-6": 7,
+      "-5": 11,
+      "-4": 36,
+      "-3": 55,
+      "-2": 170,
+      "-1": 174,
+      "+0": 369,
+      "+1": 8,
+      "+2": 5,
+      "+3": 1
+    },
+    "smiles": {
+      "-7": 2,
+      "-6": 8,
+      "-5": 4,
+      "-4": 16,
+      "-3": 26,
+      "-2": 60,
+      "-1": 72,
+      "+0": 279,
+      "+1": 9,
+      "+2": 3,
+      "+3": 1
+    },
+    "bo_band_exact_frac": 0.43824228028503565,
+    "smiles_exact_frac": 0.331353919239905
+  },
+  "charge_free_subset": {
+    "n_charged_reference": 844,
+    "n_charge_free_reference": 12,
+    "n_charge_free_and_relabelled": 12,
+    "bo_band_exact_frac": 0.9166666666666666,
+    "smiles_exact_frac": 0.8333333333333334,
+    "note": "the only fair comparison.  A charged reference cannot be transferred: the decoder builds every atom with formal charge 0, so [C-]#[O+] becomes C#O and oxygen goes over-valent."
+  },
+  "verdict": {
+    "result": "REFUTED",
+    "reason": "the binding constraint is not the per-bond aromatic window.  98.5% of the reference SMILES are charge-separated, and the decoder has no formal-charge channel (T85).  On the 1.5% that are charge-free, relabelling is no better than the shipped band."
+  }
+}

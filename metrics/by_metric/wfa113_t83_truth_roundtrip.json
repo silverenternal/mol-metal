@@ -1,0 +1,136 @@
+{
+  "wave": "Wf-A113",
+  "task": "T83",
+  "date": "2026-10-29",
+  "question": "given the corpus's TRUE bond classes, how many complexes can the decoder's _assemble_mol turn into a sanitized RDKit molecule?  This is the ceiling on any checkpoint.",
+  "method": "tmQM BO shards -> heavy-atom graph -> bo_to_bond_class -> YuelBondBondDecoder._assemble_mol(cloud, true_bonds).  No model, no GPU, no sampling: the head is replaced by the answer.",
+  "n_complexes": 33429,
+  "assemble_truth": {
+    "clean": 13639,
+    "repaired": 18589,
+    "failed": 1201,
+    "clean_frac": 0.4079990427473152,
+    "clean_or_repaired_frac": 0.9640731101738012,
+    "outcomes": {
+      "repaired:kekulize_resolved_partial_rings": 17959,
+      "AtomValenceException": 1201,
+      "repaired:kekulize_demoted_one_ring": 575,
+      "repaired:kekulize_demoted_all": 55
+    },
+    "examples": {
+      "AtomValenceException": [
+        {
+          "csd": "TISHUC",
+          "n_atoms": 41,
+          "has_pyrrole_n": false,
+          "error": "AtomValenceException: Explicit valence for atom # 0 B, 5, is greater than permitted"
+        },
+        {
+          "csd": "XULXOU",
+          "n_atoms": 17,
+          "has_pyrrole_n": false,
+          "error": "AtomValenceException: Explicit valence for atom # 10 B, 4, is greater than permitted"
+        },
+        {
+          "csd": "MUHZIB",
+          "n_atoms": 33,
+          "has_pyrrole_n": false,
+          "error": "AtomValenceException: Explicit valence for atom # 3 N, 4, is greater than permitted"
+        }
+      ]
+    }
+  },
+  "before_the_fix": {
+    "clean": 13639,
+    "repaired_all_aromaticity_destroyed": 18589,
+    "failed": 1201,
+    "note": "the pre-T83 chain, re-run on the same bond classes.  Every one of its repairs was `kekulize_demoted_all`, and that demotion was a no-op on an already-stripped molecule, so the 'repair' was the aromaticity loss itself."
+  },
+  "reference_smiles_agreement": {
+    "n_with_a_parsable_reference": 30503,
+    "reference_aromatic_ring_counts": {
+      "0": 3056,
+      "1": 3506,
+      "2": 5296,
+      "3": 4780,
+      "4": 4545,
+      "5": 2518,
+      "6": 2850,
+      "7": 1436,
+      "8": 1282,
+      "9": 666,
+      "10": 354,
+      "11": 93,
+      "12": 73,
+      "13": 15,
+      "14": 12,
+      "15": 4,
+      "16": 5,
+      "18": 2,
+      "21": 1,
+      "22": 5,
+      "23": 1,
+      "26": 3
+    },
+    "delta_repaired_minus_reference": {
+      "-14": 2,
+      "-12": 8,
+      "-11": 11,
+      "-10": 41,
+      "-9": 82,
+      "-8": 111,
+      "-7": 142,
+      "-6": 368,
+      "-5": 562,
+      "-4": 1262,
+      "-3": 2606,
+      "-2": 4741,
+      "-1": 7542,
+      "+0": 12487,
+      "+1": 409,
+      "+2": 96,
+      "+3": 24,
+      "+4": 9
+    },
+    "exact_aromatic_ring_match": 12487,
+    "exact_frac": 0.40936957020620923,
+    "repaired_molecules_keeping_any_aromatic_ring": 20829,
+    "note": "the pre-fix chain demoted EVERY aromatic bond on the same molecules, so its delta was -reference for all of them; the delta here is what the ring-local repair recovers"
+  },
+  "pyrrole_nitrogen": {
+    "complexes_with_an_aromatic_N_of_degree_2": 3244,
+    "frac_of_cohort": 0.09704149092105657,
+    "failed_complexes_that_have_one": 23,
+    "h_atoms_supplied": 4995,
+    "clean_after_supplying_the_donor_H": 198,
+    "still_failing_after": 3046,
+    "note": "the fix is applied only to the subset that has such an N, so 'clean_after' is comparable to the failed count of the same subset, not to n_complexes"
+  },
+  "all_aromatic_ring_sizes_sssr": {
+    "5": 424,
+    "6": 89791
+  },
+  "anti_aromatic_demotion": {
+    "complexes_with_a_4n_all_aromatic_ring": 0,
+    "frac_of_cohort": 0.0,
+    "n_4n_rings_total": 0,
+    "measured_rdkit_kekulize_behaviour": {
+      "succeeds": [
+        4,
+        6,
+        8,
+        10,
+        12
+      ],
+      "fails": [
+        3,
+        5,
+        7,
+        9
+      ],
+      "rule": "even ring size kekulizes, odd ring size does not",
+      "code_rule": "_is_anti_aromatic returns ring_size % 4 == 0",
+      "consequence": "the demotion targets exactly the rings RDKit handles and never touches the odd rings that fail"
+    }
+  }
+}

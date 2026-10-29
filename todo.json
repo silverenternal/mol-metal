@@ -1,7 +1,7 @@
 {
   "schema": "molmetal-todo-v7",
   "created": "2026-10-22",
-  "updated": "2026-10-28",
+  "updated": "2026-10-29",
   "rewritten": "2026-10-27T02:26+08:00 molmetal-todo-v7。cfm_todo.json v11.0 合并进来（D1-D11 / MOD1-MOD9 / M1-M10 / T1-T12 / 10 行验收表原样保留），新增 D12-D25 与 T13-T28 覆盖 2026-10-27 二区评估的每一条：决定臂、逐论文分布、机制归并、污染审计、chemprop DOI 基线、第二终点、第二语料、键级基准、价值曲线、跨领域标签偏移、数据描述符、预注册方法学、手稿骨架、启动契约卫生。cfm_todo.json 已删除；它的 id 在本文件里原样保留。 2026-10-27T03:05 补 self_audit（SA-1..SA-6）+ D26/D27 + T29/T30：「会学习的场」与「可测的池」从未同时存在，以及失败为什么是静默的。 2026-10-27T04:20 全链路只读审计：新增 SA-7..SA-13 + D28..D34 + T31..T36；how_to_read 去重。 2026-10-27T10:40 第三轮只读审计：新增 SA-20..SA-22 + D40..D42 + T41/T42（best 块混 epoch、可学习臂的 checkpoint 是 epoch 0、bond_ce 量级不可比）。 2026-10-27T11:15 第四轮：SA-23（验收表 3 行无参照）/ SA-24（padded 分支丢导引）+ D43/D44 + T43/T44。 2026-10-27T11:45 第五轮：SA-25（门产物无代码指纹，c8 的 M5 FAIL 不可复现）+ D45 + T45。 2026-10-27T12:10 第六轮：SA-26（88 个 run 同一分钟失去权重，注册表不可见）+ D46 + T46。 2026-10-27T12:30 第七轮：SA-27（解码侧金属集合漏 Pt）+ D47 + T47。 2026-10-27T13:10 第八轮：转入 yuelbond 候选对生成。新增 SA-28..SA-31 + D48..D51 + T48..T51（候选距离 clamp 抹掉塌陷、连通性先验在零键云上被跳过、第三个头的 Pt-only dative、配位几何门的单端计数），并新增 self_audit.cleared（候选集召回 100%、对称性、2.6 A dative 界的已标定代价）。",
   "supersedes": "molmetal-todo-v6（第六轮）+ cfm_todo.json v11.0（生成线），合并为单文件",
   "purpose": "两条线合并成一个计划。预测线：第六轮协议审计（UP-38..UP-42）已全部关闭，第七轮换成发表准备——决定臂、逐论文分布、机制归并、可比性补齐。生成线：D1-D11 诊断、MOD1-MOD9 模块、M1-M10 门、T1-T12 任务、10 行池级验收表，全部原样迁入，只有 1 行通过（bond_type_macro_f1 0.618）。合并的理由：评估得出的结论是「生成线现在不能投，预测线能投但头条要换」，这两句话必须能在同一张表里排序，否则决定臂永远排在生成线的 GPU 任务后面。",
@@ -1631,6 +1631,40 @@
         "T64"
       ],
       "status": "ADDRESSED"
+    },
+    {
+      "id": "D83",
+      "symptom": "把语料真实键级喂给解码器，只有 40.8% 的配合物能得到干净可 sanitize 的分子，其余 55.6% 要靠修复，而修复会把全部芳香环变成饱和环。",
+      "measured": "33,429 个六金属配合物：clean 13,639 (40.8%)、repaired 18,589、failed 1,201。修复细分：resolved_partial_rings 17,959、demoted_one_ring 575、demoted_all 55。旧链在同批数据上是 18,589 个 demoted_all（全部芳香环丢失）。参考 SMILES 芳香环计数一致 12,487/30,503 = 40.9%（修复前对同一批修复分子是 0）。",
+      "artifact": "metrics/by_metric/wfa113_t83_truth_roundtrip.json",
+      "reading": "约束不在模型：头就算完美复现真值，旧修复链也会把芳香环全部抹掉。根因是 SanitizeMol 在抛异常前已就地改写芳香键，而修复链在同一个 mol 上操作。",
+      "addressed_by": [
+        "T83"
+      ],
+      "status": "ADDRESSED"
+    },
+    {
+      "id": "D84",
+      "symptom": "假设芳香标签的逐键波段是天花板的主因，因此尝试用参考 SMILES 重贴标签。",
+      "measured": "900 个配合物里 844 个（93.8%）的参考 SMILES 含形式电荷；无电荷子集 12 个上 bo_band 与 smiles 的芳香环一致率分别为 91.7% / 83.3%；X1 的 85 个无电荷样本上是 71.8% / 69.4%。重贴覆盖率 812/900 = 90.2%，但 372 个因此直接 AtomValenceException。",
+      "artifact": "metrics/by_metric/wfa113_t84_label_relabel.json",
+      "reading": "重贴无效。约束是解码器缺形式电荷通道：转过去的是电荷分离写法的键级，却没有电荷。",
+      "addressed_by": [
+        "T84",
+        "T85"
+      ],
+      "status": "ADDRESSED"
+    },
+    {
+      "id": "D85",
+      "symptom": "CO 配体、卤离子、亚硝酰这类电荷分离配体在解码器里被当作中性原子处理。",
+      "measured": "98.5% 的 X1 参考 SMILES 含形式电荷（5,669/5,754）；T83 全量里 1,201 个配合物在真值键级下仍 AtomValenceException，典型是 [C-]#[O+] 变 C#O 后氧价 3。",
+      "artifact": "metrics/by_metric/wfa113_t84_label_relabel.json",
+      "reading": "这是表示层缺口，不是解码逻辑错误：AtomCloud 无电荷字段，_assemble_mol 电荷恒 0。修复要新字段 + 头预测 + 重训。",
+      "addressed_by": [
+        "T85"
+      ],
+      "status": "OPEN"
     }
   ],
   "modules": [
@@ -3855,6 +3889,59 @@
         "measured": "metrics/by_metric/wfa113_t82_loss_decoder_valence_split.json"
       },
       "status": "FIXED"
+    },
+    {
+      "id": "T83",
+      "priority": 1,
+      "title": "解码器的 kekulize 修复链是空操作：63.7% 的真值分子被整体去芳香化",
+      "what": "SanitizeMol 抛异常前已把芳香键就地改写成 SINGLE，修复链在同一个 mol 上调用 _demote_all_aromatic，什么都改不到，只是把已被剥掉的图再 sanitize 一次，却记为 kekulize_demoted_all。改为：首轮 sanitize 前快照 base，每次尝试都在 Chem.Mol(base) 上做；部分芳香环按环整体裁决（≥半数芳香键则提升为芳香，否则降为单键）；残余芳香片段按连通分量逐个降级；全体降级只作最后兜底。",
+      "addresses": [
+        "D83",
+        "D84"
+      ],
+      "done_when": "真值键图经 _assemble_mol 后整体去芳香化的分子从 18,589 降到 55；吡啶环在修复后仍是 c1ccncc1 而非 C1CCNCC1；参考 SMILES 的芳香环计数一致率不再为 0。",
+      "gate": {
+        "snapshot_before_sanitize": "test_bonds_become_single_but_atom_flags_survive",
+        "copy_is_isolated": "test_a_copy_is_isolated",
+        "pyridine_promoted": "test_pyridine_is_promoted_not_demoted",
+        "saturated_demoted": "test_a_mostly_saturated_ring_is_demoted",
+        "components_fused": "test_fused_bonds_form_one_component",
+        "end_to_end_pyridine": "test_pyridine_ring_keeps_its_aromaticity",
+        "end_to_end_red_check": "test_pyridine_fails_under_the_pre_t83_rule",
+        "good_ring_survives": "test_a_bad_ring_does_not_destroy_the_good_one",
+        "measured": "metrics/by_metric/wfa113_t83_truth_roundtrip.json"
+      },
+      "status": "FIXED"
+    },
+    {
+      "id": "T84",
+      "priority": 2,
+      "title": "用参考 SMILES 重贴键标签：实测无效，因为解码器没有形式电荷通道",
+      "what": "假设：芳香标签是逐键 Wiberg 波段给的，若改用 tmQM 参考 SMILES（93.2% 覆盖）经配体子图同构映射的键级，解码器天花板应上升。实测：98.5% 的参考 SMILES 是电荷分离写法（[C-]#[O+]、[Br-]、[Re+]），解码器建原子时形式电荷恒为 0，转过去就是 C#O 让氧超价；剩下 1.5% 无电荷的样本上，重贴并不比原波段好。结论：约束不在芳香波段，在缺失的电荷通道（T85）。",
+      "addresses": [
+        "D84"
+      ],
+      "done_when": "同构覆盖率、电荷分离比例、无电荷子集上的 A/B 三者都有落盘数字，且结论写进模块 docstring。",
+      "gate": {
+        "artifact": "metrics/by_metric/wfa113_t84_label_relabel.json",
+        "verdict": "REFUTED"
+      },
+      "status": "REFUTED"
+    },
+    {
+      "id": "T85",
+      "priority": 1,
+      "title": "解码器没有形式电荷通道：CO/卤离子/亚硝酰被静默质子化",
+      "what": "AtomCloud 没有逐原子形式电荷字段，_assemble_mol 一律 AddAtom(Chem.Atom(z))（电荷 0）。tmQM 的 [C-]#[O+] 进解码器后是中性 C#O：氧价 3，要么 AtomValenceException，要么被 RDKit 补一个隐式氢变成 C(=O)H。这解释了两件事：98.5% 的参考 SMILES 电荷分离，以及 wfa113_t83 里 1,201 个 AtomValenceException。修复需要新字段 + 头预测 + 训练，本轮无 GPU 训练，故记为架构缺口而不是已修。",
+      "addresses": [
+        "D85"
+      ],
+      "done_when": "AtomCloud 带 per-atom formal_charge；_assemble_mol 用它建原子；CO 配体解码为 [C-]#[O+] 而非 C(=O)H；1,201 个 AtomValenceException 里有明确的可归因子集。",
+      "gate": {
+        "measured": "metrics/by_metric/wfa113_t84_label_relabel.json",
+        "blocked_by": "needs a retrain; no GPU work in this round"
+      },
+      "status": "OPEN"
     }
   ],
   "acceptance": {
@@ -4881,6 +4968,50 @@
         "status": "FIXED",
         "task": "T82",
         "resolution": "valence_log_barrier 增加 aromatic_mass 参数：传入时进入「镜像解码器」模式，按 _endpoint_valence_cost 的三条规则记账（配体端 dative 计 0、金属每键计 1.0、芳香杂原子与碳第 3 条起计 1.0），默认 cap 表改为 {**_COVALENT_VALENCE, **TMQM_MEASURED_METAL_COORDINATION_CAPS}；未传时保持旧的标量路径并保留 bo_sum 表（单位必须与记账一致）。docstring 里写反的 hinge 符号（max(0, cap - sum - eps)）改为代码实际的 max(0, sum - cap + eps)。trainer 不再自己拼表，改传 aromatic_mass=_sv_soft[:, 4]。测试 test_wfa113_t82_loss_decoder_valence.py（14 条，含随机图与解码器逐原子对账）；test_cfm_metal_valence_caps.py 的 FLAG_ONLY 用例改为运行时验证「Re 9 键不罚、10 键罚」，即配位数表而非 bo_sum 表。"
+      },
+      {
+        "id": "SA-57",
+        "finding": "解码器的 kekulize 修复链是空操作。SanitizeMol 在抛 KekulizeException 之前已把分子里每一条芳香键就地改写成 SINGLE（实测：5 元全芳香环失败后 bond type 全变 SINGLE，atom 的芳香标记仍为 True）。旧的 except 分支把同一个 mol 交给 _demote_all_aromatic，函数找不到任何芳香键，于是把已经被剥掉的图再 sanitize 一次并记为 kekulize_demoted_all。也就是说「修复」本身就是芳香性丢失。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py 的 _assemble_mol；molmetal/tests/test_wfa113_t83_kekulize_repair.py::test_bonds_become_single_but_atom_flags_survive",
+        "measured": "真值键级下 33,429 个配合物里 18,589 个走这条路，芳香环全部丢失；修复后 55 个。",
+        "artifact": "metrics/by_metric/wfa113_t83_truth_roundtrip.json",
+        "addressed_by": [
+          "T83"
+        ],
+        "status": "FIXED"
+      },
+      {
+        "id": "SA-58",
+        "finding": "部分芳香环（同一环里既有芳香键又有单键）无法被 RDKit kekulize，因为芳香原子必须处在闭合共轭体系里，而一条路径不是环。旧链只有「全部降级」一档，没有「按环整体裁决」。实测语料里这类环的模式是 6 元环 5 芳香+1 单键（1,666 个）、4 芳香+2 单键（1,178 个），以及 5 元环 2 芳香+3 单键（3,307 个）。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_resolve_partial_rings",
+        "measured": "按环整体裁决（≥半数芳香键则提升）后，参考 SMILES 芳香环计数完全一致的分子从 19/400 升到 66/400（X1 修复子集）。",
+        "artifact": "metrics/by_metric/wfa113_t83_truth_roundtrip.json",
+        "addressed_by": [
+          "T83"
+        ],
+        "status": "FIXED"
+      },
+      {
+        "id": "SA-59",
+        "finding": "_is_anti_aromatic 用 ring_size % 4 == 0 判断「RDKit 无法 kekulize 的环」。在 RDKit 2026.03.6 上直接测：4/6/8/10/12 元全芳香单环都能 kekulize，3/5/7/9 元都不能。规则恰好选中 RDKit 能处理的环，且从不碰真正失败的奇数环。另外六金属语料里 4n 全芳香环的数量是 0，所以这条规则在真值上从不触发，只在模型幻觉出 4 元芳香环时误伤。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_is_anti_aromatic",
+        "measured": "33,429 个配合物中 complexes_with_a_4n_all_aromatic_ring = 0。",
+        "artifact": "metrics/by_metric/wfa113_t83_truth_roundtrip.json",
+        "addressed_by": [
+          "T83"
+        ],
+        "status": "OPEN"
+      },
+      {
+        "id": "SA-60",
+        "finding": "解码器没有逐原子形式电荷通道，电荷分离配体（CO、卤离子、亚硝酰）无法被正确表示：_assemble_mol 一律 Chem.Atom(z)，形式电荷 0，于是 tmQM 的 [C-]#[O+] 变成中性 C#O，氧价 3。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_assemble_mol；molmetal/data/tmqm_bond_relabel.py 的 docstring",
+        "measured": "X1 的 5,754 个配合物里 5,669 个（98.5%）参考 SMILES 含形式电荷；真值键级下仍有 1,201 个 AtomValenceException。",
+        "artifact": "metrics/by_metric/wfa113_t84_label_relabel.json",
+        "addressed_by": [
+          "T85"
+        ],
+        "status": "OPEN"
       }
     ],
     "reproduce": [
