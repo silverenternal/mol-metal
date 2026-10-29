@@ -52,6 +52,7 @@ from molmetal.models.bond_head import (  # noqa: E402
     AtomCloud,
     BOND_AROMATIC,
     BOND_SINGLE,
+    BOND_TRIPLE,
 )
 
 RE = 75
@@ -108,17 +109,42 @@ def test_re_keeps_nine_bonds_when_six_are_aromatic_class():
 
 
 def test_ligand_endpoint_still_pays_the_order_cost():
-    """A carbon still refuses a third aromatic bond: 3 x 1.5 > 4."""
-    z_list = [6] + [7] * 3
+    """A carbon still refuses bonds past its order sum of 4.
+
+    A triple bond costs 3, so a triple plus an aromatic (1.5) is 4.5 and the
+    second bond must be refused.  This is the property that must survive the
+    aromatic rules: the ligand endpoint is NOT free in general, only for a
+    bond to a metal (T79) and for the Kekule-single cases (T78, T81).
+
+    The earlier form of this test asserted that THREE aromatic bonds at a
+    carbon are refused, i.e. 3 x 1.5 = 4.5 > 4.  That is the fusion-carbon
+    defect T81 fixes: a ring-fusion carbon really has three aromatic bonds,
+    and no Kekule structure gives it two doubles, so the true sum is 4.
+    """
+    z_list = [6, 6, 7]
+    pairs = [(0, 1), (0, 2)]
+    cloud, yres = _result(z_list, pairs, [BOND_TRIPLE, BOND_AROMATIC])
+    bond_orders, _dative, n_kept, _n_over = _decoder()._select_bonds(cloud, yres)
+    assert n_kept == 1, (
+        "a carbon with a triple bond has 1 of its 4 valence slots left; an "
+        f"aromatic bond at 1.5 does not fit (kept {n_kept})"
+    )
+    assert bond_orders[0][2] == BOND_TRIPLE
+
+
+def test_fusion_carbon_keeps_all_three_aromatic_bonds():
+    """A ring-fusion carbon has three aromatic bonds and must keep all three.
+
+    Kekule gives it one double and two single, so the sum is 4, not 4.5.
+    Before T81 the selector charged 1.5 for each, hit 4.5 against a cap of 4,
+    and dropped the third bond -- which breaks the fusion and splits the ring
+    system.
+    """
+    z_list = [6, 6, 6, 6]
     pairs = [(0, 1), (0, 2), (0, 3)]
     cloud, yres = _result(z_list, pairs, [BOND_AROMATIC] * 3)
-    bond_orders, _dative, n_kept, _n_over = _decoder()._select_bonds(cloud, yres)
-    assert n_kept == 2, (
-        "an sp2 carbon has a bond-ORDER ceiling of 4; three aromatic bonds "
-        f"cost 4.5 and must not all be kept (kept {n_kept})"
-    )
-    # The N endpoints have cap 3 and are charged 1.5 each: fine.
-    assert all(b[2] == BOND_AROMATIC for b in bond_orders)
+    _bo, _dative, n_kept, n_over = _decoder()._select_bonds(cloud, yres)
+    assert (n_kept, n_over) == (3, 0)
 
 
 def test_bridge_component_uses_the_same_unit_rule():

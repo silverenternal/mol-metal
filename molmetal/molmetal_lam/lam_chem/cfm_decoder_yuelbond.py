@@ -174,6 +174,7 @@ def _endpoint_valence_cost(
     z_self: int,
     z_other: int,
     is_metal: Callable[[int], bool],
+    arom_bonds_so_far: int = 0,
 ) -> float:
     """Valence budget one bond consumes at ONE of its two endpoints.
 
@@ -224,6 +225,19 @@ def _endpoint_valence_cost(
        (pyridine N).  Billing 1.5 there dropped a real ring bond
        (``metrics/by_metric/wfa113_t78_element_cost_fit.json``).
 
+    4. **A carbon's THIRD aromatic bond is Kekule-single.**  The 1.5 average
+       assumes exactly two aromatic bonds, where the Kekule assignment is one
+       double and one single.  A ring-fusion carbon has three, and no Kekule
+       structure can give it two doubles, so the sum is 4 (one double, two
+       single) and not 4.5.  Charging 1.5 for all three put the fusion carbon
+       at 4.5 against its cap of 4, so the selector dropped the third bond and
+       broke the fusion.  MEASURED: 1,317 carbon atoms in the six-metal cohort
+       are a fusion carbon of an ``aromatic/aromatic/aromatic`` pattern
+       (``metrics/by_metric/wfa113_t80_residual_caps.json``).  ``arom_bonds_so_far``
+       is the caller's count of aromatic bonds already charged at this atom;
+       the total is order-independent (1.5 + 1.5 + 1.0 = 4 however the three
+       are ordered).
+
     ``is_metal`` is passed in rather than read from module state so the
     selector's ``metal_set`` (which the trainer can override) is the one
     that applies.
@@ -232,8 +246,11 @@ def _endpoint_valence_cost(
         return 0.0
     if is_metal(z_self):
         return 1.0
-    if int(order) == BOND_AROMATIC and z_self in _AROMATIC_HETERO_ZS:
-        return 1.0
+    if int(order) == BOND_AROMATIC:
+        if z_self in _AROMATIC_HETERO_ZS:
+            return 1.0
+        if arom_bonds_so_far >= 2:
+            return 1.0
     return _CLASS_VALENCE_COST.get(int(order), 1.0)
 
 
@@ -256,10 +273,19 @@ _COVALENT_VALENCE: Dict[int, int] = {
     15: 5,  # P (Wf-A113 T78 — RDKit permits 3 or 5; the corpus is phosphate,
     #          P with four single bonds, so 3 refused the 4th bond on 98.8% of
     #          P atoms in the six-metal cohort, and P is in 7.7% of complexes)
-    16: 2,  # S
+    16: 6,  # S (Wf-A113 T80 — RDKit's limit for S is 6, not 2.  A cap of 2 is
+    #          the thioether/thiophene value and refuses every sulfoxide,
+    #          sulfone and sulfonium in the corpus.  MEASURED on the six-metal
+    #          cohort: S bond counts are 1:198, 2:7,120, 3:1,720, 4:2,090,
+    #          5:2, 6:29, so 3,841 of 11,159 S atoms (34.4%) have more than
+    #          two bonds.  After T79 removed the metal-bond charge, 20.76% of S
+    #          atoms were still over cap, which is 5.31% of all complexes.)
     17: 1,  # Cl
-    33: 3,  # As
-    34: 2,  # Se
+    33: 5,  # As (Wf-A113 T80 — RDKit's limit is 5.  The corpus is As(V):
+    #          bond counts 3:37, 4:364, 5:4, 6:2, so a cap of 3 refused 370 of
+    #          409 As atoms (90.5%).  The two 6-bond atoms are beyond RDKit.)
+    34: 6,  # Se (Wf-A113 T80 — RDKit's limit is 6, same group as S.  Corpus
+    #          bond counts 1:10, 2:394, 3:137, 4:1, 5:2.)
     35: 1,  # Br
     53: 1,  # I
     # Metals — max number of metal-ligand bonds the selector may keep.
@@ -1046,6 +1072,10 @@ class YuelBondBondDecoder:
         dative_bonds: List[Tuple[int, int]] = []
         n_overvalent = 0
         n_kept = 0
+        # Wf-A113 (T81) — aromatic bonds already accepted at each atom, so the
+        # third one at a carbon is charged the Kekule-single 1.0 instead of the
+        # two-bond average 1.5 (see ``_endpoint_valence_cost`` rule 4).
+        arom_kept: List[int] = [0] * n_atoms
         # Wf-A92 — resolve the cloud's own dative truth ONCE.  ``None``
         # means the cloud carries no per-pair truth (a generated cloud),
         # in which case the Z+distance rule below decides and the decode is
@@ -1083,10 +1113,10 @@ class YuelBondBondDecoder:
             zi = int(z_list[i])
             zj = int(z_list[j])
             cost_i = _endpoint_valence_cost(
-                order, zi, zj, self._is_metal_z
+                order, zi, zj, self._is_metal_z, arom_kept[i]
             )
             cost_j = _endpoint_valence_cost(
-                order, zj, zi, self._is_metal_z
+                order, zj, zi, self._is_metal_z, arom_kept[j]
             )
             cap_i = remaining[i]
             cap_j = remaining[j]
@@ -1135,6 +1165,9 @@ class YuelBondBondDecoder:
                 _ring_adj[j].add(i)
             remaining[i] -= cost_i
             remaining[j] -= cost_j
+            if int(order) == BOND_AROMATIC:
+                arom_kept[i] += 1
+                arom_kept[j] += 1
             n_kept += 1
             # Wf-A55 W7-P5 — anti-aromatic ring probe.  Only fires on
             # aromatic bonds (the cost of a BFS cycle search is wasted on
@@ -1258,6 +1291,9 @@ class YuelBondBondDecoder:
         remaining: List[float] = [
             self._cap_for_z(int(z)) for z in z_list
         ]
+        # Wf-A113 (T81) — replay in the selector's own acceptance order so the
+        # per-atom aromatic counter reproduces what the selector charged.
+        arom_kept: List[int] = [0] * n_atoms
         for i, j, order in bond_orders:
             # Wf-A113 (T77/T78/T79) — replay with the SAME per-endpoint cost the
             # selector used.  Sharing ``_endpoint_valence_cost`` is the point:
@@ -1266,11 +1302,16 @@ class YuelBondBondDecoder:
             # believed every N/O in a ring had less budget than it did and
             # refused bridges the selector would have allowed.
             remaining[i] -= _endpoint_valence_cost(
-                order, int(z_list[i]), int(z_list[j]), self._is_metal_z
+                order, int(z_list[i]), int(z_list[j]), self._is_metal_z,
+                arom_kept[i],
             )
             remaining[j] -= _endpoint_valence_cost(
-                order, int(z_list[j]), int(z_list[i]), self._is_metal_z
+                order, int(z_list[j]), int(z_list[i]), self._is_metal_z,
+                arom_kept[j],
             )
+            if int(order) == BOND_AROMATIC:
+                arom_kept[i] += 1
+                arom_kept[j] += 1
 
         # --- candidate bridging edges, scored by the head's own logit -------
         # `max(logits[:, 1:])` is the same confidence the selector uses, so

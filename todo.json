@@ -3798,6 +3798,42 @@
         "measured": "metrics/by_metric/wfa113_t79_dative_ligand_budget.json"
       },
       "status": "FIXED"
+    },
+    {
+      "id": "T80",
+      "priority": 1,
+      "title": "S/Se/As 的 cap 低于 RDKit 上限：亚砜、砜、As(V) 在解码器里永远缺一条键",
+      "what": "cap S=2/Se=2/As=3，RDKit 接受 6/6/5。语料里 S 有 34.4% 的原子超过 2 配位，As 有 90.5% 超过 3。改为 RDKit 上限，并加一条不变式测试：任何配体 cap 不得超过 RDKit 自己的上限。",
+      "addresses": [
+        "D80"
+      ],
+      "done_when": "S=6、Se=6、As=5；亚砜与砜保留全部键；cap ≤ RDKit 上限有测试。",
+      "gate": {
+        "caps": "test_caps_are_rdkit_limits_not_common_case_values",
+        "sulfoxide": "test_sulfoxide_sulfur_keeps_all_three_bonds",
+        "sulfone": "test_sulfone_sulfur_keeps_all_four_bonds",
+        "not_above_rdkit": "test_no_ligand_cap_exceeds_rdkits_own_limit",
+        "measured": "metrics/by_metric/wfa113_t80_residual_caps.json"
+      },
+      "status": "FIXED"
+    },
+    {
+      "id": "T81",
+      "priority": 2,
+      "title": "稠合碳的第三条芳香键按 1.5 计：稠合芳环被拆掉一条环键",
+      "what": "1.5 是两条芳香键的 Kekulé 平均；稠合碳有三条，真实和是 4。改为第 3 条及以后计 1.0，两处记账同步。",
+      "addresses": [
+        "D81"
+      ],
+      "done_when": "稠合碳保留三条芳香键；第四条仍被拒；总成本与接受顺序无关。",
+      "gate": {
+        "fusion": "test_fusion_carbon_keeps_all_three_aromatic_bonds",
+        "not_free": "test_aromatic_bonds_are_not_free_at_carbon",
+        "order_independent": "test_the_third_aromatic_bond_costs_one_whatever_the_order",
+        "hetero_unchanged": "test_aromatic_cost_at_a_heteroatom_stays_one",
+        "measured": "metrics/by_metric/wfa113_t80_residual_caps.json"
+      },
+      "status": "FIXED"
     }
   ],
   "acceptance": {
@@ -4794,6 +4830,26 @@
         "status": "FIXED",
         "task": "T79",
         "resolution": "新增 _endpoint_valence_cost(order, z_self, z_other, is_metal)，把三条规则（配体端 dative 免费 / 金属端按 1.0 计 / 芳香杂原子按 1.0 计）收进一个函数，_select_bonds 与 _bridge_components 都改为调用它，删除两处手抄记账。_bridge_components 的桥接判据也改为同一函数（原来硬编码 1.0）。测试 test_wfa113_t79_dative_ligand_budget.py（7 条，已验证旧规则下 4 条失败）。"
+      },
+      {
+        "id": "SA-54",
+        "finding": "S/Se/As 的 cap 低于 RDKit 自己的上限：S=2（硫醚值）、Se=2、As=3，而 RDKit 接受 S 6 / Se 6 / As 5。cap 低于 RDKit 上限只做一件事——把语料里真实存在的键丢掉，环断开、变多片段。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_COVALENT_VALENCE[16]/[34]/[33]；RDKit 2026.03.6 实测单键上限",
+        "measured": "metrics/by_metric/wfa113_t80_residual_caps.json（六金属队列 33,429 配合物，去氢）：语料键数分布 S 1:198 / 2:7,120 / 3:1,720 / 4:2,090 / 5:2 / 6:29，As 3:37 / 4:364 / 5:4 / 6:2。超 cap 比例 S 20.76%→0.00%、Se 1.10%→0.00%、As 2.93%→0.00%。",
+        "impact": "亚砜/砜/锍（S 的 34.4% 原子）与 As(V)（90.5% 原子）在解码器里永远缺一条键。S 一项就覆盖 5.31% 的配合物。与 T78 的 P cap 3→5 是同一形状。",
+        "status": "FIXED",
+        "task": "T80",
+        "resolution": "S 2→6、Se 2→6、As 3→5（均为 RDKit 上限）。新增 test_wfa113_t80_element_caps.py 的 test_no_ligand_cap_exceeds_rdkits_own_limit，直接向 RDKit 询问每个元素的上限并断言 cap 不超过它（防「太高」方向）。"
+      },
+      {
+        "id": "SA-55",
+        "finding": "碳的芳香键一律按 1.5 计费。1.5 是「一个 Kekulé 双键 + 一个单键」的平均，隐含前提是该原子恰好有 2 条芳香键。环稠合碳有 3 条，而任何 Kekulé 结构都不可能给它两个双键，所以真实和是 4（一双两单），不是 4.5。按 4.5 计就把稠合碳顶到 cap 4 以上，选择器丢掉第三条键、拆掉稠合。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_endpoint_valence_cost 规则 4 / _select_bonds 的 arom_kept 计数",
+        "measured": "metrics/by_metric/wfa113_t80_residual_caps.json：六金属队列中 1,317 个碳原子的键模式为 aromatic×3，成本 4.5 > cap 4；碳超 cap 比例 0.24%→0.10%（剩余为碳硼烷碳，5-6 配位）。",
+        "impact": "稠合芳环（萘、吲哚、喹啉等，药物里最常见的一类骨架）在解码时被拆掉一条环键，环系统断开。碳超 cap 覆盖 4.25% 的配合物，其中稠合碳是主要成分。",
+        "status": "FIXED",
+        "task": "T81",
+        "resolution": "_endpoint_valence_cost 新增 arom_bonds_so_far 参数：碳的第 3 条及以后芳香键计 1.0。_select_bonds 用 arom_kept 计数，_bridge_components 按选择器自己的接受顺序重放同一计数，两处一致。三条芳香键的总成本与顺序无关（1.5+1.5+1.0=4）。"
       }
     ],
     "reproduce": [
