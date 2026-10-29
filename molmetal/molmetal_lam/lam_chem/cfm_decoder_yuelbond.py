@@ -54,7 +54,7 @@ that follows in Wf-124 P1.3.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import torch
 import torch.nn as nn
@@ -152,7 +152,10 @@ _CLASS_VALENCE_COST: Dict[int, float] = {
 #: cap on the CORPUS's own graph, i.e. the decoder could not rebuild the truth
 #: it was trained on.  With this rule: N 3.6%, O 9.2%, S 34.7%, Se 26.3%.
 #: Carbon is unchanged at 1.2%, which is the control: the rule must not touch
-#: it (``metrics/by_metric/wfa113_t78_element_cost_fit.json``).
+#: it (``metrics/by_metric/wfa113_t78_element_cost_fit.json``).  Those are
+#: the numbers with the ligand still paying for its metal bond; T79 removes
+#: that charge and the same table reads N 0.13%, O 0.07%, S 20.76%,
+#: Se 1.10% (``metrics/by_metric/wfa113_t79_dative_ligand_budget.json``).
 _AROMATIC_HETERO_ZS: frozenset = frozenset(
     {
         5,   # B
@@ -164,6 +167,74 @@ _AROMATIC_HETERO_ZS: frozenset = frozenset(
         34,  # Se
     }
 )
+
+
+def _endpoint_valence_cost(
+    order: int,
+    z_self: int,
+    z_other: int,
+    is_metal: Callable[[int], bool],
+) -> float:
+    """Valence budget one bond consumes at ONE of its two endpoints.
+
+    This is the single place the selector (``_select_bonds``) and the
+    connectivity prior (``_bridge_components``) get their accounting from.
+    They used to carry two hand-copied blocks, and every unit fix landed in
+    one of them and not the other: T77 (a metal's budget is a bond COUNT, not
+    a bond-order sum) was applied to both by hand, T78 (an aromatic bond at a
+    heteroatom is Kekule-single) only to the selector.  Sharing the function
+    is what stops that recurring.
+
+    Three rules, in order:
+
+    1. **Dative at the donor.**  A bond to a metal costs the ligand endpoint
+       nothing.  The electron pair is the ligand's lone pair, so the donor's
+       valence is unchanged.  RDKit implements exactly this in
+       ``cleanupOrganometallics()``, which runs inside ``SanitizeMol`` on
+       every mol this decoder produces: it rewrites a single bond between a
+       metal and a hypervalent atom into ``BondType.DATIVE``, and a dative
+       bond does not count towards the donor's explicit valence.  Verified on
+       RDKit 2026.03.6 -- an ether O with 2 C and 1 Ru reports explicit
+       valence 2, sanitises, and writes ``C[O](C)->[Ru]``; the same O with 3 C
+       and 1 Ru raises ``AtomValenceException``.  Upstream describes the step
+       as "the organometallic cleanup code (this converts single bonds
+       between hypervalent atoms and metals to dative bonds)"
+       (rdkit/rdkit#8312).  Charging the ligand made the selector STRICTER
+       than the validator it feeds: it dropped a real bond RDKit would have
+       kept, which opens a ring and turns a one-fragment decode into a
+       multi-fragment one.  MEASURED on the six-metal cohort (33,429
+       complexes, heavy atoms only): ligand atoms over their cap fall from
+       N 3.64% to 0.13%, O 9.18% to 0.07%, Se 26.29% to 1.10%, S 34.72% to
+       20.76%, C 1.23% to 0.24%
+       (``metrics/by_metric/wfa113_t79_dative_ligand_budget.json``).
+
+    2. **A metal's budget counts bonds.**  The metal caps in
+       ``_COVALENT_VALENCE`` come from tmQM's ``coord_number`` (MND p99), a
+       count, so a metal bond costs 1.0 whatever class the head gave it.
+       Charging the class cost instead made a 10-bond ceiling unreachable in
+       exactly the complexes that need it: 30.7% of Re's metal-incident bonds
+       are not single, so the cost sum exceeded the bond count in 92.3% of Re
+       complexes (``metrics/by_metric/wfa113_t77_metal_bond_cost_units.json``).
+
+    3. **Aromatic at a heteroatom is Kekule-single.**  1.5 is the average of
+       the Kekule single/double pair, which is right for carbon (benzene C =
+       2 x 1.5 + 1 H = 4, its cap exactly) and wrong for N/O/S/Se/P/As/B,
+       which carry the aromatic bond as a lone pair (pyrrole N, furan O,
+       thiophene S) or as the Kekule partner with no second substituent
+       (pyridine N).  Billing 1.5 there dropped a real ring bond
+       (``metrics/by_metric/wfa113_t78_element_cost_fit.json``).
+
+    ``is_metal`` is passed in rather than read from module state so the
+    selector's ``metal_set`` (which the trainer can override) is the one
+    that applies.
+    """
+    if is_metal(z_other) and not is_metal(z_self):
+        return 0.0
+    if is_metal(z_self):
+        return 1.0
+    if int(order) == BOND_AROMATIC and z_self in _AROMATIC_HETERO_ZS:
+        return 1.0
+    return _CLASS_VALENCE_COST.get(int(order), 1.0)
 
 
 _COVALENT_VALENCE: Dict[int, int] = {
@@ -1003,41 +1074,20 @@ class YuelBondBondDecoder:
             # molecule came out too sparse to sanitise, and RDKit rejected all
             # 24/24 decodes.  The head had, in fact, been predicting the right
             # classes.
-            cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
-            # Wf-A113 (T77, 2026-10-28) — a METAL's budget is a COUNT of
-            # metal-ligand bonds (tmQM MND p99, see
-            # ``decoder_rework.TMQM_MEASURED_METAL_COORDINATION_CAPS``), so a
-            # metal bond is charged 1.0 whatever class the head gave it.  The
-            # ligand endpoint still pays its own order cost, because a carbon's
-            # cap really is a bond-order sum.
-            #
-            # Charging the class cost to the metal made a 10-bond ceiling
-            # unreachable in exactly the complexes that need it.  MEASURED on
-            # the full corpus (metrics/by_metric/wfa113_t77_metal_bond_cost_units.json):
-            # 6,613 of Re's 26,688 metal-incident bonds are classed aromatic
-            # (1.5 each) and 1,498 double (2.0), so the cost sum exceeds the
-            # bond count in 92.3% of Re complexes (median cost 7.5 against
-            # median count 6.0) and 27.8% of Ru ones.  Under the old
-            # accounting the selector stopped short of the coordination number
-            # the cap was set from.
+            # Wf-A113 (T77/T78/T79, 2026-10-28) — per-endpoint cost.  The three
+            # rules (dative at the donor, a metal's budget counts bonds, an
+            # aromatic bond at a heteroatom is Kekule-single) live in
+            # ``_endpoint_valence_cost`` together with their measurements,
+            # because this block and the one in ``_bridge_components`` used to
+            # be hand-copied and each unit fix landed in only one of them.
             zi = int(z_list[i])
             zj = int(z_list[j])
-            if int(order) == BOND_AROMATIC:
-                # T78 — a heteroatom's aromatic bond is Kekulé-single for
-                # valence purposes; only carbon averages to 1.5.
-                cost_i = (
-                    1.0
-                    if self._is_metal_z(zi) or zi in _AROMATIC_HETERO_ZS
-                    else cost
-                )
-                cost_j = (
-                    1.0
-                    if self._is_metal_z(zj) or zj in _AROMATIC_HETERO_ZS
-                    else cost
-                )
-            else:
-                cost_i = 1.0 if self._is_metal_z(zi) else cost
-                cost_j = 1.0 if self._is_metal_z(zj) else cost
+            cost_i = _endpoint_valence_cost(
+                order, zi, zj, self._is_metal_z
+            )
+            cost_j = _endpoint_valence_cost(
+                order, zj, zi, self._is_metal_z
+            )
             cap_i = remaining[i]
             cap_j = remaining[j]
             # Wf-A49 arch_fix_7 — compare against the actual remaining
@@ -1209,13 +1259,18 @@ class YuelBondBondDecoder:
             self._cap_for_z(int(z)) for z in z_list
         ]
         for i, j, order in bond_orders:
-            cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
-            # Wf-A113 (T77) — same unit rule as ``_select_bonds``: a metal's
-            # budget counts bonds, so a metal bond is charged 1.0 whatever its
-            # class.  The two sites must agree or the bridge adds a bond the
-            # selector would have refused.
-            remaining[i] -= 1.0 if self._is_metal_z(z_list[i]) else cost
-            remaining[j] -= 1.0 if self._is_metal_z(z_list[j]) else cost
+            # Wf-A113 (T77/T78/T79) — replay with the SAME per-endpoint cost the
+            # selector used.  Sharing ``_endpoint_valence_cost`` is the point:
+            # this replay used to charge the class cost at a heteroatom's
+            # aromatic bond (1.5) while the selector charged 1.0, so the prior
+            # believed every N/O in a ring had less budget than it did and
+            # refused bridges the selector would have allowed.
+            remaining[i] -= _endpoint_valence_cost(
+                order, int(z_list[i]), int(z_list[j]), self._is_metal_z
+            )
+            remaining[j] -= _endpoint_valence_cost(
+                order, int(z_list[j]), int(z_list[i]), self._is_metal_z
+            )
 
         # --- candidate bridging edges, scored by the head's own logit -------
         # `max(logits[:, 1:])` is the same confidence the selector uses, so
@@ -1256,11 +1311,20 @@ class YuelBondBondDecoder:
                 break
             if _find(i) == _find(j):
                 continue
-            if remaining[i] < 1.0 or remaining[j] < 1.0:
+            # A bridge is always added as BOND_SINGLE, so the same
+            # per-endpoint rule applies: the ligand side of a metal bond
+            # needs no budget, the metal side needs one.
+            _need_i = _endpoint_valence_cost(
+                BOND_SINGLE, int(z_list[i]), int(z_list[j]), self._is_metal_z
+            )
+            _need_j = _endpoint_valence_cost(
+                BOND_SINGLE, int(z_list[j]), int(z_list[i]), self._is_metal_z
+            )
+            if remaining[i] < _need_i or remaining[j] < _need_j:
                 continue
             bond_orders.append((i, j, BOND_SINGLE))
-            remaining[i] -= 1.0
-            remaining[j] -= 1.0
+            remaining[i] -= _need_i
+            remaining[j] -= _need_j
             have.add((i, j) if i < j else (j, i))
             # Mirror `_select_bonds`' dative convention for a metal-donor pair.
             if self._is_dative_pair_at(

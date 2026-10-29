@@ -3778,6 +3778,26 @@
         "measured": "metrics/by_metric/wfa113_t78_element_cost_fit.json"
       },
       "status": "FIXED"
+    },
+    {
+      "id": "T79",
+      "priority": 1,
+      "title": "配体端点也为金属键付配价：40.7% 的配合物重建不出自身真值图",
+      "what": "M-L 键在给体侧是配位键，不占给体价；RDKit 的 cleanupOrganometallics 就是这么做的。选择器却按类别成本收配体端，比校验器更严，丢掉 RDKit 会保留的键。修复：_endpoint_valence_cost 统一三处规则，_select_bonds 与 _bridge_components 共用。",
+      "addresses": [
+        "D79"
+      ],
+      "done_when": "配体端点对金属键计 0、金属端点计 1.0；两处记账同一函数；旧规则下失败的用例在新规则下通过；before/after 落盘。",
+      "gate": {
+        "ether_o": "test_ether_oxygen_keeps_its_metal_bond",
+        "carbonyl_o": "test_carbonyl_oxygen_keeps_its_metal_bond",
+        "thioether_s": "test_thioether_sulfur_keeps_its_metal_bond",
+        "bridge": "test_bridge_component_uses_the_same_rule",
+        "metal_still_pays": "test_the_metal_still_pays_one_per_bond",
+        "rdkit_agrees": "test_rdkit_accepts_the_graph_the_selector_keeps",
+        "measured": "metrics/by_metric/wfa113_t79_dative_ligand_budget.json"
+      },
+      "status": "FIXED"
     }
   ],
   "acceptance": {
@@ -4764,6 +4784,16 @@
         "status": "FIXED",
         "task": "T78",
         "resolution": "芳香键对 Z∈{5,7,8,15,16,33,34} 计 1.0（碳保持 1.5）；P cap 3→5（RDKit 允许 3 或 5）。测试 test_wfa113_t78_heteroatom_aromatic_cost.py（4 条，已验证旧规则下呋喃 O 只留 1/2、磷酸 P 只留 3/4）。残余 B 85.2%（碳硼烷型 5-6 配位）与 As 90.5%（409 原子）记录为实测限制，未修。"
+      },
+      {
+        "id": "SA-53",
+        "finding": "选择器对金属-配体键在两个端点都收配价：金属端按 1.0（T77 已修），配体端仍按类别成本收。但 M-L 键在给体一侧是配位键，不占给体价。RDKit 的 SanitizeMol 通过 cleanupOrganometallics() 正是这么做的（把金属-超价原子之间的单键改成 BondType.DATIVE，而 dative 键不计入给体显式价），于是选择器比它自己的校验器更严：丢掉一条 RDKit 会保留的键，断环、变多片段。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_select_bonds / _bridge_components（两处各有一份手抄记账）；rdkit/rdkit#8312 对 cleanupOrganometallics 的描述",
+        "measured": "metrics/by_metric/wfa113_t79_dative_ligand_budget.json（六金属队列 33,429 配合物，去氢）：至少一个配体原子超 cap 的配合物 13,591（40.66%）→ 3,836（11.48%）；配体原子超 cap 比例 O 9.18%→0.07%、N 3.64%→0.13%、Se 26.29%→1.10%、S 34.72%→20.76%、C 1.23%→0.24%。193,703 个有金属邻居的配体原子中，有 2 个及以上金属邻居的是 0。",
+        "impact": "40.66% 的配合物无法被解码器重建出它自己训练用的真值图；每丢一条环键就断环、变多片段，直接压低 gen_validity / single_fragment_ratio / bond_exact_type_rate。",
+        "status": "FIXED",
+        "task": "T79",
+        "resolution": "新增 _endpoint_valence_cost(order, z_self, z_other, is_metal)，把三条规则（配体端 dative 免费 / 金属端按 1.0 计 / 芳香杂原子按 1.0 计）收进一个函数，_select_bonds 与 _bridge_components 都改为调用它，删除两处手抄记账。_bridge_components 的桥接判据也改为同一函数（原来硬编码 1.0）。测试 test_wfa113_t79_dative_ligand_budget.py（7 条，已验证旧规则下 4 条失败）。"
       }
     ],
     "reproduce": [

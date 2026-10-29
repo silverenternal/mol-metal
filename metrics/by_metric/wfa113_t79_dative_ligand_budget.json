@@ -1,0 +1,498 @@
+{
+  "wave": "Wf-A113",
+  "task": "T79",
+  "date": "2026-10-28",
+  "question": "does the selector charge the LIGAND endpoint for a bond to a metal, i.e. is it stricter than RDKit's cleanupOrganometallics, which makes such a bond dative and free at the donor?",
+  "fix": {
+    "rule": "a bond whose partner is a metal costs the ligand endpoint 0; the metal endpoint still pays 1.0 (T77)",
+    "where": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_endpoint_valence_cost, shared by _select_bonds and _bridge_components"
+  },
+  "measured": {
+    "cohort": "six project metals",
+    "include_hydrogens": false,
+    "max_complexes_per_shard": 0,
+    "n_complexes": 33429,
+    "n_atoms_total": 1182297,
+    "n_complexes_with_a_ligand_atom_over_cap_before": 13591,
+    "n_complexes_with_a_ligand_atom_over_cap_after": 3836,
+    "frac_complexes_over_before": 0.40656316372012324,
+    "frac_complexes_over_after": 0.1147506655897574,
+    "ligand_atoms_by_metal_neighbour_count": {
+      "0": 988594,
+      "1": 193703
+    },
+    "per_element": {
+      "C": {
+        "cap": 4,
+        "n_atoms": 964011,
+        "frac_over_before": 0.012276830866037836,
+        "frac_over_after": 0.002391051554390977,
+        "frac_over_only_due_to_metal": 0.009885779311646858,
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 8826
+          },
+          {
+            "pattern": "aromaticaromaticaromatic",
+            "n": 1317
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 647
+          }
+        ],
+        "examples": [
+          {
+            "csd": "PAGPAR",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "VEYYUX",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "YIYXUZ",
+            "cost": 4.5,
+            "cap": 4.0
+          }
+        ]
+      },
+      "B": {
+        "cap": 3,
+        "n_atoms": 9889,
+        "frac_over_before": 0.8518555971281222,
+        "frac_over_after": 0.8239457983618161,
+        "frac_over_only_due_to_metal": 0.027909798766305997,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesinglesingle",
+            "n": 6863
+          },
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 1276
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 260
+          }
+        ],
+        "examples": [
+          {
+            "csd": "TISHUC",
+            "cost": 5.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "TISHUC",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "TISHUC",
+            "cost": 5.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "O": {
+        "cap": 2,
+        "n_atoms": 51561,
+        "frac_over_before": 0.09179418552782141,
+        "frac_over_after": 0.0007175966331141755,
+        "frac_over_only_due_to_metal": 0.09107658889470724,
+        "top_over_patterns_before": [
+          {
+            "pattern": "doublesingle",
+            "n": 4377
+          },
+          {
+            "pattern": "singlesinglesingle",
+            "n": 348
+          },
+          {
+            "pattern": "aromaticsinglesingle",
+            "n": 7
+          }
+        ],
+        "examples": [
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "UTANIP",
+            "cost": 3.0,
+            "cap": 2.0
+          }
+        ]
+      },
+      "S": {
+        "cap": 2,
+        "n_atoms": 11159,
+        "frac_over_before": 0.34716372434805987,
+        "frac_over_after": 0.20763509275024644,
+        "frac_over_only_due_to_metal": 0.13952863159781342,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesingle",
+            "n": 1563
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 708
+          },
+          {
+            "pattern": "aromaticaromaticsinglesingle",
+            "n": 666
+          }
+        ],
+        "examples": [
+          {
+            "csd": "MUMBEE",
+            "cost": 4.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "POYLOH",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "POYLOH",
+            "cost": 3.0,
+            "cap": 2.0
+          }
+        ]
+      },
+      "N": {
+        "cap": 3,
+        "n_atoms": 73302,
+        "frac_over_before": 0.03639736978527189,
+        "frac_over_after": 0.0013369348721726556,
+        "frac_over_only_due_to_metal": 0.03506043491309924,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 1470
+          },
+          {
+            "pattern": "singletriple",
+            "n": 892
+          },
+          {
+            "pattern": "doublesinglesingle",
+            "n": 291
+          }
+        ],
+        "examples": [
+          {
+            "csd": "WOXMOO",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "LADJUZ",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "LADJUZ",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "As": {
+        "cap": 3,
+        "n_atoms": 409,
+        "frac_over_before": 0.9046454767726161,
+        "frac_over_after": 0.029339853300733496,
+        "frac_over_only_due_to_metal": 0.8753056234718827,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 360
+          },
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 4
+          },
+          {
+            "pattern": "aromaticaromaticsinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "KINXUE",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "KINXUE",
+            "cost": 4.0,
+            "cap": 3.0
+          },
+          {
+            "csd": "NODSAE",
+            "cost": 4.0,
+            "cap": 3.0
+          }
+        ]
+      },
+      "Se": {
+        "cap": 2,
+        "n_atoms": 544,
+        "frac_over_before": 0.26286764705882354,
+        "frac_over_after": 0.011029411764705883,
+        "frac_over_only_due_to_metal": 0.25183823529411764,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesingle",
+            "n": 132
+          },
+          {
+            "pattern": "aromaticsinglesingle",
+            "n": 4
+          },
+          {
+            "pattern": "doublesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "OPUGUC",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "OPUGUC",
+            "cost": 3.0,
+            "cap": 2.0
+          },
+          {
+            "csd": "JEGKUF",
+            "cost": 3.0,
+            "cap": 2.0
+          }
+        ]
+      },
+      "Cl": {
+        "cap": 1,
+        "n_atoms": 22025,
+        "frac_over_before": 0.006265607264472191,
+        "frac_over_after": 0.001362088535754824,
+        "frac_over_only_due_to_metal": 0.004903518728717367,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 108
+          },
+          {
+            "pattern": "aromatic",
+            "n": 25
+          },
+          {
+            "pattern": "singlesinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "YARVEW",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JERXAJ",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JERXAJ",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "Si": {
+        "cap": 4,
+        "n_atoms": 1805,
+        "frac_over_before": 0.02326869806094183,
+        "frac_over_after": 0.02326869806094183,
+        "frac_over_only_due_to_metal": 0.0,
+        "top_over_patterns_before": [
+          {
+            "pattern": "aromaticsinglesinglesingle",
+            "n": 39
+          },
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 3
+          }
+        ],
+        "examples": [
+          {
+            "csd": "GUWXUU",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "BEWQIF",
+            "cost": 4.5,
+            "cap": 4.0
+          },
+          {
+            "csd": "MOVLUH",
+            "cost": 4.5,
+            "cap": 4.0
+          }
+        ]
+      },
+      "I": {
+        "cap": 1,
+        "n_atoms": 2025,
+        "frac_over_before": 0.010864197530864197,
+        "frac_over_after": 0.0019753086419753087,
+        "frac_over_only_due_to_metal": 0.008888888888888889,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 19
+          },
+          {
+            "pattern": "singlesinglesingle",
+            "n": 2
+          },
+          {
+            "pattern": "aromaticsinglesinglesinglesinglesingle",
+            "n": 1
+          }
+        ],
+        "examples": [
+          {
+            "csd": "YOBGED",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "XEFVIN",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "FUJLAX",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "Br": {
+        "cap": 1,
+        "n_atoms": 2691,
+        "frac_over_before": 0.004830917874396135,
+        "frac_over_after": 0.0,
+        "frac_over_only_due_to_metal": 0.004830917874396135,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 13
+          }
+        ],
+        "examples": [
+          {
+            "csd": "DECCOD",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "XEFVEJ",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "RIZYIK",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      },
+      "P": {
+        "cap": 5,
+        "n_atoms": 27102,
+        "frac_over_before": 0.00029518116744151724,
+        "frac_over_after": 7.379529186037931e-05,
+        "frac_over_only_due_to_metal": 0.00022138587558113792,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesinglesinglesinglesinglesingle",
+            "n": 7
+          },
+          {
+            "pattern": "doubledoublesinglesingle",
+            "n": 1
+          }
+        ],
+        "examples": [
+          {
+            "csd": "PIZVON",
+            "cost": 6.0,
+            "cap": 5.0
+          },
+          {
+            "csd": "OSAYAL",
+            "cost": 6.0,
+            "cap": 5.0
+          },
+          {
+            "csd": "KEJPUK",
+            "cost": 6.0,
+            "cap": 5.0
+          }
+        ]
+      },
+      "F": {
+        "cap": 1,
+        "n_atoms": 15774,
+        "frac_over_before": 0.0003803727653100038,
+        "frac_over_after": 0.0,
+        "frac_over_only_due_to_metal": 0.0003803727653100038,
+        "top_over_patterns_before": [
+          {
+            "pattern": "singlesingle",
+            "n": 6
+          }
+        ],
+        "examples": [
+          {
+            "csd": "SUYPUX",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "NIVDIF",
+            "cost": 2.0,
+            "cap": 1.0
+          },
+          {
+            "csd": "JELREY",
+            "cost": 2.0,
+            "cap": 1.0
+          }
+        ]
+      }
+    }
+  },
+  "script": "molmetal/scripts/wfa113_t79_dative_ligand_budget_probe.py"
+}
