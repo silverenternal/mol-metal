@@ -7,8 +7,15 @@ WHY THIS FILE EXISTS
 its table. Rh (45), Os (76) and Re (75) were missing — three of the six metals
 in every CFM cohort — so a soft-valence penalty built on that table would have
 charged the model for reproducing its own training data. The fix was to derive
-caps from ``.data/molmetal/tmQM/tmqm_parsed.csv`` and pass them as the
-``valences`` override rather than mutating the shared default.
+caps from ``.data/molmetal/tmQM/tmqm_parsed.csv`` rather than mutating the
+shared default.
+
+T82 (2026-10-28) added a second correction on top: the barrier now charges a
+metal 1.0 per bond, so its cap has to be the coordination number
+(``TMQM_MEASURED_METAL_COORDINATION_CAPS``), not ``metal_bo_sum``.  The table
+this file pins is still the bo_sum one, which is what ``cfm_property_panel.py``
+reports against; the loss uses the coordination table, and
+``test_cfm_trainer_reaches_the_measured_caps`` pins that choice.
 
 Two things can silently undo that:
 
@@ -188,27 +195,66 @@ def test_shared_default_table_is_untouched():
     from molmetal.molmetal_lam.lam_chem.decoder_rework import DEFAULT_VALENCES
 
     assert int(DEFAULT_VALENCES[78]) == 4, (
-        "DEFAULT_VALENCES[78] changed — the measured caps belong in "
-        "TMQM_MEASURED_METAL_CAPS and are passed via the `valences` override"
+        "DEFAULT_VALENCES[78] changed.  That table is the coordination-number "
+        "table (PRIMITIVE_ATOMS.arity); the loss and the decoder do not use it "
+        "for caps at all since T82 — they use _COVALENT_VALENCE plus "
+        "TMQM_MEASURED_METAL_COORDINATION_CAPS.  Changing it would still move "
+        "the Lambda decoder's chemistry, so pin it deliberately."
     )
 
 
-def test_cfm_trainer_passes_the_override():
-    """A correct table that is never passed is the same as no fix at all.
+def test_cfm_trainer_reaches_the_measured_caps():
+    """A correct table that is never reached is the same as no fix at all.
 
-    This is the FLAG_ONLY failure class (AGENTS.md §5.7): `valence_log_barrier`
-    accepts `valences=`; if the call site stops passing it, the caps silently
-    stop applying and everything above still passes.
+    This is the FLAG_ONLY failure class (AGENTS.md §5.7): ``valence_log_barrier``
+    accepts a cap table; if the call site stops supplying one, the caps silently
+    stop applying and every other test here still passes.
+
+    The override moved into the barrier's own default at T82, so two things now
+    have to hold together and this checks both: the trainer must ask for the
+    mode that charges a metal one per bond (``aromatic_mass=``, which is what
+    selects the coordination-cap branch), and that branch's default table must
+    actually contain the measured caps.
+
+    Re's coordination cap is 9 and its bond-order-sum cap is 8, so a Re with
+    nine bonds separates the two tables: the coordination table is silent, the
+    bo_sum table is not.
     """
-    src = (REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py").read_text(
-        encoding="utf-8"
+    import torch
+
+    from molmetal.molmetal_lam.lam_chem.decoder_rework import (
+        TMQM_MEASURED_METAL_CAPS,
+        TMQM_MEASURED_METAL_COORDINATION_CAPS,
+        valence_log_barrier,
     )
-    assert "TMQM_MEASURED_METAL_CAPS" in src, (
-        "the CFM trainer no longer imports the measured caps"
+
+    src = (
+        REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
+    ).read_text(encoding="utf-8")
+    assert "aromatic_mass=" in src, (
+        "the CFM trainer no longer passes `aromatic_mass` to "
+        "valence_log_barrier, so the barrier falls back to the scalar path and "
+        "the measured coordination caps never apply"
     )
-    assert "valences=_sv_valences" in src, (
-        "the trainer builds _sv_valences but does not pass it to "
-        "valence_log_barrier — the measured caps are computed and discarded"
+
+    assert TMQM_MEASURED_METAL_COORDINATION_CAPS[75] == 9
+    assert TMQM_MEASURED_METAL_CAPS[75] == 8
+
+    z = torch.tensor([75] + [7] * 9, dtype=torch.long)
+    src_idx = torch.zeros(9, dtype=torch.long)
+    dst_idx = torch.tensor(list(range(1, 10)), dtype=torch.long)
+    onehot = torch.zeros((9, 5))
+    onehot[:, 1] = 1.0
+    orders = (onehot * torch.tensor([0.0, 1.0, 2.0, 3.0, 1.5])).sum(-1)
+    penalty = float(
+        valence_log_barrier(
+            orders, z, src_idx, dst_idx, 10, aromatic_mass=onehot[:, 4]
+        )
+    )
+    assert penalty < 1e-5, (
+        f"nine bonds at Re must not be penalised (coordination cap 9), got "
+        f"{penalty}; a cap of 8 is the bond-order-sum table, which is the "
+        "wrong unit for a per-bond charge"
     )
 
 

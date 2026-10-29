@@ -3834,6 +3834,27 @@
         "measured": "metrics/by_metric/wfa113_t80_residual_caps.json"
       },
       "status": "FIXED"
+    },
+    {
+      "id": "T82",
+      "priority": 1,
+      "title": "软价 loss 与解码器用两套配价模型：26.9% 的配合物上 loss 在惩罚真值",
+      "what": "loss 的 cap 表是配位数（O 4、卤素 4），芳香键一律 1.5，金属按类别序数；解码器是 RDKit 价模型 + 每键 1.0。改为同一套记账：aromatic_mass 触发镜像模式，默认表用 _COVALENT_VALENCE + 配位数金属上限。",
+      "addresses": [
+        "D82"
+      ],
+      "done_when": "随机图上 loss 与解码器逐原子一致；砜/稠合碳/dative 不罚，O 三键、Pt 第五键照罚；trainer 传 aromatic_mass。",
+      "gate": {
+        "agrees_random": "test_barrier_agrees_with_the_decoder_on_random_graphs",
+        "silent_on_sulfone": "test_barrier_is_silent_on_a_sulfone",
+        "silent_on_fusion": "test_barrier_is_silent_on_a_fusion_carbon",
+        "silent_on_dative": "test_barrier_is_silent_on_a_dative_bond",
+        "fires_on_oxygen": "test_oxygen_with_three_bonds_is_over_valent",
+        "metal_units": "test_metal_charged_per_bond_against_the_coordination_cap",
+        "wired": "test_cfm_trainer_reaches_the_measured_caps",
+        "measured": "metrics/by_metric/wfa113_t82_loss_decoder_valence_split.json"
+      },
+      "status": "FIXED"
     }
   ],
   "acceptance": {
@@ -4850,6 +4871,16 @@
         "status": "FIXED",
         "task": "T81",
         "resolution": "_endpoint_valence_cost 新增 arom_bonds_so_far 参数：碳的第 3 条及以后芳香键计 1.0。_select_bonds 用 arom_kept 计数，_bridge_components 按选择器自己的接受顺序重放同一计数，两处一致。三条芳香键的总成本与顺序无关（1.5+1.5+1.0=4）。"
+      },
+      {
+        "id": "SA-56",
+        "finding": "软价 penalty（gen_validity_weight）与解码器用两套配价模型：loss 用 DEFAULT_VALENCES（= PRIMITIVE_ATOMS.arity，即配位数 valence+lone_pairs：O 4、F/Cl/Br/I 4、N 4、P 4、S 4），且芳香键在任意原子都按 1.5 计、金属按类别序数计；解码器用 _COVALENT_VALENCE（RDKit 价模型）+ 实测配位数上限，芳香键对杂原子计 1.0、碳第 3 条起计 1.0，金属每键计 1.0、配体端计 0。于是 loss 一边惩罚解码器接受的原子（每个砜 6.0 vs cap 4、每个稠合碳 4.5 vs 4），一边放行解码器拒绝的原子（B 第 4 条键）。",
+        "evidence": "molmetal/molmetal_lam/lam_chem/decoder_rework.py::valence_log_barrier / _build_default_valences；molmetal/scripts/train_cfm_yuelbond_wasserstein.py 的 _sv_valences 合并",
+        "measured": "metrics/by_metric/wfa113_t82_loss_decoder_valence_split.json（六金属队列 33,429 配合物）：两者不一致的配合物 9,002（26.93%）；按元素 loss 惩罚但解码器接受的比例 C 1.13%、P 9.38%、S 18.73%、Se 36.76%，反向（解码器拒绝而 loss 放行）B 10.13%。只改 cap 反而恶化到 77.11%（芳香 1.5 撞上新 cap：N 61.59%、O 30.66%）；cap 与记账规则一起改后，1.24M 个配体原子里不一致 0 个。",
+        "impact": "打开这个权重时，梯度指向语料真值的反面：砜、稠合芳环、噻吩/呋喃都被罚；同时 O 与卤素的 cap 是 4，penalty 在这些最容易超价的原子身上永远不触发，等于该守的地方没守。",
+        "status": "FIXED",
+        "task": "T82",
+        "resolution": "valence_log_barrier 增加 aromatic_mass 参数：传入时进入「镜像解码器」模式，按 _endpoint_valence_cost 的三条规则记账（配体端 dative 计 0、金属每键计 1.0、芳香杂原子与碳第 3 条起计 1.0），默认 cap 表改为 {**_COVALENT_VALENCE, **TMQM_MEASURED_METAL_COORDINATION_CAPS}；未传时保持旧的标量路径并保留 bo_sum 表（单位必须与记账一致）。docstring 里写反的 hinge 符号（max(0, cap - sum - eps)）改为代码实际的 max(0, sum - cap + eps)。trainer 不再自己拼表，改传 aromatic_mass=_sv_soft[:, 4]。测试 test_wfa113_t82_loss_decoder_valence.py（14 条，含随机图与解码器逐原子对账）；test_cfm_metal_valence_caps.py 的 FLAG_ONLY 用例改为运行时验证「Re 9 键不罚、10 键罚」，即配位数表而非 bo_sum 表。"
       }
     ],
     "reproduce": [

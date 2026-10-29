@@ -307,6 +307,26 @@ def _build_default_valences() -> Dict[int, int]:
     the modules are importable.  Falls back to the hard-coded
     :data:`_DEFAULT_VALENCES` for any Z not present in the canonical
     tables.
+
+    THIS IS A COORDINATION-NUMBER TABLE, NOT A VALENCE TABLE.
+    --------------------------------------------------------
+    It uses ``atom.arity`` = ``valence + lone_pairs``, so it reads O 4,
+    N 4, F/Cl/Br/I 4, P 4, S 4.  The comment that stood here justified that
+    with "this matches RDKit's valence model for dative cases where the
+    lone-pair donor gets a 'dative' bond record" -- RDKit does the opposite:
+    a dative bond does NOT count towards the donor's explicit valence
+    (verified on RDKit 2026.03.6: an ether O with 2 C and 1 Ru reports
+    explicit valence 2; see rdkit/rdkit#8312 on ``cleanupOrganometallics``).
+
+    So this table must not be used as a valence cap.  It was, by the
+    soft-valence loss, until T82: with O at 4 and the halogens at 4 the
+    barrier could never fire on the atoms most likely to be over-valent.
+    The valence cap the decoder and the loss both use is
+    ``cfm_decoder_yuelbond._COVALENT_VALENCE``.
+
+    The table is kept because :data:`PRIMITIVE_ATOMS` is the canonical atom
+    vocabulary and ``arity`` is the right number for coordination counting;
+    ``molmetal_lam/tests/test_cfm_p0_fixes.py`` pins ``[78] == 4``.
     """
     out: Dict[int, int] = dict(_DEFAULT_VALENCES)
     try:
@@ -543,6 +563,7 @@ def valence_log_barrier(
     n_atoms: int,
     valences: Optional[Dict[int, int]] = None,
     eps: float = 1e-3,
+    aromatic_mass: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Return a differentiable penalty for valence-cap violations.
 
@@ -556,18 +577,46 @@ def valence_log_barrier(
     z : (N,) long tensor — atomic numbers per atom.
     pair_src, pair_dst : (E,) long tensors — edge endpoints.
     n_atoms : int
-    valences : dict, optional — override :data:`DEFAULT_VALENCES`.
+    valences : dict, optional — override the default cap table.  When
+        ``None`` the barrier uses the decoder's own
+        ``_COVALENT_VALENCE`` (RDKit's valence model) for ligand atoms, with
+        ``TMQM_MEASURED_METAL_COORDINATION_CAPS`` for the six cohort metals in
+        ``aromatic_mass`` mode and ``TMQM_MEASURED_METAL_CAPS`` in the scalar
+        mode (the cap must be in the same units as the accounting).  It used
+        to default to :data:`DEFAULT_VALENCES`, which is the *coordination
+        number* (``PRIMITIVE_ATOMS.arity`` = valence + lone pairs) and is
+        therefore the wrong quantity here: it gave O a cap of 4 and the
+        halogens 4, so the barrier could never fire on the atoms most likely
+        to be over-valent.  See the T82 note below.
     eps : float
-        Numerical floor on ``max_valence - sum_orders`` to keep
-        ``-log`` finite.
+        Numerical floor so the hinge is zero at exactly ``cap``.
+    aromatic_mass : (E,) tensor, optional
+        Soft probability that the pair is ``BOND_AROMATIC``.  Passing it
+        switches the barrier into the mode that MIRRORS THE DECODER: the
+        aromatic contribution is charged the way
+        ``_endpoint_valence_cost`` charges it (1.0 at a heteroatom donor,
+        1.0 for a carbon's third and later aromatic bond), a metal-ligand
+        bond costs the ligand endpoint nothing and the metal endpoint 1.0.
+        ``bond_orders_soft`` must then still be the 1.5-per-aromatic order
+        sum, because the non-aromatic part is recovered as
+        ``bond_orders_soft - 1.5 * aromatic_mass``.  Verified to agree with
+        the decoder on 0 of 1.24M ligand atoms in the six-metal cohort.
 
     Returns
     -------
     scalar tensor
-        ``sum_a max(0, valence_cap_a - sum_e orders_e_at_a - eps)^2``
+        ``sum_a max(0, sum_e orders_e_at_a - cap_a + eps)^2``.
         Squared hinge penalty; the log barrier was tempting but it
         diverges too sharply for an untrained head.  Squared hinge
         gives smooth gradients everywhere in the feasible region.
+
+    Sign
+    ----
+    The penalty fires when an atom is OVER its cap.  The docstring here used
+    to write the hinge as ``max(0, cap - sum - eps)``, which is the opposite
+    sign and would have penalised every atom for being UNDER-valence; the
+    code was always ``sum - cap`` and is unchanged.  The tests in
+    ``molmetal/tests/test_wf_r41_soft_valence_loss.py`` pin the direction.
 
     Honest framing
     --------------
@@ -581,9 +630,37 @@ def valence_log_barrier(
 
     This is a one-line change in the spec — call out as
     "design-deviation: log → squared-hinge" in the report.
+
+    T82 (2026-10-28)
+    ----------------
+    The loss and the decoder disagreed about valence on 9,002 of 33,429
+    six-metal complexes (26.93%).  The loss penalised atoms the decoder
+    accepts -- C 1.13%, P 9.38%, S 18.73%, Se 36.76% of that element's atoms,
+    e.g. every sulfone (6.0 against a cap of 4) and every fusion carbon
+    (4.5 against 4) -- which is a gradient pointing away from the corpus
+    truth.  In the other direction it permitted the 4th bond at boron, which
+    the decoder refuses (10.13% of B atoms).  Measured in
+    ``metrics/by_metric/wfa113_t82_loss_decoder_valence_split.json``.
     """
     if valences is None:
-        valences = DEFAULT_VALENCES
+        # Lazy: ``cfm_decoder_yuelbond`` imports this module at module level,
+        # so the reverse import has to happen inside the call.
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+            _COVALENT_VALENCE,
+        )
+
+        # The metal cap must be in the same units as the metal's accounting.
+        # With ``aromatic_mass`` the metal is charged 1.0 per bond (a bond
+        # count), so the cap is the measured COORDINATION cap.  The scalar path
+        # has no way to apply that rule and charges the class order, so it
+        # keeps the bond-order-SUM cap.
+        if aromatic_mass is None:
+            valences = {**_COVALENT_VALENCE, **TMQM_MEASURED_METAL_CAPS}
+        else:
+            valences = {
+                **_COVALENT_VALENCE,
+                **TMQM_MEASURED_METAL_COORDINATION_CAPS,
+            }
     if bond_orders_soft.dim() != 1:
         raise ValueError(
             f"bond_orders_soft must be (E,), got {tuple(bond_orders_soft.shape)}"
@@ -599,22 +676,85 @@ def valence_log_barrier(
         dtype=bond_orders_soft.dtype,
         device=bond_orders_soft.device,
     )
-    # Per-atom bond order sum (N,) — scatter_add of soft orders.
-    atom_orders = torch.zeros(
-        (n_atoms,),
-        dtype=bond_orders_soft.dtype,
-        device=bond_orders_soft.device,
-    )
-    atom_orders = atom_orders.scatter_add(
-        0,
-        pair_src.long(),
-        bond_orders_soft,
-    )
-    atom_orders = atom_orders.scatter_add(
-        0,
-        pair_dst.long(),
-        bond_orders_soft,
-    )
+    if aromatic_mass is None:
+        # Per-atom bond order sum (N,) — scatter_add of soft orders.
+        atom_orders = torch.zeros(
+            (n_atoms,),
+            dtype=bond_orders_soft.dtype,
+            device=bond_orders_soft.device,
+        )
+        atom_orders = atom_orders.scatter_add(
+            0,
+            pair_src.long(),
+            bond_orders_soft,
+        )
+        atom_orders = atom_orders.scatter_add(
+            0,
+            pair_dst.long(),
+            bond_orders_soft,
+        )
+    else:
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+            _AROMATIC_HETERO_ZS,
+        )
+
+        zeros = torch.zeros(
+            (n_atoms,),
+            dtype=bond_orders_soft.dtype,
+            device=bond_orders_soft.device,
+        )
+        # Metal endpoints: a metal's budget is a COUNT of coordination bonds
+        # (T72/T77), so every bond it is part of costs 1.0 whatever class the
+        # head gave it.  The ligand end of the same bond costs 0 (T79: the
+        # electron pair is the ligand's, so the donor's valence is unchanged).
+        # Both rules have to be here, not just in the decoder: without them the
+        # barrier charges a metal 1.5 for an aromatic-class bond against a
+        # count cap, and charges the ligand for every dative bond.
+        metal_zs = TMQM_MEASURED_METAL_COORDINATION_CAPS
+        src_metal = torch.tensor(
+            [int(z[int(s)].item()) in metal_zs for s in pair_src.tolist()],
+            dtype=torch.bool,
+            device=bond_orders_soft.device,
+        )
+        dst_metal = torch.tensor(
+            [int(z[int(d)].item()) in metal_zs for d in pair_dst.tolist()],
+            dtype=torch.bool,
+            device=bond_orders_soft.device,
+        )
+        metal_pair = src_metal | dst_metal
+        # Everything except the aromatic part, at its own order.
+        non_arom = bond_orders_soft - 1.5 * aromatic_mass
+        one = torch.ones_like(non_arom)
+        zero_pair = torch.zeros_like(non_arom)
+        contrib_src = torch.where(
+            src_metal, one, torch.where(dst_metal, zero_pair, non_arom)
+        )
+        contrib_dst = torch.where(
+            dst_metal, one, torch.where(src_metal, zero_pair, non_arom)
+        )
+        atom_orders = zeros.scatter_add(0, pair_src.long(), contrib_src)
+        atom_orders = atom_orders.scatter_add(0, pair_dst.long(), contrib_dst)
+        # Aromatic contribution, only for bonds between two non-metals (a
+        # metal-ligand bond is already accounted for above).
+        arom_lig = aromatic_mass * (~metal_pair).to(aromatic_mass.dtype)
+        arom_at = zeros.scatter_add(0, pair_src.long(), arom_lig)
+        arom_at = arom_at.scatter_add(0, pair_dst.long(), arom_lig)
+        # Carbon-like: 1.5 for the first two, 1.0 for each one beyond.  Total
+        # for n = 3 is 4 and for n = 4 is 5, i.e. exactly the Kekule sum.
+        carbon_like = 1.5 * torch.clamp(arom_at, max=2.0) + torch.clamp(
+            arom_at - 2.0, min=0.0
+        )
+        is_hetero = torch.tensor(
+            [
+                int(z[a].item()) in _AROMATIC_HETERO_ZS
+                for a in range(n_atoms)
+            ],
+            dtype=torch.bool,
+            device=bond_orders_soft.device,
+        )
+        atom_orders = atom_orders + torch.where(
+            is_hetero, arom_at, carbon_like
+        )
     excess = torch.clamp(atom_orders - cap + eps, min=0.0)
     return excess.pow(2).sum()
 

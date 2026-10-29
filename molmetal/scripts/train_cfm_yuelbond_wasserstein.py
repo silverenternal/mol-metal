@@ -5721,13 +5721,11 @@ def train_one_epoch(
         soft_valence_term = torch.zeros((), device=device)
         if _use_soft_valence and batch_soft_valence:
             from molmetal.molmetal_lam.lam_chem.decoder_rework import (
-                TMQM_MEASURED_METAL_CAPS,
-                DEFAULT_VALENCES,
                 valence_log_barrier,
             )
             # Bond-order index lookup per NUM_BOND_CLASSES=5:
-            # 0=no-bond, 1=single, 2=double, 3=triple, 4=aromatic (treat as 1.5,
-            # per decoder_rework.py docstring on DEFAULT_VALENCES).
+            # 0=no-bond, 1=single, 2=double, 3=triple, 4=aromatic (1.5, the
+            # Kekule average).
             _bond_order_idx = torch.tensor(
                 [0.0, 1.0, 2.0, 3.0, 1.5],
                 dtype=all_logits.dtype,
@@ -5735,10 +5733,21 @@ def train_one_epoch(
             )
             _n_sv = 0
             _sv_n_atoms_total = 0
-            # BLK-M1 — per-element merge: non-metal caps keep the documented
-            # DEFAULT_VALENCES values, the six cohort metals take the caps
-            # MEASURED from tmQM. Built once per batch, not per cloud.
-            _sv_valences = {**DEFAULT_VALENCES, **TMQM_MEASURED_METAL_CAPS}
+            # Wf-A113 (T82, 2026-10-28) — the cap table is now the barrier's
+            # own default: the decoder's ``_COVALENT_VALENCE`` for ligand atoms
+            # plus ``TMQM_MEASURED_METAL_COORDINATION_CAPS`` for the six cohort
+            # metals (count units, matching the 1.0-per-bond charge below).
+            # The block that used to build it here passed ``DEFAULT_VALENCES``,
+            # which is ``PRIMITIVE_ATOMS.arity`` — the COORDINATION NUMBER
+            # (valence + lone pairs), not the valence.  It gave O a cap of 4,
+            # F/Cl/Br/I 4 and N 4, so the barrier could never fire on the atoms
+            # most likely to be over-valent, while it fired on every sulfone
+            # (6.0 against 4) and every fusion carbon (4.5 against 4).  The
+            # comment that stood here claimed the non-metal entries were
+            # "C=4, N=3, O=2, ..." — the table never had those values.
+            # MEASURED: the loss and the decoder disagreed on 9,002 of 33,429
+            # six-metal complexes (26.93%)
+            # (metrics/by_metric/wfa113_t82_loss_decoder_valence_split.json).
             for _sv_logits_c, _sv_ei_c, _sv_z_c in batch_soft_valence:
                 if _sv_ei_c is None:
                     continue
@@ -5755,30 +5764,28 @@ def train_one_epoch(
                 _sv_pair_src = _sv_pair_src.long()
                 _sv_pair_dst = _sv_pair_dst.long()
                 _sv_n_atoms = int(_sv_z_c.shape[0])
-                # BLK-M1 (2026-10-10) — pass the MEASURED metal caps as the
-                # `valences` override instead of letting the barrier fall back
-                # to DEFAULT_VALENCES.
+                # BLK-M1 (2026-10-10) originally passed a `valences` override
+                # here because the barrier's fallback was `cap = 4` for any Z
+                # absent from the table, and Rh (45), Os (76) and Re (75) were
+                # absent.  The override is gone: the barrier now defaults to the
+                # decoder's own tables, so there is one place to get it wrong.
                 #
-                # Why this matters concretely: the fallback is `cap = 4` for any
-                # Z not in the table, and Rh (45), Os (76) and Re (75) are not
-                # in it — three of the six metals in every CFM cohort. Measured
-                # against tmQM's own `metal_bo_sum` (the quantity this barrier
-                # constrains), the median for those three is 3.92 / 5.27 / 6.46,
-                # so the fallback penalises roughly half the corpus for Os and
-                # Re outright.
-                #
-                # The merge is per-element, not a replacement: non-metal caps
-                # (C=4, N=3, O=2, ...) still come from DEFAULT_VALENCES, and the
-                # documented default is left untouched because
-                # molmetal_lam/tests/test_cfm_p0_fixes.py pins Pt(II)=4 and
-                # cfm_decoder_yuelbond.py imports the same table.
+                # `aromatic_mass` switches the barrier into the mode that
+                # mirrors the decoder's accounting: the aromatic part is
+                # charged 1.0 at a heteroatom donor and 1.0 for a carbon's
+                # third and later aromatic bond, a metal-ligand bond costs the
+                # ligand endpoint nothing and the metal endpoint 1.0.  Without
+                # it the barrier charged 1.5 for every aromatic bond and
+                # penalised every furan/thiophene (3.0 against a cap of 2),
+                # every fusion carbon (4.5 against 4) and every sulfone
+                # (6.0 against 4) -- atoms the decoder accepts.
                 _sv_penalty = valence_log_barrier(
                     _sv_orders,
                     _sv_z_c,
                     _sv_pair_src,
                     _sv_pair_dst,
                     _sv_n_atoms,
-                    valences=_sv_valences,
+                    aromatic_mass=_sv_soft[:, 4],
                 )
                 soft_valence_term = soft_valence_term + _sv_penalty
                 _sv_n_atoms_total += _sv_n_atoms

@@ -1,0 +1,250 @@
+{
+  "wave": "Wf-A113",
+  "task": "T82",
+  "date": "2026-10-28",
+  "question": "does the soft-valence loss penalise atoms the decoder accepts, or accept atoms the decoder refuses, on the corpus's own bond graph?",
+  "tables": {
+    "loss": "DEFAULT_VALENCES + TMQM_MEASURED_METAL_CAPS, aromatic=1.5",
+    "decoder": "_COVALENT_VALENCE, aromatic=1.0 at heteroatoms and at a carbon's third and later aromatic bond"
+  },
+  "measured": {
+    "cohort": "six project metals",
+    "max_complexes_per_shard": 0,
+    "n_complexes": 33429,
+    "n_atoms_total": 1182297,
+    "n_complexes_where_the_two_disagree": 9002,
+    "frac_complexes_where_the_two_disagree": 0.269287145891292,
+    "n_atoms_mismatched_after_both_fixes": 0,
+    "n_complexes_where_the_two_disagree_caps_fixed": 25778,
+    "frac_complexes_disagree_caps_fixed": 0.7711268658948817,
+    "per_element": {
+      "C": {
+        "loss_cap": 4,
+        "decoder_cap": 4,
+        "n_atoms": 964011,
+        "frac_loss_penalises_decoder_accepts": 0.011251946295218623,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.011251946295218623,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0010248845708192126,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 8810
+          },
+          {
+            "pattern": "AAA",
+            "n": 1317
+          },
+          {
+            "pattern": "AASS",
+            "n": 400
+          }
+        ]
+      },
+      "P": {
+        "loss_cap": 4,
+        "decoder_cap": 5,
+        "n_atoms": 27102,
+        "frac_loss_penalises_decoder_accepts": 0.09375691830861191,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.006198804516271862,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 7.379529186037931e-05,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 1427
+          },
+          {
+            "pattern": "AASS",
+            "n": 504
+          },
+          {
+            "pattern": "DSSS",
+            "n": 273
+          }
+        ]
+      },
+      "S": {
+        "loss_cap": 4,
+        "decoder_cap": 6,
+        "n_atoms": 11159,
+        "frac_loss_penalises_decoder_accepts": 0.1872927681691908,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.0,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 708
+          },
+          {
+            "pattern": "AASS",
+            "n": 666
+          },
+          {
+            "pattern": "DSSS",
+            "n": 454
+          }
+        ]
+      },
+      "Se": {
+        "loss_cap": 2,
+        "decoder_cap": 6,
+        "n_atoms": 544,
+        "frac_loss_penalises_decoder_accepts": 0.36764705882352944,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.0,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "SSS",
+            "n": 132
+          },
+          {
+            "pattern": "AS",
+            "n": 54
+          },
+          {
+            "pattern": "ASS",
+            "n": 4
+          }
+        ]
+      },
+      "N": {
+        "loss_cap": 4,
+        "decoder_cap": 3,
+        "n_atoms": 73302,
+        "frac_loss_penalises_decoder_accepts": 0.00013642192573190364,
+        "frac_decoder_refuses_loss_accepts": 0.0012960082944530845,
+        "frac_loss_only_with_caps_fixed": 0.6159313524869717,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 4.092657771957109e-05,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 7
+          },
+          {
+            "pattern": "ADS",
+            "n": 2
+          },
+          {
+            "pattern": "AAA",
+            "n": 1
+          }
+        ]
+      },
+      "As": {
+        "loss_cap": 4,
+        "decoder_cap": 5,
+        "n_atoms": 409,
+        "frac_loss_penalises_decoder_accepts": 0.02444987775061125,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.012224938875305624,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 4
+          },
+          {
+            "pattern": "AASSS",
+            "n": 3
+          },
+          {
+            "pattern": "SSSSSS",
+            "n": 2
+          }
+        ]
+      },
+      "B": {
+        "loss_cap": 4,
+        "decoder_cap": 3,
+        "n_atoms": 9889,
+        "frac_loss_penalises_decoder_accepts": 0.00020224491859642025,
+        "frac_decoder_refuses_loss_accepts": 0.10132470421680655,
+        "frac_loss_only_with_caps_fixed": 0.035797350591566385,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.7226210941450096,
+        "top_loss_only_patterns": [
+          {
+            "pattern": "ASSS",
+            "n": 2
+          }
+        ]
+      },
+      "O": {
+        "loss_cap": 4,
+        "decoder_cap": 2,
+        "n_atoms": 51561,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0007175966331141755,
+        "frac_loss_only_with_caps_fixed": 0.3066271018793274,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": []
+      },
+      "Cl": {
+        "loss_cap": 4,
+        "decoder_cap": 1,
+        "n_atoms": 22025,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0013166855845629967,
+        "frac_loss_only_with_caps_fixed": 0.004903518728717367,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 4.540295119182747e-05,
+        "top_loss_only_patterns": []
+      },
+      "Br": {
+        "loss_cap": 4,
+        "decoder_cap": 1,
+        "n_atoms": 2691,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.004830917874396135,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": []
+      },
+      "F": {
+        "loss_cap": 4,
+        "decoder_cap": 1,
+        "n_atoms": 15774,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.0003803727653100038,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0,
+        "top_loss_only_patterns": []
+      },
+      "Si": {
+        "loss_cap": 4,
+        "decoder_cap": 4,
+        "n_atoms": 1805,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0,
+        "frac_loss_only_with_caps_fixed": 0.0,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.02326869806094183,
+        "top_loss_only_patterns": []
+      },
+      "I": {
+        "loss_cap": 4,
+        "decoder_cap": 1,
+        "n_atoms": 2025,
+        "frac_loss_penalises_decoder_accepts": 0.0,
+        "frac_decoder_refuses_loss_accepts": 0.0014814814814814814,
+        "frac_loss_only_with_caps_fixed": 0.008888888888888889,
+        "frac_dec_only_with_caps_fixed": 0.0,
+        "frac_both_over": 0.0004938271604938272,
+        "top_loss_only_patterns": []
+      }
+    }
+  },
+  "script": "molmetal/scripts/wfa113_t82_loss_decoder_valence_split_probe.py"
+}
