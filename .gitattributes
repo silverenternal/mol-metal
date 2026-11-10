@@ -46,3 +46,6 @@ molmetal/reports/** linguist-vendored
 
 # Atomic-write backup markers (per AGENTS.md §5.6): never merge via Git
 *.bak.wf* linguist-vendored
+
+# Preserve dataset byte hashes used by registry and frozen splits.
+.data/molmetal/** -text

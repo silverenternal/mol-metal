@@ -28,8 +28,7 @@ project's relevant CPU tests. Before any retraining, run
 
 - `data/msrs/measurements.parquet` and `measurements_dedup.parquet` are tracked
   for the predictive line.
-- `.data/molmetal/MetalCytoToxDB.csv`, the CFM v3 and v5 CSVs, and the v5
-  split manifest are included despite the general `.data` ignore rule. The
+- `.data/molmetal/MetalCytoToxDB.csv`, the CFM cohort CSVs, and the v5 split manifest are included despite the general `.data` ignore rule. The
   source dataset is MetalCytoToxDB by Krasnov et al.; cite the authors and
   https://doi.org/10.1021/acs.jmedchem.5c02755 when using it. The dataset is
   available at https://zenodo.org/records/17106822.
@@ -51,8 +50,8 @@ The large `molmetal/data/pre_featurized/*.pt` caches were deliberately removed.
 The D-MPNN pretraining loader fails without them; regenerate with
 `.venv/bin/python molmetal/scripts/pre_featurize_dmpnn.py` only after restoring
 all of its input datasets and checking disk/memory requirements. This rebuild
-has not been validated on a clean host. External datasets such as BindingDB,
-ChEMBL and tmQM and optional tools need to be obtained separately; consult
+has not been validated on a clean host. Large external datasets such as BindingDB,
+ChEMBL and NCI-60 GI50 and optional tools need to be obtained separately; consult
 `DATA_STATUS.md` and the corresponding loaders. Some historical paths and
 symlinks are host-specific, and some documentation describes older hardware or
 superseded metrics.
@@ -62,18 +61,31 @@ historical metric's checkpoint is available. See the cleanup reports in
 `reports/` and `docs/PREDICTIVE_LINE_INDEX.md` before treating a result as
 current.
 
-## Optional Flow Matching reference checkout
+## Flow Matching reference files
 
-The CPU index test imports the local reference loader and warns that
-`molmetal/references/flow_matching` is absent in a fresh clone. Paths that
-require that upstream reference need a compatible checkout there; see
-`molmetal/adapters/flow_matching_lipman/_reference_loader.py`. For example:
+The local Flow Matching reference files used by this snapshot are included at
+`molmetal/references/flow_matching/`. Their symlinks are repository-relative.
+They preserve the files used in this working tree; they are not a complete
+upstream checkout. Some optional integrations may require separate upstream
+software and must be checked against the task being run.
+
+## Restore the external registry data archive
+
+The GitHub release `server-recovery-20261111` contains the NCI-60 GI50 file
+and the registered Rusanov supplementary files that are too large or unsuitable
+for ordinary Git blobs. Restore from the repository root:
 
 ```bash
-mkdir -p molmetal/references
-git clone https://github.com/facebookresearch/flow_matching.git molmetal/references/flow_matching
+gh release download server-recovery-20261111 \
+  --repo silverenternal/mol-metal \
+  --pattern external-registry-data.tar.gz --dir /tmp
+sha256sum /tmp/external-registry-data.tar.gz
+# Compare with archive_sha256 in data/recovery/external-registry-data.json.
+tar -xzf /tmp/external-registry-data.tar.gz -C .
 ```
 
-No compatible upstream commit has been established for this snapshot, and
-this optional checkout has not been tested. The reference symlink is relative to the repository and resolves after the
-external checkout is installed.
+The manifest records every archived path and SHA-256. Do not extract over
+locally modified files without checking them first. The archive supplements
+Git; it does not include BindingDB, ChEMBL, raw tmQM, every historical
+checkpoint, or all ignored reports. The data and original publications carry
+their own attribution and reuse terms.

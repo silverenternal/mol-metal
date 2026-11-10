@@ -1,0 +1,85 @@
+{
+  "created_at_utc": "2026-11-10T16:17:31.292885+00:00",
+  "archive": "external-registry-data.tar.gz",
+  "archive_sha256": "cc002b3ffcc450be0e5d10e891ce4e76ef939376ea8544ccaac709c986683cea",
+  "archive_bytes": 118790612,
+  "files": [
+    {
+      "path": ".data/molmetal/NCI60_GI50/GI50.csv",
+      "bytes": 420971534,
+      "sha256": "b6474302f57ab9d49d7a9241410a777c88078580dee2a186171aab04da2bd27f",
+      "registry_sha256": "b6474302f57ab9d49d7a9241410a777c88078580dee2a186171aab04da2bd27f",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/parsed/s5_ece.json",
+      "bytes": 1594,
+      "sha256": "7067aad0c0c58cdede06edb1dfca136b8f8225b2e697f89cc33589f37f58018b",
+      "registry_sha256": "7067aad0c0c58cdede06edb1dfca136b8f8225b2e697f89cc33589f37f58018b",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/parsed/s7_pt_wet_lab.json",
+      "bytes": 9715,
+      "sha256": "513ef5cabbb59bba69a5e406315c924be2e5fdecd57123fd93a2f10b76c880c6",
+      "registry_sha256": "513ef5cabbb59bba69a5e406315c924be2e5fdecd57123fd93a2f10b76c880c6",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s2. supplementary_table_top_journals.xlsx",
+      "bytes": 23939,
+      "sha256": "7bfc13435845ec3ae436a4d6f52bf96c789cae6df1c64c09e18c28f720c87b3f",
+      "registry_sha256": "7bfc13435845ec3ae436a4d6f52bf96c789cae6df1c64c09e18c28f720c87b3f",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s3. supplementary_table_resistance.xlsx",
+      "bytes": 20251,
+      "sha256": "5c293bceb67faa4403a07545ae852bef597f570ae0ca97bf8ee746c6e712f86e",
+      "registry_sha256": "5c293bceb67faa4403a07545ae852bef597f570ae0ca97bf8ee746c6e712f86e",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s4. supplementary_table_statistics.xlsx",
+      "bytes": 217575,
+      "sha256": "00b268f193e16bb10c96ce7a7650be0f8a889bb06c0944d60068ff13072a8de1",
+      "registry_sha256": "00b268f193e16bb10c96ce7a7650be0f8a889bb06c0944d60068ff13072a8de1",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s6. predicted cytotoxicity of the 214,373 unlabeled platinum complexes (mkano).xlsx",
+      "bytes": 52439778,
+      "sha256": "2fc8cc5c6c2f3400e3744a5b702489845ef1f5d1ccd44a456a4092b7351dbfdd",
+      "registry_sha256": "2fc8cc5c6c2f3400e3744a5b702489845ef1f5d1ccd44a456a4092b7351dbfdd",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s8. summary of obtained mean roc-auc, precision, recall, and f1 score values.xlsx",
+      "bytes": 36725,
+      "sha256": "e781b1a413b73fe0cc09d130f8bd849f9dfc32788ece00f1c5b8f671b2f2bfd1",
+      "registry_sha256": "e781b1a413b73fe0cc09d130f8bd849f9dfc32788ece00f1c5b8f671b2f2bfd1",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s9. predicted de novo structures_a549_a2780_a2780cis_mcf-7_72 h_427 complexes.xlsx",
+      "bytes": 82911,
+      "sha256": "9ebb214fc5ff653baa872b1a935b7ecd77eb7d1fe8d69470ca37e03e6d0a0226",
+      "registry_sha256": "9ebb214fc5ff653baa872b1a935b7ecd77eb7d1fe8d69470ca37e03e6d0a0226",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s10. correlated deg-deps in a2780cis cells treated with platinai.xlsx",
+      "bytes": 72882,
+      "sha256": "f9e371eb6b3008e7fee23bd5686fc2e242ad0d701386a8ad2aa905a17e38d319",
+      "registry_sha256": "f9e371eb6b3008e7fee23bd5686fc2e242ad0d701386a8ad2aa905a17e38d319",
+      "matches_registry": true
+    },
+    {
+      "path": ".data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/supplementary_information_v2.pdf",
+      "bytes": 17081796,
+      "sha256": "1e1663d509a12d3f773b9adde9d656a82c923aacd02425ce9454518fd406ff1f",
+      "registry_sha256": "1e1663d509a12d3f773b9adde9d656a82c923aacd02425ce9454518fd406ff1f",
+      "matches_registry": true
+    }
+  ]
+}
