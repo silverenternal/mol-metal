@@ -1,0 +1,228 @@
+{
+  "metadata": {
+    "wf": "Wf-130",
+    "phase": "Phase 1",
+    "r20_plan": "R20-P5",
+    "n_metals": 30,
+    "n_seeds": 5,
+    "max_depth": 1,
+    "max_products": 64,
+    "real_bfs_available": false,
+    "synthetic_only": true,
+    "timestamp": "2026-09-26T19:17:31Z",
+    "wall_time_s_total": 0.00433902902295813
+  },
+  "metals": {
+    "Sc": {
+      "metal": "Sc",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ti": {
+      "metal": "Ti",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "V": {
+      "metal": "V",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Cr": {
+      "metal": "Cr",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Mn": {
+      "metal": "Mn",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Fe": {
+      "metal": "Fe",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Co": {
+      "metal": "Co",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ni": {
+      "metal": "Ni",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Cu": {
+      "metal": "Cu",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Zn": {
+      "metal": "Zn",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Y": {
+      "metal": "Y",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Zr": {
+      "metal": "Zr",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Nb": {
+      "metal": "Nb",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Mo": {
+      "metal": "Mo",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Tc": {
+      "metal": "Tc",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ru": {
+      "metal": "Ru",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Rh": {
+      "metal": "Rh",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Pd": {
+      "metal": "Pd",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ag": {
+      "metal": "Ag",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Cd": {
+      "metal": "Cd",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Hf": {
+      "metal": "Hf",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ta": {
+      "metal": "Ta",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "W": {
+      "metal": "W",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Re": {
+      "metal": "Re",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Os": {
+      "metal": "Os",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Ir": {
+      "metal": "Ir",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Pt": {
+      "metal": "Pt",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Au": {
+      "metal": "Au",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "Hg": {
+      "metal": "Hg",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    },
+    "La": {
+      "metal": "La",
+      "six_of_six_pass": true,
+      "n_pass": 6,
+      "n_fail": 0,
+      "synthetic_only": true
+    }
+  },
+  "wf68_back_link": "../../wf68_p5_1_catherine/catherine_6_props.json"
+}

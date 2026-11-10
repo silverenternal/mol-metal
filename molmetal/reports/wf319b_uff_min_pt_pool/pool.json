@@ -1,0 +1,999 @@
+{
+  "summary": {
+    "status": "MEASURED_SMOKE",
+    "generated_at": "2026-09-29T02:32:25+00:00",
+    "source": "Wf-319B",
+    "honest_framing": {
+      "scope": "smoke (100 conformers; CPU-only RDKit UFF)",
+      "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv",
+      "downstream": "m10 Vina Min Score ceiling (WEAK_TO_STRONG §2.7 PROJECTED)",
+      "full_pipeline": "UFF-min × Vina requires GPU portion (out of scope for this smoke)"
+    },
+    "config": {
+      "n_requested": 100,
+      "seed": 42,
+      "max_iter": 200,
+      "embed_method": "ETKDGv3 (fallback ETKDGv2)"
+    },
+    "n_conformers_generated": 96,
+    "n_conformers_failed": 4,
+    "energy_kcal_per_mol": {
+      "mean": 8474806030185.788,
+      "std": 70248949437765.445,
+      "min": 0.15446173516293957,
+      "max": 682225018266748.8,
+      "distribution_buckets": {
+        "<0": 0,
+        "0-50": 9,
+        "50-200": 26,
+        "200-500": 8,
+        ">=500": 53
+      }
+    },
+    "wall_clock_sec": 73.7258397359401,
+    "HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING": true,
+    "honest_negative_reason": "RDKit UFF force field lacks Pt (d-block metal) atom-type parameters; UFFTYPER logs 'Unrecognized atom type: Pt6+2' for every Pt atom. Energies are fallback terms, not physical. Conformers (3D coords) are valid for downstream Vina docking but should NOT be used as a real minimization metric. The m10 Vina Min Score ceiling improvement (WEAK_TO_STRONG §2.7) remains PROJECTED — full UFF-min x Vina pipeline requires a force field that includes d-block metal parameters (e.g. MACE-OFF23 or SMIRNOFF/OpenFF with d-block coverage, neither of which is in this venv)."
+  },
+  "conformers": [
+    {
+      "smiles": "[Cl-]->[Pt+2](<-[Cl-])(<-[n]1cccc(-c2ccc[nH]2)c1)<-[n]1cccc(-c2ccc[nH]2)c1",
+      "n_atoms": 41,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 102.7438825183657,
+      "converged": false,
+      "pool_index": 1
+    },
+    {
+      "smiles": "CCOP1(OCC)=[O]->[Pt+2](<-[CH3-])(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)C1c1ccccc1",
+      "n_atoms": 60,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 43296.37253219328,
+      "converged": true,
+      "pool_index": 2
+    },
+    {
+      "smiles": "CC1(C)CC(=O)CC(C)(C)[P]1(c1ccccc1)->[Pt+2]1(<-[Cl-])<-[CH-]2C(=O)CC(C)(C)[P]->1(c1ccccc1)C2(C)C",
+      "n_atoms": 77,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 10111906841.574343,
+      "converged": true,
+      "pool_index": 3
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2]1(<-[Cl-])<-[P](CC2CCCN2[P]->1(c1ccccc1)c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 64,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 198732.65615625647,
+      "converged": true,
+      "pool_index": 4
+    },
+    {
+      "smiles": "[Br-]->[Pt+2]1(<-[C]2N(Cc3ccccc3)c3ccccc3N2Cc2ccccc2)<-[c-]2ccccc2-c2cccc[n]->12",
+      "n_atoms": 63,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 129.6063897697859,
+      "converged": true,
+      "pool_index": 5
+    },
+    {
+      "smiles": "O=C1C=Cc2ccccc2[P](c2ccccc2)(c2ccccc2)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)c2ccccc2C=C1",
+      "n_atoms": 79,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 21917984.737893973,
+      "converged": true,
+      "pool_index": 6
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2]1(<-[S]=P(N=P([S-]->1)(c1ccccc1)c1ccccc1)(c1ccccc1)c1ccccc1)<-[P](c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 85,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 214.16663348171198,
+      "converged": true,
+      "pool_index": 7
+    },
+    {
+      "smiles": "c1ccc([P]2(N=c3scc[n-]3->[Pt+2]<-23<-[n-]2ccsc2=N[P]->3(c2ccccc2)c2ccccc2)c2ccccc2)cc1",
+      "n_atoms": 63,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 3491.7996651571657,
+      "converged": true,
+      "pool_index": 8
+    },
+    {
+      "smiles": "[I-]->[Pt+2]12<-[n]3ccccc3-c3cccc(-c4cccc[n]->14)[n]->23",
+      "n_atoms": 31,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 75.71330657722366,
+      "converged": false,
+      "pool_index": 9
+    },
+    {
+      "smiles": "C[S]1(=O)CC([NH2]->[Pt+2]<-1(<-[Cl-])<-[Cl-])C(=O)O",
+      "n_atoms": 21,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 13.600861675466144,
+      "converged": true,
+      "pool_index": 10
+    },
+    {
+      "smiles": "Cc1ccc([S](C)(=O)->[Pt+2](<-[Cl-])(<-[Cl-])<-[n]2ccccc2)cc1",
+      "n_atoms": 34,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 24.190041559725866,
+      "converged": true,
+      "pool_index": 11
+    },
+    {
+      "smiles": "C[C-](=O)->[PtH+3]12(<-[C-](C)=O)<-[n]3cccn3[BH-](n3ccc[n]->13)n1ccc[n]->21",
+      "n_atoms": 40,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 144.16498958531818,
+      "converged": true,
+      "pool_index": 12
+    },
+    {
+      "smiles": "CC(C)(C)c1ccc2-c3cccc[n]3->[Pt+2](<-[Cl-])(<-[c-]2c1)<-[n]1ccccc1",
+      "n_atoms": 45,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 96.8867370250807,
+      "converged": true,
+      "pool_index": 13
+    },
+    {
+      "smiles": "[Cl-]->[Pt+4]12(<-[Cl-])(<-[Cl-])<-[NH]3CC[NH]->1CC[NH]->2CC3",
+      "n_atoms": 28,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1983.1938772712688,
+      "converged": false,
+      "pool_index": 14
+    },
+    {
+      "smiles": "N#CC1(C#N)[O-]->[Pt+2](<-[C-]1(C#N)C#N)(<-[As](c1ccccc1)(c1ccccc1)c1ccccc1)<-[As](c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 80,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2652.338420269186,
+      "converged": true,
+      "pool_index": 15
+    },
+    {
+      "smiles": "CC(=O)[O-]->[Pt+4]1(<-[Cl-])(<-[Cl-])(<-[NH2]CC[NH]->1C1CCCCC1)<-[O-]C(C)=O",
+      "n_atoms": 45,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 13338.933941760642,
+      "converged": true,
+      "pool_index": 16
+    },
+    {
+      "smiles": "C[N]1(C)CC[NH2]->[Pt+4]<-1(<-[Cl-])(<-[Cl-])(<-[O-]C(=O)C=Cc1ccccc1)<-[O-]C(=O)C=Cc1ccccc1",
+      "n_atoms": 57,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 4151046491.8615537,
+      "converged": true,
+      "pool_index": 17
+    },
+    {
+      "smiles": "CC[N]1(CC)CC[N-](c2c(F)c(F)c(Br)c(F)c2F)->[Pt+2]<-1(<-[Cl-])<-[n]1ccccc1",
+      "n_atoms": 46,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2836.776203022061,
+      "converged": true,
+      "pool_index": 18
+    },
+    {
+      "smiles": "COC(=O)CCCCC[N]1=Cc2cccc[n]2->[Pt+2]<-1(<-[Cl-])<-[Cl-]",
+      "n_atoms": 38,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 128.65809961637643,
+      "converged": false,
+      "pool_index": 19
+    },
+    {
+      "smiles": "Cc1cc[n](->[Pt+2]23<-[O-]c4ccc(C)cc4[N]->2=Nc2c4ccccc4cc[c-]->32)cc1",
+      "n_atoms": 47,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 55.69884798773933,
+      "converged": true,
+      "pool_index": 20
+    },
+    {
+      "smiles": "O=C1c2cccc[n]2->[Pt+2]2(<-[Cl-])(<-[Cl-])<-[CH]1=[CH]->2c1c2ccccc2cc2ccccc12",
+      "n_atoms": 42,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 682225018266748.8,
+      "converged": true,
+      "pool_index": 21
+    },
+    {
+      "smiles": "C[B-]12[OH]->[Pt+4](<-[CH3-])(<-[c-]3ccccc3)(<-[c-]3ccccc3)(<-[n]3ccccc31)<-[n]1ccccc12",
+      "n_atoms": 54,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 186.75992204712696,
+      "converged": true,
+      "pool_index": 22
+    },
+    {
+      "smiles": "CCCCCCC1(CCCCCC)c2ccc[n]3->[Pt+2](<-[Cl-])(<-[Cl-])<-[n]4cccc1c4-c23",
+      "n_atoms": 60,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 3905795.4844643488,
+      "converged": true,
+      "pool_index": 23
+    },
+    {
+      "smiles": "[Br-]->[Pt+2]1(<-[Br-])<-[n]2cccnc2-c2nccc[n]->12",
+      "n_atoms": 21,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 19.533599318578784,
+      "converged": false,
+      "pool_index": 24
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2]12<-[n]3ccccc3-c3cc(C#Cc4ccc5c(c4)OCCOCCOCCOCCO5)cc(-c4cccc[n]->14)[n]->23",
+      "n_atoms": 70,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 851.7421545746483,
+      "converged": true,
+      "pool_index": 25
+    },
+    {
+      "smiles": "Cc1ccc(N2C=CN3CN4C=CN(c5ccc(C)cc5)[C]4->[Pt+2](<-[Cl-])(<-[Cl-])<-[C]32)cc1",
+      "n_atoms": 48,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 94.03086467343856,
+      "converged": true,
+      "pool_index": 26
+    },
+    {
+      "smiles": "[CH3-]->[Pt+4]12(<-[CH3-])(<-[CH3-])<-[n]3c(C(F)(F)F)cc(C(F)(F)F)n3[BH-](n3c(C(F)(F)F)cc(C(F)(F)F)[n]->13)n1c(C(F)(F)F)cc(C(F)(F)F)[n]->21",
+      "n_atoms": 57,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 326.72894543699357,
+      "converged": true,
+      "pool_index": 27
+    },
+    {
+      "smiles": "Cc1cn(C)c(=O)[n-](->[Pt+2]2(<-[c-]3ccccc3C[N]->2(C)C)<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)c1=O",
+      "n_atoms": 74,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1034.9504476999398,
+      "converged": true,
+      "pool_index": 28
+    },
+    {
+      "smiles": "Clc1ccccc1N[N]1=CC=[N](Nc2ccccc2Cl)->[Pt+2]<-1(<-[Cl-])<-[Cl-]",
+      "n_atoms": 35,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 95.4570558831007,
+      "converged": false,
+      "pool_index": 29
+    },
+    {
+      "smiles": "C[N]1(C)c2cccc3ccc[c-](->[Pt+2]<-14<-[c-]1cccc5cccc([N]->4(C)C)c51)c23",
+      "n_atoms": 51,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 94.06346740297234,
+      "converged": false,
+      "pool_index": 30
+    },
+    {
+      "smiles": "Fc1c(F)c(F)c([S](Cc2ccccc2Br)->[Pt+2](<-[Cl-])(<-[Cl-])<-[S](Cc2ccccc2Br)c2c(F)c(F)c(F)c(F)c2F)c(F)c1F",
+      "n_atoms": 55,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 143.47124892501557,
+      "converged": true,
+      "pool_index": 31
+    },
+    {
+      "smiles": "[CH2-]CCCCCC=CCCCCCC[Se-]->[Pt+6](<-[Cl-])(<-[Cl-])<-[Se-]CCCCCCC=CCCCCC[CH2-]",
+      "n_atoms": 85,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 973.740560872175,
+      "converged": true,
+      "pool_index": 32
+    },
+    {
+      "smiles": "Clc1ccc([Se]C(=[CH-]->[Pt+2](<-[Se-]c2ccc(Cl)cc2)(<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)c2ccccc2)cc1",
+      "n_atoms": 107,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1063.3186844509937,
+      "converged": true,
+      "pool_index": 33
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2](<-[Cl-])(<-[P](Cc1ccccc1)(Cc1ccccc1)c1ccccc1)<-[P](Cc1ccccc1)(Cc1ccccc1)c1ccccc1",
+      "n_atoms": 83,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 8364543.210277927,
+      "converged": true,
+      "pool_index": 34
+    },
+    {
+      "smiles": "CCOCc1ccc2[O-]->[Pt+2](<-[Cl-])(<-[n]3cccc1c23)<-[S](C)(C)=O",
+      "n_atoms": 39,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 90.86230649092782,
+      "converged": false,
+      "pool_index": 35
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2]1(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)N(c2cccc3nsnc23)[P]->1(c1ccccc1)c1ccccc1",
+      "n_atoms": 62,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 502508622.49140346,
+      "converged": true,
+      "pool_index": 36
+    },
+    {
+      "smiles": "CCOC(=O)c1cc2-c3cccc[n]3->[Pt+2]3(<-[C-]#N)<-[c-]2c(-c2cccc[n]->32)c1",
+      "n_atoms": 41,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 80.88756980498607,
+      "converged": false,
+      "pool_index": 37
+    },
+    {
+      "smiles": "CCC#[N]->[Pt+2](<-[Cl-])(<-[Cl-])<-[Cl-]",
+      "n_atoms": 13,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 0.15446173516293957,
+      "converged": false,
+      "pool_index": 38
+    },
+    {
+      "smiles": "C[S](C)(=O)->[Pt+2](<-[Br-])(<-[Br-])<-[C]1N(Cc2ccccc2)C=CN1Cc1ccccc1",
+      "n_atoms": 48,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 50.46812969557036,
+      "converged": true,
+      "pool_index": 40
+    },
+    {
+      "smiles": "C[P]1(C)c2ccccc2[P](C)(C)->[Pt+4]<-1(<-[I-])(<-[I-])(<-[c-]1ccc(F)cc1)<-[c-]1ccc(F)cc1",
+      "n_atoms": 53,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 994.9903013014704,
+      "converged": true,
+      "pool_index": 41
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[CH2-]C(C)(C)C)(<-[CH2-]C(C)(C)C)<-[P](CC)(CC)CC",
+      "n_atoms": 77,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 9179736841469.898,
+      "converged": true,
+      "pool_index": 42
+    },
+    {
+      "smiles": "C=CCC1(C[CH]2=[CH2]->[Pt+2]<-23(<-[NH2]CC2(C[NH2]->3)CCOCC2)<-[O-]C1=O)C(=O)[O-]",
+      "n_atoms": 50,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 145.805411556058,
+      "converged": true,
+      "pool_index": 43
+    },
+    {
+      "smiles": "CC(C)(C)[N+]#[C-]->[Pt+2]1(<-[CH3-])<-[c-]2ccccc2-c2cccc[n]->12",
+      "n_atoms": 40,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 46.19627691718832,
+      "converged": false,
+      "pool_index": 44
+    },
+    {
+      "smiles": "C[N]1(C)Cc2cccc3C[N](C)(C)->[Pt+2]<-1(<-[S-]c1ccccn1)<-[c-]23",
+      "n_atoms": 45,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 58.219298390060096,
+      "converged": true,
+      "pool_index": 45
+    },
+    {
+      "smiles": "C[S](C)(=O)->[Pt+2]12<-[c-]3ccccc3-c3cc(-c4ccc(F)c(F)c4)cc(-c4cccc[c-]->14)[n]->23",
+      "n_atoms": 50,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 121.86330935531755,
+      "converged": false,
+      "pool_index": 46
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+4](<-[Br-])(<-[Br-])(<-[Br-])(<-[c-]1c(OC)c(Br)cc(Br)c1OC)<-[P](CC)(CC)CC",
+      "n_atoms": 67,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 28198.78669833628,
+      "converged": true,
+      "pool_index": 47
+    },
+    {
+      "smiles": "O=C1c2ccccc2S(=O)(=O)[N-]1->[Pt+2]1(<-[n]2ccccc2-c2cccc[n]->12)<-[N-]1C(=O)c2ccccc2S1(=O)=O",
+      "n_atoms": 53,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 118.1137435493112,
+      "converged": false,
+      "pool_index": 48
+    },
+    {
+      "smiles": "Cc1cc[n]2->[Pt+4](<-[CH3-])(<-[CH3-])(<-[OH-])(<-[OH-])<-[n]3ccc(C)cc3-c2c1",
+      "n_atoms": 39,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 55.97751089133307,
+      "converged": false,
+      "pool_index": 49
+    },
+    {
+      "smiles": "CC(C)(C)C(Nc1cccc([P](c2ccccc2)(c2ccccc2)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)c2cccc(NC(C(C)(C)C)C(C)(C)C)c2)c1)C(C)(C)C",
+      "n_atoms": 129,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 19097666.330294464,
+      "converged": true,
+      "pool_index": 50
+    },
+    {
+      "smiles": "C1#C[P](c2ccccc2)(c2ccccc2)->[Pt]2(<-[P](C#Cc3ccccc31)(c1ccccc1)c1ccccc1)<-[P](C#Cc1ccccc1C#C[P]->2(c1ccccc1)c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 121,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 218.79981918349543,
+      "converged": true,
+      "pool_index": 51
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[C-]#N)(<-[c-]1ccc(C(F)(F)F)cc1)<-[P](CC)(CC)CC",
+      "n_atoms": 61,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 3116020270284.5537,
+      "converged": true,
+      "pool_index": 52
+    },
+    {
+      "smiles": "CN(C)c1cccc2c(S(=O)(=O)NC3c4cccc[n]4->[Pt+2](<-[Cl-])(<-[Cl-])<-[n]4ccccc43)cccc12",
+      "n_atoms": 55,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 103508559.02865097,
+      "converged": true,
+      "pool_index": 53
+    },
+    {
+      "smiles": "CC1=CC(C)=[N]2c3cc(C)cc4c5ccccc5c(C)[n](->[Pt+2]<-2(<-[Cl-])<-[O-]1)c34",
+      "n_atoms": 44,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1006550.5936564052,
+      "converged": true,
+      "pool_index": 54
+    },
+    {
+      "smiles": "C[P](c1ccccc1)(c1ccccc1)->[Pt+2]1(<-[CH3-])<-[c-]2ccccc2-c2cccc[n]->12",
+      "n_atoms": 52,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 250.4051106321455,
+      "converged": true,
+      "pool_index": 55
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2]1(<-[S-]C=CC=[C-]->1[N+](=O)[O-])<-[P](CC)(CC)CC",
+      "n_atoms": 56,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 29672.18999720249,
+      "converged": true,
+      "pool_index": 56
+    },
+    {
+      "smiles": "N#[N+][N-2]->[Pt+4](<-[N-2][N+]#N)(<-[O-]C(=O)C(F)(F)F)(<-[O-]C(=O)C(F)(F)F)(<-[n]1ccccc1)<-[n]1ccccc1",
+      "n_atoms": 43,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 82.31064941024893,
+      "converged": false,
+      "pool_index": 57
+    },
+    {
+      "smiles": "Cn1c[n](->[Pt+2]2(<-[c-]3ccccc3C[N]->2(C)C)<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)c2c(=O)[nH]cnc21",
+      "n_atoms": 74,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 805.176878246818,
+      "converged": true,
+      "pool_index": 58
+    },
+    {
+      "smiles": "[O-2]->[Pt+4]12<-[c-]3c(C[P]->1(c1ccccc1)c1ccccc1)cccc3C[P]->2(c1ccccc1)c1ccccc1",
+      "n_atoms": 63,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 226.47418177447318,
+      "converged": true,
+      "pool_index": 59
+    },
+    {
+      "smiles": "COc1ccccc1[P](c1ccccc1OC)(c1ccccc1OC)->[Pt+2]1(<-[CH3-])<-[n]2cccc3ccc4ccc[n]->1c4c32",
+      "n_atoms": 73,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 172.4887704347851,
+      "converged": true,
+      "pool_index": 60
+    },
+    {
+      "smiles": "CC(C)(C)C(=O)Nc1csc([P](c2ccccc2)(c2ccccc2)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)c2cc3ccccc3c(=O)[nH]2)n1",
+      "n_atoms": 89,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 636.6393142205046,
+      "converged": true,
+      "pool_index": 61
+    },
+    {
+      "smiles": "CC(C)c1cccc(C(C)C)c1N1C=CN2c3cccc[n]3->[Pt+4](<-[CH3-])(<-[CH3-])(<-[CH3-])(<-[I-])<-[C]12",
+      "n_atoms": 60,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 7019.06526784343,
+      "converged": true,
+      "pool_index": 62
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[Cl-])(<-[Cl-])<-[N]1=S=NSN=P1(c1ccccc1)c1ccccc1",
+      "n_atoms": 53,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2478756214660.771,
+      "converged": true,
+      "pool_index": 63
+    },
+    {
+      "smiles": "CC(C)[P]1(c2ccccc2[B]23c4ccccc4[P](C(C)C)(C(C)C)->[Pt]<-2<-1<-[P](c1ccccc13)(C(C)C)C(C)C)C(C)C",
+      "n_atoms": 95,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 100385063242010.06,
+      "converged": true,
+      "pool_index": 64
+    },
+    {
+      "smiles": "c1ccc(-c2c3ccc4c(-c5ccccc5)c5ccc6c7c8ccccc8c8ccc9c%10ccccc%10c%10c%11ccc2[n-]%11->[Pt+4](<-[n-]34)(<-[n-]56)<-[n-]2c%10c9c8c72)cc1",
+      "n_atoms": 79,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 227853.74185061455,
+      "converged": true,
+      "pool_index": 65
+    },
+    {
+      "smiles": "C[O-]->[Pt+4]1(<-[CH3-])(<-[CH3-])(<-[Cl-])<-[n]2ccccc2C(=O)c2cccc[n]->12",
+      "n_atoms": 37,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 622.1252116216267,
+      "converged": false,
+      "pool_index": 66
+    },
+    {
+      "smiles": "O=[N]([O-])->[Pt+4]1(<-[Cl-])(<-[Cl-])(<-[NH2]CC[NH2]->1)<-[n]1ccccc1",
+      "n_atoms": 29,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 34.04508868433726,
+      "converged": false,
+      "pool_index": 67
+    },
+    {
+      "smiles": "CCc1cc[n](->[Pt+2]2(<-[n]3ccc(CC)cc3)<-[N-](CC[N-]->2c2c(F)c(F)cc(F)c2F)c2c(F)c(F)cc(F)c2F)cc1",
+      "n_atoms": 65,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 139.26602144499157,
+      "converged": true,
+      "pool_index": 68
+    },
+    {
+      "smiles": "[Cl-]->[Pt+2]1(<-[Cl-])<-[P](Oc2ccccc2)(Oc2ccccc2)C2CCCC2[P]->1(Oc1ccccc1)Oc1ccccc1",
+      "n_atoms": 66,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 7028.442832707856,
+      "converged": true,
+      "pool_index": 69
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[Cl-])(<-[Cl-])<-[NH2]c1ccc2c(c1)Cc1ccccc1-2",
+      "n_atoms": 50,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 367.4386052544727,
+      "converged": false,
+      "pool_index": 71
+    },
+    {
+      "smiles": "Fc1ccccc1S1c2ccccc2[P](c2ccccc2)(c2ccccc2)->[Pt+4](<-[Cl-])(<-[Cl-])<-[P](c2ccccc2)(c2ccccc2)c2c[cH-]ccc2=1",
+      "n_atoms": 81,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 4470554423248.285,
+      "converged": true,
+      "pool_index": 72
+    },
+    {
+      "smiles": "O=c1oc2ccc(Cl)cc2cc1-c1cccc[n]1->[Pt+2]1(<-[Cl-])<-[c-]2c(-c3cccc[n]->13)c(=O)oc1ccc(Cl)cc12",
+      "n_atoms": 53,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 292.9763897928232,
+      "converged": true,
+      "pool_index": 73
+    },
+    {
+      "smiles": "[CH3-]->[Pt+2]1(<-[n]2cccc3ccc4ccc[n]->1c4c32)<-[P](c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 61,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 7945.380807824816,
+      "converged": true,
+      "pool_index": 74
+    },
+    {
+      "smiles": "CC(c1cccc[c-]1->[Pt+2]1(<-[Br-])<-[c-]2ccccc2C(C)[N]->1(C)C)[NH+](C)C",
+      "n_atoms": 53,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 30691538.605229143,
+      "converged": true,
+      "pool_index": 75
+    },
+    {
+      "smiles": "[CH3-]->[Pt+2](<-[CH3-])(<-[P](c1ccccc1)(c1ccccc1)C(F)(F)C(F)(F)F)<-[P](c1ccccc1)(c1ccccc1)C(F)(F)C(F)(F)F",
+      "n_atoms": 69,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2503.7857291723185,
+      "converged": true,
+      "pool_index": 76
+    },
+    {
+      "smiles": "COCCOc1c(-c2ccc(C#[C-]->[Pt+2]34<-[c-]5ccccc5-c5cc(C(C)(C)C)cc(-c6cc(C(C)(C)C)cc[n]->36)[n]->45)cc2)oc2ccccc2c1=O",
+      "n_atoms": 93,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2247.1214338476366,
+      "converged": true,
+      "pool_index": 77
+    },
+    {
+      "smiles": "OC(COc1cccc2ccccc12)C[N]12Cc3ccccc3[O-]->[Pt+2]<-1(<-[Cl-])<-[n]1ccccc1C2",
+      "n_atoms": 58,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2774.7074664471547,
+      "converged": true,
+      "pool_index": 78
+    },
+    {
+      "smiles": "C[CH2-]->[Pt+2]1(<-[CH2-]C)<-[N](=Cc2ccccc2[P]->1(c1ccccc1)c1ccccc1)c1c(C)cccc1C",
+      "n_atoms": 68,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 77516705.56502545,
+      "converged": true,
+      "pool_index": 79
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[Br-])(<-[c-]1cccc2ccccc21)<-[P](CC)(CC)CC",
+      "n_atoms": 63,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 8744946742828.465,
+      "converged": true,
+      "pool_index": 80
+    },
+    {
+      "smiles": "COc1c[c-]2->[Pt+4]3(<-[Br-])(<-[Br-])(<-[Br-])<-[N](=Nc2c2ccccc12)c1ccccc1[S]->3C",
+      "n_atoms": 41,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 46.123219163193575,
+      "converged": true,
+      "pool_index": 81
+    },
+    {
+      "smiles": "Cn1ccn([B]23n4ccccc4=[S]->[Pt]<-2(<-[S]=c2n(C)ccn23)<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)c1=S",
+      "n_atoms": 71,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2841700.0388238886,
+      "converged": true,
+      "pool_index": 82
+    },
+    {
+      "smiles": "Cc1cc(C)c([PH](c2c(C)cc(C)cc2C)->[Pt+2](<-[Cl-])(<-[Cl-])<-[PH](c2c(C)cc(C)cc2C)c2c(C)cc(C)cc2C)c(C)c1",
+      "n_atoms": 87,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 29183.00425831083,
+      "converged": true,
+      "pool_index": 83
+    },
+    {
+      "smiles": "CCOP(=O)(OCC)C1c2cccc[n]2->[Pt+2](<-[Cl-])(<-[Cl-])<-[NH]1CCc1ccc2c(c1)OCO2",
+      "n_atoms": 55,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 7667.618096086403,
+      "converged": true,
+      "pool_index": 84
+    },
+    {
+      "smiles": "CC(C)N1C=CN(C(C)C)[C]1->[PtH+](<-[C]1N(C(C)C)C=CN1C(C)C)<-[c-]1nccn1C(C)C",
+      "n_atoms": 73,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 859.6951045730034,
+      "converged": true,
+      "pool_index": 85
+    },
+    {
+      "smiles": "CN[C]1NN[C](NC)->[Pt]<-12<-[N](=O)C(C)=C(C)[N]->2=O",
+      "n_atoms": 33,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 75.02013420710756,
+      "converged": true,
+      "pool_index": 86
+    },
+    {
+      "smiles": "Nc1nc(N)[n]2->[Pt+2]3(<-[Cl-])<-[NH2]CC[NH]->3CCCn3cnc1c32",
+      "n_atoms": 38,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 70317.04383881572,
+      "converged": false,
+      "pool_index": 87
+    },
+    {
+      "smiles": "CC1c2ccccc2[O-]->[Pt+2]23<-[O-]c4c(C=[N]->2C(C)(C)C[N]->3=1)cc(C(C)(C)C)cc4C(C)(C)C",
+      "n_atoms": 68,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1127612536.7006862,
+      "converged": true,
+      "pool_index": 88
+    },
+    {
+      "smiles": "CC(C)(C)c1cc[n]2->[Pt+4](<-[CH3-])(<-[CH3-])(<-[F-])(<-[Cl-])<-[n]3ccc(C(C)(C)C)cc3-c2c1",
+      "n_atoms": 55,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 122.10727141902413,
+      "converged": true,
+      "pool_index": 90
+    },
+    {
+      "smiles": "c1ccc([P](c2ccccc2)(c2ccccc2)->[Pt+2]2(<-[O-]N=N[O-]->2)<-[P](c2ccccc2)(c2ccccc2)c2ccccc2)cc1",
+      "n_atoms": 73,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 346.34484688597155,
+      "converged": true,
+      "pool_index": 91
+    },
+    {
+      "smiles": "CC1(C)[CH2-]->[Pt+4]2(<-[CH3-])(<-[I-])(<-[c-]3ccccc31)<-[n]1ccccc1C[NH]->2c1ccc(O)cc1",
+      "n_atoms": 55,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 197.80457941362778,
+      "converged": true,
+      "pool_index": 93
+    },
+    {
+      "smiles": "CC[P](CC)(CC)->[Pt+2](<-[c-]1ccccc1)(<-[c-]1ccccc1)<-[P](CC)(CC)CC",
+      "n_atoms": 67,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 2654249105212.577,
+      "converged": true,
+      "pool_index": 94
+    },
+    {
+      "smiles": "C[C]12CC[C]3(C)=[CH2]->[Pt+2]<-1<-3(<-[Cl-])(<-[Cl-])<-[CH2]=2",
+      "n_atoms": 25,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 27.849274221597174,
+      "converged": false,
+      "pool_index": 95
+    },
+    {
+      "smiles": "CC1=CC(C)=[N]2c3ccccc3[P](c3ccccc3)(c3ccccc3)->[Pt+2]<-23<-[N-]1c1ccccc1[P]->3(c1ccccc1)c1ccccc1",
+      "n_atoms": 81,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 5775749.821223348,
+      "converged": true,
+      "pool_index": 96
+    },
+    {
+      "smiles": "Fc1c(F)c(F)[c-](->[Pt+2](<-[c-]2c(F)c(F)c(F)c(F)c2F)(<-[P](C#Cc2ccccc2)(c2ccccc2)c2ccccc2)<-[P](C#Cc2ccccc2)(c2ccccc2)c2ccccc2)c(F)c1F",
+      "n_atoms": 95,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 1906.55599993829,
+      "converged": true,
+      "pool_index": 97
+    },
+    {
+      "smiles": "C[C-](=O)->[Pt+2]1(<-[Cl-])<-[P](CC[As]->1(c1ccccc1)c1ccccc1)(c1ccccc1)c1ccccc1",
+      "n_atoms": 60,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 948.3773117382216,
+      "converged": true,
+      "pool_index": 98
+    },
+    {
+      "smiles": "NC(=NNC(N)=[S]->[Pt+2]12<-[S]=C(N)N=[N]->1C(N)=C1C=CC=C[N-]->21)c1ccccn1",
+      "n_atoms": 44,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 310865385285.29004,
+      "converged": true,
+      "pool_index": 99
+    },
+    {
+      "smiles": "Cc1cc[n]2->[Pt+2](<-[Cl-])(<-[Cl-])<-[n]3ccc(C)cc3-c2c1",
+      "n_atoms": 29,
+      "embed_ok": true,
+      "embed_method": "ETKDGv3+randomCoords",
+      "min_ok": true,
+      "energy_kcal_mol": 47.17607212234876,
+      "converged": false,
+      "pool_index": 100
+    }
+  ]
+}

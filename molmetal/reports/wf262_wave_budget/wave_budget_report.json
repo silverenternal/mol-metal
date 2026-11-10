@@ -1,0 +1,95 @@
+{
+  "schema_version": "262.v1",
+  "ts": "2026-11-02T13:16:59+00:00",
+  "budget_hr": 12.0,
+  "cumulative_wave_hr": 52.1,
+  "remaining_hr": -40.1,
+  "waves": [
+    {
+      "wave_name": "Wave-cfm:cfm_full_retrain",
+      "estimated_hr": 16.0,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "configs/cfm_full_retrain.yaml (TODO-119 P1.3 / TODO-181 G5)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-cfm:cfm_real_decode_lift_p1.3",
+      "estimated_hr": 16.0,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "configs/cfm_real_decode_lift_p1.3.yaml (TODO-119 P1.3)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-cfm:cfm_per_innovation_ablation_p1.4",
+      "estimated_hr": 7.5,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "configs/cfm_per_innovation_ablation_p1.4.yaml (TODO-119 P1.4)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-dmpnn:wf124_p3_remaining_metals_g4",
+      "estimated_hr": 1.8,
+      "actual_hr": 41.8,
+      "status": "COMPLETE",
+      "actual_source": "TODO_180_G4_ACTUAL_HR_BY_METAL[sum(Ru,Ir,Os,Rh,Re)] (per 207 v2 \u00a77.1.2)",
+      "source": "configs/wf124_p3_remaining_metals_g4.yaml (TODO-180 G4)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-dmpnn:wf124_p3_50epoch_full_sweep_g5",
+      "estimated_hr": 5.0,
+      "actual_hr": 13.17,
+      "status": "COMPLETE",
+      "actual_source": "TODO_181_G5_ACTUAL_HR=13.17 hr (63.2 s/epoch \u00d7 50 epochs \u00d7 15 pairs MEASURED 2026-09-29 on Ru seed=0 epochs 1-12)",
+      "source": "configs/wf124_p3_50epoch_full_sweep_g5.yaml (TODO-181 G5)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-dmpnn:wf124_p3_per_innovation_ablation_g6",
+      "estimated_hr": 7.5,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "configs/wf124_p3_per_innovation_ablation_g6.yaml (TODO-182 G6)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-1:chemprop_v2_v3_smoke",
+      "estimated_hr": 0.5,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "TODO/completed/207_unified_pre_flight_checklist_v2.md \u00a7C (3-epoch Rh smoke)",
+      "deferred_class": "DEFERRED_TEMP"
+    },
+    {
+      "wave_name": "Wave-2:chemprop_v2_full_sweep_5metal_5seed_50ep",
+      "estimated_hr": 4.6,
+      "actual_hr": null,
+      "status": "PLANNED",
+      "actual_source": null,
+      "source": "TODO/completed/207_unified_pre_flight_checklist_v2.md \u00a70.3 + TODO-154 \u00a73",
+      "deferred_class": "DEFERRED_TEMP"
+    }
+  ],
+  "deferred_waves": [],
+  "deferred_temp_waves": [],
+  "deferred_permanent_waves": [],
+  "deferred_temp_hr": 0,
+  "deferred_permanent_hr": 0,
+  "deferred_class_filter": "all",
+  "honest_framing": "12.0h budget exceeded by 40.1h (--no-enforce-budget; user opted out of DEFERRED labeling); all 8 wave(s) PLANNED.",
+  "wave_source": "auto-derived from configs/*.yaml + Wf-258 audit",
+  "auto_discovered": true,
+  "n_configs_scanned": 6,
+  "n_actual_hr_loaded": 2,
+  "reports_globs": [
+    "/home/hugo/codes/mol-metal/molmetal/reports/wf*/**/log"
+  ]
+}

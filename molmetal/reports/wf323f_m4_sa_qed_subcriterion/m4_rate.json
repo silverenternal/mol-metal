@@ -1,0 +1,30 @@
+{
+  "metric": "m4_success_rate_sa_qed_subcriterion",
+  "status": "MEASURED",
+  "n_input": 449,
+  "n_parsed": 449,
+  "n_failed": 0,
+  "thresholds": {
+    "sa_max": 2.8,
+    "qed_min": 0.5
+  },
+  "sub_rate_sa_qed": 0.0022271714922048997,
+  "sub_rate_sa_only": 0.08463251670378619,
+  "sub_rate_qed_only": 0.04899777282850779,
+  "n_sub_rate_sa_qed_pass": 1,
+  "n_sub_rate_sa_only_pass": 38,
+  "n_sub_rate_qed_only_pass": 22,
+  "per_pool_distribution": {
+    "sa_bucket_lt_2_8": 38,
+    "sa_bucket_2_8_to_4": 132,
+    "sa_bucket_4_to_6": 195,
+    "sa_bucket_6_plus": 84,
+    "qed_bucket_lt_0_25": 298,
+    "qed_bucket_0_25_to_0_5": 129,
+    "qed_bucket_0_5_to_0_75": 21,
+    "qed_bucket_0_75_plus": 1
+  },
+  "wf_design_ref": "TODO/03_plans/WEAK_TO_STRONG_PLAN.md \u00a72.4",
+  "wf_tag": "Wf-323F m4 SA/QED sub-criterion smoke (CPU-only)",
+  "honest_framing_note": "MEASURED on the 449 metallo-drug cohort (Wf-315A canonical pass-through). Sub-rate is the SA/QED AND rate independent of Vina \u2014 Vina sub-criterion binding at 0/100 per WEAK_TO_STRONG \u00a72.4 (cascades from m3). m4 = SA/QED sub-rate \u2229 Vina sub-rate; Vina portion is OUT OF SCOPE for this CPU smoke (USER_OK-gated GPU work per mol-metal-gpu-execution \u00a70)."
+}
