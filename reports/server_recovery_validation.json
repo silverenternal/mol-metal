@@ -1,0 +1,56 @@
+{
+  "timestamp_utc": "2026-11-10T16:26:54.617709+00:00",
+  "tag": "MEASURED",
+  "tested_commit": "30ce62013a46db53fa8a57800699dc046c28b6c6",
+  "scope": "GitHub depth-one checkout plus release data archive; CPU-only; used existing server virtualenv via symlink, not an isolated fresh install.",
+  "archive_sha256": "cc002b3ffcc450be0e5d10e891ce4e76ef939376ea8544ccaac709c986683cea",
+  "archive_files_verified": 11,
+  "predictive_index_pytest_passed": 337,
+  "registry": {
+    "datasets_verified": 35,
+    "datasets_total": 35,
+    "metrics_status": "STALE",
+    "stale_metric_ids": [
+      "wf32_pb_valid",
+      "wf32_pb_valid_summary"
+    ]
+  },
+  "preflight": {
+    "pipeline": "all",
+    "summary": {
+      "pass": 112,
+      "fail": 9,
+      "skip": 11,
+      "warn": 0,
+      "timeout": 0,
+      "total": 133,
+      "total_wall_sec": 89.4446
+    },
+    "failed_gates": [
+      "p3_r20_phase0_loaders_complete",
+      "p3_wf343c4_hyperparams_config_complete",
+      "p3_wf343c4_wave_budget_remaining_nonneg",
+      "p3_wf343c3_data_quality_check",
+      "p3_script_contract_check",
+      "p3_narrative_claims_check",
+      "p3_run_ledger_provenance",
+      "p3_run_ledger_config_provenance",
+      "p3_ssot_path_reference_check"
+    ],
+    "skipped_gates": [
+      "p1_cfm_smoke_decoded",
+      "p3_pb_packages_available_or_documented",
+      "p3_pb_packages_status_present",
+      "p3_m8_full_pass_rate_documented",
+      "p3_wf_r43_m16_pt_ckpt_gap",
+      "p3_wf_r43_m1_paper_cohort",
+      "p3_wf_r43_m2_cohort_independence",
+      "p3_wf_r43_m7_subpocket_uniform",
+      "p3_wf_r43_m19_lomo_headline",
+      "p1_gpu_env_probe",
+      "data_2_1_6_bindingdb_external_honest_negative"
+    ]
+  },
+  "fresh_install": "NOT VERIFIED: uv lock --check failed building optional torch-scatter without torch in build isolation.",
+  "caveat": "Current server contains ignored data and historical checkpoints not included in Git or the release archive. Do not remove the source server until recovery for required workflows is independently validated."
+}

@@ -89,3 +89,13 @@ locally modified files without checking them first. The archive supplements
 Git; it does not include BindingDB, ChEMBL, raw tmQM, every historical
 checkpoint, or all ignored reports. The data and original publications carry
 their own attribution and reuse terms.
+
+## Validation and remaining blockers
+
+`reports/server_recovery_validation.json` records the dated verification of a
+GitHub checkout and downloaded release archive using the old server's Python
+environment. Its full pre-flight did **not** pass. In particular, the lock
+file has not been successfully installed in an isolated environment, two
+metric registry entries are stale, and several gates still fail. This is not
+proof that it is safe to discard the source server. Check the report and make
+an independent backup of any ignored data or weights needed by your workflows.
