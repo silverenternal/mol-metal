@@ -7,9 +7,13 @@
 Start with [`docs/SERVER_RECOVERY.md`](docs/SERVER_RECOVERY.md) for the GitHub
 checkout, required external data archive, preserved checkpoints, and known
 recovery gaps. Check [`reports/server_recovery_validation.json`](reports/server_recovery_validation.json)
-for the latest recorded recovery test. **A fresh installation and the full
-pre-flight have not passed; do not delete the source server until your required
-workflows and remaining ignored files have been independently verified.**
+for the latest recorded recovery test. > Historical recovery warning (superseded 2026-11-11): **A fresh installation and the full
+> pre-flight have not passed; do not delete the source server until your required
+> workflows and remaining ignored files have been independently verified.**
+
+**Update 2026-11-11:** A new local virtual environment has been verified, but
+the full pre-flight still fails and recovery on another host has not been
+tested. Resolve those blockers before relying on this snapshot for training.
 
 For project context, read [`docs/00_MODEL_NARRATIVE.md`](docs/00_MODEL_NARRATIVE.md)
 and [`docs/PREDICTIVE_LINE_INDEX.md`](docs/PREDICTIVE_LINE_INDEX.md); the latter

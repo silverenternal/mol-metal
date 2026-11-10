@@ -1,5 +1,86 @@
 # Restoring a working Mol-Metal checkout
 
+> **Current recovery procedure — 2026-11-11.** This section supersedes the
+> older instructions below. The asset archives were built from the existing
+> server files; no source dataset was re-downloaded for this recovery.
+
+A full (not shallow) clone preserves the Git history required by provenance
+checks. Install Python 3.12, `uv`, GitHub CLI (`gh`), `zstd`, `unzip`, `tar`
+and `sha256sum`; ensure the destination has enough space for the release
+assets, the extracted ChEMBL and BindingDB files, and the environment.
+
+```bash
+git clone https://github.com/silverenternal/mol-metal.git
+cd mol-metal
+uv sync --locked
+mkdir -p ../molmetal-recovery-assets
+gh release download server-recovery-20261111 \
+  --repo silverenternal/mol-metal --dir ../molmetal-recovery-assets
+scripts/restore_server_assets.sh ../molmetal-recovery-assets
+CUDA_VISIBLE_DEVICES='' .venv/bin/python molmetal/scripts/registry.py check
+CUDA_VISIBLE_DEVICES='' .venv/bin/python molmetal/scripts/pre_flight_check.py --pipeline all
+```
+
+The restore script verifies every release asset against
+[`data/recovery/assets.sha256`](../data/recovery/assets.sha256), refuses to
+replace a local file with different contents, extracts the selected training
+inputs and referenced evidence, reconstructs both large databases, and checks
+their hashes. It recreates two relative symlinks needed by historical tools.
+The original server also stores pocket and cross-docking inputs in a separate
+`pocket/data` tree; those external data are **not** inside this repository or
+the release assets. When that existing tree is available, recreate the links
+without downloading data:
+
+```bash
+.venv/bin/python scripts/restore_pocket_links.py /path/to/pocket/data
+```
+
+The tool checks every target before creating links and refuses to overwrite
+existing paths. If the external tree is unavailable, pocket/cross-docking work
+remains blocked until it is supplied.
+
+The release also contains `repository-refs.bundle`, holding the old server's
+reachable Git refs, and `worktrees-changes.tar.gz`, holding patches and
+untracked source files from its secondary worktrees. Those patches are **not**
+automatically applied. Inspect that archive's `manifest.json` and apply only
+changes you need. To inspect the old branch history without replacing the
+current branch:
+
+```bash
+git bundle verify ../molmetal-recovery-assets/repository-refs.bundle
+git fetch ../molmetal-recovery-assets/repository-refs.bundle \
+  '+refs/heads/*:refs/remotes/server-backup/*'
+```
+
+If this repository is restored at a different path, legacy YAML files may
+contain the former server's absolute root. Create a relocated copy before
+using such a config; keep the original for provenance:
+
+```bash
+.venv/bin/python scripts/relocate_config.py configs/cfm_5metal_default.yaml \
+  /tmp/molmetal-relocated-cfm.yaml
+```
+
+The tool replaces only the old repository root in YAML string values and
+refuses to overwrite an existing destination. Choose the relocated config in
+the appropriate launcher and still run pre-flight before training. Shell
+scripts and non-YAML files may have independent host-specific paths.
+
+A clean clone, a new virtual environment, local restoration from the archives,
+and the core data-loader, predictive-index and path-reference tests were
+verified on the source server. The full pre-flight still reports failures in
+historical budget, configuration and run-ledger provenance checks; do not
+launch training until those are resolved. A separate machine has not been
+verified. Some deliberately deleted diagnostics and intermediate checkpoints
+are not included; the large pre-featurized tensors must be regenerated if
+needed. Read [`reports/server_recovery_validation.json`](../reports/server_recovery_validation.json)
+for the dated measurements and remaining limits.
+
+---
+
+## Earlier recovery notes (historical)
+
+
 This document describes the files preserved in Git and the gaps that remain.
 Do not delete the original server copy until a fresh clone has been checked
 against the data and experiments you need.

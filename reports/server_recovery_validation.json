@@ -52,5 +52,99 @@
     ]
   },
   "fresh_install": "NOT VERIFIED: uv lock --check failed building optional torch-scatter without torch in build isolation.",
-  "caveat": "Current server contains ignored data and historical checkpoints not included in Git or the release archive. Do not remove the source server until recovery for required workflows is independently validated."
+  "caveat": "Current server contains ignored data and historical checkpoints not included in Git or the release archive. Do not remove the source server until recovery for required workflows is independently validated.",
+  "followups": [
+    {
+      "timestamp_utc": "2026-11-10T17:03:27.864526+00:00",
+      "tag": "MEASURED",
+      "scope": "Full GitHub clone on the same server with a newly created uv environment; registry release archive and locally built training/evidence archives extracted; no dataset fetched from its upstream source.",
+      "uv_lock_check": "PASS",
+      "uv_sync_locked": "PASS",
+      "console_help": "PASS",
+      "predictive_index_pytest": {
+        "passed": 337
+      },
+      "loader_tests": {
+        "passed": 79
+      },
+      "path_reference_tests": {
+        "passed": 19
+      },
+      "narrative_claims": {
+        "passed": 47,
+        "drifted": 0,
+        "unverifiable": 0
+      },
+      "preflight": {
+        "pipeline": "all",
+        "summary": {
+          "pass": 119,
+          "fail": 3,
+          "skip": 10,
+          "warn": 0,
+          "timeout": 0,
+          "total": 133,
+          "total_wall_sec": 90.9925
+        },
+        "failed_gates": [
+          "p3_wf343c4_hyperparams_config_complete",
+          "p3_wf343c4_wave_budget_remaining_nonneg",
+          "p3_run_ledger_provenance"
+        ],
+        "skipped_gates": [
+          "p3_pb_packages_available_or_documented",
+          "p3_pb_packages_status_present",
+          "p3_m8_full_pass_rate_documented",
+          "p3_wf_r43_m16_pt_ckpt_gap",
+          "p3_wf_r43_m1_paper_cohort",
+          "p3_wf_r43_m2_cohort_independence",
+          "p3_wf_r43_m7_subpocket_uniform",
+          "p3_wf_r43_m19_lomo_headline",
+          "p1_gpu_env_probe",
+          "data_2_1_6_bindingdb_external_honest_negative"
+        ]
+      },
+      "full_history": true,
+      "chembl_original_and_archive_sha256": "3111c31f645e9e74c5ea0ad57317791b4cf044cd12e815cb52ff638ae5c52fb0",
+      "bindingdb_original_and_zip_sha256": "66bb5f955bd88d2970636764603f8c26c0e010a58b46276ac27d85656a9aa8fb",
+      "scope_limit": "Different-host recovery has not been tested. Historical budget, missing configuration hyperparameters and ledger provenance remain launch blockers. Deliberately removed diagnostics and intermediate weights are not restored."
+    },
+    {
+      "timestamp_utc": "2026-11-10T17:12:51.174469+00:00",
+      "tag": "MEASURED",
+      "scope": "Full GitHub clone outside the original project folder, new uv environment, archives rebuilt from existing local data; no upstream dataset re-download after user instruction.",
+      "restore_script": "PASS; release asset checksums, restored BindingDB and ChEMBL file hashes verified; repeat execution passed",
+      "release_asset_count": 20,
+      "external_pocket_links": {
+        "recorded": 2467,
+        "verified": 2467,
+        "idempotent": true
+      },
+      "git_bundle": "downloaded from release, sha256 verified, git bundle verify and branch import passed",
+      "tests": {
+        "predictive_and_path_reference_passed": 356,
+        "loader_passed": 79,
+        "relocate_config_passed": 2,
+        "repaired_gates_summary": {
+          "pass": 5,
+          "fail": 0,
+          "skip": 0,
+          "warn": 0,
+          "timeout": 0,
+          "total": 5,
+          "total_wall_sec": 18.8417
+        }
+      },
+      "original_comparison": {
+        "tested_gates": 3,
+        "failed_gates": [
+          "p3_wf343c4_hyperparams_config_complete",
+          "p3_wf343c4_wave_budget_remaining_nonneg",
+          "p3_run_ledger_provenance"
+        ],
+        "note": "The same three failures were observed in the source working tree; they are not a newly introduced migration failure."
+      },
+      "limitations": "Full training pre-flight remains FAIL on historical budget, missing config hyperparameters and run-ledger provenance. Pocket and CrossDocked symlinks refer to a separate pocket/data tree, which must be kept. Historical diagnostic outputs and intentionally discarded checkpoints are not preserved."
+    }
+  ]
 }
