@@ -1,0 +1,255 @@
+{
+  "gate": "runtime_transport",
+  "rule": "AGENTS.md \u00a75.11 \u2014 a flag transported at runtime (inside a command string, where no static invocation line exists) must be declared by the invoked trainer's own parser, and its value must be YAML-derived",
+  "verdict": "FAIL",
+  "n_wrappers": 2,
+  "wrappers": [
+    "scripts/_wf_r28_gpu_master.sh",
+    "scripts/start.sh"
+  ],
+  "n_sites": 14,
+  "n_site_flags": 14,
+  "n_distinct_flags": 14,
+  "sites": [
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 943,
+      "kind": "add_flag",
+      "flag": "--checkpoint-interval",
+      "value_expr": "$CHECKPOINT_INTERVAL",
+      "value_var": "CHECKPOINT_INTERVAL",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 944,
+      "kind": "add_flag",
+      "flag": "--resume-from",
+      "value_expr": "$RESUME_FROM",
+      "value_var": "RESUME_FROM",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 945,
+      "kind": "add_flag",
+      "flag": "--lr-scheduler",
+      "value_expr": "$SCHEDULER",
+      "value_var": "SCHEDULER",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 946,
+      "kind": "add_flag",
+      "flag": "--lr-warmup-epochs",
+      "value_expr": "$LR_WARMUP_EPOCHS",
+      "value_var": "LR_WARMUP_EPOCHS",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 947,
+      "kind": "add_flag",
+      "flag": "--lr-min-lr",
+      "value_expr": "$LR_MIN_LR",
+      "value_var": "LR_MIN_LR",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 954,
+      "kind": "add_flag",
+      "flag": "--lr-pct-start",
+      "value_expr": "$LR_PCT_START",
+      "value_var": "LR_PCT_START",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 956,
+      "kind": "add_flag",
+      "flag": "--weight-decay",
+      "value_expr": "$WEIGHT_DECAY",
+      "value_var": "WEIGHT_DECAY",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 957,
+      "kind": "add_flag",
+      "flag": "--max-norm",
+      "value_expr": "$MAX_NORM",
+      "value_var": "MAX_NORM",
+      "guarded": null,
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 916,
+      "kind": "shell_literal",
+      "flag": "--no-events-jsonl",
+      "value_expr": "",
+      "value_var": "",
+      "guarded": null,
+      "conditional": false
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 918,
+      "kind": "shell_literal",
+      "flag": "--events-jsonl-path",
+      "value_expr": "\\\"$EVENTS_JSONL_PATH\\\"",
+      "value_var": "",
+      "guarded": null,
+      "conditional": false
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 648,
+      "kind": "python_literal",
+      "flag": "--task",
+      "value_expr": "{shlex.quote(_task_v)}",
+      "value_var": "",
+      "guarded": [
+        "train_dmpnn_multitask_wasserstein.py"
+      ],
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 648,
+      "kind": "python_literal",
+      "flag": "--pin-memory",
+      "value_expr": "",
+      "value_var": "",
+      "guarded": [
+        "train_dmpnn_multitask_wasserstein.py"
+      ],
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 648,
+      "kind": "python_literal",
+      "flag": "--no-pin-memory",
+      "value_expr": "",
+      "value_var": "",
+      "guarded": [
+        "train_dmpnn_multitask_wasserstein.py"
+      ],
+      "conditional": true
+    },
+    {
+      "wrapper": "scripts/start.sh",
+      "line": 648,
+      "kind": "python_literal",
+      "flag": "--gradient-accumulation-steps",
+      "value_expr": "{_grad_accum_v}",
+      "value_var": "",
+      "guarded": [
+        "train_dmpnn_multitask_wasserstein.py"
+      ],
+      "conditional": true
+    }
+  ],
+  "n_per_config_contributors": 1,
+  "n_mentions": {
+    "scripts/_wf_r28_gpu_master.sh": 0,
+    "scripts/start.sh": 44
+  },
+  "count_basis": "sites and (site, flag) PAIRS \u2014 an INVOCATION census, not a census of textual mentions; the mention count is reported separately so the two are never confused",
+  "n_configs": 502,
+  "n_configs_unresolved": 0,
+  "configs_unresolved": [],
+  "n_trainers": 32,
+  "n_trainer_invocations_checked": 30,
+  "n_config_invocations_checked": 1141,
+  "n_invocations_checked": 1171,
+  "delegated": [
+    {
+      "file": "scripts/_wf_r28_gpu_master.sh",
+      "delegates_to": "scripts/launch_cfm_round7_f5f6_retrain.sh",
+      "exists": true,
+      "in_launch_contract_population": true,
+      "has_static_trainer_call": true
+    },
+    {
+      "file": "scripts/_wf_r28_gpu_master.sh",
+      "delegates_to": "scripts/launch_cfm_tmqm_all6_retrain.sh",
+      "exists": true,
+      "in_launch_contract_population": true,
+      "has_static_trainer_call": true
+    },
+    {
+      "file": "scripts/_wf_r28_gpu_master.sh",
+      "delegates_to": "scripts/launch_wf124_p3_g5.sh",
+      "exists": true,
+      "in_launch_contract_population": true,
+      "has_static_trainer_call": true
+    },
+    {
+      "file": "scripts/_wf_r28_gpu_master.sh",
+      "delegates_to": "scripts/launch_wf124_p3_g6.sh",
+      "exists": true,
+      "in_launch_contract_population": true,
+      "has_static_trainer_call": true
+    },
+    {
+      "file": "scripts/_wf_r28_gpu_master.sh",
+      "delegates_to": "scripts/launch_wf390a1_m2_r2_path_a.sh",
+      "exists": true,
+      "in_launch_contract_population": true,
+      "has_static_trainer_call": true
+    }
+  ],
+  "n_violations": 2,
+  "violations": [
+    {
+      "kind": "undeclared_flag",
+      "file": "scripts/start.sh",
+      "line": 916,
+      "flag": "--no-events-jsonl",
+      "trainer": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "n_configs_routing_to_trainer": 129,
+      "reachability": "live",
+      "detail": "scripts/start.sh:916 can transport --no-events-jsonl to molmetal/scripts/train_cfm_yuelbond_wasserstein.py, whose parser does not declare it; the launch would abort with \"unrecognized arguments\" before the run starts (\u00a75.11: the legal flag set is defined by the trainer's own parser). 129 config(s) in the population route to molmetal/scripts/train_cfm_yuelbond_wasserstein.py. Trigger: [[ \"${EVENTS_JSONL_DISABLED:-0}\" == \"1\" ]]."
+    },
+    {
+      "kind": "undeclared_flag",
+      "file": "configs/cfm_patience10_seed0_2026_10_12.yaml",
+      "line": 0,
+      "flag": "--config",
+      "trainer": "molmetal/scripts/bench_cfm_decode_real.py",
+      "detail": "configs/cfm_patience10_seed0_2026_10_12.yaml passes --config to molmetal/scripts/bench_cfm_decode_real.py (through the runtime command start.sh assembles), whose parser does not declare it; the launch would abort with \"unrecognized arguments\" (\u00a75.11)"
+    }
+  ],
+  "n_abbreviations": 2,
+  "abbreviations": [
+    {
+      "kind": "abbreviated_flag",
+      "file": "configs/locks/protocol_lock.yaml",
+      "line": 0,
+      "flag": "--hidden",
+      "trainer": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "detail": "configs/locks/protocol_lock.yaml passes --hidden to molmetal/scripts/train_cfm_yuelbond_wasserstein.py, whose parser declares --hidden-dim but not --hidden; argparse accepts the abbreviation today (allow_abbrev defaults to True), so the launch does NOT abort \u2014 but the spelling is a fragile contract (\u00a75.11)"
+    },
+    {
+      "kind": "abbreviated_flag",
+      "file": "configs/wfa269_c9_start_sh.yaml",
+      "line": 0,
+      "flag": "--hidden",
+      "trainer": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "detail": "configs/wfa269_c9_start_sh.yaml passes --hidden to molmetal/scripts/train_cfm_yuelbond_wasserstein.py, whose parser declares --hidden-dim but not --hidden; argparse accepts the abbreviation today (allow_abbrev defaults to True), so the launch does NOT abort \u2014 but the spelling is a fragile contract (\u00a75.11)"
+    }
+  ],
+  "n_coverage_gaps": 0,
+  "coverage_gaps": []
+}

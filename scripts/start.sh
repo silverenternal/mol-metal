@@ -35,6 +35,44 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # ============================================================================
+# 0) Capture the ambient CUDA_VISIBLE_DEVICES mask (Wf-A165)
+# ============================================================================
+# Wf-A165 (2026-11-01) — an EXPLICIT ambient device mask is a caller
+# decision and must WIN over the yaml's `compute.gpu`.  Before this repair
+# the yaml-derived export in section 3b OVERWROTE any ambient mask, so a
+# session lock of `CUDA_VISIBLE_DEVICES=""` (no GPU) was silently replaced
+# by the yaml's device index and a yaml-only launch RE-ENABLED a GPU the
+# operator had switched off.  The downstream resolver
+# (molmetal/molmetal_lam/sbdd_env/training_utils.py ->
+# apply_default_cuda_visible_devices) already honours an explicitly-empty
+# env var ("env > default GPU 0"), so the launcher was the only leak.
+#
+# Captured HERE, at the top of the script, because everything between here
+# and the mask block in section 3b could otherwise contaminate the reading:
+#   * scripts/_pre_flight_check.sh is a CHILD process (`bash scripts/...`,
+#     section 2) — a child cannot mutate this shell's environment;
+#   * the only file this script sources is $YAML_ENV_FILE (section 3), and
+#     that file carries NO CUDA_VISIBLE_DEVICES entry (verified: the
+#     `lines = [...]` list built by parse_yaml has no such key);
+#   * molmetal/scripts/setup_molmetal_env.sh is NOT sourced here — it is a
+#     standalone env-prep script and no launcher under scripts/ sources it.
+# So the value observed here is the caller's ambient value, verbatim.
+#
+# `_AMBIENT_CVD_SET` distinguishes "unset" from "set to the empty string".
+# The empty mask is a deliberate no-GPU lock and must NOT be conflated with
+# "unset" (that conflation is exactly what the `:-` idiom does).
+# `${VAR+set}` is the POSIX-safe presence test and is safe under `set -u`;
+# `[[ -v VAR ]]` would need bash >= 4.2.
+# --- Wf-A165: ambient CUDA_VISIBLE_DEVICES capture (start of block) ---
+_AMBIENT_CVD_SET=0
+_AMBIENT_CVD=""
+if [[ -n "${CUDA_VISIBLE_DEVICES+set}" ]]; then
+  _AMBIENT_CVD_SET=1
+  _AMBIENT_CVD="$CUDA_VISIBLE_DEVICES"
+fi
+# --- Wf-A165: ambient CUDA_VISIBLE_DEVICES capture (end of block) ---
+
+# ============================================================================
 # Help / usage
 # ============================================================================
 usage() {
@@ -198,23 +236,86 @@ if not e:
     ds = _sec('data').get('dataset', 'qm9')
     if ds == 'qm9':
         legacy_script = 'molmetal/scripts/train_cfm_yuelbond_wasserstein.py'
+        # 2026-11-03 (§5.11 repair): the synthesised command baked the
+        # LITERAL trainer flag `--device cuda:0` — a hyperparameter no YAML
+        # could influence (scripts/_yaml_only_gate.py flags it as
+        # `start_sh_literal_trainer_flag`).  It is now the `{legacy_device}`
+        # placeholder, whose value is read from the yaml's trainer-facing
+        # `compute.device` key and otherwise keeps the previous literal
+        # `cuda:0`  ->  the rendered command is BYTE-IDENTICAL to the
+        # superseded rendering for every yaml that does not declare
+        # `compute.device` (MEASURED 2026-11-03: the only entry-less yaml in
+        # the repo is configs/locks/protocol_lock.yaml, which declares no
+        # `compute` section at all -> `cuda:0`, unchanged).
+        # CORRECTION 2026-11-03 (additive, per AGENTS.md §5.5 rule #6 — the
+        # sentence above is PRESERVED VERBATIM and is superseded): there are
+        # now THREE entry-less yamls under configs/ — configs/locks/protocol_lock.yaml
+        # (no `compute` section at all -> `cuda:0`, unchanged) and this
+        # cohort's own §5.11 fixtures configs/wfa269_c9_start_sh.yaml and
+        # configs/wfa269_c9_start_sh_dmpnn.yaml (both declare
+        # `compute.device: cuda:0` -> `cuda:0`, unchanged).  MEASURED
+        # 2026-11-03 12:01 over the 305 *.yaml then present under configs/:
+        # `compute.device` is 'cuda:0' 122, 'cpu' 33, 'auto' 15, an explicit
+        # null 4, absent 78, and 53 files carry no `compute` section at all
+        # (configs/ is concurrently churned by the other Wf-A269 cohorts, so
+        # these counts move by a file or two).
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #   (the command key is NOT superseded - it is unchanged below; the
+        #   superseded RENDERING is the command string it held)
+        #   '$PYTHON {script} --hidden {hidden} --n-layers {n_layers} '
+        #   '--n-steps {n_steps} --method {method} --batch-size {batch_size} '
+        #   '--lr {lr} --epochs {epochs} --device cuda:0 '
+        #   '--out-dir {out_dir} --ckpt-dir {ckpt_dir}'
         e = {
             'script': legacy_script,
             'command': (
                 '$PYTHON {script} --hidden {hidden} --n-layers {n_layers} '
                 '--n-steps {n_steps} --method {method} --batch-size {batch_size} '
-                '--lr {lr} --epochs {epochs} --device cuda:0 '
+                '--lr {lr} --epochs {epochs} --device {legacy_device} '
                 '--out-dir {out_dir} --ckpt-dir {ckpt_dir}'
             ),
         }
     else:
         legacy_script = 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'
+        # 2026-11-03 (§5.11 repair): two LITERAL trainer flags here —
+        # `--metals Pt` and `--device cuda:0`.  `--metals` now renders the
+        # `{legacy_metals}` placeholder, whose value is THIS FILE'S OWN
+        # yaml-derived metals LIST, space-joined for the shell (the
+        # derivation is in the `_legacy_metals` block below); it was
+        # hardcoded 'Pt' before, which is the same defect the 2026-10-03
+        # fix above already repaired for the non-legacy path (hardcoded 'Pt'
+        # silently trained the wrong metal).  `--device` renders
+        # `{legacy_device_dmpnn}` — the same yaml key (`compute.device`) as
+        # the CFM branch above, with a DIFFERENT whitelist because 'auto' is
+        # invalid for this trainer (see the `_legacy_device_*` block below).
+        # Rendering delta, stated plainly: an entry-less D-MPNN yaml that
+        # DECLARES a metals list or a metal grid now trains THAT cohort
+        # instead of the hardcoded 'Pt'; an entry-less yaml that declares
+        # neither still renders 'Pt'  ->  BYTE-IDENTICAL.  MEASURED
+        # 2026-11-03: no yaml in the repo reaches this branch (the only
+        # entry-less yaml, configs/locks/protocol_lock.yaml, has
+        # data.dataset == 'qm9' -> the CFM branch above), so no shipped run
+        # changes.
+        # CORRECTION 2026-11-03 (additive, per AGENTS.md §5.5 rule #6 — the
+        # sentence above is PRESERVED VERBATIM and is superseded): no SHIPPED
+        # yaml reaches this branch — configs/locks/protocol_lock.yaml is the
+        # only shipped entry-less yaml and its data.dataset == 'qm9' -> the
+        # CFM branch above.  This cohort's OWN fixture
+        # configs/wfa269_c9_start_sh_dmpnn.yaml reaches this branch on purpose
+        # (it is what proves the `--metals` placeholder), so no shipped run
+        # changes.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #   (the command key is NOT superseded - it is unchanged below; the
+        #   superseded RENDERING is the command string it held)
+        #   '$PYTHON {script} --dataset {dataset} --metals Pt '
+        #   '--epochs {epochs} --batch-size {batch_size} --lr {lr} '
+        #   '--device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}'
         e = {
             'script': legacy_script,
             'command': (
-                '$PYTHON {script} --dataset {dataset} --metals Pt '
+                '$PYTHON {script} --dataset {dataset} --metals {legacy_metals} '
                 '--epochs {epochs} --batch-size {batch_size} --lr {lr} '
-                '--device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}'
+                '--device {legacy_device_dmpnn} --out-dir {out_dir} --ckpt-dir {ckpt_dir}'
             ),
         }
     d['entry'] = e
@@ -300,6 +401,79 @@ def _proto_or_train(cfg: dict, key: str, default):
 
 
 _cmd_template_or_legacy = e.get('command_template') or e.get('command', '')
+
+# 2026-11-03 (§5.11 repair): the values behind the legacy branch's
+# `{legacy_device}` / `{legacy_device_dmpnn}` placeholders.  The
+# trainer-facing device key is `compute.device` — `compute.gpu` is a
+# start.sh-ONLY CUDA_VISIBLE_DEVICES mask source (it has NO trainer dest)
+# and it is not an ordinal: the shipped yamls spell it 'cuda:0' (91),
+# 'cpu' (18), the INT 0 (4) and 'cuda:1' (1), and under the very mask
+# start.sh exports from that key ('cuda:1' -> CVD=1, so ordinal 0 is the
+# only device the trainer can see) a `--device cuda:1` dies with
+# "invalid device ordinal" at use time.  `compute.device` is the
+# dest-bearing key; its shipped values are 'cuda:0' (112), 'cpu' (33),
+# 'auto' (15), an explicit null (3) and absent (125) — MEASURED
+# 2026-11-03 over the 288 *.yaml files under configs/ (the population
+# this branch can ever see).  'auto' raises inside `torch.device()` (the
+# D-MPNN trainer calls it unconditionally,
+# molmetal/scripts/train_dmpnn_multitask_wasserstein.py:4198) even though
+# the CFM trainer special-cases it
+# (molmetal/scripts/train_cfm_yuelbond_wasserstein.py:16667), so the two
+# branches get DIFFERENT whitelists: the CFM branch honours 'auto', the
+# D-MPNN branch does not.  Every value outside the whitelist keeps the
+# pre-repair literal 'cuda:0', so the rendered command is BYTE-IDENTICAL
+# to the superseded rendering for every yaml that does not declare a
+# trainer-safe `compute.device`.  A yaml that DOES declare one now has it
+# reach the trainer, which is the §5.11 point.
+#
+# CORRECTION 2026-11-03 (additive, per AGENTS.md §5.5 rule #6 — the
+# paragraph above is PRESERVED VERBATIM and is superseded): the population
+# it names was MIS-STATED — it counted 288 files, while configs/ holds 306
+# *.yaml (the same enumeration the bulk-render equivalence check used).
+# RE-MEASURED 2026-11-03 12:01 over the 305 *.yaml then present under
+# configs/: `compute.device` is 'cuda:0' 122, 'cpu' 33, 'auto' 15, an
+# explicit null 4, absent 78, and 53 files carry no `compute` section at
+# all (configs/ is concurrently churned by the other Wf-A269 cohorts, so
+# these counts move by a file or two); the branch itself only ever sees the
+# 3 entry-less yamls (configs/locks/protocol_lock.yaml + this cohort's two
+# fixtures).  The `compute.gpu` counts in the paragraph above ('cuda:0' 91,
+# 'cpu' 18, the INT 0 (4), 'cuda:1' (1)) were RE-MEASURED 2026-11-03 and
+# REPRODUCE exactly (138 absent + 53 with no `compute` section account for
+# the rest of the 305).
+_legacy_device_cfm = _sec('compute').get('device')
+if _legacy_device_cfm not in ('cuda', 'cuda:0', 'cpu', 'auto'):
+    _legacy_device_cfm = 'cuda:0'
+_legacy_device_dmpnn = _sec('compute').get('device')
+if _legacy_device_dmpnn not in ('cuda', 'cuda:0', 'cpu'):
+    _legacy_device_dmpnn = 'cuda:0'
+
+# 2026-11-03 (§5.11 repair): the value behind the legacy branch's
+# `{legacy_metals}` placeholder.  `--metals` is a LIST dest on the D-MPNN
+# trainer (nargs="+", default ["auto"]), so the yaml must carry a LIST and
+# the rendered shell command must be SPACE-JOINED: AGENTS.md §5.11 records
+# the 2026-10-09 run that lost a full 4-fold x 5-seed sweep because the
+# yaml said `metals: Ru Ir Os Re` and the trainer received ONE element
+# named "Ru Ir Os Re" and matched zero metals.  The yaml's own list wins
+# (`protocol.metals`, then `data.metals` — configs/dmpnn.yaml declares
+# `data.metals` as a LIST); a yaml that declares only a sweep GRID falls
+# back to the 2026-10-03 derivation above (`_metal_default`); a yaml that
+# declares neither keeps the pre-repair literal 'Pt'.
+_legacy_metals = None
+for _metals_section in ('protocol', 'data'):
+    _metals_raw = _sec(_metals_section).get('metals')
+    if _metals_raw is None:
+        continue
+    if isinstance(_metals_raw, str):
+        # a space-separated STRING is what the 2026-10-09 failure looked
+        # like; split it so the shell command carries the same tokens the
+        # yaml names, instead of one element with spaces inside it.
+        _metals_raw = [t for t in _metals_raw.split() if t]
+    if isinstance(_metals_raw, (list, tuple)) and _metals_raw:
+        _legacy_metals = ' '.join(str(t) for t in _metals_raw)
+        break
+if _legacy_metals is None:
+    _legacy_metals = str(_metal_default)
+
 cmd = _cmd_template_or_legacy.format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
@@ -329,6 +503,19 @@ cmd = _cmd_template_or_legacy.format(
     depth=_sec('model').get('depth', 3),
     use_l2_guard='--use-l2-guard' if _sec('model').get('use_l2_guard') else '',
     device=(d.get('compute', {}) or {}).get('gpu', 'cuda:0'),
+    # 2026-11-03 (§5.11): the legacy branch's device + metals placeholders.
+    # Kept SEPARATE from `device` above on purpose — `device` is the
+    # mask-source (`compute.gpu`) semantics the three wf124
+    # command_templates were built against, and changing THAT would change
+    # their rendering; the legacy branch needs the trainer-dest semantics
+    # (`compute.device`) instead.  See the `_legacy_device_*` derivation
+    # above for why they differ.  `legacy_metals` is likewise separate from
+    # `metal` above: `metal` is the single-metal sweep placeholder the
+    # wf124 templates use, `legacy_metals` is the space-joined LIST the
+    # legacy `--metals` flag needs (nargs="+").
+    legacy_device=_legacy_device_cfm,
+    legacy_device_dmpnn=_legacy_device_dmpnn,
+    legacy_metals=_legacy_metals,
     # NOTE: the launchers pass --cpu-num-workers 8 (Wf-326B optimal on this
     # 24-core host) while the shipped yamls declare 4.  Wiring the yaml through
     # makes the yaml authoritative on the start.sh path; the two values
@@ -444,12 +631,42 @@ if _probe_src:
 # trainer has neither form, so probe them too -- otherwise the entry still
 # dies on "unrecognized arguments" via the one flag the loop above missed.
 _events_supported = 0
-if _probe_src and (
-    '"--events-jsonl-path"' in _probe_src
-    or "'--events-jsonl-path'" in _probe_src
-    or '"--no-events-jsonl"' in _probe_src
-):
-    _events_supported = 1
+_events_path_supported = 0
+_events_sink_off_supported = 0
+if _probe_src:
+    if (
+        '"--events-jsonl-path"' in _probe_src
+        or "'--events-jsonl-path'" in _probe_src
+    ):
+        _events_path_supported = 1
+        _events_supported = 1
+    if '"--no-events-jsonl"' in _probe_src:
+        _events_sink_off_supported = 1
+        _events_supported = 1
+# 2026-11-04 (Wf-A269) — the two spellings are probed SEPARATELY, and the
+# launcher now emits the EXACT spelling it transports.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5
+# rule #6: the probe used to be a single OR --
+#
+#   _events_supported = 0
+#   if _probe_src and (
+#       '"--events-jsonl-path"' in _probe_src
+#       or "'--events-jsonl-path'" in _probe_src
+#       or '"--no-events-jsonl"' in _probe_src
+#   ):
+#       _events_supported = 1
+#
+# -- so a trainer that declared only ONE of the two forms was treated as
+# supporting BOTH, and the launcher transported `--no-events-jsonl` to a
+# parser that did not declare it.  MEASURED 2026-11-04: that is exactly
+# what happened with molmetal/scripts/train_cfm_yuelbond_wasserstein.py,
+# which declared `--events-jsonl-path` and `--emit-json-events` but NOT
+# `--no-events-jsonl` -- so `output.events_jsonl: false` in a CFM config
+# crashed the launch with argparse's "unrecognized arguments" before a
+# single step ran.  The trainer now declares the flag (the CFM trainer
+# and the D-MPNN trainer share one spelling); the two probes below stop
+# the class from recurring for a THIRD trainer.
 if any(
     Path(w).name == 'train_dmpnn_multitask_wasserstein.py'
     for w in _script_candidates
@@ -588,6 +805,11 @@ lines = [
     f'EXTRA_SUPPORTED_FLAGS={shlex.quote(_extra_supported)}',
     f'EXTRA_PROBE_OK={1 if _probe_src else 0}',
     f'EVENTS_SUPPORTED={_events_supported}',
+    # 2026-11-04 (Wf-A269) — the two events spellings are now probed
+    # separately, so the launcher can emit the EXACT one the entry
+    # parser declares instead of assuming both.
+    f'EVENTS_PATH_SUPPORTED={_events_path_supported}',
+    f'EVENTS_SINK_OFF_SUPPORTED={_events_sink_off_supported}',
 ]
 with open(env_path, 'w') as f:
     f.write('\n'.join(lines) + '\n')
@@ -653,6 +875,13 @@ fi
 #       so the yaml stays the single source of truth for the device
 #       (per user voice: "这个也得靠yaml决定训练配置").
 #
+#       Wf-A165 (2026-11-01): the yaml is the SSOT for the device ONLY
+#       when the caller expressed no preference.  An explicitly-set
+#       ambient CUDA_VISIBLE_DEVICES (including "" = the no-GPU lock)
+#       now wins — see the capture at the top of this script and the mask
+#       block below.  The default path (ambient unset) is byte-for-byte
+#       the pre-Wf-A165 behaviour.
+#
 #       The resolver's own DEFAULT is now also GPU 0
 #       (training_utils.DEFAULT_CUDA_VISIBLE_DEVICES == "0"), so this
 #       export and the code default agree.  That was NOT true before the
@@ -664,16 +893,38 @@ fi
 export MOLMETAL_DATA_DIR="${MOLMETAL_DATA_DIR:-$PROJECT_ROOT/.data/molmetal}"
 export MOLMETAL_TMQM_DIR="${MOLMETAL_TMQM_DIR:-$PROJECT_ROOT/.data/molmetal/tmQM}"
 
+# --- Wf-A165: yaml-derived GPU mask (start of block) ---
 # "cuda:0" → "0"; ignore anything non-numeric ("auto", "cpu", …) so a
 # bad yaml value cannot silently pin the wrong device.
 _cvd="${GPU#cuda:}"
 _cvd="${_cvd%%[^0-9]*}"
-if [[ -n "$_cvd" ]]; then
-  export CUDA_VISIBLE_DEVICES="$_cvd"
+# Wf-A165 (2026-11-01) — an EXPLICIT ambient mask wins over the yaml.
+# The yaml remains the device SSOT (AGENTS.md §5.11) when the caller has
+# expressed no preference: the ambient-UNSET path below is byte-for-byte
+# the pre-Wf-A165 behaviour (same export, same stdout line).
+if [[ "$_AMBIENT_CVD_SET" == "1" ]]; then
+  # Ambient was explicitly set — including "" (the no-GPU lock).  Keep it
+  # VERBATIM and say plainly that the yaml's device was NOT applied.  The
+  # self-referencing export cannot widen the mask: an empty ambient stays
+  # empty, a "1" stays "1".  `$_AMBIENT_CVD` (captured at the top of this
+  # script) is still equal to `$CUDA_VISIBLE_DEVICES` here — nothing
+  # between the capture and this block writes to that variable.
+  export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}"
+  echo "[start.sh] CUDA_VISIBLE_DEVICES='$_AMBIENT_CVD' (ambient mask honoured — yaml compute.gpu=$GPU NOT applied)"
+  if [[ -z "$_AMBIENT_CVD" ]]; then
+    echo "[start.sh][WARN] ambient CUDA_VISIBLE_DEVICES is empty (no-GPU lock) — no GPU is visible to this run."
+  fi
+elif [[ -n "$_cvd" ]]; then
+  # No ambient preference: the yaml decides the device (§5.11).  The
+  # no-colon default substitutes the yaml's index only when the variable
+  # is UNSET — an explicitly-empty ambient keeps its empty value, so this
+  # export can never widen a caller's mask either.
+  export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-$_cvd}"
   echo "[start.sh] CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES (from yaml compute.gpu=$GPU)"
 else
   echo "[start.sh][WARN] yaml compute.gpu='$GPU' is not a cuda:N index; leaving CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
 fi
+# --- Wf-A165: yaml-derived GPU mask (end of block) ---
 echo "[start.sh] MOLMETAL_DATA_DIR=$MOLMETAL_DATA_DIR"
 
 # ============================================================================
@@ -697,9 +948,26 @@ mkdir -p "$OUT_DIR" "$(dirname "$TRAINING_SUMMARY")" "$(dirname "$LOG_MASTER")"
 # 2026-10-04: output.events_jsonl:false must actually disable the sink.
 # --events-jsonl-path always installs one, so emit the off-switch instead.
 if [[ "${EVENTS_JSONL_DISABLED:-0}" == "1" ]]; then
-  EVENTS_FLAG="--no-events-jsonl"
+  # 2026-11-04 (Wf-A269) — emit the sink off-switch ONLY when the entry
+  # parser declares it.  SUPERSEDED RENDERING PRESERVED VERBATIM per
+  # AGENTS.md section 5.5 rule #6: the branch used to be an
+  # unconditional `EVENTS_FLAG="--no-events-jsonl"`, which transported a
+  # flag to any entry that did not declare it -> argparse aborts the
+  # launch with "unrecognized arguments".  The WARN keeps the residual
+  # visible: a YAML that asks for the sink off, on an entry that cannot
+  # express it, now says so instead of dying.
+  if [[ "${EVENTS_SINK_OFF_SUPPORTED:-0}" == "1" ]]; then
+    EVENTS_FLAG="--no-events-jsonl"
+  else
+    EVENTS_FLAG=""
+    echo "[start.sh][WARN] output.events_jsonl=false but the entry parser does not declare --no-events-jsonl; the events.jsonl sink stays ON (this entry cannot switch the sink off from the YAML)" >&2
+  fi
 else
-  EVENTS_FLAG="--events-jsonl-path \"$EVENTS_JSONL_PATH\""
+  if [[ "${EVENTS_PATH_SUPPORTED:-0}" == "1" ]]; then
+    EVENTS_FLAG="--events-jsonl-path \"$EVENTS_JSONL_PATH\""
+  else
+    EVENTS_FLAG=""
+  fi
 fi
 # 2026-10-04 — $DMPNN_NEW_FLAGS carries the three formerly-dead yaml keys
 # (model.task / data.pin_memory / protocol.gradient_accumulation_steps) for

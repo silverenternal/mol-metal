@@ -1,0 +1,62 @@
+# Wf-A269 cohort c9 — §5.11 migration fixture for scripts/start.sh's LEGACY
+# branch (the `entry:`-less path), CFM variant.
+#
+# WHY THIS FILE EXISTS.
+# scripts/start.sh synthesises an `entry` block for a config that carries
+# none, and that synthesised command baked two LITERAL trainer flags into a
+# shell string — `--device cuda:0` (CFM branch) and `--metals Pt` (D-MPNN
+# branch).  No yaml could influence either value: they lived only in the
+# script.  scripts/_yaml_only_gate.py reports them as
+# `start_sh_literal_trainer_flag`.  They are now the `{legacy_device}` /
+# `{legacy_metals}` placeholders, and start.sh's format() call fills them
+# FROM THIS YAML.
+#
+# This fixture declares EXACTLY the values the legacy CFM command renders, so
+# that
+#   * the pre-repair rendering and the post-repair rendering are
+#     byte-identical (the fallback holds), while
+#   * the values are now yaml-sourced (the §5.11 point), and
+#   * `--config <this file>` delivers to the trainer's argparse dests
+#     EXACTLY what the old flag list delivered — which is what
+#     scripts/_yaml_equivalence_probe.py measures.
+#
+# NO `entry:` SECTION, ON PURPOSE: a config with an `entry` section never
+# reaches the legacy branch (`e = d.get('entry', {})` / `if not e:` in
+# scripts/start.sh), and this fixture's whole job is to exercise that branch.
+# Consequence, stated plainly: scripts/_config_binding_gate.py keys on
+# `entry.script`, so it SKIPS this file rather than checking its leaves —
+# the same per-config binding check was therefore run directly against the
+# CFM trainer's parser (see
+# molmetal/reports/wfa269_yaml_migration/start.json -> notes).
+#
+# The leaves are placed in the loader's `_LEAF_FALLBACK_SECTIONS`
+# (molmetal/scripts/wfA2_config_loader.py): model / flow / protocol /
+# compute / output.  A leaf under any other top-level section is SILENTLY
+# IGNORED by the loader, so the config would train at the argparse default
+# while the file claimed otherwise.
+#
+# `output.base_dir` is start.sh's OUT_DIR key (a registered non-trainer
+# consumer); the trainer's own dest is `out_dir`, hence BOTH keys, with the
+# SAME value, so the rendered `--out-dir` and the yaml-delivered `out_dir`
+# agree.
+
+model:
+  hidden_dim: 96
+  n_layers: 4
+
+flow:
+  n_steps: 50
+  method: rk4
+
+protocol:
+  epochs: 12
+  batch_size: 16
+  lr: 0.0005
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: results/wfa269_c9_start_sh
+  out_dir: results/wfa269_c9_start_sh
+  ckpt_dir: results/wfa269_c9_start_sh/ckpts

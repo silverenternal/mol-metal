@@ -131,9 +131,20 @@ Liu J. (重庆理工大学 数理科学研究中心, Chongqing University of
 Technology, Research Center for Mathematical Sciences) & Feng H.
 (UNC Charlotte).  *Persistent Local Laplacian Prediction of
 Protein–Ligand Binding Affinities*.  *J. Chem. Inf. Model.*
-**66 (3)**, 1024-1037, 2026.  DOI: `10.1021/acs.jcim.6c02460`;
+**66 (18)**, 11767-11777, 2026.  DOI: `10.1021/acs.jcim.6c02460`;
 arXiv: `2603.21503` (2026-03-23).  Funded in part by **NSFC
 12401080** (国家自然科学基金, 2026).
+
+> **⚠️ CITATION CORRECTED (2026-10-31, Wf-A149).** The venue line above
+> previously read "*J. Chem. Inf. Model.* **66 (3)**, 1024-1037, 2026."  The
+> Crossref record for DOI `10.1021/acs.jcim.6c02460` (MEASURED 2026-10-31,
+> HTTP 200) gives **volume 66, issue 18, pages 11767-11777**, online
+> 2026-09-04 / print 2026-09-28 — so the issue and the page range were
+> wrong.  The DOI, the arXiv id `2603.21503` (2026-03-23) and the year
+> 2026 were already correct and are unchanged.  Crossref also confirms
+> the two affiliations stated above (Chongqing University of Technology
+> for Jian Liu; University of North Carolina at Charlotte for Hongsong
+> Feng).
 
 **Why PLL — not PySR / Cranmer 2023:** PLL is a *true
 Chinese-domestic 2026 math contribution* (重庆理工 + NSFC funding),

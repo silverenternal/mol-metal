@@ -268,9 +268,12 @@ class TestPerPocketLift5Pockets:
 
     def _wf325b_medians(self):
         """Return the Wf-325B 5-pocket Vina medians (MEASURED)."""
-        wf325b_path = Path(
-            "/home/hugo/codes/mol-metal/molmetal/reports/"
-            "wf325b_vina_pt_zn_substitution/result.json"
+        wf325b_path = (
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf325b_vina_pt_zn_substitution"
+            / "result.json"
         )
         if not wf325b_path.exists():
             pytest.skip(f"Wf-325B report not found at {wf325b_path}")

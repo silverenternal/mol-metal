@@ -21,7 +21,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/try_triton_on_rocm")
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 import numpy as np

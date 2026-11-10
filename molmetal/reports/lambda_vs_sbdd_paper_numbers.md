@@ -49,8 +49,8 @@ Tested with `exhaustiveness=4`, `n_poses=1`, box padding=8 Å.
 |---|---:|---:|---:|---:|---|
 | **Pocket2Mol** | 2022 (ICML) | **−7.07** | 2.51 | **49.8** | Peng et al., ICML 2022 (arXiv 2205.07249) |
 | **TargetDiff** | 2023 (ICLR) | **−8.45** | 2.65 | **35.1** | Guan et al., ICLR 2023 (arXiv 2303.03543) |
-| **DiffSBDD** | 2023 (ICML) | **−7.62** | 2.81 | **24.6** | Schneuing et al., ICML 2023 (arXiv 2210.13695) |
-| **DecompDiff** | 2024 (ICLR) | **−8.39** | 2.71 | **39.0** | Guan et al., ICLR 2024 (arXiv 2303.10120) |
+| **DiffSBDD** | 2024 (Nat. Comput. Sci.) | **−7.62** | 2.81 | **24.6** | Schneuing et al., Nat. Comput. Sci. 2024 (arXiv 2210.13695) |
+| **DecompDiff** | 2023 (ICML) | **−8.39** | 2.71 | **39.0** | Guan et al., ICML 2023 (arXiv 2403.07902) |
 | **FLOWR** | 2024 | **−6.93** | 2.86 | **94.0 PB-valid** | Cremer et al., 2025 (arXiv 2504.10564 — corrected) |
 
 **Success rate** = fraction of generated molecules that (a) dock with Vina ≤ −(co-crystal score) and (b) pass PoseBusters validity checks. FLOWR's "94%" is PoseBusters-valid only (different denominator).
@@ -214,3 +214,39 @@ Each SBDD row in §2.1 cites the original paper. We **do not** re-run DiffSBDD /
 | Lambda wins on interpretability | **KEPT** — closed β-NF + AST is real |
 
 The Lambda paper should now **not** claim absolute binding-affinity leadership. Its contribution is on the **synthetic-interpretability axis** that no SBDD baseline addresses directly.
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 — DecompDiff identifier + venue.** Superseded: arXiv `2303.10120`, venue
+  `2024 (ICLR)`, source string `Guan et al., ICLR 2024 (arXiv 2303.10120)`.
+  Corrected to: arXiv **`2403.07902`**, venue **`2023 (ICML)`**, source string
+  `Guan et al., ICML 2023 (arXiv 2403.07902)`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` returns "DecompDiff: Diffusion Models
+  with Decomposed Priors for Structure-Based Drug Design" (Guan, Zhou, Yang, Bao, Peng, Ma,
+  Liu, Wang, Gu; posted 2024-02-26); PMLR proceedings v202 lists it as
+  "Proceedings of the 40th International Conference on Machine Learning, PMLR 202:11827-11846".
+  The superseded id `2303.10120` resolves to an unrelated ASME paper ("Design and validation
+  of a state-dependent Riccati equation filter…"). The **venue year is 2023** (the arXiv
+  posting is 2024-02-26, which is why the year column previously read 2024).
+  The cited numbers (−7.62 / 2.81 / 24.6 % and −8.39 / 2.71 / 39.0 %) are the papers' own
+  values and are **unchanged**.
+- **F-12 (adjacent) — DiffSBDD venue.** Superseded: `2023 (ICML)` / `Schneuing et al., ICML 2023`.
+  Corrected to: `2024 (Nat. Comput. Sci.)` / `Schneuing et al., Nat. Comput. Sci. 2024`.
+  Verified 2026-10-31: Crossref REST `10.1038/s43588-024-00737-x` → *Nature Computational
+  Science* 4(12):899-909, issued 2024-12-09; arXiv `2210.13695` carries **no** venue comment
+  and is **not** in PMLR v202 or v235. DiffSBDD's first author is **Arne Schneuing**
+  (arXiv API author list). The DOI already carried by this repo
+  (`10.1038/s43588-024-00737-x`) is correct and was left alone; the dead DOI
+  `10.1038/s41467-024-49069-0` occurs only in files owned by another agent
+  (`molmetal/reports/wf_bib_complete.md`, `molmetal/reports/wf_data_gap_targetdiff_paper.md`)
+  and is reported, not edited. Numbers unchanged.

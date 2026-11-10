@@ -234,3 +234,38 @@ def test_the_real_tables_build_without_a_missing_cell(tmp_path: Path):
     for entry in manifest["tables"]:
         assert (tmp_path / Path(entry["markdown"]).name).exists()
         assert (tmp_path / Path(entry["csv"]).name).exists()
+
+
+# ---------------------------------------------------------------------------
+# §5.6 -- the tables are written through the ATOMIC helper
+# ---------------------------------------------------------------------------
+
+
+def test_the_module_uses_the_atomic_write_helper():
+    """AGENTS.md §5.6: a closeout write goes through the atomic helper."""
+    assert hasattr(pmt, "atomic_write_file")
+    from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+    assert pmt.atomic_write_file is atomic_write_file
+
+
+def test_no_write_text_is_left_on_the_three_output_paths():
+    """The .md, the .csv and manifest.json must not be written in place.
+
+    A partial write leaves a half-written table on disk; the atomic helper
+    writes a temp file in the same directory and renames it over the target.
+    """
+    source = Path(pmt.__file__).read_text(encoding="utf-8")
+    assert "write_text" not in source
+    assert source.count("atomic_write_file(") == 3
+
+
+def test_the_written_bytes_are_the_rendered_bytes(tmp_path: Path):
+    """The atomic write must not alter a single byte of the rendering."""
+    assert pmt.main(["--out-dir", str(tmp_path)]) == 0
+    table = pmt.TABLES[0]()
+    cache = pmt.ArtifactCache(pmt.METRICS_DIR)
+    md, _missing, _absent = pmt.render_md(table, cache)
+    csv_text, _missing, _absent = pmt.render_csv(table, cache)
+    assert (tmp_path / f"{table.ident}.md").read_bytes() == md.encode("utf-8")
+    assert (tmp_path / f"{table.ident}.csv").read_bytes() == csv_text.encode("utf-8")

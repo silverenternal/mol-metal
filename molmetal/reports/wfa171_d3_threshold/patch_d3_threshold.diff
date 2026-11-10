@@ -1,0 +1,89 @@
+--- a/molmetal/scripts/pre_flight_check.py
++++ b/molmetal/scripts/pre_flight_check.py
+@@ -323,6 +323,23 @@
+ # at molmetal/reports/protocol_validation/{krasnov,rusanov,drugood}_hook.json
+ # via POSIX-atomic temp-file + rename (process-local per-path lock).
+ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
++
++# Wf-A171 D3 (2026-11-01): L5 protocol-validation hook THRESHOLD accounting.
++#
++# WHY: the nine §4 L5 hooks all funnel through `_hook_passthrough_payload`,
++# whose PASS branch keys ONLY on "the source file exists" + "the emitter
++# wrote a file".  `TODO/03_plans/PRE_TRAINING_GATE_v2.md` gives each hook a
++# THRESHOLD (125 / 45 / 12 records for three of them, a value gate for
++# four, a §6-paragraph gate for two) and the sources do NOT meet those
++# thresholds.  The evidence string now carries the spec threshold, the
++# MEASURED count and an explicit SHORTFALL / MISSING marker.
++#
++# THE VERDICT IS UNCHANGED BY DEFAULT: PASS stays PASS, WARN stays WARN.
++# The opt-in strict mode (`WFA171_L5_STRICT=1`) downgrades a shortfall to
++# WARN - never FAIL.  The nine L5 gates are not registered in any pipeline
++# today (Wf-A169 holds the 24-gate wiring staged, unapplied), so neither
++# mode changes a live pre-flight number or the gate count.
++from molmetal.scripts import wfa171_l5_threshold as _wfa171_l5  # noqa: E402
+ 
+ VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/mol-metal/.venv/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
+ # Wf-300D harness auto-fallback wrapper is a USER-LEVEL file, not part of
+@@ -12415,6 +12432,19 @@
+     emitted = _emit_protocol_validation_hook_json(
+         hook_dir, baseline_name, hook_id, payload
+     )
++    # Wf-A171 D3 (2026-11-01): measure the source against the SPEC
++    # THRESHOLD instead of only asserting that it exists.  `threshold_rec`
++    # is None when the hook id is unknown to the threshold module or when
++    # the module raises - evidence enrichment must never break a gate.
++    threshold_rec = None
++    threshold_note = ""
++    try:
++        threshold_rec = _wfa171_l5.evaluate_hook_by_id(hook_id)
++    except Exception:  # noqa: BLE001
++        threshold_rec = None
++    if threshold_rec is not None:
++        threshold_note = _wfa171_l5.format_evidence(threshold_rec)
++    threshold_suffix = f"; {threshold_note}" if threshold_note else ""
+     # Wf-A169 (2026-11-01): the PASS/WARN evidence below must state what
+     # ACTUALLY happened.  The original string said "hook emitted" even
+     # when the emitter was a no-op because hook_dir did not exist — a
+@@ -12428,7 +12458,7 @@
+             "WARN",
+             f"{baseline_name} source metric missing; hook JSON "
+             f"{'emitted' if emitted else 'NOT emitted'} "
+-            f"with source_present=False",
++            f"with source_present=False{threshold_suffix}",
+             time.perf_counter() - t0,
+         )
+     if not emitted:
+@@ -12439,7 +12469,23 @@
+             "WARN",
+             f"{baseline_name} {hook_id} hook NOT emitted (hook_dir "
+             f"{hook_dir} could not be created/written) with "
+-            f"source_present=True",
++            f"source_present=True{threshold_suffix}",
++            time.perf_counter() - t0,
++        )
++    # Wf-A171 D3 (2026-11-01): opt-in strict mode.  A threshold shortfall
++    # becomes WARN -- NEVER FAIL.  Off by default, so no live verdict moves.
++    if (
++        threshold_rec is not None
++        and threshold_rec.status != "MEETS"
++        and _wfa171_l5.strict_enabled()
++    ):
++        return GateResult(
++            name,
++            priority,
++            pipeline,
++            "WARN",
++            f"{baseline_name} {hook_id} hook emitted with source_present=True "
++            f"at {hook_dir}; {threshold_note} (strict mode: WARN, never FAIL)",
+             time.perf_counter() - t0,
+         )
+     return GateResult(
+@@ -12448,7 +12494,7 @@
+         pipeline,
+         "PASS",
+         f"{baseline_name} {hook_id} hook emitted with source_present=True "
+-        f"at {hook_dir}",
++        f"at {hook_dir}{threshold_suffix}",
+         time.perf_counter() - t0,
+     )
+ 

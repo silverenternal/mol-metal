@@ -59,7 +59,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 LAMBDA_ROADMAP = ROOT / "TODO" / "03_plans" / "LAMBDA_ROADMAP.md"
 AGENTS_MD = ROOT / "AGENTS.md"
 

@@ -4,7 +4,8 @@
 **Wave**: Wf-432-A2 (single A2 sub-flow + 1 closeout file)
 **Standing directives**: AGENTS.md §5.5 filesystem-truth, §5.6 atomic write,
 §5.7 NEW trainer flag wire-in smoke-required, §5.1 USER_OK=1 GRANTED, §5.2
-honest framing, §5.3 no paper/*, §5.4 no wet-lab, §5.10 wet-lab deprecation.
+honest framing, §5.3 no paper/*, §5.4 no wet-lab, ~~§5.10 wet-lab deprecation~~ → §10
+wet-lab deprecation FAQ (pointer corrected 2026-10-31).
 
 ## §0 TL;DR
 

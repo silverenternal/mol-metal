@@ -86,11 +86,15 @@ EXPECTED_LOI_STATUS_REGEX = re.compile(
     re.MULTILINE,
 )
 
-# Per Wf-408-A3 task brief — launcher path. Note: the task brief stated
-# `scripts/launch_wf299_cfm_main.sh` but the canonical on-disk location
-# is `molmetal/scripts/launch_wf299_cfm_main.sh` (per the project's
-# Wf-358 §2 + Wf-394-A3 §1 directory convention).
-LAUNCHER_PATH = REPO_ROOT / "molmetal" / "scripts" / "launch_wf299_cfm_main.sh"
+# Per Wf-408-A3 task brief — launcher path.  The task brief stated
+# `scripts/launch_wf299_cfm_main.sh`, and that is where the launcher
+# lives.  The reference used to name the `molmetal/scripts` directory,
+# which holds NO launcher at all -- MEASURED 2026-11-02:
+# `git ls-files "molmetal/scripts/*" | grep -E "/launch_.*\.sh$"`
+# returns NOTHING -- so the path resolved to no file and the test read a
+# file that does not exist.  Wf-A269 wave-3 (2026-11-02) repoints it at
+# the tracked path.
+LAUNCHER_PATH = REPO_ROOT / "scripts" / "launch_wf299_cfm_main.sh"
 PRE_FLIGHT_PATH = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 
 

@@ -241,10 +241,12 @@ verify the 25/25 PASS gate remains valid after the additive ship.
 ## §8 Lit anchors
 
 1. Yu / Yang / Ren / Zhao 2026 — Deflexpressor (arXiv:2606.07426) — Vertex A
-2. Sun & Zheng 2026 — Hilbert primal-dual (arXiv:2510.08423) — Vertex B
+2. Sun, X. & Zheng, L. (2026) "Hilbert空间上可分离凸优化的原始-对偶动力学方法", *数学学报(中文版)* (*Acta Math. Sin.*, Chinese edition) **69(4): 515** (start page; end page UNVERIFIED), DOI `10.12386/A20250022` — Vertex B
 3. Schmidt & Lipson 2009 — Evolutionary symbolic regression — Vertex A template
 4. Silver 2016 — AlphaGo MCTS PUCT — Vertex C template
 5. Burch & Bardsley 2022 — Variance-controlled PUCT — Vertex C variance penalty
+
+> **[Wf-A149 citation correction — 2026-10-31.]** Item 2 above was originally written, verbatim: "2. Sun & Zheng 2026 — Hilbert primal-dual (arXiv:2510.08423) — Vertex B". The **arXiv id is REFUTED**: `arXiv:2510.08423` resolves to *"Computational Bell Inequalities"* (Ilya Merkulov & Rotem Arnon, quant-ph; arXiv API HTTP 200) — not a Hilbert-space paper. The correct record is Sun, X. & Zheng, L. (2026) "Hilbert空间上可分离凸优化的原始-对偶动力学方法", *数学学报(中文版)* (*Acta Math. Sin.*, Chinese edition) **69(4): 515** (start page; end page UNVERIFIED), DOI `10.12386/A20250022`; no arXiv preprint of that title exists. The author names in the original entry were correct and are unchanged. Per AGENTS.md §5.5 rule 6 the superseded wording is preserved rather than deleted. Full correction note: `TODO/completed/62_hilbert_score_repellent.md` §4.
 
 ---
 

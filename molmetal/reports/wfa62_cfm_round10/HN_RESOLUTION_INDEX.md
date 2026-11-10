@@ -63,7 +63,7 @@ disk 2026-10-17 via `grep -c` + `find`:
 |---|---|---|---|---|
 | 1 | chemprop_v2 shape-only rule (§6.79b.3 prose + §6.79b.4 metric-name + §6.79b.5 MEASURED) | Wf-A55 | 2026-10-16 | `docs/HONEST_NEGATIVE_CATALOG.md` §6.79b |
 | 2 | decoder geometry constraints (§6.82a round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_cfm_decoder_geometry_constraints.py` |
-| 3 | 4n+2 反芳香 detection (§6.82b round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_cfm_decoder_anti_aromatic.py` |
+| 3 | 4n+2 反芳香 detection (§6.82b round-2 W7) — original path **REMOVED 2026-10-30 by Wf-A113** (T83/T84/T85 chain + T86 guard; the `ring_size % 4 == 0` selection was MEASURED WRONG) — superseded by the T86 no-demotion guard | Wf-A55 | 2026-10-16 | `molmetal/tests/test_wfa113_t86_no_anti_aromatic_demotion.py` — see "Path 3 correction (2026-10-31)" below |
 | 4 | chemprop_v2 schema shape-only pytest (§6.81d round-2 W7) | Wf-A54 | 2026-10-16 | `molmetal/tests/test_chemprop_v2_schema_shape_only.py` |
 | 5 | metric_diff cross-schema audit (§6.81f round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_metric_diff.py` |
 | 6 | Wf-A57 methods catalog path (W9-P1..P5 5 ship commits) | Wf-A57 | 2026-10-16 | `molmetal/tests/test_wf_a57_methods.py` |
@@ -91,3 +91,51 @@ disk 2026-10-17 via `grep -c` + `find`:
 the 18-path assertion is now ledger-anchored; future waves can extend
 the table by appending a row (path 19, 20, etc.) without disturbing
 the existing 18-row ledger.
+
+## Path 3 correction (2026-10-31) — the §6.82b anti-aromatic path was superseded by Wf-A113
+
+Row 3 of the 18-path table above no longer points at
+`molmetal/tests/test_cfm_decoder_anti_aromatic.py`: that artifact **was REMOVED on
+2026-10-30 by Wf-A113** (the T83/T84/T85 repair chain + the T86 guard), because the rule it
+guarded was **MEASURED WRONG**. The §6.82b anchor, the Wf-A55 wave and the 2026-10-16 date in
+row 3 are **UNCHANGED** — that path *was* verified on that date; only the current-artifact
+pointer moved. Row numbering (18 rows), the "Round-4 vs round-3 differential" section and every
+other table are untouched.
+
+**Why the removal is correct (MEASURED, `metrics/by_metric/wfa113_t83_truth_roundtrip.json` →
+`anti_aromatic_demotion`):** `code_rule` = `"_is_anti_aromatic returns ring_size % 4 == 0"`, and
+`measured_rdkit_kekulize_behaviour` = `succeeds [4, 6, 8, 10, 12]` / `fails [3, 5, 7, 9]` — so the
+`ring_size % 4 == 0` selection picks exactly the rings RDKit **can** kekulize and never touches
+the odd rings that actually fail (`consequence`, quoted from the same JSON: "the demotion targets
+exactly the rings RDKit handles and never touches the odd rings that fail"). The corpus holds
+**0** such rings (`complexes_with_a_4n_all_aromatic_ring: 0`, `n_4n_rings_total: 0`,
+`frac_of_cohort: 0.0`). (The path label "4n+2 反芳香 detection" is the §6.82b path name as
+verified on 2026-10-16; the code rule it covered was `ring_size % 4 == 0`, i.e. 4n — per the
+JSON's `code_rule`.)
+
+**Old artifact — REMOVED, and the removal is UNCOMMITTED:**
+
+- `molmetal/tests/test_cfm_decoder_anti_aromatic.py` (282 LOC, 7 test functions at commit
+  `4ce85f45`) is **NOT on disk**; the deletion is **STAGED** —
+  `git status --porcelain molmetal/tests/test_cfm_decoder_anti_aromatic.py` → `D  molmetal/tests/test_cfm_decoder_anti_aromatic.py`.
+- `pytest molmetal/tests/test_cfm_decoder_anti_aromatic.py -q` →
+  `ERROR: file or directory not found: molmetal/tests/test_cfm_decoder_anti_aromatic.py` (no tests ran).
+- The helpers `_is_anti_aromatic` / `_detect_and_demote_anti_aromatic` are **gone** from
+  `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` —
+  `grep -n "_is_anti_aromatic" molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` → no hits.
+- `git log --all -S"_detect_and_demote_anti_aromatic" -- molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py`
+  returns **only** `4ce85f45` — the commit that **added** the helper. **No commit ever removed it**,
+  so the removal lives in the working tree only: **a clean checkout of HEAD still carries the old
+  rule and the old 7-test file.**
+
+**Current artifact (replaces row 3's pointer):**
+
+- `molmetal/tests/test_wfa113_t86_no_anti_aromatic_demotion.py` — the T86 no-demotion guard.
+  MEASURED 2026-10-31: `pytest molmetal/tests/test_wfa113_t86_no_anti_aromatic_demotion.py -q` →
+  **6 passed in 0.77 s**. The file itself is **UNTRACKED** (`git status --porcelain` →
+  `?? molmetal/tests/test_wfa113_t86_no_anti_aromatic_demotion.py`), so it ships with the same
+  working-tree change as the removal.
+
+**Date note:** Wf-A113's removal date is 2026-10-30; the MEASURED working-tree mtimes are
+2026-10-29 13:28 (T86 guard) and 2026-10-29 14:44 (decoder) — both uncommitted, so the removal
+sits in the 2026-10-29/30 window.

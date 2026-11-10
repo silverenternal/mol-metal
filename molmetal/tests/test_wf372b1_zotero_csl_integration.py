@@ -64,7 +64,7 @@ MOL_DIVERS_CSL = STYLES_DIR / "mol-divers.csl"
 
 # project .venv interpreter is the canonical python for pybtex-compile
 # (per Wf-351-B2 audit; pybtex 0.24.x installed there)
-VLM_PYTHON = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VLM_PYTHON = Path(sys.executable)
 
 
 class TestWf372B1ZoteroCslIntegration:

@@ -61,7 +61,7 @@ TRAINER_PATH = (
     PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
 DEFAULT_CSV = PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
-DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+DEFAULT_VENV = Path(sys.executable)
 SMOKE_OUT_DIR = Path("/tmp/wf335r2_smoke")
 SMOKE_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -206,7 +206,7 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
     proc = subprocess.run(
         cmd,
         cwd=str(PROJECT_ROOT),
-        env={"PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"},
+        env={"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"},
         capture_output=True,
         text=True,
         timeout=180,

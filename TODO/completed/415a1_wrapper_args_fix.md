@@ -397,9 +397,12 @@ forward-looking closure path is:
    + kill_then_adapt §0, this requires USER_OK=1 + VRAM budget check.
 
 3. **Wf-415-B1**: docs-only INDEX + AGENTS sync to capture the Wf-415-A1
-   fix at the canonical standing-directive layer (NEW §5.8 wrapper
-   transparent-passthrough rule per the same pattern as §5.5/§5.6/§5.7
-   standing directives).
+   fix at the canonical standing-directive layer (NEW ~~§5.8~~ wrapper
+   transparent-passthrough rule — PROPOSED, NEVER LANDED as a numbered
+   directive; the landed wrapper directives are AGENTS.md §5.9
+   (single-venv) and AGENTS.md §5.11 (a wrapper may pass only --config /
+   --out-dir / --ckpt-dir) — per the same pattern as §5.5/§5.6/§5.7
+   standing directives; corrected 2026-11-01).
 
 4. **Wf-415-C1**: pre-existing conftest.py flow_matching reference
    bootstrap bug — orthogonal to Wf-415-A1 but affects test collection.

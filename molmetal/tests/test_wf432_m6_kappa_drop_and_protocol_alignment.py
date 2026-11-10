@@ -61,43 +61,51 @@ def test_m6_kappa_emit_latex_subcommand() -> None:
         assert "9 paths exhausted" in content
 
 
-def test_m6_kappa_rebuild_decision_idempotent() -> None:
-    """m6_kappa rebuild-decision is idempotent (running twice doesn't duplicate state)."""
-    # backup first
+def test_m6_kappa_rebuild_decision_idempotent(tmp_path) -> None:
+    """m6_kappa rebuild-decision is idempotent (running twice doesn't duplicate state).
+
+    Wf-A123 isolation: the command writes ``metrics/by_metric/m6_kappa.json``.
+    It is run against a COPY of the published artifact under ``tmp_path``,
+    with the script's ``REPO_ROOT`` redirected there, so the published tree
+    is never written (the previous version copied a ``.bak.wf432a3_test``
+    file INTO the published directory and left it behind).
+    """
+    import importlib.util
     import shutil
 
-    metric_path = PROJECT_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
-    backup = PROJECT_ROOT / "metrics" / "by_metric" / "m6_kappa.json.bak.wf432a3_test"
-    if not backup.exists():
-        shutil.copy(metric_path, backup)
+    published = PROJECT_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
+    if not published.exists():
+        import pytest
 
-    result = subprocess.run(
-        [sys.executable, str(SCRIPT_M6), "rebuild-decision"],
-        capture_output=True,
-        text=True,
-        timeout=30,
+        pytest.skip(f"{published} missing — nothing to rebuild")
+
+    sandbox = tmp_path / "sandbox"
+    target = sandbox / "metrics" / "by_metric" / "m6_kappa.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(published, target)
+
+    spec = importlib.util.spec_from_file_location(
+        "wf432_m6_kappa_paper_drop_decision", str(SCRIPT_M6)
     )
-    assert result.returncode == 0, f"rebuild-decision failed: {result.stderr}"
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    # Redirect ONLY the write target (the command reads/writes nothing else).
+    module.REPO_ROOT = sandbox
+
+    assert module.main(["rebuild-decision"]) == 0
 
     # Confirm wf424a15_drop_decision block exists + has 9 paths in breakdown
-    with open(metric_path) as f:
+    with open(target) as f:
         data = json.load(f)
     assert "wf424a15_drop_decision" in data
     assert data["wf424a15_drop_decision"]["paths_exhausted_breakdown"]["total"] == 9
 
     # Run again, verify same state
-    subprocess.run(
-        [sys.executable, str(SCRIPT_M6), "rebuild-decision"],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    with open(metric_path) as f:
+    assert module.main(["rebuild-decision"]) == 0
+    with open(target) as f:
         data2 = json.load(f)
     assert data2["wf424a15_drop_decision"]["paths_exhausted_breakdown"]["total"] == 9
-
-    # restore backup
-    shutil.copy(backup, metric_path)
 
 
 # =============================================================================

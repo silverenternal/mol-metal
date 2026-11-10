@@ -177,7 +177,7 @@ DEFAULT_TMQM_PARSED_CSV: Path = (
     Path(
         os.environ.get(
             "MOLMETAL_DATA_DIR",
-            "/home/hugo/codes/mol-metal/.data/molmetal",
+            str(Path(__file__).resolve().parents[2] / ".data" / "molmetal"),
         )
     )
     / "tmQM"

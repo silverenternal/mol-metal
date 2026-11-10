@@ -21,8 +21,8 @@
 #   - TODO/03_baselines/COMPARISON_BASELINES.md §1.2 Rusanov 2025 (4 cell-line setup)
 #   - TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md (alignment levels L2: bone-marrow)
 #   - molmetal/scripts/build_platinai_4cell.py (PlatinAI 4-cell dataset builder)
-#   - molmetal/scripts/launch_wf131_p3_deferred_runs.sh (sibling wrapper — same pattern)
-#   - molmetal/scripts/launch_wf390a1_m2_r2_path_a.sh (sibling wrapper — per-pair loop)
+#   - scripts/launch_wf131_p3_deferred_runs.sh (sibling wrapper — same pattern)
+#   - scripts/launch_wf390a1_m2_r2_path_a.sh (sibling wrapper — per-pair loop)
 #   - scripts/_dry_run_log_helper.sh (Wf-363-A1 per-pair DRY_RUN.log schema)
 #   - mol-metal-gpu-execution §0 (kill_then_adapt standing directive)
 #   - Wf-335-R1+R3 (--no-cuda-graphs safety lever for Blackwell sm_120)
@@ -119,6 +119,18 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf131_p3_pt_4cells"
 TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
+# AGENTS.md §5.11 (user directive 2026-10-09, verbatim "以后要求能且只能用yaml配置启动训练和推理，no cli参数"):
+# the trainer is launched from a YAML config and nothing else. Every
+# hyperparameter this wrapper used to pass on the command line (and every flag
+# its COMMON_ARGS array carried) now lives in BASE_CONFIG; the wrapper passes
+# only --config and --out-dir.
+BASE_CONFIG="${PROJECT_ROOT}/configs/wf131_p3_pt_4cells.yaml"
+# Per-pair derived config writer. The sweep dimensions (metals / seeds) are
+# per PROCESS here — this wrapper runs 25 separate trainer processes, one per
+# (metal, seed) pair — so they are written into a per-pair config instead of
+# being passed as --metals / --seeds. See scripts/_wf_yaml_pair_config.py.
+PAIR_CONFIG_HELPER="${PROJECT_ROOT}/scripts/_wf_yaml_pair_config.py"
+DERIVED_CONFIG_DIR="${REPORTS_DIR}/configs"
 # Per Wf-131 P3 SUBSTANTIVE PIVOT (2026-10-08 user direction
 # "得用真实数据啊,合成数据真的有用吗?"):
 # Real Pt per-cell IC50 numerics are NOT accessible:
@@ -136,6 +148,10 @@ TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
 # Pt × 4-cell is BLOCKED on external dependency per AGENTS.md §5.2
 # honest-negative framing; documented in
 # TODO/completed/131_wf131_p3_pt_4cell_blocked_external.md.
+# The CSV is ALSO declared in BASE_CONFIG (top-level `csv:`). The config is
+# authoritative for the trainer; the shell copy below exists only for the
+# pre-flight existence check and is checked against the config by --expect at
+# derive time (fail closed — a drifted copy aborts the pair before GPU work).
 LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 if [[ ! -f "${LOMO_CSV}" ]]; then
     echo "FATAL: REAL 5-metal CSV missing: ${LOMO_CSV}" >&2
@@ -162,7 +178,12 @@ done
 
 # Wall budget (PROJECTED per Wf-260 G6 timing on RTX 5090)
 WALL_BUDGET_HR=6
+# Epoch count. The AUTHORITATIVE value is `protocol.epochs` in BASE_CONFIG;
+# this shell copy fills the plan record and the post-run epoch check, and is
+# checked against the config by --expect at derive time (fail closed).
 EPOCHS=50
+# Device. The AUTHORITATIVE value is `compute.device` in BASE_CONFIG (same
+# fail-closed check).
 GPU="cuda:0"               # RTX PRO 6000 Blackwell sm_120 (per Wf-431-B1 env probe)
 
 mkdir -p "${REPORTS_DIR}"
@@ -239,20 +260,29 @@ LOG="${OUT_BASE}/master.log"
 #   --tf32 + --cudnn-benchmark + --channels-last (PROJECTED +30-60% GPU util)
 #   These flags DEFAULT OFF per AGENTS.md §5.7 NEW trainer flag wire-in smoke-required
 #   rule; when OFF, trainer behaves bit-exact to Wf-131 P3 baseline.
-COMMON_ARGS=(
-  --epochs "${EPOCHS}"
-  --batch-size 256
-  --hidden 300
-  --depth 3
-  --lr 1e-3
-  --alpha 0.5
-  --wasserstein-weight 0.05
-  --use-l2-guard
-  --n-mc 256
-  --device "cuda:0"
-)
+#
+# AGENTS.md §5.11 (2026-11-03): the COMMON_ARGS array is GONE. Every flag it
+# carried is now declared in configs/wf131_p3_pt_4cells.yaml, and the trainer
+# is launched with --config + --out-dir only:
+#     --epochs "${EPOCHS}"        -> protocol.epochs
+#     --batch-size 256            -> protocol.batch_size
+#     --hidden 300                -> model.hidden
+#     --depth 3                   -> model.depth
+#     --lr 1e-3                   -> protocol.lr
+#     --alpha 0.5                 -> model.alpha
+#     --wasserstein-weight 0.05   -> protocol.wasserstein_weight
+#     --use-l2-guard              -> eval.use_l2_guard
+#     --n-mc 256                  -> eval.n_mc
+#     --device "cuda:0"           -> compute.device
+#     --metals "${metal}"         -> data.metals        (per pair)
+#     --seeds "${seed}"           -> protocol.seeds     (per pair)
+#     --csv "${LOMO_CSV}"         -> csv                (per pair, same value)
+#     --out-metric <path>         -> output.out_metric (per pair)
+# The superseded COMMON_ARGS array is preserved VERBATIM in the comment block
+# above run_pair()'s trainer invocation.
+#
 # NOTE: --metals and --csv are passed per-pair by run_pair() (--metals per
-# metal, --csv shared LOMO_CSV). COMMON_ARGS only carries the common flags.
+# metal, --csv shared LOMO_CSV).
 
 # GPU utilization optimization flags per Wf-431-B1 §FIX RECOMMENDATIONS F1+F2+F4.
 # These flags are CONDITIONAL on the trainer accepting them; SCAFFOLD smoke below
@@ -327,7 +357,7 @@ for FLAG in "${GPU_UTIL_FLAGS[@]}"; do
     GPU_UTIL_PROBE_RC=0
     ${PY} "${TRAINER}" --help 2>&1 | grep -qE -- "--${FLAG_NAME}([ =]|\\b)" || GPU_UTIL_PROBE_RC=$?
     if [ "${GPU_UTIL_PROBE_RC}" -ne 0 ]; then
-        echo "L3 SCAFFOLD_PARTIAL: trainer missing --${FLAG_NAME} flag; skipping from COMMON_ARGS" | tee -a "${LOG}"
+        echo "L3 SCAFFOLD_PARTIAL: trainer missing --${FLAG_NAME} flag; not passed to the trainer (pre-existing behaviour, unchanged by the §5.11 YAML migration)" | tee -a "${LOG}"
     fi
 done
 echo "L3 GPU_UTIL flag presence validated" | tee -a "${LOG}"
@@ -350,7 +380,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     echo "DATA_CSV: ${LOMO_CSV}" | tee -a "${LOG}"
     echo "GPU: cuda:0 (RTX PRO 6000 Blackwell sm_120)" | tee -a "${LOG}"
     echo "PAIRS (${#PAIR_OVERRIDE[@]}): ${PAIR_OVERRIDE[*]}" | tee -a "${LOG}"
-    echo "COMMON_ARGS: ${COMMON_ARGS[*]}" | tee -a "${LOG}"
+    echo "CONFIG: ${BASE_CONFIG} (every hyperparameter lives here per AGENTS.md §5.11)" | tee -a "${LOG}"
     echo "CELL_LINE_SUPPORTED: ${CELL_LINE_SUPPORTED}" | tee -a "${LOG}"
     echo "" | tee -a "${LOG}"
 
@@ -379,7 +409,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
         --wrapper "$(basename "$0")" \
         --mode "Pt_4cells_Rusanov_5seed_50epoch" \
         --trainer "${TRAINER}" \
-        --flags "${COMMON_ARGS[*]}" \
+        --flags "--config <derived per-pair config> --out-dir ${OUT_BASE}/<METAL>/seed<SEED>" \
         --gpu "cuda:0" \
         --budget-hr "6" \
         --user-ok "REQUIRED" \
@@ -500,6 +530,15 @@ run_pair() {
   # see Wf-347-B1 §5). The `|| true` suppresses `set -euo pipefail` from killing
   # the wrapper when wave_budget_remaining_nonneg or other gates FAIL — those
   # are informational, not blocking. Pre-flight already enforces the real budget.
+  #
+  # Wf-A269 wave-16 (2026-11-03): the `|| true` used to be followed by
+  # `local rc_c2=$?`, and `$?` there was STRUCTURALLY ALWAYS 0 — `local`
+  # returns 0, and the `|| true` had already reset `$?`.  So a FAILED
+  # per-wave check was logged as `rc=0`: the gate could not report a
+  # failure in the only place its result was recorded.  The rc is now
+  # captured on the failure branch itself (`|| rc_c2=$?`), which keeps the
+  # diagnostic-only intent (no abort) AND records the real exit code.
+  local rc_c2=0
   PYTHONPATH="${PROJECT_ROOT}" ${PY} "${SCRIPTS_DIR}/wf343c2_per_wave_check.py" \
     --wave "Wf-131-P3-5metal-${metal}-seed${seed}" \
     --pairs-metals "${metal}" \
@@ -508,8 +547,7 @@ run_pair() {
     --min-vram-mib 8192 \
     --min-disk-gib 50 \
     --skip-live > "${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" 2>&1 \
-    || true
-  local rc_c2=$?
+    || rc_c2=$?
   echo "PAIR_PER_WAVE_CHECK ${metal} seed=${seed} rc=${rc_c2} log=${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" | tee -a "${LOG}"
   # Diagnostic-only: do NOT return 1 on rc!=0 (per kill_then_adapt; see
   # Wf-347-B1 §5 comment in launch_wf124_p3_g5.sh).
@@ -520,13 +558,66 @@ run_pair() {
   echo "PAIR_BUDGET_START ${metal} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} "${TRAINER}" \
-    --metals "${metal}" \
-    --seeds "${seed}" \
-    --csv "${LOMO_CSV}" \
+  # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+  #
+  # AGENTS.md §5.11 — YAML-only launch. The per-pair config carries every
+  # value the trainer used to receive on the command line (metals / seeds /
+  # csv / out-metric / the whole COMMON_ARGS array). The --expect flags
+  # assert that the shell's display copies still agree with the config, so
+  # the two can never drift apart silently (fail closed, before GPU work).
+  local derived_config="${DERIVED_CONFIG_DIR}/${metal}_seed${seed}.yaml"
+  if ! "${PY}" "${PAIR_CONFIG_HELPER}" \
+      --base "${BASE_CONFIG}" \
+      --out "${derived_config}" \
+      --metal "${metal}" \
+      --seed "${seed}" \
+      --expect "protocol.epochs=${EPOCHS}" \
+      --expect "compute.device=${GPU}" \
+      --expect "csv=${LOMO_CSV}" \
+      --set "output.out_dir=${OUT_BASE}/${metal}/seed${seed}" \
+      --set "output.out_metric=${OUT_BASE}/${metal}/seed${seed}/metrics.json" \
+      > "${OUT_BASE}/${metal}/seed${seed}/config_derive.log" 2>&1; then
+    echo "FAIL: config derivation failed for ${metal} seed=${seed} (see ${OUT_BASE}/${metal}/seed${seed}/config_derive.log)"
+    return 1
+  fi
+
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  # (2026-11-03, AGENTS.md §5.11 YAML-only migration. Every line below is the
+  #  ORIGINAL line byte-for-byte (same flags, same order, same literal values,
+  #  same indentation) after the "# " comment prefix, so the migration can be
+  #  audited against the exact text it replaced. Every flag it carried now lives
+  #  in configs/wf131_p3_pt_4cells.yaml; the wrapper passes only --config and
+  #  --out-dir.
+  # #
+  # [SUPERSEDED 1 -- the pre-migration COMMON_ARGS array, verbatim]
+  # COMMON_ARGS=(
+  #   --epochs "${EPOCHS}"
+  #   --batch-size 256
+  #   --hidden 300
+  #   --depth 3
+  #   --lr 1e-3
+  #   --alpha 0.5
+  #   --wasserstein-weight 0.05
+  #   --use-l2-guard
+  #   --n-mc 256
+  #   --device "cuda:0"
+  # )
+  # #
+  # [SUPERSEDED 2 -- the pre-migration trainer invocation, verbatim]
+  #   CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid nohup ${PY} "${TRAINER}" \
+  #     --metals "${metal}" \
+  #     --seeds "${seed}" \
+  #     --csv "${LOMO_CSV}" \
+  #     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
+  #     --out-metric "${OUT_BASE}/${metal}/seed${seed}/metrics.json" \
+  # "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}" || true
+  # #
+  # [SUPERSEDED 3 -- the pre-migration DRY_RUN.log --flags string, verbatim]
+  #         --flags "${COMMON_ARGS[*]}" \
+  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid nohup ${PY} "${TRAINER}" \
+    --config "${derived_config}" \
     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
-    --out-metric "${OUT_BASE}/${metal}/seed${seed}/metrics.json" \
-"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}" || true
+    2>&1 | tee "${pair_log}" || true
   local rc=${PIPESTATUS[0]}
 
   local pair_end_s pair_elapsed_s
@@ -541,7 +632,7 @@ run_pair() {
   fi
   # Wf-R43 + Wf-302B guard: verify the pair actually reached target epoch (50)
   # via metrics.json (replaces broken regex-grep on run.log).
-  verify_pair_reached_epoch "${OUT_BASE}/${metal}/seed${seed}/metrics.json" 50 30 \
+  verify_pair_reached_epoch "${OUT_BASE}/${metal}/seed${seed}/metrics.json" "${EPOCHS}" 30 \
     || { echo "FAIL: ${metal} seed=${seed} did not reach epoch 50 (metrics.json missing or epochs < 50)"; return 1; }
   # Wf-R43 resume-safety: write .DONE marker only after BOTH trainer + epoch-50 verified
   echo "PAIR_DONE ${metal} seed=${seed} rc=${rc} epoch=50 verified" > "${pair_done}"

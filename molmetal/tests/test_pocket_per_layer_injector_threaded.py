@@ -30,6 +30,7 @@ on disk as of Wf-A63.
 from __future__ import annotations
 
 import warnings
+from pathlib import Path
 
 import pytest
 import torch
@@ -37,15 +38,17 @@ import torch
 torch.manual_seed(0)
 
 
-EGNN_EXT = (
-    "/home/hugo/codes/mol-metal/molmetal/adapters/egnn_extensions.py"
-)
+# Repo-relative path anchors: these tests read source files that are TRACKED
+# in this repository, so the location must be derived from this file's own
+# location rather than hard-coded to one checkout path.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+EGNN_EXT = REPO_ROOT / "molmetal" / "adapters" / "egnn_extensions.py"
 FML_INIT = (
-    "/home/hugo/codes/mol-metal/molmetal/adapters/flow_matching_lipman/__init__.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "__init__.py"
 )
 
 
-def _read(p: str) -> str:
+def _read(p: Path) -> str:
     with open(p) as f:
         return f.read()
 

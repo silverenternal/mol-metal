@@ -120,7 +120,7 @@ def _first_existing_repo_root(candidates: Tuple[Path, ...]) -> str:
 #:    distributable wheels / other hosts where the host-absolute path
 #:    doesn't exist.
 _BIOLM_CANDIDATES: Tuple[Path, ...] = (
-    Path("/home/hugo/codes/mol-metal/references/BioLM-Score").resolve(),
+    Path(__file__).resolve().parents[3] / "references" / "BioLM-Score",
     Path(__file__).resolve().parents[2] / "references" / "BioLM-Score",
 )
 

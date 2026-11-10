@@ -174,7 +174,30 @@ def test_expected_gate_counts_include_the_new_gate():
         sys.path.insert(0, str(SCRIPT_DIR))
     import pre_flight_check as pf
 
-    m = re.search(r'"all": (\d+)', block.group(1))
+    # SUPERSEDED (2026-11-04, Wf-A269 stale-pins sweep — PRESERVED VERBATIM
+    # per AGENTS.md §5.5 rule #6).  The old extraction read the FIRST
+    # `"all": N` inside the captured block, comment lines included:
+    #     m = re.search(r'"all": (\d+)', block.group(1))
+    # THAT PREMISE IS FALSE.  The Wf-A269 wave-19 repair bumped the live
+    # constant to 133 and, per AGENTS.md §5.5 rule #6, preserved the
+    # superseded rendering VERBATIM as a COMMENT directly above it:
+    #     # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #     #     "all": 132,
+    #     "all": 133,
+    # so the old regex read the PRESERVED historical rendering (132) as the
+    # live value and FAILED against len(build_gates("all")) == 133 — a
+    # §5.5-COMPLIANT edit produced a RED test.
+    # REPAIRED on the CONSUMER side: the comment lines are dropped before
+    # the live value is read.  The producer is NOT touched (the preserved
+    # rendering stays exactly as it is) and the guard keeps its teeth — the
+    # LIVE constant is still compared against len(build_gates("all")).
+    live_block = "\n".join(
+        line
+        for line in block.group(1).splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    m = re.search(r'"all": (\d+)', live_block)
+    assert m is not None, "no live \"all\" count found in EXPECTED_GATE_COUNTS"
     assert int(m.group(1)) == len(pf.build_gates("all")), (
         "EXPECTED_GATE_COUNTS['all'] does not match build_gates('all') — "
         "update it and TODO/completed/321d_preflight_gate_audit.md in the same edit"

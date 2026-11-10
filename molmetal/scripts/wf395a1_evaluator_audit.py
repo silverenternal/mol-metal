@@ -333,8 +333,26 @@ def _safe_eval(target: Any, func_name: str) -> Any:
                     with tempfile.NamedTemporaryFile(
                         suffix=".yaml", mode="w", delete=False
                     ) as f:
+                        # Wf-A269 wave-28 (2026-11-06) — THE PROBE'S INPUT
+                        # MUST SATISFY THE CONTRACT THE CALLEE DECLARES.  The
+                        # synthetic YAML used to carry `levels:` only, and the
+                        # callee was permissive; it later grew a boundary
+                        # check that REFUSES an empty or non-list
+                        # `cohort.pockets` / `cohort.seeds`
+                        # (molmetal/scripts/wf380a4_vina_param_tuning.py
+                        # :285-299) ⇒ MEASURED 2026-11-06: the probe FAILS
+                        # for a reason that has nothing to do with the
+                        # evaluator — its own input was incomplete — and the
+                        # audit reported 21/22 while its PUBLISHED artefact
+                        # (MEASURED 2026-09-30) said 22/22 ⇒ the published
+                        # `n_pass` had already stopped describing what the
+                        # audit measures (§6.269.38 class).
+                        # The cohort below mirrors the REAL config's shape
+                        # (molmetal/configs/vina_docking_params.yaml): a
+                        # non-empty `pockets` list + a non-empty `seeds` list.
                         f.write(
                             "levels:\n  low:\n    exhaustiveness: 8\n  medium:\n    exhaustiveness: 32\n  high:\n    exhaustiveness: 64\n"
+                            "cohort:\n  pockets:\n  - 1h36\n  - 3eml\n  seeds:\n  - 0\n  - 1\n"
                         )
                         tp = Path(f.name)
                     args.append(tp)
@@ -369,6 +387,39 @@ def _safe_eval(target: Any, func_name: str) -> Any:
         except (TypeError, ValueError):
             return f"<{type(target).__name__}>"
     return repr(target)
+
+
+#: The canonical evaluator-verification script — the SOURCE of the legacy
+#: "14/14" baseline.  What it prints is a PROBE count, not an EVALUATOR count.
+CANONICAL_EVAL_SCRIPT = _ROOT / "molmetal" / "scripts" / "eval_all_evaluators.py"
+
+
+def measure_canonical_probe_count() -> Dict[str, object]:
+    """MEASURE the canonical PROBE count from ``eval_all_evaluators.py``.
+
+    THE POPULATION, NAMED — this is the whole point of the function.
+
+    A **PROBE** is one ``n_total += 1`` increment in the canonical script: a
+    single checked assertion (a SA score, an import, an instantiation).  It is
+    NOT an evaluator.  MEASURED 2026-11-06: the canonical script's 14 probes
+    span its **9** evaluator SECTIONS ([1] SA, [2] QED, [3] Vina adapter,
+    [4] vina+meeko, [5] PoseBusters, [6] Bio.PDB, [7] OpenBabel, [8] ProDy,
+    [9] reference-drug sanity), and this audit's own inventory declares
+    **12** R17-tier EVALUATORS.  The legacy rendering called the 14
+    "evaluators"; the number was then laundered into this audit's
+    ``r17_canonical_pass`` key, which sat directly beside the audit's own
+    measured ``by_tier.R17 == 12`` ⇒ **three populations, one lying label**
+    (the §6.269.38 class).
+
+    The count is read from the SOURCE on every run — never quoted from a
+    literal — so it cannot go stale away from the script it describes.
+    """
+    source = CANONICAL_EVAL_SCRIPT.read_text(encoding="utf-8")
+    return {
+        "canonical_probe_total": source.count("n_total += 1"),
+        "canonical_probe_source": str(CANONICAL_EVAL_SCRIPT.relative_to(_ROOT)),
+        "canonical_probe_rule": "count of `n_total += 1` increments in the source",
+    }
 
 
 def audit_evaluator_coverage() -> Dict[str, int]:
@@ -406,6 +457,9 @@ def main() -> int:
     print("=" * 80)
     print()
     by_tier = audit_evaluator_coverage()
+    # Wf-A269 wave-28 (2026-11-06) — the canonical probe count is MEASURED
+    # from the source on this run, and every population is NAMED.
+    canonical = measure_canonical_probe_count()
     print("Inventory (MEASURED on .venv + Blackwell sm_120):")
     for tier in ["R17", "SCAFFOLD", "WIRE-IN", "MEASURED-ON-REAL"]:
         if tier in by_tier:
@@ -423,11 +477,26 @@ def main() -> int:
         )
         if r["passed"]:
             n_pass += 1
+    # Wf-A269 wave-28 (2026-11-06) — the R17-tier EVALUATOR count, measured
+    # from this audit's own inventory and from this run's per-evaluator
+    # records.  Computed HERE (before the prose that prints it) — the first
+    # draft computed it further down and the prose raised UnboundLocalError.
+    r17_evaluator_total = by_tier.get("R17", 0)
+    r17_evaluator_passed = sum(1 for r in records if r["tier"] == "R17" and r["passed"])
+
     print()
     print("=" * 80)
     print(f"Wf-395-A1 SUMMARY: {n_pass}/{len(records)} evaluators PASS")
-    print("R17 canonical baseline: 14/14 evaluators PASS")
-    print("  (per molmetal/scripts/eval_all_evaluators.py @ Wf-395-A1 fresh-run)")
+    print(
+        f"R17 canonical baseline: {canonical['canonical_probe_total']} PROBES "
+        f"declared by {canonical['canonical_probe_source']} "
+        f"(re-measured from the source on this run)"
+    )
+    print(
+        f"  (population: PROBES, not EVALUATORS — the legacy rendering said "
+        f"14/14 evaluators; this audit's own inventory declares "
+        f"{r17_evaluator_total} R17-tier evaluators)"
+    )
     print(
         f"NEW Wf-380..394: {sum(by_tier.get(t, 0) for t in ['SCAFFOLD', 'WIRE-IN', 'MEASURED-ON-REAL'])} candidate evaluators"
     )
@@ -448,7 +517,20 @@ def main() -> int:
                 "by_tier": by_tier,
                 "n_evaluators": len(records),
                 "n_pass": n_pass,
+                # LEGACY token — name AND value PRESERVED VERBATIM per
+                # AGENTS.md §5.5 rule #6.  It is the Wf-395-A1 ship-run
+                # PROBE pass count (2026-09-30), NOT an evaluator count.
                 "r17_canonical_pass": 14,
+                "r17_canonical_pass_population": (
+                    "PROBES in molmetal/scripts/eval_all_evaluators.py "
+                    "— NOT evaluators"
+                ),
+                # NEW axes, each MEASURED on this run.
+                "r17_canonical_probe_total": canonical["canonical_probe_total"],
+                "r17_canonical_probe_total_source": canonical["canonical_probe_source"],
+                "r17_canonical_probe_total_rule": canonical["canonical_probe_rule"],
+                "r17_tier_evaluator_total": r17_evaluator_total,
+                "r17_tier_evaluator_passed": r17_evaluator_passed,
                 "records": records,
             },
             indent=2,

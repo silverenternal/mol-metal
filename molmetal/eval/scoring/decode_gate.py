@@ -13,8 +13,9 @@ Three gates, applied in order:
 1. ``Chem.MolFromSmiles(smi)`` — parse.
 2. ``Chem.SanitizeMol(mol)`` — valence / aromaticity / implicit-H check.
 3. :func:`_largest_fragment_frac` — ``max(GetMolFrags(...).GetNumAtoms()) / N``
-   with a threshold ``largest_frac_min`` (default 0.80, the standard
-   MOSES / GuacaMol acceptance floor).
+   with a threshold ``largest_frac_min``.  The default 0.80 is a
+   REPO-LOCAL choice, not a published standard — see "Lit anchors" below
+   for the published criteria it is NOT.
 4. Minimum atoms per molecule ``min_atoms`` (default 2; rejects
    ``[Pt]``, ``[He]``, etc., i.e. single-atom "molecules").
 
@@ -25,12 +26,68 @@ RDKit-strict only" — bit-exact backward compat with the previous
 
 Lit anchors
 -----------
-- Polykovskiy 2020 *MOSES* (arXiv:1811.01457) — validity = sanitised
-  AND single connected fragment AND at least one heavy atom.
-- Brown 2019 *GuacaMol* (J. Cheminform. 11:49) — validity =
-  sanitised AND passes RDKit ``MolVS`` basic checks.
-- Jin 2018 *JTVAE* (ICML, arXiv:1802.04364) — "valid molecule has
-  exactly one connected component over its covalent-bond graph."
+Every anchor below was re-checked against its PRIMARY source on 2026-10-31
+(the arXiv abstract page / the paper's own PDF or HTML text, the publisher
+metadata record for the journal version, and — where the benchmark ships
+code — the released implementation).  Each note says what the source DOES
+say, so a reader can check the claim instead of trusting it.  (Two
+identifiers and one provenance claim in this block were wrong before this
+revision; see the per-anchor notes.)
+
+- Polykovskiy et al., *Molecular Sets (MOSES): A Benchmarking Platform
+  for Molecular Generation Models* — arXiv:**1811.12823** (v3, 2019-10-15);
+  journal version *Front. Pharmacol.* **2020, 11, 565644, DOI
+  10.3389/fphar.2020.565644**.  NOT arXiv:1811.01457: that identifier
+  resolves to Innes et al., "Fashionable Modelling with Flux" (a Julia
+  differentiable-programming framework paper), i.e. the old id pointed at
+  an unrelated paper.
+  The released ``Valid`` metric is ``moses/metrics/metrics.py::fraction_valid``
+  over ``moses/utils.py::get_mol`` = RDKit parse + ``Chem.SanitizeMol``.
+  The journal version says the same in prose: "We define validity using
+  RDKit's molecular structure parser that checks atoms' valency and
+  consistency of bonds in aromatic rings."
+  The released code has NO fragment-count term (``GetMolFrags`` appears
+  nowhere in the MOSES repository) and NO heavy-atom floor, so under
+  MOSES a sanitisable multi-fragment SMILES counts as VALID.  The MOSES
+  *dataset* filter is a property filter (MW 250-350, XlogP <= 3.5, <= 7
+  rotatable bonds, allowed elements only, MCF + PAINS filters), not a
+  connectivity filter.  Do NOT cite MOSES for a largest-fragment
+  criterion.
+- Brown N, Fiscato M, Segler MHS, Vaucher AC, *GuacaMol: Benchmarking
+  Models for de Novo Molecular Design* — **J. Chem. Inf. Model. 2019,
+  59(3), 1096-1108, DOI 10.1021/acs.jcim.8b00839**.  NOT "J. Cheminform.
+  11:49": that article is *"Fast, efficient fragment-based coordinate
+  generation for Open Babel"* (J. Cheminform. 2019, 11, 49, DOI
+  10.1186/s13321-019-0372-5) — an unrelated paper.  GuacaMol's validity
+  check, ``guacamol/utils/chemistry.py::is_valid``, is
+  ``smiles != "" and MolFromSmiles(smiles) is not None and
+  mol.GetNumAtoms() > 0`` — parse-only: no fragment requirement, and no
+  "MolVS basic checks" in the validity path.
+- Jin W, Barzilay R, Jaakkola T, *Junction Tree Variational Autoencoder
+  for Molecular Graph Generation* (JTVAE) — ICML 2018,
+  arXiv:**1802.04364**.  The paper reports validity as "chemically valid
+  (checked by RDKit)" (§3.1); it states no fragment-count rule.
+
+Published criteria that DO constrain fragmentation — for contrast, none of
+them is the 0.80 this module defaults to:
+
+- END, *Equivariant Neural Diffusion for Molecule Generation*
+  (NeurIPS 2024, arXiv:2506.10532) App. A.6.1: validity "does not
+  penalize fragmented samples as long as each individual fragment appears
+  valid", while Connectivity "simply checks that a valid molecule is
+  composed of exactly one fragment" — i.e. the field keeps fragmentation
+  OUT of validity and puts it in a separate, strict metric.
+- CBGBench (arXiv:2406.10840) App. E.4: "we define a chemically valid
+  molecule as one where the number of atoms in the largest fragment is
+  greater than 85% of the total number of atoms" — the nearest published
+  largest-fragment RATIO, and it is 0.85, not 0.80.
+
+**The default ``largest_frac_min = 0.80`` is a REPO-LOCAL choice.**  It
+is NOT a MOSES standard (MOSES ships no largest-fragment ratio at all)
+and NOT a GuacaMol standard (GuacaMol validity is parse-only).  It sits
+between the published 0.85 (CBGBench) and the strict one-fragment rule
+(END) and matches neither.  The value is a behaviour constant and is
+NOT changed by this note — only its provenance is corrected.
 
 Honest framing
 --------------
@@ -145,11 +202,17 @@ def gate_smiles(
         If ``> 0``, reject molecules whose largest connected fragment
         has fewer than ``largest_frac_min * N`` atoms.  ``0.0``
         preserves the legacy RDKit-strict-only behaviour (no per-atom
-        fragment gate).  Standard MOSES / GuacaMol floor: ``0.80``.
+        fragment gate).  The repo's project-strict value is ``0.80`` —
+        a REPO-LOCAL choice, NOT a MOSES / GuacaMol standard (see the
+        module docstring, "Lit anchors", for the published criteria it
+        is not).
     min_atoms : int, default 0
         Reject molecules with fewer than ``min_atoms`` heavy atoms.
-        ``0`` preserves legacy behaviour (no min-atoms gate).  Standard
-        MOSES floor: ``2``.
+        ``0`` preserves legacy behaviour (no min-atoms gate).  The
+        repo's project-strict value is ``2`` — again a repo-local
+        choice: neither MOSES nor GuacaMol defines a min-heavy-atoms
+        validity floor (GuacaMol's ``is_valid`` requires only >= 1
+        atom).
 
     Returns
     -------

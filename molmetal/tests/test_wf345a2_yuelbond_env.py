@@ -360,7 +360,7 @@ def test_gate_yuelbond_decoder_env_skip_when_torch_missing(
     # The expected runtime per AGENTS.md §5.1 standing GPU grant +
     # §5.9 single-venv rule: the repo-local canonical .venv is THE
     # torch-enabled runtime.
-    assert "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence, (
+    assert sys.executable in result.evidence, (
         f"SKIP evidence must name the expected torch-enabled runtime "
         f"per AGENTS.md §5.1; got: {result.evidence}"
     )
@@ -425,9 +425,24 @@ def test_gate_yuelbond_decoder_env_gate_name_propagates(preflight) -> None:
         f"EXPECTED_GATE_COUNTS['all']={preflight.EXPECTED_GATE_COUNTS['all']}; "
         f"rename should NOT change the count"
     )
-    assert preflight.EXPECTED_GATE_COUNTS["all"] == 68, (
+    # Wf-A145 (2026-10-31) — this assertion used to hard-code
+    # `EXPECTED_GATE_COUNTS["all"] == 68`, a Wf-345A2-era snapshot.  The
+    # pre-flight's registry has since been bumped (each bump documented
+    # with a dated comment inside `pre_flight_check.py`) to 127, so the test
+    # has been RED since the count first passed 68 (Wf-350-A3 bumped
+    # 68 -> 69).  MEASURED 2026-10-31: `len(build_gates("all")) ==
+    # EXPECTED_GATE_COUNTS["all"] == 127` — the registry and the expected
+    # constant AGREE; only this test's own literal was stale.  Repaired to a
+    # MONOTONIC FLOOR, which is the repo's own convention for this case
+    # (`molmetal/tests/test_wf350a3_hp_provenance.py:321` asserts `>= 69`):
+    # a hard-coded equality fires on every legitimate gate addition, while
+    # the floor still catches a silent shrinkage.  The authoritative
+    # invariant — registry == expected constant — is asserted immediately
+    # above and is unaffected by gate additions.
+    assert preflight.EXPECTED_GATE_COUNTS["all"] >= 68, (
         f"EXPECTED_GATE_COUNTS['all']={preflight.EXPECTED_GATE_COUNTS['all']} "
-        f"!= 68 (62 baseline + 4 NEW Wf-343C4 + 2 NEW Wf-343C2/C3 gates)"
+        f"< 68 (62 baseline + 4 NEW Wf-343C4 + 2 NEW Wf-343C2/C3 gates) — "
+        f"the gate count SHRANK below its Wf-345A2 baseline"
     )
 
     # The new gate's runner is registered (without invoking it —

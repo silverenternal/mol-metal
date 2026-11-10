@@ -14,11 +14,11 @@ starvation persisted.
 Wf-328-W2 fix — replaces ``--cpu-num-workers 0`` with ``--cpu-num-workers 8``
 (Wf-326B OPTIMAL_NUM_WORKERS on 24-core host) across 6 launch scripts:
 
-  1. scripts/launch_wf124_p3_g4.sh         (TODO-180 G4 — 14 metal,seed pairs)
+  1. TODO/archive/wf437_simplify/launch_wf124_p3_g4.sh         (TODO-180 G4 — 14 metal,seed pairs)
   2. scripts/launch_wf124_p3_g5.sh         (TODO-181 G5 — 5 metals x 3 seeds)
   3. scripts/launch_wf124_p3_g6.sh         (TODO-182 G6 — 4 cfgs x 5 metals x 3 seeds)
   4. scripts/launch_wf310b_g6_final.sh     (Wf-310B G6 final wrapper)
-  5. scripts/launch_wf300_cfm_main.sh      (Wf-300C Wave-B — G6 C12 no_wass)
+  5. TODO/archive/wf437_simplify/launch_wf300_cfm_main.sh      (Wf-300C Wave-B — G6 C12 no_wass)
   6. scripts/retry_g5_missing_pairs.sh     (Wf-310A — Ru s=2 + Ir s=0 retry)
 
 Tests (5 total):
@@ -52,8 +52,12 @@ import pytest
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
+# Wf-A269 wave-3 (2026-11-02) — the home of the two launchers that Wf-437
+# archived.  The prose in this file already named these paths; the machine-
+# checked constants did not (see the WF328W2_TARGETS correction below).
+ARCHIVE = ROOT / "TODO" / "archive" / "wf437_simplify"
 TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 
 if str(ROOT) not in sys.path:
@@ -69,19 +73,43 @@ _wf326b = importlib.import_module("molmetal.scripts.wf326b_dataloader_optimized"
 # ---------------------------------------------------------------------------
 # Constants — the 6 launch scripts that Wf-328-W2 fixes
 # ---------------------------------------------------------------------------
+# Wf-A269 wave-3 (2026-11-02) — CORRECTION: the two launchers that Wf-437
+# archived are pointed at their ARCHIVED copies here.  The prose above this
+# constant already named the archive paths, but the CONSTANTS named
+# ``SCRIPTS / ...`` — so both launchers were SKIPPED at runtime and NOTHING
+# was asserted about them, while the file claimed to cover all six.  The
+# archived copies carry the same `--cpu-num-workers 8` value, so the
+# coverage is now real rather than nominal.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+#   WF328W2_TARGETS = (
+#       SCRIPTS / "launch_wf124_p3_g4.sh",
+#       SCRIPTS / "launch_wf124_p3_g5.sh",
+#       SCRIPTS / "launch_wf124_p3_g6.sh",
+#       SCRIPTS / "launch_wf310b_g6_final.sh",
+#       SCRIPTS / "launch_wf300_cfm_main.sh",
+#       SCRIPTS / "retry_g5_missing_pairs.sh",
+#   )
+#
+#   # Two of the six were archived by Wf-437 (the simplify pass) and no longer
+#   # exist under scripts/.  They cannot regress to `--cpu-num-workers 0`, so the
+#   # tests below skip them rather than asserting against a file that is gone —
+#   # but the names stay listed so a restore is re-checked automatically.
+#   ARCHIVED_TARGETS = {
+#       "launch_wf124_p3_g4.sh": "archived under TODO/archive/wf437_simplify/",
+#       "launch_wf300_cfm_main.sh": "archived under TODO/archive/wf437_simplify/",
+#   }
 WF328W2_TARGETS = (
-    SCRIPTS / "launch_wf124_p3_g4.sh",
+    ARCHIVE / "launch_wf124_p3_g4.sh",
     SCRIPTS / "launch_wf124_p3_g5.sh",
     SCRIPTS / "launch_wf124_p3_g6.sh",
     SCRIPTS / "launch_wf310b_g6_final.sh",
-    SCRIPTS / "launch_wf300_cfm_main.sh",
+    ARCHIVE / "launch_wf300_cfm_main.sh",
     SCRIPTS / "retry_g5_missing_pairs.sh",
 )
 
-# Two of the six were archived by Wf-437 (the simplify pass) and no longer
-# exist under scripts/.  They cannot regress to `--cpu-num-workers 0`, so the
-# tests below skip them rather than asserting against a file that is gone —
-# but the names stay listed so a restore is re-checked automatically.
+# Where the two archived launchers live (they ARE on disk, so the skip
+# branch below no longer fires for them — the map is kept so that a future
+# removal is reported with the right location instead of "missing").
 ARCHIVED_TARGETS = {
     "launch_wf124_p3_g4.sh": "archived under TODO/archive/wf437_simplify/",
     "launch_wf300_cfm_main.sh": "archived under TODO/archive/wf437_simplify/",
@@ -168,17 +196,37 @@ def test_no_launch_script_zero_override(path: Path) -> None:
 # Test 2 — post-fix confirmation: 6 scripts now use 8 (Wf-326B OPTIMAL)
 # ---------------------------------------------------------------------------
 def test_six_launch_scripts_have_num_workers_8() -> None:
-    """Post-Wf-328-W2 confirmation — every surviving launch script uses
+    '''Post-Wf-328-W2 confirmation — every surviving launch script uses
     ``--cpu-num-workers 8`` (Wf-326B OPTIMAL_NUM_WORKERS on the 24-core host).
 
-    Two of the original six were archived by Wf-437; this checks the four that
-    remain, and asserts that exactly four remain so a *further* silent removal
-    still fails the test."""
+    Wf-A269 wave-3 (2026-11-02) — CORRECTION: the count is SIX, not four.
+    The two Wf-437-archived launchers were re-pointed at their ARCHIVED
+    copies by the wave-3 L2-6 repair, so they are on disk again and are
+    really asserted here.  Before that repair they were SKIPPED at runtime,
+    which made the "exactly four remain" assertion a statement about two
+    files the test never read.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+      """Post-Wf-328-W2 confirmation — every surviving launch script uses
+      ``--cpu-num-workers 8`` (Wf-326B OPTIMAL_NUM_WORKERS on the 24-core host).
+
+      Two of the original six were archived by Wf-437; this checks the four that
+      remain, and asserts that exactly four remain so a *further* silent removal
+      still fails the test."""
+      targets = _existing_targets()
+      assert len(targets) == 4, (
+          f"{len(targets)} of the six Wf-328-W2 launchers are on disk "
+          f"({[p.name for p in targets]}); expected 4 — two were archived by "
+          f"Wf-437.  If a third disappeared, say so here deliberately."
+      )
+    '''
     targets = _existing_targets()
-    assert len(targets) == 4, (
+    assert len(targets) == 6, (
         f"{len(targets)} of the six Wf-328-W2 launchers are on disk "
-        f"({[p.name for p in targets]}); expected 4 — two were archived by "
-        f"Wf-437.  If a third disappeared, say so here deliberately."
+        f"({[p.name for p in targets]}); expected 6 — all six are on disk "
+        f"after the Wf-A269 wave-3 L2-6 repair re-pointed the two "
+        f"Wf-437-archived launchers at TODO/archive/wf437_simplify/.  If one "
+        f"disappeared, say so here deliberately."
     )
     for path in targets:
         src = _read(path)

@@ -34,7 +34,7 @@ from molmetal.scripts.run_pb_production import (
 )
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = str(PROJECT_ROOT / "molmetal/data/crossdocked100_manifest.csv")
 
 

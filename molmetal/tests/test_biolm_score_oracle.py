@@ -252,7 +252,7 @@ def test_cli_smoke(tmp_path: Path) -> None:
     """
     import subprocess
 
-    bin_ = "/home/hugo/codes/mol-metal/.venv/bin/python"
+    bin_ = sys.executable
     proc = subprocess.run(
         [
             bin_,

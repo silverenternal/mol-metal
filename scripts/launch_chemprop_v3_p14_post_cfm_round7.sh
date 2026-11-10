@@ -53,8 +53,28 @@ log() {
 CFM_WRAPPER_PATTERN="launch_cfm_round7_f5f6_retrain.sh"
 log "=== Stage 4 START — waiting for cfm_round7 wrapper (${CFM_WRAPPER_PATTERN}) to exit ==="
 while pgrep -af "${CFM_WRAPPER_PATTERN}" >/dev/null 2>&1; do
-  # Prefer metrics.json (end-of-train summary); fall back to train.log last epoch
-  epoch_n=$(grep -oE '"epoch":[0-9]+' "${REPO_ROOT}/molmetal/reports/cfm_round7_f5f6_retrain/run/metrics.json" 2>/dev/null | tail -1)
+  # Prefer per_epoch_metrics.json (end-of-train summary); fall back to train.log last epoch
+  # Wf-A269 wave-11 (2026-11-02) - REPAIR (FINDING C2-7): the stage-4 epoch
+  # probe read run/metrics.json, which does NOT exist on disk, and its pattern
+  # '"epoch":[0-9]+' does not match the sibling that does exist,
+  # run/per_epoch_metrics.json, which writes '"epoch": N' WITH the JSON indent
+  # space -- so the probe could never match.  MEASURED 2026-11-02 on disk: the
+  # unspaced pattern matches 0 lines of per_epoch_metrics.json, the spaced one
+  # matches 6; run/metrics.json does not exist at all.
+  # The run artifacts under molmetal/reports/**/ are git-ignored
+  # (.gitignore:146 molmetal/reports/**/train.log, .gitignore:158
+  # molmetal/reports/**/*.json), so on a clean checkout BOTH files are absent
+  # and the probe degrades to the train.log fallback below rather than to "?".
+  # RESIDUAL (reported to the wave owner, 2026-11-02, NOT changed here): the
+  # `tail -1` below selects the LAST "epoch": N key in the document, and in
+  # this artifact that is best_bond.epoch = 0 while the last epoch TRAINED was
+  # 3 -- so the log line prints the best epoch, not the last one (the
+  # train.log fallback reports 3).  Left as-is on purpose: changing the epoch
+  # SELECTION is outside this repair, whose finding was the dead PATTERN.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   # Prefer metrics.json (end-of-train summary); fall back to train.log last epoch
+  #   epoch_n=$(grep -oE '"epoch":[0-9]+' "${REPO_ROOT}/molmetal/reports/cfm_round7_f5f6_retrain/run/metrics.json" 2>/dev/null | tail -1)
+  epoch_n=$(grep -oE '"epoch":[[:space:]]*[0-9]+' "${REPO_ROOT}/molmetal/reports/cfm_round7_f5f6_retrain/run/per_epoch_metrics.json" 2>/dev/null | tail -1)
   if [[ -z "${epoch_n}" ]]; then
     epoch_n=$(grep -oE '\[cfm-bond\] epoch=[0-9]+' "${REPO_ROOT}/molmetal/reports/cfm_round7_f5f6_retrain/run/train.log" 2>/dev/null | tail -1 | sed 's/.*epoch=//')
   fi

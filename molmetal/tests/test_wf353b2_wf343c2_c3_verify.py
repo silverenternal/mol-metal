@@ -17,12 +17,13 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 REPORT_C2 = (
     REPO_ROOT
@@ -48,7 +49,7 @@ EXPECTED_CHECK_IDS_C2 = frozenset(
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
     """Run a subprocess with PYTHONPATH prepended."""
-    env = {"PYTHONPATH": str(REPO_ROOT), "PATH": "/usr/bin:/bin"}
+    env = {"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT), "PATH": "/usr/bin:/bin"}
     return subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
 
 

@@ -15,8 +15,8 @@ import statistics
 import sys
 from pathlib import Path
 
-_REPORT_ROOT = Path("/home/hugo/codes/try_triton_on_rocm/molmetal/reports/wf_sa_fragment_pool_optimize/r4c")
-_OUT = Path("/home/hugo/codes/try_triton_on_rocm/molmetal/reports/wf_sa_fragment_pool_optimize")
+_REPORT_ROOT = Path(__file__).resolve().parents[3] / "molmetal" / "reports" / "wf_sa_fragment_pool_optimize" / "r4c"
+_OUT = Path(__file__).resolve().parents[3] / "molmetal" / "reports" / "wf_sa_fragment_pool_optimize"
 _BASELINE_SA = 3.32  # WF-SA-Penalty-Guidance baseline (sa_mean=3.32 after --sa-weight 0.3)
 _TARGETDIFF_SA_MIN = 2.65
 _TARGETDIFF_SA_MAX = 2.86

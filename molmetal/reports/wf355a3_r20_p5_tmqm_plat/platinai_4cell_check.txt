@@ -1,0 +1,6 @@
+[platinai-4cell-check] csv: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv
+[platinai-4cell-check]   MCF7      column=pIC50_mcf7       population=4078 numeric=4078 missing=0 active=4027 (pIC50 >= 5.0)  meta_delta=+0
+[platinai-4cell-check]   A549      column=pIC50_a549       population=4078 numeric=4078 missing=0 active=4060 (pIC50 >= 5.0)  meta_delta=+0
+[platinai-4cell-check]   A2780     column=pIC50_a2780      population=4078 numeric=4078 missing=0 active=3833 (pIC50 >= 5.0)  meta_delta=+1
+[platinai-4cell-check]   A2780cis  column=pIC50_a2780cis   population=4078 numeric=4078 missing=0 active=4075 (pIC50 >= 5.0)  meta_delta=+0
+PASS

@@ -1,0 +1,36 @@
+[wfA2_config_loader] note: 2 key(s) under 'directives:' have no trainer dest by design (run-control metadata, read by start.sh where applicable).
+[wfA2_config_loader] note: 2 key(s) under 'entry:' have no trainer dest by design (run-control metadata, read by start.sh where applicable).
+[wfA2_config_loader] 4 YAML key(s) resolved to no argparse dest (0 outside metadata sections); set WFA2_CONFIG_STRICT=1 to fail on these.
+[11:53:02] WARNING: not removing hydrogen atom without neighbors
+[11:53:02] WARNING: not removing hydrogen atom without neighbors
+[molmetal] applied env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+Wf-37 Phase 1 — Hilbert-ASTSR end-to-end on real IC50
+  dataset   = platinai
+  n_samples = 500
+  seeds     = 1
+  epochs    = 2
+  lr        = 0.05
+  hilbert_dim = 64
+  wass_weight = 0.05 (Wf-246-A TODO-179 wire-in)
+  ref_distribution = platinai_4cell
+  per_cell_cap = 32
+  feature_set = rdkit_12d (Wf-251-F1: rdkit_32d wires F5_RDKIT_2D)
+  f5_32d_csv  = molmetal/data/platinai_4cell_rdkit_extended_features.csv
+  output    = /tmp/wfa269_c8_hilbert_astsr_smoke/config_run
+  PlatinAI 4-cell rows loaded: 2000
+
+[1/3] Building design matrix...
+  parsed=2000, failed=0, target_rows=2000
+
+[2/3] Running 1 seeds × 2 folds...
+  seed=0 fold=0: hilbert R²=-0.0094 wall=0.002s | evol R²=-121.2001 wall=0.022s | w2=0.3379
+  seed=0 fold=1: hilbert R²=-0.0131 wall=0.000s | evol R²=-101.4450 wall=0.091s | w2=0.3799
+  -> seed 0 aggregate: hilbert R²=-0.0113 ± 0.0018 | evol R²=-111.3225 ± 9.8775 | w2=0.3562
+
+[3/3] Writing outputs to /tmp/wfa269_c8_hilbert_astsr_smoke/config_run...
+  wrote /tmp/wfa269_c8_hilbert_astsr_smoke/config_run/r2_bench.json
+  wrote /tmp/wfa269_c8_hilbert_astsr_smoke/config_run/comparison_table.md
+  wrote /tmp/wfa269_c8_hilbert_astsr_smoke/config_run/run.log
+
+Summary: hilbert R²=-0.0113 | evol R²=-111.3225 | speedup=58.29x
+Done.

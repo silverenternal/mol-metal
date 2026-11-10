@@ -42,7 +42,7 @@ Wf-87 ships a 3-phase **real metric refresh** of `metrics/by_metric/` + INDEX §
 
 | # | Target file | Source(s) | n_sources | Headline value | Status |
 |--:|---|---|--:|---|---|
-| 1 | `hilbert_4cell_r2.json` | `wf83_p1_phase2_4cell/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json` | 4 | aggregate_combined_r2_mean = **−6.7126** | MEASURED_BELOW_GATE |
+| 1 | `hilbert_4cell_r2.json` | `wf83_p1_phase2_4cell/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json` | 4 | aggregate_combined_r2_mean = **−6.7126** — **(SUPERSEDED 2026-10-31: the committed artifact's value is −5.662524090882017; see §5.1)** | MEASURED_BELOW_GATE |
 | 2 | `platinai_combined_r2.json` | `wf77_p1_hilbert_baseline/platinai_4cell` + `wf77_p2_astr_baseline/platinai_4cell` + `wf79_p2_3way_pll/platinai_4cell` | 3 | baseline_astr_r2_mean = **−0.4028** | MEASURED |
 | 3 | `metalcytotox_combined_r2.json` | `wf77_p2_astr_baseline/metalcytotox_5metal` + `wf79_p2_3way_pll/metalcytotox_5metal` | 2 | per-method baseline **−0.2841** | MEASURED |
 | 4 | `tmqm_combined_r2.json` | `wf71_p3_wf49_cross_round2/tmqm_dblock/per_cohort_metrics` + `wf71_p3_wf49_cross_round2/cross_dataset_summary` | 2 | cross_dataset_macro_r2_mean = **+0.1248** | MEASURED |
@@ -164,12 +164,62 @@ Per `party-twenty-spirit` §3.5 (0-tolerance + 不掩盖):
 |---|---|
 | **§17 STRONG_REAL count NOT bumped from 10 → 11+** | The 8 NEW promoted files are status / inventory / cross-dataset R² aggregators, NOT new conceptual metrics with measurable lift. Bumping §17 count without R20 GPU MEASURED would be **fabrication**. |
 | **Wf-84 5-metal D-MPNN pIC50 PEARSON ≠ R17 ridge 0.572** | `pearson_r_pic50.json` `scope_caveat` explicitly states: cohort differ (MetalCytoToxDB 5-metal vs HeLa48h), per-metal headline (Ru 0.276) is best, aggregate is +0.061. Apples-to-oranges. |
-| **Wf-85/86 honest-negative R² preserved** | `hilbert_4cell_r2.json` ships aggregate = **−6.7126** with `status: MEASURED_BELOW_GATE` + `verdict: MEASURED_HONEST_NEGATIVE_R2`. NOT hidden behind a pseudo-positive summary. |
+| **Wf-85/86 honest-negative R² preserved** | `hilbert_4cell_r2.json` ships aggregate = **−6.7126** **(SUPERSEDED 2026-10-31 → −5.662524090882017; the framing below still holds)** with `status: MEASURED_BELOW_GATE` + `verdict: MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING` (the cell quoted the older truncated `MEASURED_HONEST_NEGATIVE_R2`; the artifact's verdict has carried the `_ARCHITECTURAL_CEILING` suffix in every commit that touches the file). NOT hidden behind a pseudo-positive summary. |
 | **dmpnn_ckpt_status.json is a directory listing** | 12 ckpt metadata entries (10 NEW from Wf-84 + 2 from earlier affinity run). NOT inference results — downstream consumers must still load `metal_lomo_auc.json` / `platinai_3cell_resistance.json` for AUC values. |
 | **vina_status.json reports host probe** | `meeko_installed: false`, `vina_binary_available: false` on this host (Wf-84 P2 wrapper in place at `molmetal/bin/vina` but bench-level auto-detect pending). NOT a method-level result. |
 | **Wf-84 Wf-86 lifts require GPU retrain to land in §17** | Per `Wf-44 P1 root-cause catalog`: 8 root causes ranked, 2 CRITICAL (mean collapse + feature mismatch). R20-P2 Wf-40 launch gate applies catalog top-down. |
 | **No paper touched** | Per `TODO/pending/84_no_paper_task_without_authorization.md` — no `paper/sections/*.tex`, no `paper/main.tex`, no reviewer rebuttal. |
 | **0 GPU retrain executed today** | Wf-87 P1+P2+P3 are all CPU-only docs / file-move / JSON aggregation / tests. |
+
+### §5.1 CORRECTION (2026-10-31) — the promoted headline value was −6.7126, and that value exists in NO commit
+
+**The Wf-87 P2 promotion itself happened; only the VALUE attribution in the
+two cells marked SUPERSEDED above was wrong.** This note does **not** rewrite
+the promotion record — it corrects the record of **what the promotion ran
+with**.
+
+**MEASURED 2026-10-31 (`git` + the artifact on disk):**
+
+  * `metrics/by_metric/hilbert_4cell_r2.json` carries
+    `aggregate_combined_r2_mean` = **−5.662524090882017** at **HEAD** and in
+    **EVERY** commit that touches the file — `9b12e6f5`, `c289aa42`,
+    `fe209f61`, `293f8fb1`, `eb70929d`, `9a5e5c6f`, `7e30d6ea`, `6d3b309b`
+    (**8 commits, 8/8 the same value**).
+  * **−6.7126 exists in NO commit of that file**
+    (`git log --all -S"-6.7126" -- metrics/by_metric/hilbert_4cell_r2.json` →
+    **no hits**). The promoted value came from an **UNCOMMITTED working tree**.
+  * **The ledger's own attribution of the change to commit `7e30d6ea` was
+    FALSE.** That commit's diff on the JSON is **+49 / −0** — an appended
+    `l5_feature_ceiling_probe_2026_10_08` block — and it **did not touch the
+    headline**. The false row is `molmetal/reports/run_ledger.jsonl` line 23
+    (`"value": -6.712634861296495`, `"superseded_value": -5.662524090882017`).
+  * **The registry row `l5_hilbert_r2` was re-pointed by Wf-A123** and now
+    publishes the committed value: `registry/metrics.yaml` →
+    `l5_hilbert_r2` → `value: -5.662524090882017`,
+    `value_basis: aggregate_combined_r2_mean`, `status: MEASURED_BELOW_GATE`,
+    `source_json_sha256: 422a04b4321d2dcaa9ef9aee54b01d5b5963801adca2c0808c4c086f250f949e`
+    (the committed file's sha256), `last_refreshed: 2026-10-30T20:20:22+00:00`.
+    The ledger's own correction row (line 410) records the same re-pointing.
+    **The repair is UNCOMMITTED** — see `docs/HONEST_NEGATIVE_CATALOG.md`
+    §6.211 (net +1, cumulative 265 → 266).
+
+**Why the honest-negative framing still holds.** −5.6625 is **still far below
+any gate** — a negative held-out R² is still a negative R², so
+`status: MEASURED_BELOW_GATE` and
+`verdict: MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING` remain correct
+and the framing is **unchanged**. Only the **magnitude** was wrong: −6.7126 was
+**1.05 units** worse than the committed −5.6625. **The citability status did
+not change**: `registry.py cite l5_hilbert_r2` returns **[NO]**.
+
+**What is NOT corrected.** The **promotion itself happened**: the targets
+listed in §2.2 exist on disk, and the **other seven rows of §2.2** and the
+rest of §5 are **untouched**. (Separately: the promoter's on-disk
+`promotion_log.json` was later **overwritten by a re-run** and now records
+`promoted_count: 0` / `skipped_count: 9` with `resolution: preserved` on the
+targets — the files were preserved, not re-promoted. That log is gitignored
+(`molmetal/reports/**/*.json`); it is **outside this correction**.)
+
+**0 GPU** was used (read-only `git` + JSON reads).
 
 ---
 

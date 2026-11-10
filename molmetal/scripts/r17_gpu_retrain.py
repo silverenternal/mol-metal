@@ -103,6 +103,62 @@ DEFAULT_METRIC_PATH = (
 )
 
 # ---------------------------------------------------------------------------
+# Wf-A269 wave-8 (2026-11-02) - the PUBLISHED metric tree is off-limits to a
+# DRY RUN.
+#
+# THE DEFECT (MEASURED 2026-11-02, CPU-only, 0 GPU): ``--metric-path``
+# defaults to the published artefact
+# ``molmetal/metrics/by_metric/cfm_decode_ratio_r17.json``, and the dry-run
+# branch reached the write.  So a dry run OVERWROTE a published MEASURED
+# metric with a synthetic payload (``"verdict": "DRY_RUN_OK"``,
+# ``"max_decode_ratio": 0.0``, every probe flagged ``"_synthetic": true``).
+# MEASURED: the published file at HEAD carries a real NVIDIA run
+# (``"date": "2026-09-25T22:10:49+0800"``, ``"vendor": "nvidia"``,
+# ``"usable": true``, ``"decision": "NVIDIA_PATH"``, ``"device_count": 1``);
+# after one ``pytest molmetal/tests/test_dry_run_flag.py`` run the same path
+# carried the dry-run payload instead, with ``"vendor": "none"`` and
+# ``"decision": "BLOCKED"``.  The repo's own published-tree guard (Wf-A123,
+# ``molmetal/tests/conftest.py``) caught it at teardown.
+#
+# NOTE ON HOW THE DEFECT WAS REACHABLE: the Wf-A269 wave-8 atomic-write
+# arity repair (the call site that raised ``TypeError`` before any artefact
+# was written) had been MASKING this one — the script died at the
+# ``gpu_probe.json`` write, one step ABOVE the metric write, so the dry run
+# never got far enough to clobber the published metric.  Fixing the arity
+# defect exposed this one; both are repaired.
+#
+# THE REPAIR: a dry run whose metric path resolves inside a published metric
+# tree writes its report to the log root instead, and says so on stdout.  A
+# non-published ``--metric-path`` is still honoured, because an explicit
+# scratch path is not a published artefact.
+# ---------------------------------------------------------------------------
+PUBLISHED_METRIC_DIRS = (
+    PROJECT_ROOT / "molmetal" / "metrics" / "by_metric",
+    PROJECT_ROOT / "metrics" / "by_metric",
+)
+DRY_RUN_METRIC_NAME = "cfm_decode_ratio_r17.dryrun.json"
+
+
+def _is_published_metric_path(path: Path) -> bool:
+    """True when ``path`` resolves inside a published metric tree.
+
+    Mirrors the published-tree roots the repo's own Wf-A123 guard watches
+    (``molmetal/tests/conftest.py::PUBLISHED_TREE_ROOTS``).
+    """
+    try:
+        resolved = path.resolve()
+    except OSError:  # pragma: no cover - resolve() on a missing path is fine
+        resolved = path
+    for directory in PUBLISHED_METRIC_DIRS:
+        try:
+            root = directory.resolve()
+        except OSError:  # pragma: no cover
+            root = directory
+        if resolved == root or root in resolved.parents:
+            return True
+    return False
+
+# ---------------------------------------------------------------------------
 # Regex patterns — log parsing
 # ---------------------------------------------------------------------------
 # Match the smoke script's standard step-per-50 log lines.  Example:
@@ -688,8 +744,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         }
     else:
         gpu_probe = detect_gpu()
-    (
-        _wf416_atomic_write_text(args.log_root / "gpu_probe.json"),
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (
+    #             _wf416_atomic_write_text(args.log_root / "gpu_probe.json"),
+    #             json.dumps(gpu_probe, indent=2),
+    #         )
+    _wf416_atomic_write_text(
+        args.log_root / "gpu_probe.json",
         json.dumps(gpu_probe, indent=2),
     )
     print(
@@ -868,9 +934,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         args,
         global_start,
     )
-    args.metric_path.parent.mkdir(parents=True, exist_ok=True)
-    _wf416_atomic_write_text(args.metric_path, json.dumps(final_metrics, indent=2))
-    print(f"[r17_gpu] wrote {args.metric_path}")
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: a --dry-run must never write the
+    # PUBLISHED metric tree.  See the module-level note on
+    # PUBLISHED_METRIC_DIRS for the MEASURED evidence (the published file
+    # held a real NVIDIA run; a dry run replaced it with a synthetic
+    # DRY_RUN_OK payload).
+    metric_path = args.metric_path
+    if args.dry_run and _is_published_metric_path(metric_path):
+        metric_path = args.log_root / DRY_RUN_METRIC_NAME
+        print(
+            f"[r17_gpu] dry-run: refusing to write the PUBLISHED metric "
+            f"{args.metric_path}; writing the dry-run report to {metric_path}"
+        )
+    metric_path.parent.mkdir(parents=True, exist_ok=True)
+    _wf416_atomic_write_text(metric_path, json.dumps(final_metrics, indent=2))
+    print(f"[r17_gpu] wrote {metric_path}")
 
     # -- Step 4: Final summary ---------------------------------------------
     print("\n[r17_gpu] === FINAL SUMMARY ===")

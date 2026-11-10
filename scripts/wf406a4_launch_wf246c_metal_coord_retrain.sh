@@ -97,8 +97,26 @@ while [ $# -gt 0 ]; do
         --dry-run) DRY_RUN=1; shift ;;
         --smoke) SMOKE=1; shift ;;
         --actual) ACTUAL=1; shift ;;
-        --metals) METALS="$2"; shift 2 ;;
-        --seeds) SEEDS="$2"; shift 2 ;;
+        # 2026-11-04 (Wf-A269 script-contract repair — adjacent finding in the
+        # same wrapper): the wrapper's OWN help text documents
+        # `[--metals M1 M2] [--seeds 0 1 2]`, and the repo's own regression
+        # test drives it that way (`--metals Ru Ir Rh --seeds 0`,
+        # molmetal/tests/test_wf406a4_metal_coord_scaffold.py), but
+        # `--metals) METALS="$2"; shift 2 ;;` consumed ONE argv token — so the
+        # SECOND metal became the next FLAG and the wrapper died with
+        # "[FATAL] unknown flag: Ir" (rc 1) BEFORE the scaffold was reached:
+        # the R2/R3 branches were unreachable in the documented spelling and
+        # the repo's own test was RED. `--metals`/`--seeds` now consume every
+        # following NON-FLAG token, so BOTH spellings work:
+        #     --metals "Ru Ir Rh"   (one quoted token — the old behaviour)
+        #     --metals Ru Ir Rh     (three argv tokens — the documented form)
+        # A missing value is still REFUSED (`die`), never silently empty.
+        #
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #   --metals) METALS="$2"; shift 2 ;;
+        #   --seeds) SEEDS="$2"; shift 2 ;;
+        --metals) shift; METALS=""; while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do METALS="${METALS:+$METALS }$1"; shift; done; [ -n "$METALS" ] || die "--metals needs at least one metal";;
+        --seeds) shift; SEEDS=""; while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do SEEDS="${SEEDS:+$SEEDS }$1"; shift; done; [ -n "$SEEDS" ] || die "--seeds needs at least one seed";;
         --epochs) EPOCHS="$2"; shift 2 ;;
         --out-dir) OUT_DIR="$2"; shift 2 ;;
         -h|--help)
@@ -161,10 +179,45 @@ TOTAL_BUDGET_HR=$(awk -v n="${#PAIRS[@]}" -v b="${PAIR_BUDGET_HR}" 'BEGIN { prin
 # -----------------------------------------------------------------------------
 # Emit DRY_RUN.log per Wf-363-A1 schema
 # -----------------------------------------------------------------------------
-LOG_DIR="${PROJECT_ROOT}/${OUT_DIR}"
+# 2026-11-04 (Wf-A269 script-contract repair — adjacent findings, same
+# wrapper). Two more defects stood between this wrapper and a runnable
+# launch, both PROVEN by driving it on CPU:
+#
+# (B) `--out-dir` was ALWAYS concatenated onto PROJECT_ROOT, so an ABSOLUTE
+#     out-dir ("/tmp/...") became "<repo>//tmp/..." and the run's artefacts
+#     (DRY_RUN.log / plan.json / result.json) landed somewhere the caller
+#     never named. A relative out-dir stays repo-relative (unchanged); an
+#     absolute one is honoured as given.
+#
+# (C) `--pair` was passed ONCE with an array expansion
+#     (`--pair "${PAIRS[@]}"`), but `scripts/_dry_run_log_helper.sh` parses
+#     `--pair` as a SINGLE-VALUE option (the helper's own usage example
+#     repeats it: `--pair "Re seed=0" --pair "Os seed=4"`). With more than
+#     one pair the second label fell through to the helper's `*)` branch:
+#     "[FATAL] emit_dry_run_log: unknown arg Ir seed=0" (rc 1) ⇒ with
+#     `set -e` the wrapper DIED at the DRY_RUN.log step — i.e. with its
+#     DEFAULT cohort (5 metals x 3 seeds = 15 pairs) it never reached the
+#     scaffold at all. `--pair` is now repeated once per pair.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   LOG_DIR="${PROJECT_ROOT}/${OUT_DIR}"
+#   ...
+#   emit_dry_run_log "${LOG_DIR}/DRY_RUN.log" \
+#       ... \
+#       --pair "${PAIRS[@]}"
+case "${OUT_DIR}" in
+    /*) LOG_DIR="${OUT_DIR}" ;;
+    *)  LOG_DIR="${PROJECT_ROOT}/${OUT_DIR}" ;;
+esac
 mkdir -p "${LOG_DIR}"
 
 FLAGS="(--metal-coord-term --metals ${METALS} --seeds ${SEEDS} --epochs ${EPOCHS})"
+
+# One `--pair` per enumerated pair (the helper's single-value option).
+PAIR_ARGS=()
+for p in "${PAIRS[@]}"; do
+    PAIR_ARGS+=(--pair "${p}")
+done
 
 emit_dry_run_log "${LOG_DIR}/DRY_RUN.log" \
     --title "Wf-406-A4 Wf-246-C metal-coord retrain" \
@@ -176,7 +229,7 @@ emit_dry_run_log "${LOG_DIR}/DRY_RUN.log" \
     --gpu "cpu" \
     --budget-hr "${TOTAL_BUDGET_HR}" \
     --user-ok "REQUIRED" \
-    --pair "${PAIRS[@]}"
+    "${PAIR_ARGS[@]}"
 
 # Convert METALS and SEEDS space-separated strings to bash arrays for
 # proper argv construction (avoid word-splitting on spaces).

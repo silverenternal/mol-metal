@@ -1,0 +1,43 @@
+# Wf-A269 cohort c9 — §5.11 migration fixture for scripts/start.sh's LEGACY
+# branch (the `entry:`-less path), D-MPNN variant.
+#
+# Sibling of configs/wfa269_c9_start_sh.yaml; the same fixture, for the
+# other branch of the legacy synthesis.  scripts/start.sh picks the branch
+# on `data.dataset`: 'qm9' -> the CFM trainer, anything else -> the
+# D-MPNN multitask trainer.  The D-MPNN branch's synthesised command baked
+# TWO literals: `--metals Pt` and `--device cuda:0`.
+#
+# `data.metals` is a YAML SEQUENCE, not a space-separated string.  This is
+# the AGENTS.md §5.11 trap: `--metals` is a LIST dest on the D-MPNN trainer
+# (nargs="+"), and on 2026-10-09 a yaml that said `metals: Ru Ir Os Re`
+# reached the trainer as ONE element named "Ru Ir Os Re", matched zero
+# metals, and killed a full 4-fold x 5-seed sweep.  start.sh now renders the
+# yaml's list SPACE-JOINED into the shell command.
+#
+# `data.dataset` must NOT be 'qm9' or the CFM branch is taken instead.
+# `metalcytotox_5metal` is one of the D-MPNN trainer's own `--dataset`
+# choices (metalcytotox_5metal / platinai_4cell / nci60_9cell).
+#
+# NO `entry:` SECTION, ON PURPOSE — see the sibling fixture for why, and
+# for the consequence (scripts/_config_binding_gate.py keys on
+# `entry.script` and therefore SKIPS this file; the same per-config binding
+# check was run directly against the D-MPNN trainer's parser — see
+# molmetal/reports/wfa269_yaml_migration/start.json -> notes).
+
+data:
+  dataset: metalcytotox_5metal
+  metals:
+    - Pt
+
+protocol:
+  epochs: 12
+  batch_size: 16
+  lr: 0.0005
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: results/wfa269_c9_start_sh_dmpnn
+  out_dir: results/wfa269_c9_start_sh_dmpnn
+  ckpt_dir: results/wfa269_c9_start_sh_dmpnn/ckpts

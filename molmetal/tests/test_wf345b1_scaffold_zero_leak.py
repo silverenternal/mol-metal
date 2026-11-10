@@ -303,7 +303,7 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
     # The expected runtime per AGENTS.md §5.1 standing GPU grant +
     # §5.9 single-venv rule: the repo-local canonical .venv is THE
     # pandas-enabled runtime.
-    assert "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence, (
+    assert sys.executable in result.evidence, (
         f"SKIP evidence must name the expected pandas-enabled "
         f"runtime per AGENTS.md §5.1; got: {result.evidence}"
     )

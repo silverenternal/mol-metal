@@ -30,10 +30,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import torch
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from molmetal.scripts.cfm_cohort_recovery import (  # noqa: E402
+    COHORT_SOURCE_UNATTESTED,
+)
+from molmetal.scripts.cfm_pool_epoch_rule import resolve_population  # noqa: E402
+from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
 _METRICS = (
     "gen_ring_3_share",
@@ -83,31 +94,102 @@ _METRIC_LABELS = {
 }
 
 
+#: The knobs this A/B reads out of the run's own config block.
+_KNOBS = (
+    "grad_clip_scope", "max_norm", "ring_template_weight",
+    "ring_template_formulation", "use_fm_objective",
+    "wasserstein_weight",
+)
+
+
+def _attest_arm(run_dir: Path) -> Dict[str, Any]:
+    """Is this run's recorded file the RUN OF RECORD's own file?
+
+    ``per_epoch_metrics.json`` is written ONCE, at the END of training, to a
+    FIXED path, so two runs launched into the same ``--out-dir`` clobber each
+    other's record.  A config block read out of a clobbered record is a
+    SIBLING POPULATION's config, and the knobs published from it would
+    describe a launch that never happened.
+
+    The owner is ``molmetal/scripts/cfm_pool_epoch_rule.py`` (which asks
+    ``molmetal/scripts/cfm_cohort_recovery.py`` for the cohort): it resolves
+    the run of record and says whether the recorded file is that
+    population's own file.
+    """
+    try:
+        population = resolve_population(run_dir, None)
+    except Exception as exc:  # pragma: no cover - the owner must not be fatal
+        return {
+            "attested": False,
+            "source": COHORT_SOURCE_UNATTESTED,
+            "reason": (
+                f"the run-of-record owner raised {type(exc).__name__}: {exc}; "
+                f"the recorded file cannot be attested"
+            ),
+        }
+    cohort = population.get("cohort") or {}
+    is_ro = population.get("metrics_file_is_run_of_record")
+    attested = (
+        is_ro is True and cohort.get("source") != COHORT_SOURCE_UNATTESTED
+    )
+    if attested:
+        reason = (
+            f"the recorded per-epoch file IS the run of record's own file "
+            f"(resolution={population.get('resolution')}, "
+            f"epochs={population.get('epoch_indices')}, "
+            f"cohort_source={cohort.get('source')})"
+        )
+    else:
+        reason = (
+            f"the recorded per-epoch file cannot be attested as the run of "
+            f"record's own (metrics_file_is_run_of_record={is_ro}, "
+            f"resolution={population.get('resolution')}, "
+            f"cohort_source={cohort.get('source')}: {cohort.get('reason')})"
+        )
+    return {
+        "attested": attested,
+        "source": cohort.get("source"),
+        "reason": reason,
+        "metrics_file_is_run_of_record": is_ro,
+        "resolution": population.get("resolution"),
+        "epoch_indices": population.get("epoch_indices"),
+    }
+
+
 def _load_arm(run_dir: str) -> Dict[str, Any]:
     d = json.load(open(Path(run_dir) / "per_epoch_metrics.json"))
     rows = d["per_epoch_metrics"]
     _cfg = d.get("config") or {}
-    knobs = {
-        k: _cfg.get(k, d.get(k)) for k in (
-            "grad_clip_scope", "max_norm", "ring_template_weight",
-            "ring_template_formulation", "use_fm_objective",
-            "wasserstein_weight",
-        )
-    }
-    # The artifact block for `use_fm_objective` / `grad_clip_scope` was added
-    # in this same wave, so a run launched before it carries None.  The
-    # checkpoint's own `args` is the authoritative record; prefer it.
-    ck = Path(run_dir) / "checkpoints" / "cfm_yuelbond_wasserstein_seed0.pt"
-    if ck.exists():
-        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
-            load_cfm_checkpoint,
-        )
+    attestation = _attest_arm(Path(run_dir))
+    if attestation["attested"]:
+        knobs = {k: _cfg.get(k, d.get(k)) for k in _KNOBS}
+        # The artifact block for `use_fm_objective` / `grad_clip_scope` was added
+        # in this same wave, so a run launched before it carries None.  The
+        # checkpoint's own `args` is the authoritative record; prefer it.
+        ck = Path(run_dir) / "checkpoints" / "cfm_yuelbond_wasserstein_seed0.pt"
+        if ck.exists():
+            from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+                load_cfm_checkpoint,
+            )
 
-        ck_args = load_cfm_checkpoint(str(ck), map_location="cpu")["args"]
-        for k in knobs:
-            if knobs[k] is None:
-                knobs[k] = ck_args.get(k)
-    return {"run_dir": run_dir, **knobs, "epochs": rows, "last": rows[-1]}
+            ck_args = load_cfm_checkpoint(str(ck), map_location="cpu")["args"]
+            for k in knobs:
+                if knobs[k] is None:
+                    knobs[k] = ck_args.get(k)
+    else:
+        # NOT attested: the config block on disk belongs to another
+        # population, so no knob is published from it (null, with the reason
+        # beside it).  The checkpoint's own args are not read either: in a
+        # clobbered directory the checkpoint is the sibling's too.
+        knobs = {k: None for k in _KNOBS}
+    return {
+        "run_dir": run_dir,
+        **knobs,
+        "epochs": rows,
+        "last": rows[-1],
+        "attested": attestation["attested"],
+        "attestation": attestation,
+    }
 
 
 def _series(rows: List[Dict[str, Any]], key: str) -> List[Optional[float]]:
@@ -235,9 +317,17 @@ def main() -> int:
             "trainer scores every epoch.",
         ],
     }
+    # The attestation of each arm's recorded file is published ONLY when an
+    # arm could NOT be attested -- an attested arm needs no note, and the
+    # artifact stays byte-identical to the one published before this guard.
+    if not (A.get("attested") and B.get("attested")):
+        doc["arm_attestation"] = {
+            name_a: A.get("attestation"),
+            name_b: B.get("attestation"),
+        }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+    atomic_write_file(out, json.dumps(doc, ensure_ascii=False, indent=1))
 
     print(f"[wfa107e] {name_a:14s} 3-share={A['last'].get('gen_ring_3_share')} "
           f"5/6={A['last'].get('gen_ring_5_6_share')} "

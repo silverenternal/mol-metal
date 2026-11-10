@@ -17,6 +17,17 @@ from __future__ import annotations
 
 import os
 
+# --- Wf-A123 FIX 5: THE NO-GPU CONTRACT (see molmetal/tests/conftest.py) ---
+# This module asks the host what device it has (``torch.cuda.is_available()``)
+# and asserts the AMP helper agrees.  The standing user directive for this
+# repository is 禁止使用gpu and a test run must not silently take VRAM, so the
+# device list is blanked here -- at MODULE level, before ``torch`` is ever
+# imported -- unless the caller opted in explicitly with
+# MOLMETAL_TEST_ALLOW_GPU=1.  This module allocates no GPU memory either way
+# (pure logic: ``is_available()`` and a bfloat16 autocast CONTEXT on CPU).
+if os.environ.get("MOLMETAL_TEST_ALLOW_GPU") != "1":
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+
 import pytest
 
 from molmetal.adapters.flow_matching_lipman.amp import (

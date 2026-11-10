@@ -84,7 +84,7 @@ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
 # Path constants
 # ---------------------------------------------------------------------
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Default CSV path. Override with --csv.
 DEFAULT_CSV = PLATINY_POOL_CSV

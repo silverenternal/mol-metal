@@ -95,6 +95,7 @@ import os
 import random
 import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Allow ``python -m molmetal.scripts.joint_...`` and direct-script
@@ -102,9 +103,9 @@ from typing import Any, Dict, List, Optional
 # absolute imports resolve cleanly; otherwise we add the project
 # root to ``sys.path`` and fall back to the same imports.
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 # ---------------------------------------------------------------------------
@@ -974,7 +975,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out-dir",
         type=str,
-        default=("/home/hugo/codes/mol-metal/molmetal/reports/" "wf36_3stage_mcts"),
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf36_3stage_mcts"
+        ),
         help="Directory for the JSON bench report (default reports/wf36_3stage_mcts/).",
     )
     parser.add_argument(

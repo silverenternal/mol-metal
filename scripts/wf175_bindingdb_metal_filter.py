@@ -228,8 +228,11 @@ def main() -> int:
         "--tied",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/.data/molmetal/bindingdb_full/"
-            "BindingDB_All.tsv"
+            Path(__file__).resolve().parents[1]
+            / ".data"
+            / "molmetal"
+            / "bindingdb_full"
+            / "BindingDB_All.tsv"
         ),
         help="Path to BindingDB_All.tsv (unzipped; ~9 GB)",
     )
@@ -237,8 +240,11 @@ def main() -> int:
         "--out",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/.data/molmetal/bindingdb_full/"
-            "metal_binding_db_full.csv"
+            Path(__file__).resolve().parents[1]
+            / ".data"
+            / "molmetal"
+            / "bindingdb_full"
+            / "metal_binding_db_full.csv"
         ),
         help="Output CSV path (canonical 6-col schema)",
     )

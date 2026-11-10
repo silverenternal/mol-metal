@@ -1,0 +1,106 @@
+# configs/wf131_p3_pt_4cells.yaml — BASE (template) config for
+# scripts/launch_wf131_p3_pt_4cells.sh
+#
+# WHY THIS FILE (AGENTS.md §5.11, user directive 2026-10-09, verbatim
+# "以后要求能且只能用yaml配置启动训练和推理，no cli参数"):
+# The wrapper used to pass --metals / --seeds / --csv / --out-metric on the
+# trainer invocation line and --epochs / --batch-size / --hidden / --depth /
+# --lr / --alpha / --wasserstein-weight / --use-l2-guard / --n-mc / --device
+# through its COMMON_ARGS array. Every one of those values now lives HERE and
+# the wrapper passes only:
+#     <trainer> --config <derived> --out-dir <dir>
+#
+# THIS FILE IS A TEMPLATE, NOT A LAUNCHABLE CONFIG ON ITS OWN.
+# The sweep dimensions (data.metals / protocol.seeds) and output.out_metric
+# are PER PAIR: the trainer loops internally over args.metals x args.seeds
+# (train_metal_lomo_wasserstein.py:4352 / :4356), so a config that carried the
+# full cohort would collapse the wrapper's 25 separate PROCESSES into 1 — a
+# different run (process count, per-pair out-dir/log layout, resume
+# semantics). The wrapper therefore derives one config per (metal, seed) with
+# scripts/_wf_yaml_pair_config.py and passes THAT.
+#
+# VALUES: every key below carries EXACTLY the value the wrapper used to pass
+# on the command line. A key the wrapper did NOT pass is absent here, so it
+# stays at its argparse default — the run is unchanged.
+data:
+  # Sweep dimension — narrowed to one metal per derived config.
+  # 5 metals x 5 seeds = 25 (metal, seed) pairs.
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+
+# TOP-LEVEL `csv:` (NOT `data.csv`) — the dest is `csv`.
+# `_candidate_dests` tries the flat form first, so `data.csv` resolves to
+# `data_csv` on a trainer that declares it; train_metal_lomo_wasserstein.py
+# declares only `--csv`, and a top-level `csv:` is the unambiguous spelling
+# for the `csv` dest.
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+model:
+  hidden: 300
+  depth: 3
+  alpha: 0.5
+
+protocol:
+  # Sweep dimension — narrowed to one seed per derived config.
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  # The wrapper passed --wasserstein-weight 0.05. NOTE: the trainer IGNORES a
+  # non-zero weight unless --wasserstein-real is also set (Wf-E1), and the
+  # wrapper did NOT pass it — so this reproduces the previous run exactly
+  # (W2 off, weight recorded).
+  wasserstein_weight: 0.05
+
+eval:
+  # The wrapper passed --use-l2-guard (dest `use_l2_guard`, default True).
+  use_l2_guard: true
+  # The wrapper passed --n-mc 256.
+  n_mc: 256
+
+compute:
+  # The wrapper passed --device cuda:0.
+  device: "cuda:0"
+
+output:
+  # PER-PAIR paths. The wrapper passed
+  #   --out-dir    <OUT_BASE>/<metal>/seed<seed>
+  #   --out-metric <OUT_BASE>/<metal>/seed<seed>/metrics.json
+  # and §5.11 permits --out-dir / --ckpt-dir on the command line, so the
+  # wrapper still passes them. They are written here as well so the DERIVED
+  # config is a COMPLETE, self-contained definition of the one run (the same
+  # pattern configs/dmpnn.yaml uses), and so a dest-for-dest equivalence
+  # probe can compare the old CLI namespace with the new YAML namespace.
+  # Set at derivation time (the wrapper passes them to
+  # scripts/_wf_yaml_pair_config.py --set output.out_dir=...).
+  out_dir: molmetal/reports/wf131_p3_pt_4cells/Ru/seed0
+  out_metric: molmetal/reports/wf131_p3_pt_4cells/Ru/seed0/metrics.json
+
+directives:
+  kill_then_adapt: true
+  user_ok_required: true
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: >-
+    Wf-131 P3 REAL 5-metal LOMO D-MPNN retrain (Ru/Ir/Os/Rh/Re x seeds 0-4
+    = 25 pairs) on MetalCytoToxDB.csv. Pt x 4-cell-line is BLOCKED on the
+    Rusanov 2025 S4-S5 Cloudflare challenge (Wf-292D) / MB-Finder coverage-only
+    API (Wf-295B) / Selenium scrape 0 rows (Wf-304B) / synthetic 99% inactive
+    PlatinAI 4-cell (binary AUC gate unreachable) — see
+    TODO/completed/131_wf131_p3_pt_4cell_blocked_external.md.
+  project_ed: >-
+    ~6 hr GPU sequential for 25 pairs (PROJECTED, per Wf-260 G6 timing).
+    USER_OK=1 gate is enforced by the wrapper before any GPU work.

@@ -3,9 +3,12 @@
 > **⚠️ 数字已统一到 [`docs/PREDICTIVE_LINE_INDEX.md`](PREDICTIVE_LINE_INDEX.md)（2026-10-21）。**
 > 本文档保留的是**判据与缺口分析**，不是数字的权威出处。引用任何预测线数字前先看索引的
 > §3 撤回日志——预测线一周内撤回过五个头条数（0.5828 ligand 内插、Δ 符号 0.6193、
-> 「0.5826 接近门槛」、SA≤4.5 33.7%、LOMO 0.5575）。
+> 「0.5826 接近门槛」、SA≤4.5 33.7%（**重建池口径的历史数，已撤回**，不是生成器性质；
+> `c7_scale_matched_pools.json:/by_pipeline/reconstruction/by_tier/full_corpus/rate_sa_le_gate`
+> = 0.3373，28/83）、LOMO 0.5575）。
 
-日期：2026-10-19（§2.2 / §3 于 2026-10-21 按索引对齐）
+日期：2026-10-19（§2.2 / §3 于 2026-10-21 按索引对齐；§5 STR-6 与 §6 于 2026-10-31
+按 Wf-A118 的 tier 口径 + Wf-A120 的规模标签重引 SA 产量数）
 范围：`metrics/by_metric/*.json`（342 个产物）+ `docs/00_MODEL_NARRATIVE.md`
 规则：每个"当前值"都是 MEASURED 并附产物路径；每个"目标值"都是 PROPOSED，不是测量值。
 
@@ -17,8 +20,17 @@
 表示增益），但**核心的金属替换预测线只有中等强度，且缺少同协议外部锚点**；决策层与
 不确定性层是明确的弱项。
 
-> 生成线已从这份清单移出：全语料 18/18 epoch 自由生成池的 SA≤4.5 是 **0.28%**，
-> 联合闸 0/10,190（`docs/CLAIM_LEDGER.md` C7 = NOT SUPPORTED）。
+> 生成线已从这份清单移出：**单个** 18/18 epoch 全语料自由生成池
+> `cfm_c7_fullgen_2026_10_20`（n_train=26,715）的 SA≤4.5 是 **0.28% [0.21,0.39]**
+> （36/12,668）、联合闸 0/10,190
+> （`c7_scale_matched_pools.json:/pools[0]/sa_counts_at_or_below/4.5` = 36、
+> `/pools[0]/n_scored` = 12,668、`/pools[0]/joint_gate/n` = 10,190；CI 为该比率的
+> Wilson 95%，与本产物 `wilson_ci95` 同口径）。**全语料生成层**（三池合计 14,846 个
+> 可打分分子）的口径是 **0.4% [0.31,0.52]（60/14,846）**
+> （`c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`
+> = 0.004、`/wilson_ci95` = [0.0031, 0.0052]、`/n_scored` = 14,846、
+> `/n_sa_le_gate` = 60）——**0.28% 是那一个池的数，不是该层的数**。
+> `docs/CLAIM_LEDGER.md` C7 = NOT SUPPORTED。
 要发强指标论文，不需要再造模型，需要做三件事：
 
 1. 把强项补齐到"5 seed + 多协议 + 外部基线"的可发表标准；
@@ -221,7 +233,14 @@ GNN 融合后 DOI **0.3811**（+0.0431 [+0.0260,+0.0604]）。**但 DOI Δ 符�
 权重含 `time_embed_proj` / `pocket_per_layer_injector`，而它自己的 `args` 不记录
 这两个开关，**无法从其记录的配置重建**。改用产量审计（2,396 个无引导分子）：
 **SA≤4.5 只有 16 个 = 0.67% [0.41%, 1.08%]**（panel of record 0/66，最小值
-4.751）；门内 16 个的 novelty **0.8757 < 0.90**。**两条门槛同时不过**，且
+4.751）。⚠️ **这 2,396 是混合规模集合，不能当作任何一层的率来引用**
+（`cfm_sa_guided.json:/combined/scale_label` = `mixed_cohort_scale`、
+`/combined/comparable` = false：66 行来自 n_train=26,715 的全语料池，2,330 行来自两个
+n_train=256 的池）。**分层口径（`/combined_by_tier`）**：全语料层 **0/66 = 0.0%
+[0.0%, 5.5%]**（panel of record，最小 SA 4.751），small 层 **16/2,330 = 0.69%
+[0.42%, 1.11%]**；按池（`/by_pool`）：panel_of_record 0/66 = 0.0000 [0.0, 0.055]、
+pcgrad_on 9/1,155 = 0.78%、pcgrad_off 7/1,175 = 0.60%。门内 16 个的 novelty
+**0.8757 < 0.90**。**两条门槛同时不过**，且
 "SA≤4.5" 只能作为 0.67% 手挑子集的性质来写，不能作为生成器的性质。
 
 **STR-7（打包，DONE / PASS）**：`paper_metric_tables.py --strict` 生成 **12 张表、
@@ -246,7 +265,11 @@ GNN 融合后 DOI **0.3811**（+0.0431 [+0.0260,+0.0604]）。**但 DOI Δ 符�
 3. **不要把配体分组的 R² 0.5596 写成"跨论文"性能。** 跨论文（DOI）是 0.3380。
 4. **不要把 NCI-60 的 0.7294 写成"接近 Krasnov 0.81"。** 差 0.08，且 2 个细胞系 n<10。
 5. **不要单列 bond_f1 或 decode_ratio。** 前者会塌向全正，后者不是化学指标。
-6. **不要把 SA≤4.5 写成生成器的性质。** 它只对 0.67% 的手挑子集成立（16/2,396），
-   而且那个子集的 novelty 0.8757 还没到 0.90。报 SA 必须同时报产量。
+6. **不要把 SA≤4.5 写成生成器的性质。** 它只对 0.67% 的手挑子集成立（16/2,396，
+   `cfm_sa_guided.json:/combined`）——**而这 2,396 是混合规模集合**
+   （`/combined/scale_label` = `mixed_cohort_scale`、`/combined/comparable` = false），
+   **必须分层报**：全语料层 0/66 = 0.0%（`/combined_by_tier/full_corpus`），small 层
+   16/2,330 = 0.69%（`/combined_by_tier/small`）。而且那个子集的 novelty 0.8757
+   还没到 0.90。报 SA 必须同时报产量。
 7. **不要把 `--sa-penalty` 写成训练杠杆。** 它零梯度，开与关的参数更新逐位相同
    （`sa_penalty.py` 自己的 docstring 就写着）。

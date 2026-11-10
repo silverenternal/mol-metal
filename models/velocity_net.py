@@ -49,6 +49,9 @@ from models._scatter import scatter_sum
 from triton_kernels import fused_silu_mlp
 from triton_kernels import fused_residual_add as _triton_fused_residual_add
 from triton_kernels.config import triton_config
+from triton_kernels.fused_residual_add import (
+    residual_add_fallback as _residual_add_fallback,
+)
 
 
 def _maybe_fused_residual_add(
@@ -63,10 +66,11 @@ def _maybe_fused_residual_add(
     The fused kernel implements ``out = alpha * x + beta * residual`` in a
     single HBM round-trip, and the
     :func:`triton_kernels.fused_residual_add` host wrapper already
-    falls back to :func:`torch.add` for CPU tensors and non-trailing-axis
-    broadcast shapes — so this layer's only job is to gate the dispatch
-    via :data:`triton_config` (which respects ``TRITON_USE_FUSED`` and the
-    size/training-mode policy).
+    falls back to :func:`triton_kernels.fused_residual_add.residual_add_fallback`
+    for CPU tensors and non-trailing-axis broadcast shapes — so this
+    layer's only job is to gate the dispatch via :data:`triton_config`
+    (which respects ``TRITON_USE_FUSED`` and the size/training-mode
+    policy).
 
     The cost saved is one HBM round-trip per EGNN layer: the standard
     ResNet-style skip connection ``h + update`` materialises ``update``
@@ -81,9 +85,12 @@ def _maybe_fused_residual_add(
     """
     if triton_config.use_fused_residual_add(x.numel()):
         return _triton_fused_residual_add(x, residual, alpha=alpha, beta=beta)
-    # Fallback: pure-PyTorch ``torch.add`` with ``alpha`` (matches
-    # bit-for-bit when ``alpha == 1``; explicit scale otherwise).
-    return torch.add(x, residual, alpha=alpha)
+    # Fallback: pure-PyTorch ``alpha * x + beta * residual``.  This must
+    # NOT be ``torch.add(x, residual, alpha=alpha)`` — PyTorch's
+    # ``alpha`` scales the *second* operand, so that form computes
+    # ``x + alpha * residual`` (dropping the ``alpha`` on ``x`` and the
+    # ``beta`` on the residual entirely).  Wf-A127, 2026-10-31.
+    return _residual_add_fallback(x, residual, alpha=alpha, beta=beta)
 
 
 class _FusedSiLUMLP(nn.Module):

@@ -27,11 +27,11 @@ available on disk.
 
 ## Documentation map
 
-- [`docs/HONEST_NEGATIVE_CATALOG.md`](docs/HONEST_NEGATIVE_CATALOG.md) — MEASURED-vs-PROJECTED honesty ledger (111 entries, Wf-A30-4 close-out)
+- [`docs/HONEST_NEGATIVE_CATALOG.md`](docs/HONEST_NEGATIVE_CATALOG.md) — MEASURED-vs-PROJECTED honesty ledger (~~**318 entries** (273 active)~~ **319 entries** (274 active), counted ~~2026-10-31~~ **2026-11-01** — the catalog's own cumulative counter, latest = ~~**§6.263 Wf-A151**~~ **§6.264 Wf-A153**; the "111 entries, Wf-A30-4 close-out" text that follows is the HISTORICAL Wf-A30-4 figure, PRESERVED VERBATIM per AGENTS.md §5.5 rule #6): (111 entries, Wf-A30-4 close-out)
 - [`docs/DESIGN_BOUNDARY.md`](docs/DESIGN_BOUNDARY.md) — FROZEN / STABLE / PROPOSED / OUT-OF-SCOPE surface
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 21-mechanism M1-M21 phase diagram
 - [`docs/POCKET_ENCODER_PIPELINE.md`](docs/POCKET_ENCODER_PIPELINE.md) — Pocket encoder (c) pipeline: PocketGen + P2Rank + platiny_pocket_pool + PerLayerPocketInjector (Wf-A31/A32)
-- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (394 files, counted 2026-10-20)
+- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (579 files, counted 2026-10-31 — the "578 files … 578 current" text that follows is the HISTORICAL Wf-A133 reading, PRESERVED VERBATIM per AGENTS.md §5.5 rule #6; the +1 is `cfm_fragmentation_postproc_arm.json`, published by Wf-A141 to give §6.252's numbers a durable path; `registry.py check` PASSes in the working tree — 579 current, 0 stale, 0 missing — but a clean checkout of HEAD FAILS it, see §6.210): 578 files, counted 2026-10-31; `registry.py check` PASSes in the working tree — 578 current, 0 stale, 0 missing — but a clean checkout of HEAD FAILS it, see §6.210)
 - [`molmetal/reports/`](molmetal/reports/) — per-workflow JSON/MD reports
 
 ## Wave-versioning policy (2026-10-01)

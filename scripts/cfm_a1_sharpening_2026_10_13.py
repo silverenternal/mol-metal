@@ -55,7 +55,7 @@ import json
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[1]
 TODO = REPO / "cfm_todo.json"
 TRAINER = "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 CKPT = ("molmetal/reports/cfm_patience10_seed0/checkpoints/"

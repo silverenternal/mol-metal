@@ -325,7 +325,26 @@ Per `party-twenty-spirit §3.5` (MEASURED-vs-PROJECTED tag discipline) + Wf-380-
 
 11. **Zotero + Tectonic INSTALLED** (Wf-372 SHIPPED 5/5 deliverables per Wf-372-C1 §22.67; Zotero 10.0.3 + Tectonic 0.17.0 both installed; CSL mol-divers.csl schema-valid; `sn-jnl.cls` end-to-end compile produces valid PDF; 11 NEW tests PASS; 0 `paper/*` touches)
 
-12. **FlowMol LICENSE-GATED** (FlowMol arXiv:2412.01966 CC-BY-NC; USER_OK required for production integration; SCAFFOLD SHIPPED per Wf-353-A4 + Wf-380-A1; not in scope for Wf-382-B1 docs-only sync)
+12. **FlowMol LICENSE-GATED** (FlowMol arXiv:2404.19739, CC BY-SA 4.0; USER_OK required for production integration; SCAFFOLD SHIPPED per Wf-353-A4 + Wf-380-A1; not in scope for Wf-382-B1 docs-only sync)
+
+    **CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+    verbatim: “FlowMol arXiv:2412.01966 CC-BY-NC”. Verified against the primary
+    sources on 2026-10-31: `arXiv:2412.01966` is **not** FlowMol — the arXiv
+    abs page returns “Implementing Semiclassical Szegedy Walks in
+    Classical-Quantum Circuits for Homomorphic Encryption” (Ortega, S. A.;
+    Fernández, P.; Martin-Delgado, M. A.), a quantum-homomorphic-encryption
+    paper, and the arXiv API returns no record titled “FlowMol: A Unified Flow
+    Matching Model for 3D Molecular Generation” and no record authored by
+    “Qiang, B.; Song, Y.; ...; Kingma, D. P.”. The real upstream is Dunn, I.;
+    Koes, D. R. (2024), *Mixed Continuous and Categorical Flow Matching for 3D
+    De Novo Molecule Generation* (FlowMol), `arXiv:2404.19739` — the identifier
+    this repo’s own canonical `unified_atom_bond_flow.py` already cites — with
+    siblings `arXiv:2411.16644` (FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3).
+    **LICENCE: all three are CC BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+    `creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged —
+    CC BY-SA 4.0 still carries attribution + share-alike obligations, so
+    USER_OK is still required. Superseded wording preserved verbatim per
+    AGENTS.md §5.5 rule #6.
 
 13. **Wf-382 cache SCAFFOLD-ONLY** (Wf-382-A2 SMILES featurization cache CPU extension = SCAFFOLD; full integration into `train_chemprop_v2_v3.py` + `train_dmpnn_multitask_wasserstein.py` deferred to future Wf-383+ MEASURED wire-in; 3 NEW tests PASS in 2.09 s wall per Wf-382-A2 closeout — rdkit env issue in omegafold_venv is venv-only, NOT a code issue per Wf-382-A2 closeout §3)
 

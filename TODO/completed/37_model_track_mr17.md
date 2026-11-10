@@ -77,18 +77,66 @@ explicit `--pockets / --seeds / --n-simulations / --manifest` overrides.
 
 | #  | Bibkey | arXiv / DOI | #  | Bibkey | arXiv / DOI |
 |----|--------|-------------|----|--------|-------------|
-| 1  | `flowmol3_2025` | 2508.16916 | 13 | `ggflow_2024` | 2411.05676 |
+| 1  | `flowmol3_2025` | 2508.12629 | 13 | `ggflow_2024` | 2411.05676 |
 | 2  | `flowmol_ctmc_2024` | 2411.16644 | 14 | `molform_2025` | 2507.05503 |
 | 3  | `semlaflow_2025` | 2406.07266 | 15 | `paflow_2025` | 2509.01486 |
-| 4  | `e2former_v2_2026` | 2601.16622 | 16 | `yuelbond_2025` | 10.1101/2025.05.06.652517 |
+
+> **⚠️ CORRECTED (2026-10-31, Wf-A148).**  Row 1 of the bibliography
+> table above previously read
+> `| 1  | \`flowmol3_2025\` | 2508.16916 | 13 | \`ggflow_2024\` | 2411.05676 |`.
+> **2508.16916 is a different paper.**  MEASURED 2026-10-31 from the
+> arXiv abs pages: `2508.12629` = *"FlowMol3: Flow Matching for 3D De Novo
+> Small-Molecule Generation"*; `2508.16916` = *"The compressible Neural
+> Particle Method for Simulating Compressible Viscous Fluid Flows"*.  The
+> correct FlowMol3 id is **2508.12629**, which this repo's own
+> `molmetal/reports/wf_cfm_frontier_research/research_phase1b.md` already
+> cites — the repo was internally inconsistent about its own top-ranked
+> frontier candidate.  Superseded wording preserved verbatim per
+> AGENTS.md §5.5 rule #6.
+| 4  | `e2former_v2_2026` | 2601.16622 | 16 | `yuelbond_2025` | 10.1021/acs.jcim.5c03052 (preprint 10.1101/2025.05.06.652517) |
 | 5  | `eqdiff_hp_2023` | 2306.15036 | 17 | `next_mol_2025` | 2502.12638 |
 | 6  | `geoldm_2023` | 2305.01140 | 18 | `edgr_2025` | 2505.21833 |
 | 7  | `unimomo_2025` | 2503.19300 | 19 | `flowr_sbdd_2025` | 2504.10564 |
-| 8  | `fragfm_2025` | 2502.15805 | 20 | `unimol_2023` | 2303.16983 |
+| 8  | `fragfm_2025` | 2502.15805 | 20 | `unimol_2023` | 10.26434/chemrxiv-2022-jjm0j (ICLR 2023; no arXiv preprint) |
 | 9  | `jodo_2023` | 2305.12347 | 21 | `equiformer_2023` | 2206.11990 |
 | 10 | `invirtuogen_2025` | 2509.26405 | 22 | `equiformer_v2_2024` | 2306.12009 |
 | 11 | `alphaflow_2025` | 2504.10283 | 23 | `nequip_2022` | 10.1038/s41467-022-29939-5 |
 | 12 | `transition_matching_2025` | 2506.23589 | 24 | `e3nn_2022` | 2207.09453 |
+
+> **⚠️ CORRECTED (2026-10-31, Wf-A149).**  Row 20 of the bibliography
+> table above previously read
+> `| 8  | \`fragfm_2025\` | 2502.15805 | 20 | \`unimol_2023\` | 2303.16983 |`.
+> **2303.16983 is not Uni-Mol.**  MEASURED 2026-10-31 live from the arXiv
+> API: `2303.16983` = *"Thrust vector control and state estimation
+> architecture for low-cost small-scale launchers"* (dos Santos,
+> Oliveira) — an unrelated aerospace paper.  The off-by-one replacement
+> proposed for this defect, **2303.16982**, was also tested live and is
+> **NOT** Uni-Mol either: it = *"Highly Accurate Quantum Chemical Property
+> Prediction with Uni-Mol+"* (Lu, Gao, He, Zhang, Ke) — the separate
+> Uni-Mol**+** / Uni-Mol-Tools report, a different title with a different
+> author team.  arXiv title search `ti:"Uni-Mol"` returns exactly two
+> records (2303.16982 = Uni-Mol+, 2405.11769 = Uni-Mol Docking V2) and
+> `ti:"Universal 3D Molecular Representation Learning Framework"` returns
+> **zero** — **no arXiv preprint of the Uni-Mol framework paper exists**,
+> so the correct citation carries no arXiv id.  MEASURED 2026-10-31 live:
+> venue = **ICLR 2023 poster** (`ICLR.cc/2023/Conference`, OpenReview
+> note `6K2RM6wVqKu`, title *"Uni-Mol: A Universal 3D Molecular
+> Representation Learning Framework"*, authors Zhou / Gao / Ding / Zheng
+> / Xu / Wei / Zhang / Ke — the same list the authors' own
+> `deepmodeling/Uni-Mol` README cites); preprint = **ChemRxiv**
+> `10.26434/chemrxiv-2022-jjm0j` (Crossref `posted-content`, v1
+> 2022-05-26, latest version v4 2023-03-06).  Superseded wording
+> preserved verbatim per AGENTS.md §5.5 rule #6.
+> Sources fetched 2026-10-31:
+> `http://export.arxiv.org/api/query?id_list=2303.16983` and
+> `...id_list=2303.16982`,
+> `http://export.arxiv.org/api/query?search_query=ti:%22Uni-Mol%22`,
+> `https://api.openreview.net/notes/search?term=Uni-Mol` (note
+> `6K2RM6wVqKu`),
+> `https://api.crossref.org/works/10.26434/chemrxiv-2022-jjm0j`,
+> `https://doi.org/10.26434/chemrxiv-2022-jjm0j` (302 → chemrxiv.org;
+> host returns 403 to bots, DOI is registered),
+> `https://raw.githubusercontent.com/deepmodeling/Uni-Mol/main/README.md`.
 
 13 of the 24 are cited in-text (5 in `03_method.tex`, 4 in `03_5_deflex.tex`,
 4 in §3.6/§3.7); 11 are bibliographic-stash entries for future §4/§6/§7 edits.

@@ -36,7 +36,7 @@ import sys
 import unittest
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "molmetal"))
 
@@ -46,7 +46,7 @@ class BLKD1AttentiveFPSmoke(unittest.TestCase):
         out_dir = "/tmp/blk_d1_attentivefp_smoke_57"
         os.makedirs(out_dir, exist_ok=True)
 
-        # Mirror what scripts/launch_wf_blk_d1_attentivefp.sh would append
+        # Mirror what scripts/_retired/launch_wf_blk_d1_attentivefp_5seed.sh would append
         # (this smoke directly invokes the trainer — the launcher wrapper
         # is wired separately per AGENTS.md §5.6 BLK-I1).
         cmd = [

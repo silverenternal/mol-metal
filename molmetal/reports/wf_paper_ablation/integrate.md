@@ -407,6 +407,14 @@ Phase 4 explicitly REFUSES to:
 - Imply any wet-lab pIC50 calibration from the heuristic
   metrics_v2 formulas (the §5.11 paragraph correctly downgrades
   to `SEARCHONLY` / `PROJECTED` / `DESIGN` posture).
+  *(2026-10-31 pointer note: the "§5.11" above is the paper-ablation
+  §5.11 metrics_v2 subsection — `paper/sections/05_ablation.tex` §5.11,
+  this report's §3.4 — NOT AGENTS.md §5.11 (YAML-only launch). The
+  SEARCHONLY / PROJECTED / DESIGN downgrade taxonomy is this report's
+  §3.5 cell-class taxonomy; the registry-side status-token rule for
+  PROJECTED / DESIGN is `docs/METRIC_CITABILITY_RULE.md` §2. The
+  superseded AGENTS.md-ambiguous rendering is preserved verbatim above
+  per AGENTS.md §5.5 rule #6.)*
 
 The reviewer can trust that any `\MEASURED{}` cell in §4.6 or §5
 is a real measurement on this box, end-to-end, with the artefact

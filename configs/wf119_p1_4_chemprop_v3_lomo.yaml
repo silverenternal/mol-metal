@@ -1,0 +1,76 @@
+# Wf-119 P1.4 — chemprop v2/v3 LOMO scaffold ablation (4 arms).
+#
+# AGENTS.md §5.11: training launches from this YAML.  The wrapper passes
+# `--config` and `--out-dir` and NOTHING else; every hyperparameter below
+# used to be on the command line as a literal flag.
+#
+# EVERY KEY HERE IS A FAITHFUL TRANSCRIPTION of the pre-§5.11 command line.
+# The old invocation was:
+#
+#   ${PY} molmetal/scripts/train_chemprop_v2_v3.py \
+#       --epochs 3 --allow-single-seed --seeds 0 --batch-size 50 \
+#       --hidden 300 --depth 3 --lr 1e-3 --device "cuda:0" --no-bf16 \
+#       --num-workers 8 \
+#       --chemprop-mode <v3-fallback|v3-fix> \
+#       [--chemprop-min-epochs 3 | --chemprop-lomo-init-scale 1e-3] \
+#       --out-dir <arm>
+#
+# so the arms differ only in the last two keys, and the wrapper now derives
+# one config per arm from this file.
+#
+# THE LIST IS A LIST.  `--seeds` is declared `nargs="+"`, so a YAML string
+# (`seeds: 0`) would deliver ONE string instead of a list, and the trainer
+# would then match zero seeds.  MEASURED 2026-10-09: that cost a full
+# 4-fold x 5-seed run.  `seeds: [0]` is the correct form (AGENTS.md §5.11).
+#
+# `no-bf16` is `dest="bf16", action="store_false", default=True`
+# (train_chemprop_v2_v3.py:1446-1452) — so the flag's effect is `bf16: false`,
+# which is what this file declares.
+#
+# `lr` and `chemprop_lomo_init_scale` are written as decimals, not as `1e-3`:
+# pyyaml's float resolver does not accept the exponent form without a
+# mantissa dot, so `1e-3` parses as the STRING "1e-3".  The loader would
+# still coerce it through the action's `type=float`, but a config that reads
+# as a string is a config whose value is not visible to a reader.
+#
+# NO `data:` SECTION on purpose.  The wrapper never passed a dataset flag, so
+# the trainer's own default corpus is what the old run consumed; naming one
+# here would CHANGE the run rather than transcribe it.
+
+train:
+  epochs: 3
+  batch_size: 50
+  lr: 0.001
+  # `--allow-single-seed` is `action="store_true"`, default False.
+  allow_single_seed: true
+  # Wf-328-W2 OPTIMAL_NUM_WORKERS on the 24-core host.
+  num_workers: 8
+
+model:
+  hidden: 300
+  depth: 3
+
+compute:
+  device: "cuda:0"
+  # Wf-328-W3: BF16 default off for the chemprop smoke (per Wf-321H §2).
+  bf16: false
+
+protocol:
+  seeds:
+    - 0
+
+# The three LOMO scaffold levers are per-arm, so they live in the DERIVED
+# per-arm config rather than here.  The values are the ones the wrapper used:
+#   baseline              -> chemprop_mode: v3-fallback
+#   v3_fix_only           -> chemprop_mode: v3-fix
+#   min_epochs_only       -> chemprop_mode: v3-fallback, chemprop_min_epochs: 3
+#   lomo_init_scale_only  -> chemprop_mode: v3-fallback,
+#                            chemprop_lomo_init_scale: 0.001
+# (The wrapper's own header comment says "--chemprop-min-epochs=10"; the CODE
+# passes 3.  The code is what ran, so 3 is what this file transcribes — the
+# comment is stale and is left for the reader to see rather than silently
+# reconciled.)
+
+entry:
+  script: molmetal/scripts/train_chemprop_v2_v3.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_chemprop_v2_v3.py --config {yaml_path} --out-dir {out_dir}

@@ -52,9 +52,16 @@
 # (50-step smoke already passed for both F5+F6 flag changes; this is the
 # full retrain).
 
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
 # 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
 # flushing stdout after trainer exit killed the wrapper silently via `tee`).
 # Capture trainer rc via ${PIPESTATUS[0]}; suppress tee SIGPIPE with `|| true`.
+#
+# Wf-A269 wave-10 (2026-11-02): the `|| true` half above is what made the rc
+# read DEAD — `|| true` runs AFTER the failing pipeline and CLOBBERS
+# PIPESTATUS to (0), so the "trainer exited rc != 0 -> exit" branch could never
+# fire and this wrapper exited 0 after a crashed trainer.  The repaired shape
+# is at the launch site below (scripts/_WRAPPER_TEMPLATE.sh:190-193).
 
 # BLK-I2 (2026-10-09): pre-flight gate per AGENTS.md §1.4.
 # Per `todo.json` BLK-I2 fix_steps: every trainer-launching
@@ -114,7 +121,8 @@ CMD=("${PY}" "${PROJECT_ROOT}/molmetal/scripts/train_cfm_yuelbond_wasserstein.py
 # Set CUDA_VISIBLE_DEVICES to the physical GPU index (env var wins over
 # the trainer's `ensure_cuda_visible_devices_default` per Wf-A9 semantics).
 # We use --device cuda:0 because torch sees only 1 GPU after filtering.
-export CUDA_VISIBLE_DEVICES="${GPU}"
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> ${GPU}.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${GPU}}"
 echo "  CUDA_VISIBLE_DEVICES (physical GPU): ${CUDA_VISIBLE_DEVICES}"
 echo "  DEVICE (visible index):              ${DEVICE}"
 
@@ -138,8 +146,23 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
 fi
 
 echo "Starting at $(date -Iseconds)"
-setsid nohup "${CMD[@]}" 2>&1 | tee "${LOG_OUT}" || true   # 2026-10-08 pipefix
-RC=${PIPESTATUS[0]}                              # 2026-10-08 pipefix
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   setsid nohup "${CMD[@]}" 2>&1 | tee "${LOG_OUT}" || true   # 2026-10-08 pipefix
+#   RC=${PIPESTATUS[0]}                              # 2026-10-08 pipefix
+#
+# Canonical shape (scripts/_WRAPPER_TEMPLATE.sh:190-193): pipefail off for
+# this ONE pipeline (a trainer whose forked DataLoader workers still hold the
+# pipe open takes SIGPIPE and would report 141 instead of its own status — the
+# tee stays, it is the only diagnostic); `setsid --wait` (bare setsid may fork
+# and return 0 before the trainer has done anything, which would make
+# PIPESTATUS[0] report success for a run that had not started — and setsid
+# gives the trainer its own session, which already covers nohup's SIGHUP
+# immunity); and the rc read BETWEEN the two `set` lines, while PIPESTATUS
+# still holds the pipeline's statuses.
+set +o pipefail
+setsid --wait "${CMD[@]}" 2>&1 | tee "${LOG_OUT}"
+RC=${PIPESTATUS[0]}
+set -o pipefail
 echo "Done at $(date -Iseconds)"
 if [ "${RC}" -ne 0 ]; then
     echo "FAIL: trainer exited rc=${RC}" >&2

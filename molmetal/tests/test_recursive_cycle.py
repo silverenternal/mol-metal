@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Tests for --num-cycle recursive inference cycle (mirror OmegaFoldCycle)."""
 
+from pathlib import Path
+
 import torch
 
 from molmetal.adapters.flow_matching_lipman.confidence_head import ConfidenceHead
@@ -45,7 +47,7 @@ class TestRecursiveCycle:
         """Verify --num-cycle default = 1 (no recursion, bit-exact backward compat)."""
         import sys
 
-        sys.path.insert(0, "/home/hugo/codes/mol-metal/molmetal/scripts")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "molmetal" / "scripts"))
         import argparse
 
         # Mock sys.argv

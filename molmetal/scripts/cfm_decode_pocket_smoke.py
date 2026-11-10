@@ -50,7 +50,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # ``import molmetal`` so that Python's import system does not pick
 # up the worktree's molmetal (which may lack the cloned flow_matching
 # or the _reference shim directory).
-_MAIN_REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+_MAIN_REPO_ROOT = Path(__file__).resolve().parents[2]
 _FM_REF_REPO = _MAIN_REPO_ROOT / "molmetal" / "references" / "flow_matching"
 _LOCAL_FM_REF_REPO = PROJECT_ROOT / "molmetal" / "references" / "flow_matching"
 _LOCAL_REF_SHIM = (

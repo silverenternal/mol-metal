@@ -42,27 +42,28 @@ Cross-references
 * molmetal/reports/wf310c_nci60_9cell/sweep_summary_smoke.json — smoke MEASURED (9/9)
 * molmetal/scripts/wf219_temporal_split_driver.py — temporal driver
 * molmetal/scripts/nci60_9cell_chemprop_driver.py — NCI-60 driver
-* molmetal/scripts/launch_wf310c_todo220_gpu.sh — GPU wrapper (USER_OK-gated)
+* scripts/launch_wf310c_todo220_gpu.sh — GPU wrapper (USER_OK-gated)
 """
 
 from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 TEMPORAL_DRIVER = ROOT / "molmetal/scripts/wf219_temporal_split_driver.py"
 NCI60_DRIVER = ROOT / "molmetal/scripts/nci60_9cell_chemprop_driver.py"
 TEMPORAL_SMOKE = (
     ROOT / "molmetal/reports/wf310c_temporal_split/sweep_summary_smoke.json"
 )
 NCI60_SMOKE = ROOT / "molmetal/reports/wf310c_nci60_9cell/sweep_summary_smoke.json"
-GPU_WRAPPER = ROOT / "molmetal/scripts/launch_wf310c_todo220_gpu.sh"
+GPU_WRAPPER = ROOT / "scripts/launch_wf310c_todo220_gpu.sh"
 SEC_6_3_DOC = ROOT / "TODO/completed/220_wf220_temporal_split_acceptance.md"
 SEC_6_4_DOC = ROOT / "TODO/completed/220_wf219_nci60_9cell_acceptance.md"
-PYTHON_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
+PYTHON_BIN = sys.executable
 
 
 # ---------------------------------------------------------------------------

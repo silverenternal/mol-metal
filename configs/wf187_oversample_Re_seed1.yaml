@@ -1,0 +1,82 @@
+# configs/wf187_oversample_Re_seed1.yaml — AGENTS.md §5.11 launch config for run_wf187_remaining.sh
+# — tuple metal=Re seed=1 (the Wf-131 P3 "7/25 remaining runs" set).
+#
+# WHY ONE STATIC FILE PER TUPLE: the trainer sweeps `args.metals` x
+# `args.seeds` INSIDE one process (train_metal_lomo_v2.py:2030
+# `for metal in args.metals:` / :2031 `for seed in args.seeds:`) while this
+# launcher starts ONE trainer PROCESS per (metal, seed) tuple, each with its
+# own --out-dir.  §5.11 allows the launcher to pass only --config / --out-dir
+# / --ckpt-dir / --help, so the tuple coordinates have to live in a FILE.
+# A per-METAL config CANNOT isolate a seed: the trainer would train EVERY
+# seed of the cohort in EVERY process, which would turn the 7 runs into 2 and
+# change what each run measures.  The per-metal cohort declaration lives in
+# configs/wf187_re_oversample.yaml and the wrapper asserts the two agree before the first
+# invocation.
+#
+# VALUES: every leaf below is the EFFECTIVE pre-migration value — the argv
+# run_wf187_remaining.sh used to pass (PRE-MIGRATION ARGV, below).  Nothing
+# here is hand-invented: scripts/_wf_yaml_static_config_c1.py proves, dest by
+# dest, that this YAML and that argv carry the same value AND the same TYPE,
+# through the trainer's OWN parser and the REAL loader
+# (molmetal/scripts/wfA2_config_loader.py).
+#
+# PRE-MIGRATION ARGV (run_wf187_remaining.sh, before 2026-11-04):
+#   --model v3 --metals Re --seeds 1 --epochs 2 --device cpu
+#   --no-bf16 --wasserstein-weight 0 --oversample-positives --pos-weight 10
+#   --batch-size 64 --out-dir molmetal/reports/wf187_p3_rh_oversample_fix/Re_seed1 --quick
+#
+# DEST-NAME TRAPS (read before editing):
+#   * `--model` shares the dest `model`; it is placed under `train:` because
+#     the top-level `model:` key is a SECTION here (it carries hidden_dim /
+#     n_layers).  `train.model` -> flat `train_model` (no such dest) ->
+#     leaf fallback -> dest `model`
+#     (molmetal/scripts/wfA2_config_loader.py::_LEAF_FALLBACK_SECTIONS).
+#   * `--no-bf16` shares the dest `bf16` with `--bf16`
+#     (argparse.BooleanOptionalAction), so the YAML carries `bf16: false`.
+#   * `--quick` shares the dest `quick` (store_true) -> `quick: true`.  The
+#     trainer's quick path truncates metals/seeds to their first element and
+#     forces epochs=2; this config already declares exactly one metal, one
+#     seed and epochs=2, so the truncation is a no-op.
+#   * `model.hidden_dim` / `model.n_layers` are DECLARED-INERT for THIS
+#     trainer (it declares no --hidden / --n-layers dest).  They are the
+#     AGENTS.md §5.1 GPU-footprint annotation that the pre-flight gate
+#     p3_wf343c4_hyperparams_config_complete requires, and their values are
+#     the trainer's MEASURED effective ones (MT_HIDDEN=128, MT_DEPTH=3 in
+#     molmetal/baselines/dmpnn_multitask.py).
+#   * `train.lr` was NOT passed by the pre-migration wrapper, so the run used
+#     the argparse default MT_LR=0.001; declaring it here keeps the arm
+#     reproducible if that default ever moves.
+#   * LIST dests (`metals`, `seeds`) MUST be YAML sequences — a bare string
+#     would match zero rows and yield test_auc = nan on every seed
+#     (AGENTS.md §5.11, MEASURED 2026-10-09).
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+
+train:
+  model: v3
+  seeds:
+    - 1
+  epochs: 2
+  batch_size: 64
+  lr: 0.001
+  wasserstein_weight: 0
+  oversample_positives: true
+  pos_weight: 10
+  bf16: false
+  quick: true
+
+data:
+  metals:
+    - Re
+
+compute:
+  device: cpu
+
+output:
+  out_dir: molmetal/reports/wf187_p3_rh_oversample_fix/Re_seed1
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_v2.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_v2.py --config {yaml_path} --out-dir {out_dir}"

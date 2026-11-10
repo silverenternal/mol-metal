@@ -605,6 +605,61 @@ def build_lr_scheduler(
     raise ValueError(f"build_lr_scheduler: unknown scheduler_type={scheduler_type!r}")
 
 
+def lever_and_build_fingerprint(args: argparse.Namespace) -> Dict[str, object]:
+    """The ABLATION LEVER IDENTITY + TRAINER-BUILD FINGERPRINT of one run.
+
+    Wf-A126 (2026-10-31).  Two catalog root causes are closed by this
+    function:
+
+    * **§6.220** — the G6 ablation tree could not say which lever was
+      disabled for 3 of its 4 cohorts, because the trainer wrote only
+      ``wasserstein_weight``.  ``scripts/launch_wf124_p3_g6.sh`` maps each
+      arm to a trainer flag (``no_multi_task`` -> ``--single-task``,
+      ``no_wass`` -> ``--wasserstein-weight 0.0``, ``no_kendall`` ->
+      ``--no-kendall``, ``no_dann`` -> ``--no-dann``); this function makes
+      all four levers self-describing in the artifact, so the cohort
+      directory name is no longer the only record.
+    * **§6.219** — the G5 baseline tree carries no trainer fingerprint
+      (it ran 2026-10-02, before commit 8d139d23 added the fingerprint),
+      while G6 carries all 8 (it ran 2026-10-08/09).  Commit af84a545
+      (2026-10-15) then removed the fingerprint from the trainer, so a run
+      launched today would AGAIN be unversion-matchable against G5.
+
+    These are the fingerprint fields the CURRENT trainer actually knows.
+    The 8 fields the G6 artifacts carry (``bf16``, ``dmpnn_backend``,
+    ``dmpnn_backend_requested``, ``tf32``, ``torch_compile_enabled``,
+    ``torch_compile_mode``, ``torch_compile_cuda_graphs_disabled``,
+    ``w2_gradient_mode``) were removed together with the rest of the
+    Wf-A17 revert; they are NOT resurrected here — that would revive
+    deliberately reverted behaviour, which is out of scope for this wave
+    (AGENTS.md §1.4: no scope creep, no quietly restoring reverted code).
+
+    The keys are FLAT and sit next to the existing ``wasserstein_weight``
+    key, so a future G5-vs-G6 comparison is a plain key-set difference:
+    ``set(g6_summary) - set(g5_summary)``.
+
+    Returns
+    -------
+    dict
+        ``single_task`` / ``kendall`` / ``dann`` (the three levers that were
+        previously unrecorded) plus ``tf32`` / ``torch_compile`` /
+        ``w2_gradient_mode`` (the build fields the current trainer knows).
+        ``wasserstein_weight`` is already written by the caller.
+    """
+    return {
+        # --- ablation lever identity (the §6.220 root cause) ---
+        "single_task": bool(getattr(args, "single_task", False)),
+        "kendall": bool(getattr(args, "kendall", True)),
+        "dann": bool(getattr(args, "dann", True)),
+        # --- trainer-build fingerprint (the §6.219 root cause) ---
+        "tf32": bool(getattr(args, "tf32", False)),
+        "torch_compile": bool(getattr(args, "torch_compile", False)),
+        "w2_gradient_mode": str(
+            getattr(args, "w2_gradient_mode", DEFAULT_W2_GRADIENT_MODE)
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
@@ -3912,6 +3967,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+    # Wf-A269 (2026-11-04) — the DECLARED namespace: as it stands right
+    # after the config has been applied, BEFORE this function's own
+    # post-override mutations below (args.ckpt_dir, args.csv, args.metals).
+    # The provenance artefact records both this and the final one, so the
+    # difference between them is visible instead of invisible.
+    _declared_namespace = argparse.Namespace(**vars(args))
 
     # Wf-335-P3 / AGENTS.md §5.7 — flag → env bridge, and loud rejection for
     # the flags nothing consumes.  These two flags used to be declared in
@@ -4128,6 +4189,43 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"(available={_available_metals} csv={args.csv})",
         flush=True,
     )
+
+    # Wf-A269 (2026-11-04) — launch provenance: record the namespace the
+    # trainer ACTUALLY consumed.
+    #
+    # This call is HERE, not inside parse_args, and that placement is the
+    # whole point.  The namespace is mutated three times AFTER the YAML has
+    # been applied — args.ckpt_dir (above), args.csv (above), and
+    # args.metals (just above) — and a provenance record taken before those
+    # mutations certifies a namespace the trainer never trained on.  The
+    # honest-negative catalog calls that the POST-OVERRIDE MUTATION
+    # BLINDNESS defect (Wf-A269 wave-4 design critique): a check that can
+    # PASS without checking.
+    #
+    # Opt-in: with no MOLMETAL_RESOLVED_CONFIG_PATH in the environment this
+    # is a no-op, so a normal launch writes nothing.
+    try:
+        from molmetal.scripts.wfA2_config_loader import finalize_resolved_config
+
+        finalize_resolved_config(
+            args,
+            config_path=args.config,
+            argv=argv,
+            declared=_declared_namespace,
+            # The three dests this trainer derives AFTER the config is
+            # applied.  They are checked against the loader's authoritative
+            # PROVENANCE_DERIVED_DESTS table, so this declaration cannot be
+            # widened silently: a dest NOT on the list that the trainer
+            # changes anyway is drift, and the check FAILS on it.
+            derived_dests=("ckpt_dir", "csv", "metals"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        # A provenance record that cannot be written must NOT abort a run
+        # that is otherwise fine — but it must not be silent either.
+        print(
+            f"[wf131-mtw] WARN: launch provenance not written: {exc!r}",
+            flush=True,
+        )
 
     # Wf-130 — GPU-first device defaults: cuda:0 (GPU 0 — RTX PRO 6000
     # Blackwell by default) when allocatable, else CPU.
@@ -4548,6 +4646,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         "alpha": args.alpha,
         "wasserstein_weight": args.wasserstein_weight,
         "use_l2_guard": args.use_l2_guard,
+        # Wf-A126 (2026-10-31) — the ABLATION LEVER IDENTITY + TRAINER-BUILD
+        # FINGERPRINT.  Closes the root causes of catalog §6.220 ("3 of the 4
+        # G6 cohorts are indistinguishable by their own config") and §6.219
+        # ("the G5 baseline carries no trainer fingerprint").  ADDITIVE ONLY —
+        # no training behaviour changes.  See
+        # `lever_and_build_fingerprint` for the full evidence trail.
+        **lever_and_build_fingerprint(args),
         "lr": args.lr,
         "batch_size": args.batch_size,
         "hidden": args.hidden if args.hidden is not None else DEFAULT_HIDDEN,

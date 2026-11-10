@@ -58,7 +58,8 @@ if command -v nvidia-smi >/dev/null 2>&1; then
     --format=csv,noheader || true
 fi
 
-export CUDA_VISIBLE_DEVICES="${PA17_GPU:-0}"
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> ${PA17_GPU:-0}.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${PA17_GPU:-0}}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

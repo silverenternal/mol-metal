@@ -39,8 +39,8 @@ all 92 elements is out of scope for this wave.  The tmQM table
 covers the wider 30-metal + main-group-organics cohort as
 represented in the CSD-derived mononuclear set.
 
-Backward-compat rule (AGENTS.md §5.11)
---------------------------------------
+Backward-compat rule (~~AGENTS.md §5.11~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31)
+----------------------------------------------------------------------------------------------
 ``get_bond_length(z1, z2, order=1)`` signature is BYTE-IDENTICAL with
 Wf-A27 / Wf-A28.  When the tmQM cache is ABSENT (default for a
 fresh checkout), behaviour is byte-identical with Wf-A28 step-2

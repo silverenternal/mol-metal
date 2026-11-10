@@ -53,7 +53,7 @@ import subprocess
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PY = _os.environ.get("PY", str(PROJECT_ROOT / ".venv" / "bin" / "python"))
 RUN_ONE = PROJECT_ROOT / "molmetal" / "scripts" / "wf229_run_one.py"
 OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf229_ablation"

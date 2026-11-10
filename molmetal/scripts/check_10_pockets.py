@@ -124,7 +124,11 @@ def _candidate_paths(pocket_id: str) -> List[Path]:
 POCKETS: List[PocketSpec] = [
     PocketSpec(
         pocket_id="830c",
-        source_pdb=Path("/home/hugo/codes/mol-metal/molmetal/data/mmp13_real/830c.pdb"),
+        source_pdb=Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "data"
+        / "mmp13_real"
+        / "830c.pdb",
         metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score.json",
         notes=(
             "MMP-13 hydroxamate (sulphone hydroxamate RS1). Single-pocket "

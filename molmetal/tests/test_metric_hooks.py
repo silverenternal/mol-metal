@@ -52,6 +52,22 @@ def _metric_file(name: str) -> Path:
     return METRIC_OUTPUT_DIR / f"{name}.json"
 
 
+def _redirect_metric_output(monkeypatch, tmp_path) -> Path:
+    """Point the metric hooks' output directory at ``tmp_path``.
+
+    Wf-A123: the hooks default to the PACKAGE tree
+    ``molmetal/metrics/by_metric/``, which is a published artifact tree.
+    A test run must never write there, so every ``save=True`` test
+    redirects the module-level ``METRIC_OUTPUT_DIR`` into ``tmp_path``.
+    """
+    from molmetal.molmetal_lam.sbdd_env import metric_hooks
+
+    out_dir = tmp_path / "by_metric"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(metric_hooks, "METRIC_OUTPUT_DIR", out_dir)
+    return out_dir
+
+
 # ---------------------------------------------------------------------------
 # Hook 1 — compute_vina_min
 # ---------------------------------------------------------------------------
@@ -99,8 +115,9 @@ class TestComputeVinaMin:
                 -25.0 <= bs <= 5.0
             ), f"Vina score {bs} outside plausible kcal/mol range"
 
-    def test_vina_min_writes_metric_file(self):
+    def test_vina_min_writes_metric_file(self, monkeypatch, tmp_path):
         """`save=True` (default) writes metrics/by_metric/vina_min.json."""
+        _redirect_metric_output(monkeypatch, tmp_path)
         from molmetal.molmetal_lam.sbdd_env.metric_hooks import compute_vina_min
 
         path = _metric_file("vina_min")
@@ -169,8 +186,9 @@ class TestComputeMultiCellAUC:
             assert isinstance(cl, str)
             assert isinstance(auc, float)
 
-    def test_multi_cell_auc_writes_metric_file(self):
+    def test_multi_cell_auc_writes_metric_file(self, monkeypatch, tmp_path):
         """`save=True` writes metrics/by_metric/multi_cell_auc.json."""
+        _redirect_metric_output(monkeypatch, tmp_path)
         from molmetal.molmetal_lam.sbdd_env.metric_hooks import (
             compute_multi_cell_auc,
         )
@@ -240,8 +258,9 @@ class TestComputeDecodeRatio:
         assert isinstance(ratio, float)
         assert 0.0 <= ratio <= 1.0, f"decode_ratio {ratio} outside [0, 1]"
 
-    def test_decode_ratio_writes_metric_file(self):
+    def test_decode_ratio_writes_metric_file(self, monkeypatch, tmp_path):
         """`save=True` writes metrics/by_metric/decode_ratio.json."""
+        _redirect_metric_output(monkeypatch, tmp_path)
         from molmetal.molmetal_lam.sbdd_env.metric_hooks import (
             compute_decode_ratio,
         )

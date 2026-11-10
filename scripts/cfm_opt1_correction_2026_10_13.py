@@ -64,7 +64,7 @@ import json
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[1]
 TODO = REPO / "cfm_todo.json"
 
 METRIC = "metrics/by_metric/cfm_opt1_stereo_suppression.json"

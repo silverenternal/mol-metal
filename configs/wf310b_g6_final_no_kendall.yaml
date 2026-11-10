@@ -1,0 +1,142 @@
+# configs/wf310b_g6_final_no_kendall.yaml — G6 ABLATION CONFIG "no_kendall" for
+# scripts/launch_wf310b_g6_final.sh
+#
+# WHY A DEDICATED FILE (AGENTS.md §5.11, user directive 2026-10-09, verbatim
+# "以后要求能且只能用yaml配置启动训练和推理，no cli参数"):
+# The wrapper used to pass --metals / --seeds / --csv / --data-csv on the
+# trainer invocation line and --epochs / --batch-size / --hidden / --depth /
+# --lr / --alpha / --w2-gradient-mode / --n-mc / --use-l2-guard / --device /
+# --cuda-visible-devices / --cpu-num-workers / --data-csv through its
+# COMMON_ARGS array, plus the ablation lever through CONFIRMED_FLAGS.
+# Every one of those values now lives HERE and the wrapper passes only:
+#     <trainer> --config <derived> --out-dir <dir> --ckpt-dir <dir>
+#
+# The wrapper used to read configs/dmpnn.yaml, which is SHARED by 8 wrappers;
+# editing it to carry this wrapper's values would have changed the other 7
+# (constraint: a plumbing migration must not change what another run does).
+# So this file is a dedicated copy that reproduces configs/dmpnn.yaml's
+# effective values AND adds the values the wrapper used to pass on the command
+# line.
+#
+# ABLATION LEVER "no_kendall" (--no-kendall (the Kendall-tau uncertainty-weighted MTL loss is switched off)).
+# The wrapper passed --no-kendall (dest `kendall`, default True).
+#
+# THIS FILE IS A TEMPLATE, NOT A LAUNCHABLE CONFIG ON ITS OWN.
+# data.metals / protocol.seeds are PER TUPLE: the trainer loops internally
+# over args.metals x args.seeds, so a config carrying the full cohort would
+# collapse the wrapper's 60 separate PROCESSES into 1 — a different run
+# (process count, per-tuple out-dir/log layout, resume semantics). The
+# wrapper derives one config per (config, metal, seed) tuple with
+# scripts/_wf_yaml_pair_config.py and passes THAT.
+
+model:
+  # The wrapper passed --hidden 300 (configs/dmpnn.yaml says 128).
+  hidden: 300
+  depth: 3
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  pic50_ridge_readout: false
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  lr_scheduler: none
+  lr_min_lr: 1.0e-6
+  lr_warmup_epochs: 5
+  alpha: 0.5
+  # NOT this arm's lever -- inherited from configs/dmpnn.yaml: the OTHER levers keep configs/dmpnn.yaml's values (single_task off, dann on, W2 weight 0.05).
+  single_task: false
+  # THIS ARM'S ABLATION LEVER -- dest `kendall` (--no-kendall); the wrapper used to
+  # pass it on the command line (CONFIRMED_FLAGS[no_multi_task/no_wass/no_kendall/no_dann]).
+  kendall: false
+  # NOT this arm's lever -- inherited from configs/dmpnn.yaml: the OTHER levers keep configs/dmpnn.yaml's values (single_task off, dann on, W2 weight 0.05).
+  dann: true
+
+data:
+  # `data.csv` resolves to the `data_csv` dest (flat form wins), so the
+  # --data-csv value lives here.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  # Sweep dimension — narrowed to one metal per derived config.
+  metals:
+    - Ru
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  active_pic50_threshold: 6.0
+
+# TOP-LEVEL `csv:` (NOT `data.csv`) — the dest is `csv`.
+# `_candidate_dests` tries the flat form first, so `data.csv` resolves to
+# `data_csv`; the two flags feed DIFFERENT loaders and the wrapper passed
+# BOTH --csv and --data-csv with the same path. Same rule as
+# configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml.
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+protocol:
+  # Sweep dimension — narrowed to one seed per derived config.
+  seeds:
+    - 0
+
+eval:
+  # NOT this arm's lever -- inherited from configs/dmpnn.yaml (weight 0.05).
+  wasserstein_weight: 0.05
+  use_wasserstein_2: false
+  use_wasserstein_w1: true
+  w2_gradient_mode: sliced
+  use_triton_wasserstein_sliced: false
+  use_ot_cfm: false
+  triton_ot: false
+  use_l2_guard: true
+  # The wrapper passed --n-mc 256.
+  n_mc: 256
+
+compute:
+  # The wrapper passed --device cuda:0.
+  device: "cuda:0"
+  # The wrapper passed --cuda-visible-devices 0 (a STRING on the command line;
+  # the argparse action declares no type=, so it is quoted here to deliver the
+  # same Python type).
+  cuda_visible_devices: "0"
+  tf32: false
+  torch_compile: false
+  # The wrapper passed --cpu-num-workers 8.
+  cpu_num_workers: 8
+  pin_memory: true
+
+output:
+  # PER-TUPLE paths. The wrapper passed
+  #   --out-dir  results/wf124_p3_per_innovation_ablation_g6/no_kendall/<metal>/seed<seed>
+  #   --ckpt-dir results/wf124_p3_per_innovation_ablation_g6/no_kendall/<metal>/seed<seed>/ckpts
+  # and §5.11 permits --out-dir / --ckpt-dir on the command line, so the
+  # wrapper still passes them. They are written here as well so the DERIVED
+  # config is a COMPLETE, self-contained definition of the one run (the same
+  # pattern configs/dmpnn.yaml uses), and so a dest-for-dest equivalence
+  # probe can compare the old CLI namespace with the new YAML namespace.
+  # Set at derivation time (the wrapper passes them to
+  # scripts/_wf_yaml_pair_config.py --set output.out_dir=...).
+  out_dir: results/wf124_p3_per_innovation_ablation_g6/no_kendall/Ru/seed0
+  ckpt_dir: results/wf124_p3_per_innovation_ablation_g6/no_kendall/Ru/seed0/ckpts
+  resume_from: auto
+  checkpoint_interval: 50
+
+directives:
+  kill_then_adapt: true
+  user_ok_required: true
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: >-
+    TODO-182 / Wf-310B G6 per-lever ablation, arm "no_kendall". 60 tuples
+    (4 arms x 5 metals x 3 seeds) x 50 epochs.
+  project_ed: >-
+    ~7.5 hr GPU sequential on RTX PRO 6000 Blackwell GPU-0 (PROJECTED, per
+    Wf-258 §3.4 + Wf-260 G6 timing). USER_OK=1 gate is enforced by the wrapper.
+  attribution: >-
+    Per-lever attribution % is NOT MEASURED until all 60 runs complete.

@@ -28,7 +28,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 # Trainer-invocation line regexes (the lines we want to prepend `setsid nohup` to).

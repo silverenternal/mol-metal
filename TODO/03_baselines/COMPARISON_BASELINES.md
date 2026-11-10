@@ -110,7 +110,7 @@ Per user directive 2026-10-01, we do NOT need to compare against:
 - **REINVENT4 / MOSES / GuacaMol** — language-model-style molecule generation, different evaluation paradigm
 
 ### 2.4 General SBDD methods (not precious-metal specific)
-- **Pocket2Mol** (2022), **TargetDiff** (2023), **MolCRAFT** (2024), **DecompDiff** (2024) — general SBDD methods for pocket-conditional generation; not in scope of Mol-Metal's precious-metal anticancer focus
+- **Pocket2Mol** (2022), **TargetDiff** (2023), **MolCRAFT** (2024), **DecompDiff** (2023) — general SBDD methods for pocket-conditional generation; not in scope of Mol-Metal's precious-metal anticancer focus
 
 These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in §4 comparison tables.
 
@@ -199,3 +199,31 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 - **Why that is not a comparison**: the cohort is a stand-in, not DrugOOD. The same JSON's `honest_framing` states plainly that these are NOT head-to-head numbers against iMoLD on the actual DrugOOD IC50 splits. The `native_data_imold_proxy_results` block (10K subsample + LogisticRegression proxy, not the graph NN iMoLD uses) scores 0.5625 / 0.5999 / 0.5813 vs iMoLD 0.7211 / 0.6884 / 0.6792 = −0.1586 / −0.0885 / −0.0979. We do NOT claim to beat iMoLD.
 - **What unblocks it**: the official DrugOOD IC50 CSVs are on disk at `.data/molmetal/drugood/ic50/csv/` (`lbap_core_ic50_{assay,scaffold,size}.csv`, `lbap_refined_ic50_*`, plus ec50 / ki / potency variants; native consolidated `train.csv` = 1,583,302 rows). Regenerating m17 on that cohort with a graph-NN backbone is **pending wf-R34-B2**.
 - **Paper consequence**: until that lands, m17 is reported as an absolute measured OOD AUC on the fallback cohort, with the cohort substitution stated here — it is excluded from the §4 comparison table.
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 (adjacent) — DecompDiff venue-year.** Superseded:
+  `**Pocket2Mol** (2022), **TargetDiff** (2023), **MolCRAFT** (2024), **DecompDiff** (2024)`.
+  Corrected to: `… **DecompDiff** (2023)`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → DecompDiff, published at **ICML 2023**
+  (PMLR 202:11827-11846, "Proceedings of the 40th International Conference on Machine
+  Learning"). The list's year column records the venue year — Pocket2Mol 2022 (ICML 2022),
+  TargetDiff 2023 (ICLR 2023) — so DecompDiff's venue year is 2023.
+- **F-13 (Rusanov / PlatinAI) — NOT REPRODUCED in this file.** The citation here reads
+  `**Citation**: Rusanov et al., ChemRxiv 2025-06` — family names only, and the family name
+  matches the Crossref record for `10.26434/chemrxiv-2025-pp32k`. No wrong given name is
+  present, so **this row was left untouched**. The wrong given names occur only in
+  `molmetal/reports/wf250_research/lit_review.md`, `molmetal/reports/wf251_research/lit_review.md`
+  and `paper/build_log.txt`, all outside this wave's file scope — reported, not edited.
+- **F-12 (DiffSBDD DOI) — NOT REPRODUCED in this file**; no DiffSBDD DOI is asserted here.
+- **No performance number was changed by this wave.**

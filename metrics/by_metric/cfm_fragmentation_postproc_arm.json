@@ -1,0 +1,206 @@
+{
+ "metric": "cfm_fragmentation_postproc_arm",
+ "tag": "MEASURED",
+ "date": "2026-10-31",
+ "wave": "Wf-A133 (measured) / Wf-A141 (published durably)",
+ "purpose": "Wf-A133 P2 — the published-comparable post-processing arm (Buttenschoen et al., arXiv:2505.00518: LargestFragmentChooser -> explicit H -> UFF) applied to the c7 generation pool. CPU-only; read-only w.r.t. the repo.",
+ "direction": "postprocessed_axis.connected_rate is HIGHER IS BETTER, but ONLY as a mass-deleting operation: mass_retention.fraction_of_raw_mass_discarded is the price paid for it, and raw_axis.single_fragment_rate_over_parsed is the RAW number the literature's RAW column is comparable to.",
+ "published_from_scratch_path": "/tmp/wfa133/p2_postproc_arm.json",
+ "published_to": "metrics/by_metric/cfm_fragmentation_postproc_arm.json",
+ "catalog_reference": "docs/HONEST_NEGATIVE_CATALOG.md §6.252",
+ "published_note": "The body below is the Wf-A133 measurement copied VERBATIM — no number was recomputed, re-rounded or edited at publish time.  The scratch JSON it was copied from lives in /tmp and is NOT durable; this file is.",
+ "gpu": "0 (CPU-only)",
+ "source_pool": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+ "pipeline": [
+  "LargestFragmentChooser (rdMolStandardize, fallback: max heavy atoms)",
+  "Chem.AddHs (explicit hydrogens)",
+  "AllChem.UFFOptimizeMolecule(maxIters=200)"
+ ],
+ "validity_definition": "RDKit-loadable + sanitizable + all H explicit + <=1 connected component (Buttenschoen et al. arXiv:2505.00518)",
+ "denominators": {
+  "n_rows_in_csv": 12669,
+  "n_parsed": 12668,
+  "n_postprocessed": 12668
+ },
+ "raw_axis": {
+  "single_fragment_rate_over_parsed": 0.08509630565203663,
+  "n_single": 1078
+ },
+ "postprocessed_axis": {
+  "connected_rate_over_parsed": 1.0,
+  "connected_rate_over_postprocessed": 1.0,
+  "n_connected": 12668,
+  "n_multicomponent_after_pp": 0,
+  "n_unparseable": 1,
+  "n_pp_failed": 0,
+  "uff_ok_rate_over_postprocessed": 0.0
+ },
+ "mass_retention": {
+  "heavy_atom_retention_mean": 0.7395022201805989,
+  "heavy_atom_retention_median": 0.926829268292683,
+  "raw_heavy_total": 561976,
+  "kept_heavy_total": 435673,
+  "fraction_of_raw_mass_discarded": 0.22474803194442472
+ },
+ "survivor_shape": {
+  "heavy_atoms_median": 38.0,
+  "heavy_atoms_mean": 34.39161667192927,
+  "heavy_atoms_min": 1,
+  "heavy_atoms_max": 89,
+  "n_survivors_le_2_heavy": 2663,
+  "n_survivors_le_5_heavy": 2663,
+  "n_survivors_le_10_heavy": 2665,
+  "n_survivors_ge_11_heavy": 10003,
+  "bimodality_note": "the survivor-size distribution is BIMODAL: a drug-sized molecule (>= 11 heavy atoms) or a <= 2-heavy-atom speck; almost nothing in between"
+ },
+ "uff_note": "the published pipeline's third step (UFF) has NO parameters for the metals in this corpus, so it cannot be applied verbatim to metal complexes; see uff_reasons",
+ "uff_reasons": {
+  "ValueError: Bad Conformer Id": 12668
+ },
+ "per_epoch": {
+  "0": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.028409090909090908,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.517639902676399,
+   "uff_ok_rate": 0.0
+  },
+  "1": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.022727272727272728,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.3132603406326034,
+   "uff_ok_rate": 0.0
+  },
+  "2": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.04403409090909091,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.4178191829939813,
+   "uff_ok_rate": 0.0
+  },
+  "3": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.08380681818181818,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.6328275067230119,
+   "uff_ok_rate": 0.0
+  },
+  "4": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.08948863636363637,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.7438852605967473,
+   "uff_ok_rate": 0.0
+  },
+  "5": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.09517045454545454,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.7872326802407479,
+   "uff_ok_rate": 0.0
+  },
+  "6": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.09517045454545454,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8410167755154309,
+   "uff_ok_rate": 0.0
+  },
+  "7": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.07528409090909091,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8506530925854783,
+   "uff_ok_rate": 0.0
+  },
+  "8": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.10227272727272728,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8618260980919452,
+   "uff_ok_rate": 0.0
+  },
+  "9": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.08522727272727272,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8544307849916762,
+   "uff_ok_rate": 0.0
+  },
+  "10": {
+   "n_input": 703,
+   "n_parsed": 703,
+   "raw_single_rate": 0.10668563300142248,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8665340562738618,
+   "uff_ok_rate": 0.0
+  },
+  "11": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.10227272727272728,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8732552183378154,
+   "uff_ok_rate": 0.0
+  },
+  "12": {
+   "n_input": 703,
+   "n_parsed": 703,
+   "raw_single_rate": 0.08819345661450925,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.883730629792422,
+   "uff_ok_rate": 0.0
+  },
+  "13": {
+   "n_input": 703,
+   "n_parsed": 702,
+   "raw_single_rate": 0.08974358974358974,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8892211717795356,
+   "uff_ok_rate": 0.0
+  },
+  "14": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.09517045454545454,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8981303624023562,
+   "uff_ok_rate": 0.0
+  },
+  "15": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.09375,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.8991548213599693,
+   "uff_ok_rate": 0.0
+  },
+  "16": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.11221590909090909,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.9037648866692278,
+   "uff_ok_rate": 0.0
+  },
+  "17": {
+   "n_input": 704,
+   "n_parsed": 704,
+   "raw_single_rate": 0.12215909090909091,
+   "pp_connected_rate": 1.0,
+   "heavy_retention_mean": 0.9210846459213727,
+   "uff_ok_rate": 0.0
+  }
+ }
+}

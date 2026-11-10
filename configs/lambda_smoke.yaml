@@ -1,0 +1,60 @@
+# Lambda SMOKE preset — the hyperparameters of
+#   molmetal/scripts/smoke/smoke_lambda.sh
+#
+# WHY THIS FILE EXISTS (2026-11-04 — Wf-A269 wave-19):
+#   The smoke passed four flags straight onto the command line
+#   (``--smoke --quiet --output-dir --out-dir``).  Two of them were
+#   HYPERPARAMETERS on an INFERENCE launch, which AGENTS.md §5.11 forbids
+#   ("以后要求能且只能用yaml配置启动训练和推理，no cli参数"), and one of them —
+#   ``--out-dir`` — is NOT DECLARED by the runner's parser at all:
+#   MEASURED 2026-11-04, the smoke died with
+#       "r4_lambda_only_run.py: error: unrecognized arguments: --out-dir ..."
+#   ⇒ **the smoke had NEVER passed.**  The runner declares ``--output-dir``
+#   (a sub-directory under molmetal/reports/) and NOT ``--out-dir``; the
+#   sibling config ``configs/lambda_p4_sweep.yaml`` was migrated to the same
+#   ``--config {yaml_path} --output-dir {out_dir}`` shape on the same day.
+#
+# THE VALUES BELOW ARE THE ``--smoke`` PRESET, VERBATIM
+# (molmetal/scripts/r4_lib/constants.py :: _R17_SMOKE_PRESET, read
+# 2026-11-04):
+#     pockets = 10, seeds = [42], n_simulations = 20,
+#     manifest = <repo>/molmetal/data/test_010_019_subset_manifest.csv
+# The preset is NOT re-applied by the runner (it only fills a value that is
+# still None), so writing the values here reproduces the preset exactly —
+# and, unlike ``smoke: true``, it does not depend on the preset's
+# override order.
+#
+# ``n_top_k`` is NOT part of the preset (the preset leaves it at the
+# argparse default of 20); it is written out so this file is self-describing
+# and a later change to the argparse default cannot silently alter the smoke.
+#
+# WHAT IS *NOT* HERE, AND WHY:
+#   ``output_dir`` is a RUN SELECTOR, not a hyperparameter: the smoke writes
+#   one report per invocation (``wf_lambda1_smoke_lambda_<pid>``), so a
+#   static value would collide between runs.  It stays on the command line —
+#   the same class as ``--out-dir``, which §5.11's allowlist permits because
+#   it selects WHICH run, never WHAT to train.
+#
+# THE MANIFEST PATH IS REPO-RELATIVE, and the runner resolves it against the
+# process CWD.  The smoke does ``cd "${REPO_ROOT}"`` before launching, so the
+# relative path resolves; a caller that runs the runner from another
+# directory must pass an absolute ``--manifest``.
+
+entry:
+  script: molmetal/scripts/r4_lambda_only_run.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/r4_lambda_only_run.py --config {yaml_path} --output-dir {out_dir}
+
+protocol:
+  # Number of test pockets (first N rows of the manifest CSV).
+  pockets: 10
+  # Random seeds — a LIST because --seeds is nargs="+".
+  seeds: [42]
+  # MCTS simulation budget per cell.
+  n_simulations: 20
+  # Number of top candidates returned per cell (the argparse default; the
+  # --smoke preset does not override it).
+  n_top_k: 20
+  # The smoke cohort's manifest (the --smoke preset's manifest).
+  manifest: molmetal/data/test_010_019_subset_manifest.csv
+  # Logging level: WARNING instead of INFO.
+  quiet: true

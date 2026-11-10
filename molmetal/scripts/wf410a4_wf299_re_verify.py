@@ -48,8 +48,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 # --- Canonical paths ---------------------------------------------------------
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
-LAUNCHER = PROJECT_ROOT / "molmetal/scripts/launch_wf299_cfm_main.sh"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LAUNCHER = Path(__file__).resolve().parents[2] / "scripts" / "launch_wf299_cfm_main.sh"
 TRAINER_CFM = PROJECT_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 TRAINER_DMPNN = PROJECT_ROOT / "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 REPORTS_DIR = PROJECT_ROOT / "molmetal/reports/wf410a4_wf299_re_verify"

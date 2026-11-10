@@ -46,7 +46,13 @@ from molmetal.scripts.pretrain_tmqm import (  # noqa: E402
 )
 
 
-TMQM_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmqm_parsed.csv")
+TMQM_CSV = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "tmQM"
+    / "tmqm_parsed.csv"
+)
 SKIP_NO_DATA = not TMQM_CSV.exists()
 
 

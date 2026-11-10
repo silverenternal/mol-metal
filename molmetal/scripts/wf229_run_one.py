@@ -14,12 +14,12 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Patch module-level path defaults BEFORE the train script touches them.
-LOCAL_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv")
-LOCAL_CACHE = Path("/home/hugo/codes/mol-metal/.data/molmetal/3d_cache")
+LOCAL_CSV = Path(__file__).resolve().parents[2] / ".data" / "molmetal" / "MetalCytoToxDB.csv"
+LOCAL_CACHE = Path(__file__).resolve().parents[2] / ".data" / "molmetal" / "3d_cache"
 LOCAL_CACHE.mkdir(parents=True, exist_ok=True)
 
 import molmetal.data.cytotox as _cytotox

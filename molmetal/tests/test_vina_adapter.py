@@ -31,9 +31,13 @@ from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
 # ----------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------
-EXAMPLE_PDB = (
-    "/home/hugo/codes/try_triton_on_rocm/molmetal/references/targetdiff/"
-    "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+EXAMPLE_PDB = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "references"
+    / "targetdiff"
+    / "examples"
+    / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
 )
 
 

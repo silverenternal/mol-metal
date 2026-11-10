@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
-ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+ROOT = Path(__file__).resolve().parents[4]
 OUT = ROOT / "molmetal/reports/wf_r15_round_re_runs/r13_partial_30cells"
 METAL_JSON = OUT / "metal_arm_report.json"
 NO_METAL_JSON = OUT / "no_metal_arm_report.json"

@@ -41,13 +41,30 @@ from pathlib import Path
 import pandas as pd
 
 
-PLATINAI_4CELL_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv")
-DEFAULT_OUT_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell_long.csv")
+PLATINAI_4CELL_CSV = (
+    Path(__file__).resolve().parents[2] / ".data" / "molmetal" / "platinai_4cell.csv"
+)
+DEFAULT_OUT_CSV = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "platinai_4cell_long.csv"
+)
 # Optional: 5-metal CSV (Ir/Os/Re/Rh/Ru, ~26k) — concatenated with the melted
 # PlatinAI 4-cell Pt rows so LOMO Pt has a non-empty TRAIN fold
 # (Ir/Os/Re/Rh/Ru) and a Pt TEST fold (4078 × 4 cell-lines).
-DEFAULT_FIVEMETAL_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv")
-DEFAULT_MERGED_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/platinai_4cells_with_5metal_train.csv")
+DEFAULT_FIVEMETAL_CSV = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "metalcytotox_5metal_multitask_v4.csv"
+)
+DEFAULT_MERGED_CSV = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "platinai_4cells_with_5metal_train.csv"
+)
 
 CELL_COLUMNS = [
     ("mcf7",  "pIC50_mcf7"),

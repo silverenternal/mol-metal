@@ -114,6 +114,70 @@
       "epoch": 17
     }
   ],
+  "bond_head_trajectory_meta": {
+    "done_event_n_epochs_run": 14,
+    "epochs_covered": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "event_stream_epochs": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "first_epoch": 4,
+    "last_epoch": 17,
+    "n_epochs": 14,
+    "resume_note": "the trajectory starts at epoch 4 because the run RESUMED: epochs 0..3 belong to a killed pre-resume attempt in the same directory",
+    "run_of_record_epochs": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "run_of_record_source": "census:run_of_record_epoch_indices",
+    "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/per_epoch_metrics.json",
+    "source_verdict": "class_b_resume_prehistory",
+    "verdict_note": "the verdict is the run census's own `integrity.population_verdict` for cfm_c7_fullgen_2026_10_20",
+    "verdict_source": "metrics/by_metric/cfm_run_census.json"
+  },
   "first_vs_last": {
     "epoch_first": 0,
     "epoch_last": 17,
@@ -130,7 +194,7 @@
       1.0
     ]
   },
-  "generated_utc": "2026-10-20T21:32:19+00:00",
+  "generated_utc": "2026-10-30T18:45:47+00:00",
   "head_on_real_geometries": [
     {
       "bonds_per_heavy_atom": 1.1117,
@@ -1081,12 +1145,19 @@
   },
   "provenance": {
     "epochs": 18,
-    "git_commit": "b14cb55630dcf5e7b81b249ed8a4b7a4cf1bd908",
+    "git_commit": "1b9470a0e2129e3c4d982da4453e034a6cc12e24",
     "n_rows": 12669,
     "pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+    "pool_kind": "generation",
+    "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+    "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
+    "recon_pool_kinds": {
+      "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv": "reconstruction",
+      "/home/hugo/codes/mol-metal/molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv": "reconstruction"
+    },
     "script": "molmetal/scripts/c7_fullgen_pool_quality.py"
   },
-  "reading": "Single-fragment rate is the share of parsed molecules that came out as one connected component; three_ring_share is the fraction of all atom rings that are 3-membered. Both are descriptive: they say what the pool looks like, not whether it is useful. bond_head_trajectory is teacher-forced (true atoms, predicted bonds) and is NOT comparable to the pool's connectivity: it measures the head, the pool measures the sampler.",
+  "reading": "The MAIN pool (molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv) is classified as 'generation' by molmetal/scripts/cfm_pool_kind.py: marker: header carries 'n_frags_raw': the trainer's free-generation path.  Its numbers are that kind's numbers. The corpus writes the metal as its own component (69.1% of training rows have 3 components, 0.07% have one), so a correct generation is multi-component and single_fragment_rate is not a quality metric here. Compare mean_n_frags against the reference, then second_frag_is_single_atom: matching the count while the second component is a lone atom means one fused blob plus leftovers, not several ligands. three_ring_share is the fraction of all atom rings that are 3-membered. bond_head_trajectory is teacher-forced (true atoms, predicted bonds) and measures the head; head_on_real_geometries measures the same head's bond graph as molecules.",
   "reference": {
     "bonds_per_heavy_atom": 1.0694,
     "connected_rate": 0.0007,

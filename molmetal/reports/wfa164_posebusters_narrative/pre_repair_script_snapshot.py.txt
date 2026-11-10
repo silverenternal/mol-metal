@@ -1,0 +1,1646 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# =============================================================================
+# Copyright 2026 Mol-Metal authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+"""Wf-A155 (2026-11-01) -- a PoseBusters validity column for the CFM pool.
+
+WHAT THIS EXISTS FOR
+--------------------
+The frontier band we are compared against (92.7--94 % connected / 99.9 % valid /
+91.9 % PoseBusters-valid, per arXiv 2609.08333 and FlowMol3 arXiv 2508.12629)
+is quoted as a *percentage*.  We had no PB column at all: every PoseBusters
+artifact under ``metrics/by_metric/`` either measured a single molecule
+(``wf32_pb_valid_verify.json`` -- ethanol, 1 row), covered at most 26
+molecules (``pb_pass_rate.json`` -- ``n_samples`` 26, 1-pocket smoke), or was
+SKIPPED / DEFERRED because the package was not installed at the time
+(``wf32_pb_valid.json``, ``steric_clash_pb_dock.json``,
+``steric_clash_pb_dock_test_001.json``).  ``steric_clash_pb_dock_1h36.json``
+is a 16-pose Vina smoke whose full PoseBusters rate is 0.0/16.  So this is
+the FIRST pool-scale PoseBusters measurement in this repo.
+
+The published pool is ``molmetal/reports/cfm_c8_fullgen_2026_10_24/
+generated_smiles.csv`` -- 2112 data rows.  MEASURED 2026-11-01 from the
+pool's own ``epoch`` column: it is THREE epoch-wise decodes of ONE checkpoint
+(704 rows each, 6 seeds per epoch), not a single decode.
+
+WHAT IT IS AND WHAT IT IS NOT
+-----------------------------
+* It IS a molecule-geometry validity measurement over the emitted SMILES:
+  RDKit parse -> ETKDGv3 embedding -> MMFF94 optimisation -> PoseBusters
+  ``mol`` config (the ``config="mol"`` module surface: loading, sanitisation,
+  InChI convertibility, connectivity, radicals, bond lengths, bond angles,
+  internal steric clash, ring flatness, double-bond flatness, internal
+  energy).
+* It is NOT a restatement of the 8.51 % headline.  The 8.51 % is an
+  END-TO-END single-molecule rate over **9 RUNS**
+  (``metrics/by_metric/cfm_fragmentation_audit.json`` ->
+  ``/summary/generation_side/single_molecule_rate_end_to_end``, median over
+  9 runs).  This artifact is a SINGLE-POOL GEOMETRY rate over ONE decode.
+  Different quantity, different population.
+* It is NOT a restatement of the 25.05 % single-pool fragment count
+  (``n_frags == 1`` in 529/2112).  That is a 2D graph-fragment count; this is
+  a 3D geometry verdict.
+* It says NOTHING about whether the metal is coordinated correctly.
+  PoseBusters has **no metal-coordination-sphere check**.  A molecule can be
+  PB-valid and still have a chemically absurd metal environment.
+
+DESIGN NOTES
+------------
+* PoseBusters is NOT re-implemented here.  The existing surface
+  ``molmetal.validation.posebusters_runner.check_posebusters`` is called
+  molecule-by-molecule; ``posebusters_available()`` is the probe;
+  ``pb_pass_rate()`` is the aggregation helper for the "strict" rate.
+* The module fails CLOSED: a check that could not be computed (``None``)
+  counts as a failure.  That matters here -- MMFF94 cannot parameterise most
+  metal centres, so PoseBusters' ``internal_energy`` check comes back
+  ``None`` for metal-containing molecules, which then makes the molecule
+  PB-invalid.  That is an honest negative, not a bug in this script.
+* TWO denominators are reported, and both are in the artifact:
+    - STRICT:  denominator = every row in scope (unparseable + embed-failed
+               + skipped all count as NOT valid).
+    - SCORED:  denominator = rows that produced a PoseBusters verdict.
+  Neither is presented alone.
+* CPU-only.  This module must never import ``torch`` and must never touch a
+  GPU; the wave that owns it runs with ``CUDA_VISIBLE_DEVICES=""``.
+
+USAGE
+-----
+    CUDA_VISIBLE_DEVICES="" .venv/bin/python \
+        molmetal/scripts/wf_a155_posebusters_validity.py
+
+    # documented subset mode (labelled SUBSET in the artifact, never as pool %)
+    CUDA_VISIBLE_DEVICES="" .venv/bin/python \
+        molmetal/scripts/wf_a155_posebusters_validity.py --sample-size 200 --sample-seed 0
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import logging
+import os
+import random
+import subprocess
+import sys
+import time
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+LOG = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+DEFAULT_POOL = (
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "cfm_c8_fullgen_2026_10_24"
+    / "generated_smiles.csv"
+)
+DEFAULT_OUT = (
+    PROJECT_ROOT / "metrics" / "by_metric" / "wfa155_posebusters_validity.json"
+)
+
+DEFAULT_N_CONFORMERS = 5
+DEFAULT_EMBED_METHOD = "ETKDGv3"
+DEFAULT_OPTIMIZE_METHOD = "MMFF94"
+
+#: Per-row status vocabulary.
+STATUS_PB_VALID = "pb_valid"
+STATUS_PB_INVALID = "pb_invalid"
+STATUS_EMBED_FAILED = "embed_failed"
+STATUS_UNPARSEABLE = "unparseable"
+STATUS_SKIPPED = "skipped_posebusters_missing"
+#: A row whose PoseBusters call exceeded the hard per-row wall-clock cap.
+#: Counted as NOT pb_valid (fail closed) and reported separately, because a
+#: timeout is a censoring event, not a chemistry verdict.
+STATUS_TIMEOUT = "timeout"
+
+#: Marker used by the child process to hand its JSON payload back to the
+#: parent.  The child prints other lines (the ``molmetal`` env banner) to
+#: stdout, so the parent keys on this marker rather than on "last line".
+CHILD_MARKER = "WFA155_JSON:"
+
+#: The four independent comparability breaks against the frontier band.
+#: Verbatim from the Wf-A155 branch brief; reproduced here so the artifact
+#: carries the statement itself and cannot drift from the report.
+COMPARABILITY_BREAKS = [
+    {
+        "id": 1,
+        "axis": "DENOMINATOR",
+        "frontier": (
+            "over 10,000-15,000 generated molecules drawn from a "
+            "training-set-distribution sampling"
+        ),
+        "ours": (
+            "ONE pool of 2112 rows from THREE epoch-wise decodes of ONE "
+            "checkpoint (704 rows each, 6 seeds per epoch; "
+            "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv)"
+        ),
+        "consequence": "different populations; the two rates are not exchangeable",
+    },
+    {
+        "id": 2,
+        "axis": "METRIC",
+        "frontier": (
+            "'connected' = the DECODER's own connectivity claim; 'valid' = "
+            "RDKit sanitisation; '% PB-Valid' = PoseBusters geometry"
+        ),
+        "ours": (
+            "'connected' = an RDKit fragment count of the emitted SMILES; "
+            "'pb_valid' = the PoseBusters 'mol' module verdict on an "
+            "ETKDGv3/MMFF94 conformer ensemble"
+        ),
+        "consequence": (
+            "the denominators are different events even before the "
+            "population differs"
+        ),
+    },
+    {
+        "id": 3,
+        "axis": "POST-PROCESSING",
+        "frontier": "measured on the published POST-PROCESSED stream",
+        "ours": "RAW -- no post-processing was applied to this pool",
+        "consequence": "our number is not post-processed and theirs is",
+    },
+    {
+        "id": 4,
+        "axis": "HYDROGENS",
+        "frontier": "the frontier dataset carries EXPLICIT hydrogens",
+        "ours": (
+            "our pool carries IMPLICIT hydrogens (RDKit AddHs is applied "
+            "inside the embedding step, but the pool itself has no explicit-H "
+            "atoms written into the SMILES)"
+        ),
+        "consequence": (
+            "hydrogens change both sanitisation and geometry; this alone "
+            "breaks the comparison"
+        ),
+    },
+]
+
+#: The frontier numbers being compared against, for reference only.
+FRONTIER_BAND = {
+    "band_connected_pct": [92.7, 94.0],
+    "ef_talfm_arxiv_2609_08333": {
+        "connected_pct": 92.98,
+        "sanitized_pct": 98.25,
+        "unique_sanitized_pct": 98.21,
+        "novel_unique_sanitized_pct": 94.33,
+        "n_generated": 10000,
+    },
+    "flowmol3_arxiv_2508_12629": {
+        "pct_valid": [99.9, 0.1],
+        "pct_pb_valid": [91.9, 0.7],
+        "venue": "Digital Discovery 2026, 5(5):2052-2066",
+        "dataset": "GEOM-Drugs with explicit hydrogens",
+    },
+}
+
+
+# ----------------------------------------------------------------
+# Small IO helpers
+# ----------------------------------------------------------------
+def sha256_file(path: "os.PathLike[str] | str") -> str:
+    """Return the sha256 hex digest of ``path`` (streamed, no full read)."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def read_pool(path: "os.PathLike[str] | str") -> Tuple[List[str], List[str]]:
+    """Read the pool CSV, preserving file order.
+
+    Returns ``(smiles_list, column_names)``.  The header row is consumed by
+    :class:`csv.DictReader`; only DATA rows are returned, so the row count
+    here is the "n_data_rows" quoted in the artifact (2112 for this pool,
+    vs. 2113 physical lines).
+    """
+    with open(path, "r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        columns = list(reader.fieldnames or [])
+        smiles: List[str] = []
+        for row in reader:
+            value = row.get("smiles")
+            if value is None:
+                continue
+            smiles.append(value)
+    return smiles, columns
+
+
+# ----------------------------------------------------------------
+# Per-row classification
+# ----------------------------------------------------------------
+def pool_composition(smiles: Sequence[str]) -> Dict[str, Any]:
+    """Measure the pool's metal content and explicit-hydrogen content.
+
+    Pure w.r.t. the filesystem -- it only reads the SMILES strings.  This
+    is the measured backbone of the artifact's central honest-negative:
+    PoseBusters has no metal-coordination-sphere check, and MMFF94/UFF
+    cannot parameterise most metal centres, so a pool that is 100 % metal
+    is a pool whose PB verdict is largely a FORCE-FIELD verdict.
+
+    Metals are identified by atomic number (all elements outside the
+    non-metal set), which covers the alkali/alkaline, transition,
+    lanthanide/actinide, and post-transition metals.
+    """
+    from rdkit import Chem  # local import: keeps module import light
+    from rdkit import RDLogger
+
+    RDLogger.DisableLog("rdApp.*")
+
+    metal_atomic_numbers = {
+        3, 4, 11, 12, 13,
+        *range(19, 32),
+        *range(37, 52),
+        *range(55, 84),
+        *range(87, 104),
+    }
+    n_rows_with_metal = 0
+    total_metal_atoms = 0
+    metal_symbol_counts: Counter = Counter()
+    n_rows_parsed = 0
+    for row_smiles in smiles:
+        if "[H]" in row_smiles:
+            pass
+        mol = Chem.MolFromSmiles(row_smiles)
+        if mol is None:
+            continue
+        n_rows_parsed += 1
+        row_metal_atoms = 0
+        for atom in mol.GetAtoms():
+            if atom.GetAtomicNum() in metal_atomic_numbers:
+                row_metal_atoms += 1
+                metal_symbol_counts[atom.GetSymbol()] += 1
+        if row_metal_atoms:
+            n_rows_with_metal += 1
+            total_metal_atoms += row_metal_atoms
+    n_explicit_h_rows = sum(1 for row_smiles in smiles if "[H]" in row_smiles)
+    return {
+        "n_rows_parsed_by_rdkit": n_rows_parsed,
+        "n_rows_with_at_least_one_metal_atom": n_rows_with_metal,
+        "fraction_rows_with_a_metal_atom": (
+            n_rows_with_metal / len(smiles) if smiles else 0.0
+        ),
+        "total_metal_atoms": total_metal_atoms,
+        "metal_element_counts": dict(sorted(metal_symbol_counts.items())),
+        "n_rows_with_an_explicit_hydrogen_atom_in_the_smiles": n_explicit_h_rows,
+        "explicit_hydrogen_note": (
+            "0 means the pool SMILES carry IMPLICIT hydrogens only; RDKit "
+            "AddHs is applied inside the runner's embedding step. The "
+            "frontier dataset carries explicit hydrogens, which is one of "
+            "the four comparability breaks."
+        ),
+        "metal_definition": (
+            "atomic number in the metal set (all elements except B, C, N, O, "
+            "F, Si, P, S, Cl, Ge, As, Se, Br, Te, I, Xe, At, Rn)"
+        ),
+    }
+
+
+def classify_result(
+    result: Optional[Dict[str, Any]],
+    *,
+    parseable: bool,
+) -> str:
+    """Map a :func:`check_posebusters` result dict onto a status string.
+
+    Pure function -- no I/O, no RDKit, no PoseBusters.  Unit-tested
+    directly.
+
+    * ``parseable=False``  -> ``unparseable`` (the row was skipped before
+      PoseBusters was ever called).
+    * ``result["skipped"]`` -> ``skipped_posebusters_missing`` (the package
+      is not importable on this host).
+    * ``failures == ["embed_failed"]`` -> ``embed_failed``.  This is the
+      "parsed fine but RDKit could not produce a conformer" case; it is
+      distinct from ``unparseable`` because we parse independently first.
+    * ``pb_valid is True`` -> ``pb_valid``.
+    * everything else -> ``pb_invalid`` (fail closed).
+    """
+    if not parseable:
+        return STATUS_UNPARSEABLE
+    if not isinstance(result, dict):
+        return STATUS_EMBED_FAILED
+    if result.get("skipped"):
+        return STATUS_SKIPPED
+    failures = list(result.get("failures") or [])
+    if failures and set(failures) == {"embed_failed"}:
+        return STATUS_EMBED_FAILED
+    if result.get("pb_valid") is True:
+        return STATUS_PB_VALID
+    return STATUS_PB_INVALID
+
+
+def _parseable(smiles: str) -> bool:
+    """Return ``True`` iff RDKit can parse ``smiles`` into a molecule."""
+    try:
+        from rdkit import Chem, RDLogger
+
+        RDLogger.DisableLog("rdApp.*")
+        return Chem.MolFromSmiles(smiles) is not None
+    except Exception:
+        return False
+
+
+def _run_one(
+    payload: Tuple[int, str, int, str, str],
+) -> Dict[str, Any]:
+    """Worker: check ONE pool row with PoseBusters.
+
+    Module-level so it can be dispatched to a worker process; in the
+    shipped configuration it runs inside the isolated child process that
+    :func:`_run_one_subprocess` spawns.
+    """
+    row_index, smiles, n_conformers, embed_method, optimize_method = payload
+    from molmetal.validation.posebusters_runner import check_posebusters
+
+    started = time.perf_counter()
+    parseable = _parseable(smiles)
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    if parseable:
+        try:
+            result = check_posebusters(
+                smiles,
+                n_conformers=n_conformers,
+                embed_method=embed_method,
+                optimize_method=optimize_method,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            error = f"{type(exc).__name__}: {exc}"
+            result = None
+    elapsed = time.perf_counter() - started
+
+    status = classify_result(result, parseable=parseable)
+    if error is not None and status == STATUS_PB_INVALID:
+        status = STATUS_EMBED_FAILED
+
+    checks = dict(result.get("checks") or {}) if isinstance(result, dict) else {}
+    return {
+        "row_index": int(row_index),
+        "smiles": smiles,
+        "status": status,
+        "pb_valid": (result.get("pb_valid") if isinstance(result, dict) else None),
+        "n_conformers": int(result.get("n_conformers") or 0) if isinstance(result, dict) else 0,
+        "n_pb_rows": len(result.get("row_checks") or []) if isinstance(result, dict) else 0,
+        "checks": checks,
+        "failures": list(result.get("failures") or []) if isinstance(result, dict) else [],
+        "missing_checks": (
+            list(result.get("missing_checks") or []) if isinstance(result, dict) else []
+        ),
+        "elapsed_s": float(elapsed),
+        "error": error,
+    }
+
+
+# ----------------------------------------------------------------
+# Child-process execution (hard per-row wall-clock cap)
+# ----------------------------------------------------------------
+def _child_main(argv: Sequence[str]) -> int:
+    """Child mode: check ONE molecule and print its JSON payload.
+
+    Run as ``<python> <this-script> --child <smiles> <n_conformers>
+    <embed_method> <optimize_method>``.  The parent reads the line that
+    starts with :data:`CHILD_MARKER`.
+
+    Why a separate process: a handful of pool molecules have pathological
+    ETKDG geometry -- MEASURED 2026-11-01, the three longest SMILES in the
+    pool took 86.7 s / 60.5 s / 0.1 s on one molecule-level call -- and an
+    in-process run has no way to abandon one.  A child process can be
+    killed on a deadline, which is what makes a FULL-POOL run terminate at
+    all.
+    """
+    smiles = argv[0]
+    n_conformers = int(argv[1])
+    embed_method = argv[2]
+    optimize_method = argv[3]
+    record = _run_one((0, smiles, n_conformers, embed_method, optimize_method))
+    sys.stdout.write(CHILD_MARKER + json.dumps(record) + "\n")
+    sys.stdout.flush()
+    return 0
+
+
+def _run_one_subprocess(
+    smiles: str,
+    *,
+    n_conformers: int,
+    embed_method: str,
+    optimize_method: str,
+    timeout_s: float,
+) -> Dict[str, Any]:
+    """Run one molecule in an isolated child process with a hard timeout.
+
+    Returns the same record shape as :func:`_run_one`, with
+    ``status == "timeout"`` when the child exceeded ``timeout_s``.
+    """
+    script = Path(__file__).resolve()
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(PROJECT_ROOT), env.get("PYTHONPATH", "")]
+    ).rstrip(os.pathsep)
+    cmd = [
+        sys.executable,
+        str(script),
+        "--child",
+        smiles,
+        str(n_conformers),
+        embed_method,
+        optimize_method,
+    ]
+    started = time.perf_counter()
+    try:
+        completed = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            env=env,
+            cwd=str(PROJECT_ROOT),
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "row_index": -1,
+            "smiles": smiles,
+            "status": STATUS_TIMEOUT,
+            "pb_valid": False,
+            "n_conformers": 0,
+            "n_pb_rows": 0,
+            "checks": {},
+            "failures": ["row_timeout"],
+            "missing_checks": [],
+            "elapsed_s": time.perf_counter() - started,
+            "error": f"timeout after {timeout_s}s",
+        }
+
+    elapsed = time.perf_counter() - started
+    payload = None
+    for line in (completed.stdout or "").splitlines():
+        if line.startswith(CHILD_MARKER):
+            try:
+                payload = json.loads(line[len(CHILD_MARKER) :])
+            except json.JSONDecodeError:
+                payload = None
+    if payload is None:
+        return {
+            "row_index": -1,
+            "smiles": smiles,
+            "status": STATUS_TIMEOUT,
+            "pb_valid": False,
+            "n_conformers": 0,
+            "n_pb_rows": 0,
+            "checks": {},
+            "failures": ["child_failed"],
+            "missing_checks": [],
+            "elapsed_s": elapsed,
+            "error": (
+                f"child exited {completed.returncode} without a payload "
+                f"(stderr tail: {(completed.stderr or '')[-300:]!r})"
+            ),
+        }
+    payload["row_index"] = -1
+    payload["elapsed_s"] = elapsed
+    return payload
+
+
+# ----------------------------------------------------------------
+# Aggregation
+# ----------------------------------------------------------------
+def strict_rate_via_repo_helper(records: Sequence[Dict[str, Any]]) -> float:
+    """Cross-check the strict rate with the repo's OWN aggregation helper.
+
+    ``molmetal.validation.posebusters_runner.pb_pass_rate`` is the existing
+    surface for "what fraction of these rows did PoseBusters pass".  It keeps
+    failures, skips and missing verdicts in the denominator -- which is
+    exactly the STRICT denominator this artifact uses.  Reconstructing
+    runner-shaped result dicts from the records and calling it proves the
+    strict rate in this artifact is the SAME number the existing repo
+    surface produces, not a re-derivation that happens to agree.
+
+    Pure w.r.t. the filesystem.  Unit-tested directly.
+    """
+    from molmetal.validation.posebusters_runner import pb_pass_rate
+
+    shaped = [
+        {
+            "pb_valid": (
+                bool(record.get("pb_valid"))
+                if record.get("status") in (STATUS_PB_VALID, STATUS_PB_INVALID)
+                else False
+            ),
+            "skipped": record.get("status") == STATUS_SKIPPED,
+        }
+        for record in records
+    ]
+    return float(pb_pass_rate(shaped))
+
+
+def read_pool_epoch_labels(path: "os.PathLike[str] | str") -> List[str]:
+    """Read the pool's own ``epoch`` column, in file order.
+
+    The published pool is NOT a single decode: MEASURED 2026-11-01, the
+    ``epoch`` column holds 704 rows for epoch 0, 704 for epoch 1 and 704 for
+    epoch 2 -- three epoch-wise decodes of ONE checkpoint
+    (``cfm_yuelbond_wasserstein_seed0``), 6 seeds per epoch.  Reading the
+    column instead of asserting the structure keeps the artifact's
+    provenance measured.
+    """
+    labels: List[str] = []
+    with open(path, newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            labels.append((row.get("epoch") or "").strip() or "unknown")
+    return labels
+
+
+def read_pool_fragment_counts(path: "os.PathLike[str] | str") -> List[int]:
+    """Read the pool's own ``n_frags_raw`` column (its 2D graph-fragment count).
+
+    Returns one integer per data row, in file order.  ``-1`` marks a row
+    whose column is missing or unparsable.  This is the conditioning
+    variable for the single-fragment vs multi-fragment split: PoseBusters'
+    ``all_atoms_connected`` check is exactly the check a multi-fragment row
+    cannot pass, so the overall rate mixes a GEOMETRY question with a
+    FRAGMENTATION question and the conditional rate separates them.
+    """
+    counts: List[int] = []
+    with open(path, newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            raw = (row.get("n_frags_raw") or "").strip()
+            try:
+                counts.append(int(raw))
+            except (TypeError, ValueError):
+                counts.append(-1)
+    return counts
+
+
+def aggregate(
+    records: Sequence[Dict[str, Any]],
+    *,
+    row_timeout_s: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Aggregate per-row records into the counts block of the artifact.
+
+    Pure function -- no I/O.  Unit-tested directly.
+
+    Two rates are produced and BOTH are reported:
+
+    * ``pb_valid_rate_strict`` -- denominator is every row in scope
+      (unparseable, embed-failed and skipped rows all count as NOT valid).
+    * ``pb_valid_rate_scored`` -- denominator is the rows that produced a
+      PoseBusters verdict (``pb_valid`` + ``pb_invalid``).
+
+    A third number, ``pb_valid_rate_scored_plus_embed_failed``, treats an
+    embed failure as a failure while still excluding the unparseable and
+    skipped rows; it is reported for completeness and is NOT a headline.
+    """
+    n_rows = len(records)
+    counts = Counter(record["status"] for record in records)
+    n_pb_valid = int(counts.get(STATUS_PB_VALID, 0))
+    n_pb_invalid = int(counts.get(STATUS_PB_INVALID, 0))
+    n_embed_failed = int(counts.get(STATUS_EMBED_FAILED, 0))
+    n_unparseable = int(counts.get(STATUS_UNPARSEABLE, 0))
+    n_skipped = int(counts.get(STATUS_SKIPPED, 0))
+    n_timeout = int(counts.get(STATUS_TIMEOUT, 0))
+    n_scored = n_pb_valid + n_pb_invalid
+
+    strict_denominator = n_rows
+    scored_plus_embed_denominator = n_scored + n_embed_failed
+
+    # Per-check breakdown over the SCORED rows only -- an unparseable row
+    # has no check verdicts at all, so counting it under every check would
+    # silently inflate the failure counts.
+    check_not_true: Counter = Counter()
+    check_false: Counter = Counter()
+    check_missing: Counter = Counter()
+    conformer_hist: Counter = Counter()
+    pb_row_hist: Counter = Counter()
+    partial_embed = 0
+    for record in records:
+        if record["status"] not in (STATUS_PB_VALID, STATUS_PB_INVALID):
+            continue
+        checks = record.get("checks") or {}
+        for name, value in checks.items():
+            if value is True:
+                continue
+            check_not_true[name] += 1
+            if value is False:
+                check_false[name] += 1
+            else:
+                check_missing[name] += 1
+        n_conf = int(record.get("n_conformers") or 0)
+        conformer_hist[str(n_conf)] += 1
+        pb_row_hist[str(int(record.get("n_pb_rows") or 0))] += 1
+        if 0 < n_conf < DEFAULT_N_CONFORMERS:
+            partial_embed += 1
+
+    elapsed_total = sum(float(record.get("elapsed_s") or 0.0) for record in records)
+    elapsed_sorted = sorted(
+        float(record.get("elapsed_s") or 0.0) for record in records
+    )
+
+    def _pct(fraction: float) -> float:
+        if not elapsed_sorted:
+            return 0.0
+        index = int(round(fraction * (len(elapsed_sorted) - 1)))
+        index = min(max(index, 0), len(elapsed_sorted) - 1)
+        return elapsed_sorted[index]
+
+    elapsed_percentiles = {
+        "p50": _pct(0.50),
+        "p90": _pct(0.90),
+        "p99": _pct(0.99),
+        "max": elapsed_sorted[-1] if elapsed_sorted else 0.0,
+    }
+    n_near_cap = (
+        sum(1 for value in elapsed_sorted if value >= 0.9 * float(row_timeout_s))
+        if row_timeout_s
+        else None
+    )
+
+    # --- conditional on the pool's own graph-fragment count -------------
+    # PoseBusters' ``all_atoms_connected`` check is exactly the check a
+    # multi-fragment row cannot pass, so the pooled rate mixes a GEOMETRY
+    # question with a FRAGMENTATION question.  Splitting on the pool's own
+    # ``n_frags_raw`` separates them.
+    groups: Dict[str, List[Dict[str, Any]]] = {
+        "single_fragment": [],
+        "multi_fragment": [],
+        "fragment_count_unknown": [],
+    }
+    for record in records:
+        fragment_count = record.get("n_frags_raw")
+        if fragment_count == 1:
+            groups["single_fragment"].append(record)
+        elif isinstance(fragment_count, int) and fragment_count > 1:
+            groups["multi_fragment"].append(record)
+        else:
+            groups["fragment_count_unknown"].append(record)
+
+    def _group_stats(subset: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+        group_counts = Counter(record["status"] for record in subset)
+        group_rows = len(subset)
+        group_valid = int(group_counts.get(STATUS_PB_VALID, 0))
+        group_scored = group_valid + int(group_counts.get(STATUS_PB_INVALID, 0))
+        return {
+            "n_rows": group_rows,
+            "n_pb_valid": group_valid,
+            "n_pb_invalid": int(group_counts.get(STATUS_PB_INVALID, 0)),
+            "n_embed_failed": int(group_counts.get(STATUS_EMBED_FAILED, 0)),
+            "n_unparseable": int(group_counts.get(STATUS_UNPARSEABLE, 0)),
+            "n_timeout": int(group_counts.get(STATUS_TIMEOUT, 0)),
+            "n_scored": group_scored,
+            "pb_valid_rate_strict": (
+                float(group_valid) / group_rows if group_rows else 0.0
+            ),
+            "pb_valid_rate_scored": (
+                float(group_valid) / group_scored if group_scored else 0.0
+            ),
+        }
+
+    by_fragment_count = {name: _group_stats(subset) for name, subset in groups.items()}
+    by_fragment_count["_why"] = (
+        "PoseBusters' 'all_atoms_connected' check is exactly the check a "
+        "multi-fragment row cannot pass, so the pooled rate mixes a GEOMETRY "
+        "question with a FRAGMENTATION question. The single_fragment group "
+        "is the rate that speaks to 3D geometry alone."
+    )
+    by_fragment_count["_conditioning_variable"] = (
+        "the pool's own n_frags_raw column (2D graph-fragment count)"
+    )
+
+    # --- conditional on the pool's own epoch column --------------------
+    epoch_groups: Dict[str, List[Dict[str, Any]]] = {}
+    for record in records:
+        epoch_groups.setdefault(str(record.get("epoch", "unknown")), []).append(record)
+    by_pool_epoch = {
+        name: _group_stats(subset) for name, subset in sorted(epoch_groups.items())
+    }
+    by_pool_epoch["_why"] = (
+        "the published pool is THREE epoch-wise decodes of ONE checkpoint "
+        "(704 rows each, 6 seeds per epoch), so this block shows the "
+        "epoch-to-epoch spread of the same checkpoint's decode."
+    )
+    by_pool_epoch["_conditioning_variable"] = "the pool's own epoch column"
+
+    return {
+        "n_rows_in_scope": n_rows,
+        "n_pb_valid": n_pb_valid,
+        "n_pb_invalid": n_pb_invalid,
+        "n_embed_failed": n_embed_failed,
+        "n_unparseable": n_unparseable,
+        "n_skipped_posebusters_missing": n_skipped,
+        "n_timeout": n_timeout,
+        "n_scored": n_scored,
+        "status_counts": dict(sorted(counts.items())),
+        "pb_valid_rate_strict": (
+            float(n_pb_valid) / strict_denominator if strict_denominator else 0.0
+        ),
+        "pb_valid_rate_strict_via_repo_helper": strict_rate_via_repo_helper(
+            records
+        ),
+        "strict_rate_cross_check": (
+            "pb_valid_rate_strict_via_repo_helper is the same number produced "
+            "by molmetal.validation.posebusters_runner.pb_pass_rate() on "
+            "runner-shaped result dicts -- the repo's own aggregation helper. "
+            "It MUST equal pb_valid_rate_strict."
+        ),
+        "pb_valid_rate_scored": (
+            float(n_pb_valid) / n_scored if n_scored else 0.0
+        ),
+        "pb_valid_rate_scored_plus_embed_failed": (
+            float(n_pb_valid) / scored_plus_embed_denominator
+            if scored_plus_embed_denominator
+            else 0.0
+        ),
+        "denominators": {
+            "strict": {
+                "n": strict_denominator,
+                "definition": (
+                    "every row in scope; unparseable + embed_failed + skipped "
+                    "all count as NOT pb_valid"
+                ),
+            },
+            "scored": {
+                "n": n_scored,
+                "definition": (
+                    "rows that produced a PoseBusters verdict "
+                    "(pb_valid + pb_invalid)"
+                ),
+            },
+            "scored_plus_embed_failed": {
+                "n": scored_plus_embed_denominator,
+                "definition": (
+                    "scored rows plus embed-failed rows, with embed failure "
+                    "counting as NOT pb_valid; unparseable + skipped excluded"
+                ),
+                "is_headline": False,
+            },
+            "completed_only": {
+                "n": n_scored + n_timeout,
+                "definition": (
+                    "rows that produced a PoseBusters verdict plus rows "
+                    "that hit the per-row wall-clock cap; a timeout counts "
+                    "as NOT pb_valid. Reported so the censoring effect of "
+                    "the timeout policy is visible."
+                ),
+                "is_headline": False,
+            },
+        },
+        "pb_valid_rate_completed_only": (
+            float(n_pb_valid) / (n_scored + n_timeout)
+            if (n_scored + n_timeout)
+            else 0.0
+        ),
+        "n_forcefield_parameterisation_failures": int(
+            check_missing.get("internal_energy", 0)
+        ),
+        "forcefield_parameterisation_note": (
+            "n_forcefield_parameterisation_failures counts the scored rows "
+            "whose PoseBusters 'internal_energy' check came back MISSING "
+            "(None) because neither MMFF94 nor UFF could parameterise the "
+            "molecule -- this is the metal-coordination blind spot of the "
+            "force field, and the runner fails closed on it, so those rows "
+            "count as NOT pb_valid."
+        ),
+        "per_check_not_true_counts": dict(sorted(check_not_true.items())),
+        "per_check_explicit_false_counts": dict(sorted(check_false.items())),
+        "per_check_missing_counts": dict(sorted(check_missing.items())),
+        "n_conformers_embedded_histogram": dict(sorted(conformer_hist.items(), key=lambda kv: int(kv[0]))),
+        "n_pb_rows_evaluated_histogram": dict(sorted(pb_row_hist.items(), key=lambda kv: int(kv[0]))),
+        "n_rows_with_partial_embed": partial_embed,
+        "sum_row_elapsed_s": elapsed_total,
+        "row_elapsed_s_percentiles": elapsed_percentiles,
+        "row_timeout_s": row_timeout_s,
+        "n_rows_at_or_above_90pct_of_timeout_cap": n_near_cap,
+        "by_pool_fragment_count": by_fragment_count,
+        "by_pool_epoch": by_pool_epoch,
+    }
+
+
+# ----------------------------------------------------------------
+# Artifact assembly
+# ----------------------------------------------------------------
+def summarize_conformer_probe(
+    probe_rows: Sequence[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Summarise the conformer-sensitivity probe.
+
+    Pure function -- no I/O.  A row counts as comparable only when BOTH
+    runs produced a PoseBusters verdict (status ``pb_valid`` or
+    ``pb_invalid``); embed failures are reported separately rather than
+    being counted as agreement.
+    """
+    comparable = [
+        row
+        for row in probe_rows
+        if row["status_n"] in (STATUS_PB_VALID, STATUS_PB_INVALID)
+        and row["status_1"] in (STATUS_PB_VALID, STATUS_PB_INVALID)
+    ]
+    agree = [row for row in comparable if row["status_n"] == row["status_1"]]
+    disagree = [row for row in comparable if row["status_n"] != row["status_1"]]
+    return {
+        "n_rows_probed": len(probe_rows),
+        "n_comparable": len(comparable),
+        "n_agree": len(agree),
+        "n_disagree": len(disagree),
+        "agreement_rate": (float(len(agree)) / len(comparable)) if comparable else 0.0,
+        "n_embed_failed_on_either_arm": sum(
+            1
+            for row in probe_rows
+            if STATUS_EMBED_FAILED in (row["status_n"], row["status_1"])
+        ),
+        "disagreements": [
+            {
+                "row_index": row["row_index"],
+                "smiles": row["smiles"],
+                "status_n_conformers": row["status_n"],
+                "status_1_conformer": row["status_1"],
+            }
+            for row in disagree[:20]
+        ],
+        "method": (
+            "the same molecule run twice through the public runner surface: "
+            "check_posebusters(n_conformers=1) vs "
+            "check_posebusters(n_conformers=<protocol>)"
+        ),
+        "why": (
+            "PoseBusters' 'mol' config evaluates ONE conformer of the "
+            "molecule (posebusters/config/mol.yml -> "
+            "modules/distance_geometry.py uses mol.GetConformer()). The "
+            "extra conformers are embedded and MMFF94-optimised but only "
+            "one is judged, so this probe measures whether that choice "
+            "changes the verdict."
+        ),
+    }
+
+
+def tool_versions() -> Dict[str, Optional[str]]:
+    """Return the installed versions of the tools that produced the numbers."""
+    versions: Dict[str, Optional[str]] = {}
+    for package in ("rdkit", "posebusters", "numpy", "pandas"):
+        try:
+            from importlib.metadata import PackageNotFoundError, version
+
+            try:
+                versions[package] = version(package)
+            except PackageNotFoundError:
+                versions[package] = None
+        except Exception:
+            versions[package] = None
+    return versions
+
+
+def build_artifact(
+    *,
+    pool_path: Path,
+    pool_sha256: str,
+    pool_columns: Sequence[str],
+    n_data_rows: int,
+    records: Sequence[Dict[str, Any]],
+    protocol: Dict[str, Any],
+    scope: Dict[str, Any],
+    timestamp: str,
+    conformer_probe: Optional[Dict[str, Any]] = None,
+    timeout_recheck: Optional[Dict[str, Any]] = None,
+    row_timeout_s: Optional[float] = None,
+    composition: Optional[Dict[str, Any]] = None,
+    epoch_labels: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Assemble the full artifact dict.  Pure w.r.t. the filesystem."""
+    counts = aggregate(records, row_timeout_s=row_timeout_s)
+    n_pb_valid = counts["n_pb_valid"]
+    n_scored = counts["n_scored"]
+    n_rows = counts["n_rows_in_scope"]
+
+    # Examples are spread ACROSS statuses (not just the first rows), so the
+    # artifact shows what each outcome actually looks like.
+    examples: List[Dict[str, Any]] = []
+    status_order = (
+        STATUS_PB_VALID,
+        STATUS_PB_INVALID,
+        STATUS_EMBED_FAILED,
+        STATUS_UNPARSEABLE,
+        STATUS_SKIPPED,
+        STATUS_TIMEOUT,
+    )
+    by_status: Dict[str, List[Dict[str, Any]]] = {status: [] for status in status_order}
+    for record in records:
+        by_status.setdefault(record["status"], []).append(record)
+    for status in status_order:
+        for record in by_status.get(status, [])[:4]:
+            if len(examples) >= 12:
+                break
+            examples.append(
+                {
+                    "row_index": record["row_index"],
+                    "smiles": record["smiles"],
+                    "status": record["status"],
+                    "pb_valid": record.get("pb_valid"),
+                    "n_conformers": record.get("n_conformers"),
+                    "failures": record.get("failures"),
+                    "missing_checks": record.get("missing_checks"),
+                }
+            )
+
+    valid_smiles = [
+        record["smiles"] for record in records if record["status"] == STATUS_PB_VALID
+    ]
+
+    return {
+        "metric": "wfa155_posebusters_validity",
+        "tag": "MEASURED",
+        "date": "2026-11-01",
+        "wave": "Wf-A155",
+        "branch": "POSE",
+        "purpose": (
+            "PoseBusters ('mol' config) validity rate over the published "
+            "CFM decode pool -- the frontier option (c) of the Wf-A155 wave: "
+            "we had NO PoseBusters column at all before this artifact."
+        ),
+        "generated_at_utc": timestamp,
+        "source_pool": {
+            "path": str(pool_path.relative_to(PROJECT_ROOT))
+            if pool_path.is_absolute() and PROJECT_ROOT in pool_path.parents
+            else str(pool_path),
+            "sha256": pool_sha256,
+            "n_data_rows": n_data_rows,
+            "columns": list(pool_columns),
+            "pool_kind": "post_hoc_decode_pool_3_epochs_1_checkpoint",
+            "composition": composition,
+            "epoch_column_distribution": {
+                label: count
+                for label, count in sorted(
+                    Counter(epoch_labels or []).items(), key=lambda kv: str(kv[0])
+                )
+            },
+            "n_distinct_epochs": len(set(epoch_labels or [])),
+            "pool_structure_note": (
+                "MEASURED 2026-11-01 from the pool's own columns: the pool is "
+                "THREE epoch-wise decodes of ONE checkpoint (epoch 0/1/2, 704 "
+                "rows each = 2112; the run directory carries only "
+                "cfm_yuelbond_wasserstein_seed0). It is NOT a single decode, "
+                "and it carries no checkpoint-to-checkpoint variance."
+            ),
+            "pool_caveat": (
+                "THREE epoch-wise decodes of ONE checkpoint (704 rows each, "
+                "6 seeds per epoch), not a training-set-distribution "
+                "sampling and not a 10,000-15,000-draw benchmark. The "
+                "frontier band is over 10,000-15,000 such draws, so even a "
+                "like-for-like metric would not be a like-for-like "
+                "population."
+            ),
+        },
+        "protocol": protocol,
+        "scope": scope,
+        "tool_versions": tool_versions(),
+        "counts": counts,
+        "conformer_sensitivity_probe": conformer_probe,
+        "timeout_recheck": timeout_recheck,
+        "headline": {
+            "pb_valid_rate_strict_denominator": counts["pb_valid_rate_strict"],
+            "pb_valid_rate_scored_denominator": counts["pb_valid_rate_scored"],
+            "n_pb_valid": n_pb_valid,
+            "n_scored": n_scored,
+            "n_rows_in_scope": n_rows,
+            "n_embed_failed": counts["n_embed_failed"],
+            "n_unparseable": counts["n_unparseable"],
+            "n_timeout": counts["n_timeout"],
+            "n_forcefield_parameterisation_failures": counts[
+                "n_forcefield_parameterisation_failures"
+            ],
+            "strict_denominator_definition": (
+                "every row in scope, including rows that could not be parsed "
+                "or embedded"
+            ),
+            "scored_denominator_definition": (
+                "rows that produced a PoseBusters verdict"
+            ),
+            "one_line": (
+                f"{n_pb_valid}/{n_rows} rows are PoseBusters-valid under the "
+                f"strict denominator; {n_pb_valid}/{n_scored} under the "
+                f"scored denominator."
+            ),
+            "pb_valid_rate_scored_single_fragment": counts[
+                "by_pool_fragment_count"
+            ]["single_fragment"]["pb_valid_rate_scored"],
+            "pb_valid_rate_scored_multi_fragment": counts[
+                "by_pool_fragment_count"
+            ]["multi_fragment"]["pb_valid_rate_scored"],
+            "single_fragment_note": (
+                "the single-fragment conditional rate is the number that "
+                "speaks to 3D GEOMETRY alone: a multi-fragment row cannot "
+                "pass PoseBusters' 'all_atoms_connected' check for reasons "
+                "that belong to the fragmentation axis, not to the geometry."
+            ),
+        },
+        "not_a_restatement_of": {
+            "the_8_51_pct_headline": (
+                "NOT a restatement of "
+                "metrics/by_metric/cfm_fragmentation_audit.json -> "
+                "/summary/generation_side/single_molecule_rate_end_to_end "
+                "(median 0.08506944444444445). That is an END-TO-END "
+                "single-molecule rate over 9 RUNS; this is a SINGLE-POOL "
+                "GEOMETRY rate over ONE decode. Different quantity, "
+                "different population."
+            ),
+            "the_25_05_pct_fragment_count": (
+                "NOT a restatement of the single-pool 'n_frags == 1' count "
+                "(529/2112 = 25.05 %). That is a 2D graph-fragment count; "
+                "this artifact is a 3D geometry verdict. NOTE that the "
+                "single_fragment conditional rate reported under "
+                "counts.by_pool_fragment_count is NOT the 25.05 % either: "
+                "25.05 % is the FRACTION of pool rows that are "
+                "single-fragment, while the conditional rate is the "
+                "PoseBusters-valid rate WITHIN the 529-row single-fragment "
+                "subpopulation. Two different quantities over the same "
+                "partition."
+            ),
+            "prior_posebusters_artifacts": (
+                "NOT a restatement of any earlier PoseBusters artifact. "
+                "~~metrics/by_metric/wf32_pb_valid.json was SKIPPED "
+                "(posebusters not installed), wf32_pb_valid_summary.json is "
+                "the same smoke's summary, wf32_pb_valid_verify.json "
+                "measured ONE molecule (ethanol 'CCO'), and "
+                "steric_clash_pb_dock*.json are DEFERRED / null. This is the "
+                "first POOL-SCALE PoseBusters measurement in the repo.~~ "
+                "**CORRECTED 2026-11-01 (same wave, BEFORE the artifact was "
+                "written to disk): the superseded rendering above was "
+                "INCOMPLETE (it listed 4 of the 9 PoseBusters-bearing "
+                "artifacts in metrics/by_metric/) and, for one file, "
+                "IMPRECISE (steric_clash_pb_dock_1h36.json is NOT "
+                "'DEFERRED / null'). The corrected enumeration, every item "
+                "verified against the file on disk: "
+                "(a) wf32_pb_valid.json -- 1 pocket (pdk1) x 1 candidate "
+                "(cisplatin) x 2 pose modes = 2 evaluations, BOTH SKIPPED "
+                "('posebusters not installed'), pb_valid null, pass_rate 0.0; "
+                "(b) wf32_pb_valid_summary.json -- the same 2-evaluation "
+                "smoke; "
+                "(c) wf32_pb_valid_verify.json + wf32_pb_valid_verify_summary"
+                ".json -- ONE molecule ('CCO'), 'mol' mode, 12/12 checks "
+                "pass, overall_pb_pass_rate 1.0; "
+                "(d) pb_pass_rate.json -- the outer gate, best_measured_smoke "
+                "0.846 with n_samples 26 on a 1-pocket click_tile smoke, "
+                "every larger cell UNDEFINED / search-bound / drive-aborted; "
+                "(e) steric_clash_pb_dock.json and "
+                "steric_clash_pb_dock_test_001.json -- status DEFERRED, "
+                "value.rate null; "
+                "(f) steric_clash_pb_dock_1h36.json -- status MEASURED_SMOKE "
+                "(NOT 'DEFERRED / null'): 16 AutoDock-Vina poses on pocket "
+                "1h36, m8_full_pass_rate 0.0/16 with "
+                "rate_protein_aware_subset 0.6875; "
+                "(g) docked_pose_rmsd.json, r13_100x3_partial.json and "
+                "metrics/by_metric/_audit/m5_real_per_metric.json -- all "
+                "record 'PoseBusters validity SKIPPED graceful'; "
+                "r13_100x3_partial.json carries pb_pass_rate_aggregate = "
+                "null; "
+                "(h) tier2_summary.json and vina_kcal_per_mol.json -- prose "
+                "pointers only, no PoseBusters measurement. "
+                "The LARGEST PoseBusters sample recorded anywhere in "
+                "metrics/by_metric/ is n_samples = 26 (pb_pass_rate.json, a "
+                "1-pocket smoke). This artifact IS the first POOL-SCALE "
+                "PoseBusters measurement in the repo: all 2112 rows of the "
+                "published CFM decode pool.**"
+            ),
+        },
+        "comparability_vs_frontier_band": {
+            "frontier_band": FRONTIER_BAND,
+            "n_independent_comparability_breaks": len(COMPARABILITY_BREAKS),
+            "breaks": COMPARABILITY_BREAKS,
+            "statement": (
+                "Our % PB-Valid is NOT comparable to the frontier "
+                "91.9 +/- 0.7 % (% PB-Valid, FlowMol3 arXiv 2508.12629) or to "
+                "the 92.7-94 % connected band. Four independent breaks "
+                "(denominator, metric, post-processing, hydrogens) separate "
+                "the two. Do NOT write 'our X % vs their 91.9 %' without "
+                "this statement."
+            ),
+        },
+        "limitations": [
+            "PoseBusters has NO metal-coordination-sphere check. A % "
+            "PB-Valid for this pool says NOTHING about whether the metal is "
+            "coordinated correctly (oxidation state, coordination number, "
+            "dative bonds, trans-effect). This metric is a MOLECULE-GEOMETRY "
+            "check, not a coordination-chemistry check.",
+            "MMFF94 cannot parameterise most metal centres. The PoseBusters "
+            "'internal_energy' check then returns None (missing), and the "
+            "runner fails CLOSED, so a metal-containing molecule is reported "
+            "as PB-invalid for a force-field reason rather than a geometry "
+            "reason. The per_check_missing_counts block quantifies this.",
+            "The pooled PB verdict is NOT dominated by 'bad 3D geometry' in "
+            "the usual sense. Two check failures dominate and both are "
+            "structural rather than geometry-quality failures: "
+            "'all_atoms_connected' (a multi-fragment row cannot pass it) and "
+            "'internal_energy' (missing, because neither MMFF94 nor UFF can "
+            "parameterise the metal centre). Read the pooled rate together "
+            "with counts.by_pool_fragment_count and "
+            "counts.per_check_not_true_counts before interpreting it.",
+            "MEASURED 2026-11-01 (source_pool.composition): "
+            "fraction_rows_with_a_metal_atom = 1.0 -- EVERY row of this pool "
+            "carries a metal centre, so the force-field parameterisation "
+            "shortfall above is not a corner case, it is the whole pool.",
+            "The pool carries IMPLICIT hydrogens; RDKit AddHs is applied "
+            "inside the embedding step but the pool SMILES themselves have no "
+            "explicit-H atoms. The frontier dataset has explicit hydrogens. "
+            "This alone breaks the comparison. MEASURED 2026-11-01: "
+            "source_pool.composition."
+            "n_rows_with_an_explicit_hydrogen_atom_in_the_smiles = 0 of "
+            "2112.",
+            "The pool is THREE epoch-wise decodes of ONE checkpoint (704 "
+            "rows each, 6 seeds per epoch). It is not a training-set-"
+            "distribution sampling, it carries no checkpoint-to-checkpoint "
+            "variance, and it is 3x smaller than the frontier band's "
+            "10,000-15,000 draws.",
+            "The conformer ensemble is seeded (ETKDGv3 randomSeed = 42 in "
+            "molmetal/validation/posebusters_runner.py), so the result is "
+            "reproducible for a fixed RDKit/PoseBusters version pair but is "
+            "not a seed-averaged statistic.",
+            "PoseBusters' 'mol' config evaluates ONE conformer per molecule "
+            "(posebusters/config/mol.yml -> modules/distance_geometry.py "
+            "reads mol.GetConformer()); the other embedded conformers are "
+            "optimised but not judged. The conformer_sensitivity_probe "
+            "block measures how often that choice changes the verdict.",
+            "Rows that fail to embed are counted and reported under BOTH "
+            "denominators; they are not silently dropped.",
+            "A per-row wall-clock cap (protocol.row_timeout_s) kills any row "
+            "whose PoseBusters call overruns it. A timeout is a CENSORING "
+            "event, not a chemistry verdict: it counts as NOT pb_valid in the "
+            "strict rate, and counts.n_timeout plus the completed-only rate "
+            "expose the censoring. The rows that hit the cap are the "
+            "pathological ETKDG geometries (MEASURED: the three longest pool "
+            "SMILES took 86.7 s / 60.5 s / 0.1 s on one molecule-level call), "
+            "so the censoring is NOT random with respect to molecule size.",
+            "2026-11-01 (additive): the censoring is MEASURED, not only "
+            "asserted. The timeout_recheck block re-runs the timed-out rows "
+            "under a longer per-row cap and reports what verdicts they "
+            "would have produced, so the direction and size of the timeout "
+            "bias is quantified rather than described.",
+        ],
+        "examples": examples,
+        "pb_valid_smiles_sample": valid_smiles[:300],
+        "pb_valid_smiles_sample_truncated": len(valid_smiles) > 300,
+    }
+
+
+# ----------------------------------------------------------------
+# Driver
+# ----------------------------------------------------------------
+def select_rows(
+    smiles: Sequence[str],
+    *,
+    sample_size: Optional[int],
+    sample_seed: int,
+) -> Tuple[List[int], Dict[str, Any]]:
+    """Return the row indices to check plus a description of the selection."""
+    total = len(smiles)
+    if sample_size is None or sample_size >= total:
+        return list(range(total)), {
+            "kind": "full_pool",
+            "n_selected": total,
+            "n_pool": total,
+            "sampling": None,
+            "is_subset": False,
+        }
+    rng = random.Random(sample_seed)
+    indices = sorted(rng.sample(range(total), sample_size))
+    return indices, {
+        "kind": "seeded_random_sample",
+        "n_selected": sample_size,
+        "n_pool": total,
+        "sampling": {
+            "method": "random.Random(sample_seed).sample(range(n_pool), n)",
+            "seed": sample_seed,
+            "population": "all pool row indices, uniform without replacement",
+        },
+        "is_subset": True,
+        "label": "SUBSET estimate -- NOT the pool rate",
+    }
+
+
+def run(
+    *,
+    pool_path: Path,
+    out_path: Path,
+    n_conformers: int,
+    embed_method: str,
+    optimize_method: str,
+    sample_size: Optional[int],
+    sample_seed: int,
+    workers: int,
+    timestamp: str,
+    row_timeout_s: float = 90.0,
+    probe_size: int = 25,
+    probe_seed: int = 155,
+    timeout_recheck_s: float = 0.0,
+    timeout_recheck_max: int = 30,
+) -> Dict[str, Any]:
+    """Run the measurement and write the artifact.  Returns the artifact."""
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        detect_truncation,
+        safe_overwrite_check,
+    )
+    from molmetal.validation.posebusters_runner import posebusters_available
+
+    if not posebusters_available():
+        raise RuntimeError(
+            "posebusters is not importable on this host -- the metric cannot "
+            "be measured. This artifact REQUIRES a real measurement; do not "
+            "write a null artifact."
+        )
+
+    pool_sha256 = sha256_file(pool_path)
+    smiles, columns = read_pool(pool_path)
+    fragment_counts = read_pool_fragment_counts(pool_path)
+    epoch_labels = read_pool_epoch_labels(pool_path)
+    composition = pool_composition(smiles)
+    indices, scope = select_rows(
+        smiles, sample_size=sample_size, sample_seed=sample_seed
+    )
+    scope["pool_sha256_at_run_time"] = pool_sha256
+
+    payloads = [
+        (index, smiles[index], n_conformers, embed_method, optimize_method)
+        for index in indices
+    ]
+
+    started = time.perf_counter()
+    records = []
+    if workers <= 1:
+        for index, payload in enumerate(payloads, start=1):
+            record = _run_one(payload)
+            record["row_index"] = index
+            record["n_frags_raw"] = (
+                fragment_counts[index] if index < len(fragment_counts) else -1
+            )
+            record["epoch"] = (
+                epoch_labels[index] if index < len(epoch_labels) else "unknown"
+            )
+            records.append(record)
+            if index % 100 == 0:
+                LOG.info("progress: %d/%d rows", index, len(payloads))
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _task(item: Tuple[int, str, int, str, str]) -> Dict[str, Any]:
+            row_index, row_smiles, n_conf, embed, optimize = item
+            record = _run_one_subprocess(
+                row_smiles,
+                n_conformers=n_conf,
+                embed_method=embed,
+                optimize_method=optimize,
+                timeout_s=row_timeout_s,
+            )
+            record["row_index"] = row_index
+            record["n_frags_raw"] = (
+                fragment_counts[row_index] if row_index < len(fragment_counts) else -1
+            )
+            record["epoch"] = (
+                epoch_labels[row_index] if row_index < len(epoch_labels) else "unknown"
+            )
+            return record
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for done, record in enumerate(pool.map(_task, payloads), start=1):
+                records.append(record)
+                if done % 100 == 0:
+                    LOG.info(
+                        "progress: %d/%d rows (elapsed %.0fs)",
+                        done,
+                        len(payloads),
+                        time.perf_counter() - started,
+                    )
+    wall_seconds = time.perf_counter() - started
+    LOG.info("main pass done: %d rows in %.1fs", len(records), wall_seconds)
+
+    records.sort(key=lambda record: record["row_index"])
+
+    # --- censoring measurement ------------------------------------------
+    # A row that hit the per-row cap is a CENSORED row, not a chemistry
+    # verdict.  Re-running those rows under a longer cap MEASURES what the
+    # censoring did to the rate instead of merely describing it.
+    timeout_recheck: Optional[Dict[str, Any]] = None
+    timed_out = [record for record in records if record["status"] == STATUS_TIMEOUT]
+    if timeout_recheck_s and timeout_recheck_s > row_timeout_s and timed_out:
+        chosen = timed_out[: max(0, int(timeout_recheck_max))]
+        recheck_started = time.perf_counter()
+
+        def _recheck_task(record: Dict[str, Any]) -> Dict[str, Any]:
+            fresh = _run_one_subprocess(
+                record["smiles"],
+                n_conformers=n_conformers,
+                embed_method=embed_method,
+                optimize_method=optimize_method,
+                timeout_s=timeout_recheck_s,
+            )
+            return {
+                "row_index": record["row_index"],
+                "smiles": record["smiles"],
+                "status": fresh["status"],
+                "pb_valid": fresh.get("pb_valid"),
+                "failures": fresh.get("failures"),
+                "elapsed_s": fresh.get("elapsed_s"),
+            }
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as recheck_pool:
+            rechecks = list(recheck_pool.map(_recheck_task, chosen))
+        rechecks.sort(key=lambda item: item["row_index"])
+        status_counts = Counter(item["status"] for item in rechecks)
+        n_became_valid = int(status_counts.get(STATUS_PB_VALID, 0))
+        timeout_recheck = {
+            "n_timeouts_in_main_pass": len(timed_out),
+            "n_rechecked": len(rechecks),
+            "recheck_cap_s": timeout_recheck_s,
+            "recheck_max_rows": int(timeout_recheck_max),
+            "recheck_wall_seconds": time.perf_counter() - recheck_started,
+            "recheck_status_counts": dict(sorted(status_counts.items())),
+            "n_that_would_be_pb_valid": n_became_valid,
+            "n_that_would_be_pb_invalid": int(status_counts.get(STATUS_PB_INVALID, 0)),
+            "n_still_embed_failed": int(status_counts.get(STATUS_EMBED_FAILED, 0)),
+            "n_still_timed_out": int(status_counts.get(STATUS_TIMEOUT, 0)),
+            "bias_direction": (
+                "the censored rows were counted as NOT pb_valid in the strict "
+                "rate; if the re-check turns some of them into pb_valid rows, "
+                "the strict rate is a LOWER bound on the pool rate, and the "
+                "size of the effect is n_that_would_be_pb_valid"
+            ),
+            "rows": rechecks,
+        }
+        LOG.info(
+            "timeout recheck: %d/%d re-checked, %d would be pb_valid",
+            len(rechecks),
+            len(timed_out),
+            n_became_valid,
+        )
+
+    # --- conformer-sensitivity probe (small, documented sample) --------
+    probe_summary: Optional[Dict[str, Any]] = None
+    if probe_size and probe_size > 0:
+        probe_rng = random.Random(probe_seed)
+        probe_pool = sorted(probe_rng.sample(range(len(smiles)), min(probe_size, len(smiles))))
+        probe_started = time.perf_counter()
+
+        def _probe_task(index: int) -> Dict[str, Any]:
+            arm_n = _run_one_subprocess(
+                smiles[index],
+                n_conformers=n_conformers,
+                embed_method=embed_method,
+                optimize_method=optimize_method,
+                timeout_s=row_timeout_s,
+            )
+            arm_1 = _run_one_subprocess(
+                smiles[index],
+                n_conformers=1,
+                embed_method=embed_method,
+                optimize_method=optimize_method,
+                timeout_s=row_timeout_s,
+            )
+            return {
+                "row_index": index,
+                "smiles": smiles[index],
+                "status_n": arm_n["status"],
+                "status_1": arm_1["status"],
+                "pb_valid_n": arm_n.get("pb_valid"),
+                "pb_valid_1": arm_1.get("pb_valid"),
+            }
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as probe_pool_exec:
+            probe_rows = list(probe_pool_exec.map(_probe_task, probe_pool))
+        probe_summary = summarize_conformer_probe(probe_rows)
+        probe_summary["sample_seed"] = probe_seed
+        probe_summary["sample_method"] = (
+            "random.Random(probe_seed).sample(range(n_pool), probe_size)"
+        )
+        probe_summary["wall_seconds"] = time.perf_counter() - probe_started
+        probe_summary["method"] = (
+            "the same molecule checked twice through the public runner "
+            "surface: check_posebusters(n_conformers=1) vs "
+            "check_posebusters(n_conformers=<protocol>), each under the "
+            "same hard per-row wall-clock cap as the main pass"
+        )
+        probe_summary["why"] = (
+            "PoseBusters' 'mol' config evaluates ONE conformer of the "
+            "molecule (posebusters/config/mol.yml -> "
+            "modules/distance_geometry.py uses mol.GetConformer()); the "
+            "extra conformers are embedded and MMFF94-optimised but only "
+            "one is judged."
+        )
+
+    protocol = {
+        "n_conformers": n_conformers,
+        "embed_method": embed_method,
+        "optimize_method": optimize_method,
+        "posebusters_config": "mol",
+        "backend_module": "molmetal.validation.posebusters_runner.check_posebusters",
+        "embed_random_seed": 42,
+        "embed_random_seed_source": (
+            "molmetal/validation/posebusters_runner.py::_embed_conformers "
+            "(params.randomSeed = 42, hard-coded in the existing runner)"
+        ),
+        "runner_fails_closed": (
+            "a check the runner could not compute (None) counts as a "
+            "failure -- this is the existing module's semantics and is "
+            "NOT changed here"
+        ),
+        "wall_seconds": wall_seconds,
+        "n_workers": workers,
+        "execution": (
+            "one isolated child process per pool row (ThreadPoolExecutor "
+            "driving subprocess.run), CPU-only"
+        ),
+        "row_timeout_s": row_timeout_s,
+        "row_timeout_policy": (
+            "a row whose PoseBusters call exceeds row_timeout_s is KILLED and "
+            "recorded with status 'timeout'. A timeout is a CENSORING event, "
+            "not a chemistry verdict: it counts as NOT pb_valid in the "
+            "strict rate, and the counts block reports n_timeout and a "
+            "completed-only rate so the censoring is visible."
+        ),
+        "row_timeout_rationale": (
+            "MEASURED 2026-11-01: the three longest pool SMILES took "
+            "86.7 s / 60.5 s / 0.1 s on a single molecule-level "
+            "check_posebusters call, and an in-process pool blocks "
+            "indefinitely on such a row. The child-process cap is what "
+            "makes a FULL-POOL run terminate."
+        ),
+        "device": "CPU",
+    }
+
+    artifact = build_artifact(
+        pool_path=pool_path,
+        pool_sha256=pool_sha256,
+        pool_columns=columns,
+        n_data_rows=len(smiles),
+        records=records,
+        protocol=protocol,
+        scope=scope,
+        timestamp=timestamp,
+        conformer_probe=probe_summary,
+        timeout_recheck=timeout_recheck,
+        row_timeout_s=row_timeout_s,
+        composition=composition,
+        epoch_labels=epoch_labels,
+    )
+
+    content = json.dumps(artifact, indent=2, ensure_ascii=False) + "\n"
+    risk = safe_overwrite_check(out_path, content)
+    if risk is not None:
+        raise RuntimeError(
+            f"safe_overwrite_check refused the write to {out_path} "
+            f"(diff_ratio={risk:.3f}); pick a different filename"
+        )
+    truncation = detect_truncation(content)
+    if truncation is not None:
+        raise RuntimeError(
+            f"detect_truncation flagged the artifact payload: {truncation}"
+        )
+    atomic_write_file(out_path, content)
+
+    # Read back and assert equality (AGENTS.md 5.5 filesystem-truth).
+    reread = out_path.read_text(encoding="utf-8")
+    if reread != content:
+        raise RuntimeError(f"read-back mismatch for {out_path}")
+    return artifact
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    # Child mode is checked BEFORE argparse: the child gets a SMILES on the
+    # command line, which argparse would try to interpret.
+    if argv is not None and len(argv) >= 1 and argv[0] == "--child":
+        return _child_main(argv[1:])
+    if argv is None:
+        argv = sys.argv[1:]
+        if argv and argv[0] == "--child":
+            return _child_main(argv[1:])
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Wf-A155 PoseBusters validity column over the published CFM pool."
+        )
+    )
+    parser.add_argument("--pool", type=Path, default=DEFAULT_POOL)
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--n-conformers", type=int, default=DEFAULT_N_CONFORMERS)
+    parser.add_argument("--embed-method", default=DEFAULT_EMBED_METHOD)
+    parser.add_argument("--optimize-method", default=DEFAULT_OPTIMIZE_METHOD)
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=None,
+        help="documented subset mode; omit for a full-pool run",
+    )
+    parser.add_argument("--sample-seed", type=int, default=0)
+    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument(
+        "--row-timeout-s",
+        type=float,
+        default=90.0,
+        help=(
+            "hard wall-clock cap for ONE row's PoseBusters call; a row that "
+            "exceeds it is killed and recorded with status 'timeout'"
+        ),
+    )
+    parser.add_argument(
+        "--probe-size",
+        type=int,
+        default=25,
+        help="rows used for the conformer-sensitivity probe (0 disables it)",
+    )
+    parser.add_argument("--probe-seed", type=int, default=155)
+    parser.add_argument(
+        "--timeout-recheck-s",
+        type=float,
+        default=0.0,
+        help=(
+            "if > row_timeout_s, re-run the timed-out rows under this longer "
+            "per-row cap and MEASURE the censoring bias (0 disables it)"
+        ),
+    )
+    parser.add_argument(
+        "--timeout-recheck-max",
+        type=int,
+        default=30,
+        help="max number of timed-out rows re-checked",
+    )
+    parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="override the artifact timestamp (default: UTC now, ISO-8601)",
+    )
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    timestamp = args.timestamp or datetime.now(timezone.utc).isoformat()
+    artifact = run(
+        pool_path=args.pool,
+        out_path=args.out,
+        n_conformers=args.n_conformers,
+        embed_method=args.embed_method,
+        optimize_method=args.optimize_method,
+        sample_size=args.sample_size,
+        sample_seed=args.sample_seed,
+        workers=args.workers,
+        timestamp=timestamp,
+        row_timeout_s=args.row_timeout_s,
+        probe_size=args.probe_size,
+        probe_seed=args.probe_seed,
+        timeout_recheck_s=args.timeout_recheck_s,
+        timeout_recheck_max=args.timeout_recheck_max,
+    )
+
+    headline = artifact["headline"]
+    counts = artifact["counts"]
+    LOG.info(
+        "wrote %s -- pb_valid %s/%s strict, %s/%s scored (wall %.1fs)",
+        args.out,
+        headline["n_pb_valid"],
+        headline["n_rows_in_scope"],
+        headline["n_pb_valid"],
+        headline["n_scored"],
+        artifact["protocol"]["wall_seconds"],
+    )
+    print(json.dumps({
+        "out": str(args.out),
+        "pb_valid_rate_strict": counts["pb_valid_rate_strict"],
+        "pb_valid_rate_scored": counts["pb_valid_rate_scored"],
+        "pb_valid_rate_completed_only": counts["pb_valid_rate_completed_only"],
+        "n_pb_valid": counts["n_pb_valid"],
+        "n_scored": counts["n_scored"],
+        "n_rows_in_scope": counts["n_rows_in_scope"],
+        "n_embed_failed": counts["n_embed_failed"],
+        "n_unparseable": counts["n_unparseable"],
+        "n_timeout": counts["n_timeout"],
+        "n_forcefield_parameterisation_failures": counts[
+            "n_forcefield_parameterisation_failures"
+        ],
+        "wall_seconds": artifact["protocol"]["wall_seconds"],
+    }, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

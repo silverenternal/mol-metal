@@ -57,7 +57,8 @@ export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 
 # --- 5. pin GPUs (default to the RTX PRO 6000)
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 
 # --- Echo so we know we're wired up.
 echo "[mol-metal env] UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT"

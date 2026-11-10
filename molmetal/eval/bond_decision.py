@@ -38,8 +38,8 @@ API
 >>> bond_decision_settings({"args": {"bond_decision": "threshold", ...}})  # ckpt layout
 ("threshold", 0.5, None)
 
-Bit-exact default contract (§5.11)
----------------------------------------
+Bit-exact default contract (~~§5.11~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31)
+-------------------------------------------------------------------------------------------
 The canonical defaults are ``("argmax", 0.5, None)``. At those defaults the
 helper is the identity for the historical call sites:
 
@@ -59,7 +59,8 @@ from __future__ import annotations
 from typing import Any, Optional, Sequence, Tuple, Union
 
 # Trainer-level canonical defaults — fixed; do not change without a
-# Wf-XXX retrain and a §5.11 bit-exact check across every shipped YAML.
+# Wf-XXX retrain and a ~~§5.11~~ → AGENTS.md §3.3 audit-ledger
+# bit-exact-default check across every shipped YAML. (corrected 2026-10-31)
 DEFAULT_DECISION: str = "argmax"
 DEFAULT_THRESHOLD: float = 0.5
 DEFAULT_CLASS_LOGIT_BIAS: Optional[Sequence[float]] = None

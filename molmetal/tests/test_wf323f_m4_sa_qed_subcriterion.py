@@ -249,20 +249,55 @@ def test_wf323f_p3_m4_sa_qed_subcriterion_gate_defined():
     reason="pre_flight_check.py missing",
 )
 def test_wf323f_expected_gate_counts_bumped():
-    """EXPECTED_GATE_COUNTS is bumped by 1 on 'all' + 'frontier' for Wf-323F.
+    """EXPECTED_GATE_COUNTS tracks build_gates() on 'all' + 'frontier'.
 
     Per Wf-321D audit: the gate-count consistency check enforces that
     ``EXPECTED_GATE_COUNTS['all']`` + ``['frontier']`` track the
     build_gates() output.  Wf-323F adds 1 gate in each pipeline.
-    Pre-Wf-323F: ``all=56``, ``frontier=23`` (per Wf-321D ship).
-    Post-Wf-323F: ``all=57``, ``frontier=24``.
+
+    Wf-A172 (2026-11-01) REPAIR — the assertion target moved off the
+    hard-coded 57 / 24 text literals onto the SSOT-vs-runtime invariant.
+
+    SUPERSEDED (2026-11-01, Wf-323F rendering — PRESERVED VERBATIM per
+    AGENTS.md §5.5 rule #6):
+        Pre-Wf-323F: ``all=56``, ``frontier=23`` (per Wf-321D ship).
+        Post-Wf-323F: ``all=57``, ``frontier=24``.
+        text = PRE_FLIGHT_SCRIPT.read_text()
+        # Read the EXPECTED_GATE_COUNTS dict via simple text match.
+        assert '"all": 57' in text, "EXPECTED_GATE_COUNTS['all'] should be 57 (was 56)"
+        assert (
+            '"frontier": 24' in text
+        ), "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)"
+    with the superseded messages "EXPECTED_GATE_COUNTS['all'] should be 57
+    (was 56)" and "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)",
+    and the superseded counts all=57 / frontier=24.
+
+    WHY: 57 and 24 were the counts on the Wf-323F ship date (2026-10-03);
+    they have been RED ever since the gate registry moved on.  MEASURED
+    2026-11-01 by live import: all=129, frontier=25 in this working tree
+    (126 / 25 at HEAD), and the SSOT constant carries the live value on
+    every tree.  The invariant this test exists for is the Wf-321D one —
+    the constant tracks the registry — which the SSOT-vs-runtime
+    comparison states directly and which still FAILs if a count is bumped
+    without registering the gate.  Wf-323F's own gate in BOTH pipelines
+    is asserted separately above (``text.count(
+    '"p3_m4_sa_qed_subcriterion_documented"') >= 2``).
     """
-    text = PRE_FLIGHT_SCRIPT.read_text()
-    # Read the EXPECTED_GATE_COUNTS dict via simple text match.
-    assert '"all": 57' in text, "EXPECTED_GATE_COUNTS['all'] should be 57 (was 56)"
-    assert (
-        '"frontier": 24' in text
-    ), "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)"
+    from molmetal.scripts.pre_flight_check import (
+        EXPECTED_GATE_COUNTS,
+        build_gates,
+    )
+
+    assert len(build_gates("all")) == EXPECTED_GATE_COUNTS["all"], (
+        f"the 'all' pipeline holds {len(build_gates('all'))} gates but "
+        f"EXPECTED_GATE_COUNTS['all'] says "
+        f"{EXPECTED_GATE_COUNTS['all']}"
+    )
+    assert len(build_gates("frontier")) == EXPECTED_GATE_COUNTS["frontier"], (
+        f"the 'frontier' pipeline holds {len(build_gates('frontier'))} "
+        f"gates but EXPECTED_GATE_COUNTS['frontier'] says "
+        f"{EXPECTED_GATE_COUNTS['frontier']}"
+    )
 
 
 # ---------------------------------------------------------------------------

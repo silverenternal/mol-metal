@@ -136,18 +136,43 @@ else
   echo ""
 fi
 
-OUT_BASE="results/wf124_p3_50epoch_full_sweep_g5"
+# Wf-A269 wave-3 (2026-11-02): OUT_BASE is overridable so that the
+# USER_OK-gate test emits into pytest's tmp_path.  That test used to
+# emit into THIS tracked tree and then ``shutil.rmtree`` it, destroying
+# 123 tracked published artefacts (one per_seed_metrics.json /
+# training_summary.json per (metal, seed) pair).  SUPERSEDED RENDERING
+# PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+#   OUT_BASE="results/wf124_p3_50epoch_full_sweep_g5"
+OUT_BASE="${WF124_G5_OUT_BASE:-results/wf124_p3_50epoch_full_sweep_g5}"
 LOG="${OUT_BASE}/master.log"
 mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
-# 2026-10-07 (user directive: configs in YAML, not CLI). The trainer already
-# accepts --config and ends parse_args() in apply_yaml_overrides
-# (train_dmpnn_multitask_wasserstein.py:3320-3322), so the yaml is the base and
-# COMMON_ARGS below override it per-pair. Anything NOT in COMMON_ARGS falls back
-# to the yaml value rather than to the argparse default — that is the whole
-# point of the consolidation.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6
+# (Wf-A269, 2026-11-04 — COMMON_ARGS used to be the CLI array the trainer
+# RECEIVED; it is now only the shell record, see below):
+#   # 2026-10-07 (user directive: configs in YAML, not CLI). The trainer already
+#   # accepts --config and ends parse_args() in apply_yaml_overrides
+#   # (train_dmpnn_multitask_wasserstein.py:3320-3322), so the yaml is the base and
+#   # COMMON_ARGS below override it per-pair. Anything NOT in COMMON_ARGS falls back
+#   # to the yaml value rather than to the argparse default — that is the whole
+#   # point of the consolidation.
+#
+# Wf-A269 §5.11 (2026-11-04): COMMON_ARGS is NO LONGER passed to the trainer.
+# It is now the wrapper's SHELL RECORD of the hyperparameters — the second,
+# independent statement of intent that scripts/_wf_yaml_static_config_c1.py
+# checks against the STATIC per-tuple YAML before the sweep
+# (audit_static_configs, below).  The values the trainer actually reads live
+# in configs/wfa269_c1_dmpnn_pair_sweep_g5_<metal>_seed<n>.yaml.
+# Wf-A269 (2026-11-04): ${DMPNN_CONFIG} NO LONGER HAS ANY EFFECT on this
+# wrapper.  The trainer is launched with the STATIC per-tuple config named by
+# (metal, seed) — configs/wfa269_c1_dmpnn_pair_sweep_g5_<metal>_seed<n>.yaml
+# — so there is no base config left to select and configs/dmpnn.yaml is not
+# read by the launch (it is shared by 8 wrappers).  The variable is kept
+# DEFINED so an operator's exported DMPNN_CONFIG cannot trip `set -u`, and it
+# is echoed in the dry-run banner so a stale override is VISIBLE rather than
+# silently inert.
 DMPNN_CONFIG="${DMPNN_CONFIG:-configs/dmpnn.yaml}"
 GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; G6 recovery holds GPU-1)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"  # Wf-261 strict scaffold split (0 leak) + v4 cohort
@@ -194,6 +219,108 @@ COMMON_ARGS=(
   --data-csv "${DATA_CSV}"
 )
 
+# ---------------------------------------------------------------------------
+# Wf-A269 §5.11 migration (2026-11-04) — STATIC per-tuple YAML.
+#
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数"): a launch wrapper may hand the trainer ONLY
+# --config / --out-dir / --ckpt-dir / --help.
+#
+# WHY one config per tuple: the trainer loops over the metal cohort and the
+# seed cohort INSIDE one process
+# (train_dmpnn_multitask_wasserstein.py:4352 `for metal in args.metals:` /
+# :4356 `for seed in args.seeds:`), while this launcher starts ONE trainer
+# PROCESS per (metal, seed) pair, each with its own --out-dir.  So the cohort
+# cannot move into the SHARED yaml: one yaml carrying 5 metals x 3 seeds
+# would turn the 15 processes into 1 and change the run.  Each pair therefore
+# needs a config that declares exactly ONE metal and ONE seed.
+#
+# WHY the file is STATIC (on disk, in git) and not written at launch time:
+# §5.11's own rationale is "a knob that lives only in a shell script is a knob
+# nobody audits" — a launch-time-written config puts the hyperparameters back
+# into a shell variable.  A static file is reviewable BEFORE the run and
+# reproducible AFTER it.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6
+# (Wf-A269 wave-3, 2026-11-02 — the launch-time derivation this replaces):
+#   derive_pair_config() {
+#     local metal=$1
+#     local seed=$2
+#     local dest=$3
+#     "${PY}" - "${DMPNN_CONFIG}" "${dest}" "${metal}" "${seed}" "${DATA_CSV}" <<'PYEOF'
+#   import os
+#   import pathlib
+#   import sys
+#
+#   import yaml
+#
+#   base_path, dest_path, metal, seed, csv_path = sys.argv[1:6]
+#   with open(base_path, "r", encoding="utf-8") as fh:
+#       cfg = yaml.safe_load(fh) or {}
+#   if not isinstance(cfg, dict):
+#       raise SystemExit("derive_pair_config: base config is not a mapping: %s" % base_path)
+#
+#
+#   def put(dotted, value):
+#       parts = dotted.split(".")
+#       node = cfg
+#       for part in parts[:-1]:
+#           nxt = node.get(part)
+#           if not isinstance(nxt, dict):
+#               nxt = {}
+#               node[part] = nxt
+#           node = nxt
+#       node[parts[-1]] = value
+#
+#
+#   put("data.metals", [metal])
+#   put("data.seeds", [int(seed)])
+#   put("protocol.seeds", [int(seed)])
+#   put("data.csv", csv_path)   # flat form wins -> dest data_csv
+#   put("csv", csv_path)        # top level -> dest csv (data.csv resolves to data_csv)
+#
+#   dest = pathlib.Path(dest_path)
+#   dest.parent.mkdir(parents=True, exist_ok=True)
+#   tmp = dest.with_name(dest.name + ".tmp")
+#   with open(tmp, "w", encoding="utf-8") as fh:
+#       yaml.safe_dump(cfg, fh, sort_keys=False, default_flow_style=False)
+#   os.replace(tmp, dest)
+#   print("derive_pair_config: %s (base=%s metal=%s seed=%s)" % (dest, base_path, metal, seed))
+#   PYEOF
+#   }
+#
+# WHY the derivation was replaced: it wrote the config at launch time from
+# ${DMPNN_CONFIG} — a config SHARED by 8 wrappers — so the tuple coordinates
+# and every G5 hyperparameter existed only as shell variables at review time.
+# The static cohort removes both dependencies: every value the trainer reads
+# is in the file named by the tuple, and that file's header records the
+# pre-migration argv it reproduces.
+#
+# The 15 files are audited BEFORE the sweep by
+# scripts/_wf_yaml_static_config_c1.py, which compares the wrapper's own shell
+# record (COMMON_ARGS, below) against what the trainer will ACTUALLY read,
+# through the trainer's OWN parser and the REAL loader — dest by dest, value
+# AND type.  MEASURED 2026-11-04: 15/15 PASS, 240 flag dests verified.
+# ---------------------------------------------------------------------------
+PAIR_CONFIG_PREFIX="${PAIR_CONFIG_PREFIX:-configs/wfa269_c1_dmpnn_pair_sweep_g5_}"
+# 5 metals x 3 seeds — the launcher MUST NOT silently under-launch.
+PAIR_CONFIG_COUNT=15
+
+pair_config_path() {
+  local metal=$1
+  local seed=$2
+  printf '%s%s_seed%s.yaml' "${PAIR_CONFIG_PREFIX}" "${metal}" "${seed}"
+}
+
+# Fail-closed: a missing / drifted pair config aborts the launch.
+audit_static_configs() {
+  "${PY}" scripts/_wf_yaml_static_config_c1.py \
+    --trainer "${SCRIPT}" \
+    --config-glob "${PAIR_CONFIG_PREFIX}*.yaml" \
+    --flags "${COMMON_ARGS[*]} --csv ${DATA_CSV}" \
+    --expect-min-count "${PAIR_CONFIG_COUNT}"
+}
+
 # ---- DRY-RUN mode: verify config + CSV paths only (no GPU execution) ----
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "=== Wf-124 P3 G5 — DRY-RUN (CPU verification only; USER_OK=1 confirmed) ==="
@@ -203,6 +330,10 @@ if [[ "${DRY_RUN}" == "1" ]]; then
   echo "DATA_CSV: ${DATA_CSV}"
   echo "GPU: ${GPU}"
   echo "COMMON_ARGS: ${COMMON_ARGS[*]}"
+  # Wf-A269 (2026-11-04): DMPNN_CONFIG has NO EFFECT on this launch (the
+  # per-tuple config is selected by (metal, seed)).  Echoing it makes a
+  # stale operator override VISIBLE instead of silently inert.
+  echo "DMPNN_CONFIG (NO EFFECT — inert override, see the note above): ${DMPNN_CONFIG}"
   echo ""
   echo "--- CSV sanity check ---"
   test -f "${DATA_CSV}" && echo "OK: CSV exists (${DATA_CSV})" || { echo "FAIL: CSV missing"; exit 1; }
@@ -215,9 +346,44 @@ if [[ "${DRY_RUN}" == "1" ]]; then
   echo "--- 15 (metal, seed) pairs to enumerate ---"
   for metal in Ru Ir Os Rh Re; do
     for seed in 0 1 2; do
-      echo "  ${metal} seed=${seed}  ->  ${OUT_BASE}/${metal}/seed${seed}/"
+      echo "  ${metal} seed=${seed}  ->  ${OUT_BASE}/${metal}/seed${seed}/  [config: $(pair_config_path "${metal}" "${seed}")]"
     done
   done
+  echo ""
+
+  # Wf-A269 §5.11 (2026-11-04): the dry run must PROVE that the static
+  # per-tuple configs exist and carry the hyperparameters this wrapper
+  # intends.  The audit is fail-closed and CPU-only (it reads argparse + YAML
+  # and never starts a trainer).
+  echo "--- static per-tuple config audit (fail-closed, CPU-only) ---"
+  audit_static_configs || { echo "FAIL: static-config audit"; exit 1; }
+  echo ""
+
+  # Wf-A269 (2026-11-04) — the launch path now registers a provenance record
+  # before every pair (see run_pair).  The dry run must PROVE that step works,
+  # so it exercises it for all 15 pairs — into a SCRATCH directory, never into
+  # the real run dirs: a dry run must not leave an "expected" artefact
+  # behind for a run that never happened.
+  echo "--- launch-provenance registration dry run (scratch dir, CPU-only) ---"
+  prov_scratch="${OUT_BASE}/_dryrun_provenance"
+  rm -rf "${prov_scratch}"
+  prov_fail=0
+  for metal in Ru Ir Os Rh Re; do
+    for seed in 0 1 2; do
+      scratch_pair="${prov_scratch}/${metal}_seed${seed}"
+      "${PY}" scripts/_wf_launch_provenance.py emit \
+        --trainer "${SCRIPT}" \
+        --config "$(pair_config_path "${metal}" "${seed}")" \
+        --out-dir "${scratch_pair}" \
+        --ckpt-dir "${scratch_pair}/ckpts" >/dev/null 2>&1 \
+        || { echo "  FAIL: provenance registration for ${metal} seed=${seed}"; prov_fail=1; }
+    done
+  done
+  if [ "$prov_fail" -ne 0 ]; then
+    echo "FAIL: launch-provenance registration dry run"
+    exit 1
+  fi
+  echo "  OK: 15/15 provenance registrations succeeded (scratch: ${prov_scratch})"
   echo ""
 
   # Wf-366-A1 — emit structured DRY_RUN.log via Wf-363-A1 helper
@@ -227,6 +393,9 @@ if [[ "${DRY_RUN}" == "1" ]]; then
       pair_args+=( --pair "${metal} seed=${seed}" )
     done
   done
+  # Wf-A269 §5.11 (2026-11-04): the --flags below are the RUN's
+  # hyperparameters, but they are no longer CLI flags — they are carried by
+  # the static per-tuple YAML, and audit_static_configs proves the two agree.
   # shellcheck disable=SC2068
   emit_dry_run_log "${OUT_BASE}/DRY_RUN.log" \
     --title "Wf-124 P3 G5 — 15 (metal, seed) pairs full sweep" \
@@ -298,6 +467,51 @@ PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c3_data_qualit
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/per_wave_checklist.py --wave "Wf-124-P3-G5" || { echo "FAIL: per_wave_checklist"; exit 1; }
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wave_budget_tracker.py || { echo "FAIL: wave_budget_tracker"; exit 1; }
 
+# Wf-A269 §5.11 (2026-11-04): fail-closed static-config audit BEFORE any pair
+# launches.  It compares the wrapper's own shell record (COMMON_ARGS) against
+# what the trainer will actually read, dest by dest, through the trainer's
+# own parser and the real loader.  A drifted pair config aborts the sweep.
+echo "=== static per-tuple config audit (fail-closed) ==="
+audit_static_configs || { echo "FAIL: static-config audit (fail-closed)"; exit 1; }
+echo ""
+
+# ---------------------------------------------------------------------------
+# Wf-A269 §5.11 migration — the per-pair cohort lives in a STATIC yaml.
+#
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数"): a launch wrapper may hand the trainer ONLY
+# --config / --out-dir / --ckpt-dir / --help. The four flags this wrapper
+# used to put on the trainer invocation line carry the PER-PAIR cohort, and
+# the trainer loops over the metal cohort and the seed cohort INSIDE one
+# process — so the cohort cannot simply move into the shared yaml: one yaml
+# carrying 5 metals x 3 seeds would turn the 15 processes into 1 and change
+# the run.
+#
+# So every (metal, seed) pair gets its OWN yaml — and that yaml is a STATIC
+# FILE ON DISK (configs/wfa269_c1_dmpnn_pair_sweep_g5_<metal>_seed<n>.yaml),
+# NOT one written at launch time.  It carries exactly the four values the
+# CLI used to carry:
+#   metals   <- data.metals              [metal]   (was: CLI --metals)
+#   seeds    <- data.seeds + protocol.seeds [seed] (was: CLI --seeds)
+#   csv      <- csv (TOP-LEVEL key)      <path>   (was: CLI --csv)
+#   data_csv <- data.csv (flat form wins over the leaf form) <path>
+# The base yaml configs/dmpnn.yaml is NOT edited and is NOT read by the
+# launch: it is shared by 8 wrappers.
+#
+# Wf-A269 (2026-11-04) — derive_pair_config() DELETED.  It had been left
+# behind by the launch-time-derivation -> static-file migration and had
+# **0 call sites** (measured: grep -n derive_pair_config returns only the
+# definition and the comments).  Leaving it was a TRAP: it is a working
+# implementation of the exact mechanism the c1 contract forbids (a config
+# written at launch time from a shell variable), and the next reader would
+# have had no way to tell it was unreachable.
+#
+# The superseded function body is preserved VERBATIM in the Wf-A269 wave-3
+# block further up this file (the block headed "SUPERSEDED RENDERING
+# PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6", wave-3, 2026-11-02).
+# It is NOT duplicated here — one preserved rendering, one marker.
+# ---------------------------------------------------------------------------
+
 # ---- Helper: poll pair log until target epoch is reached (Wf-302B guard) ----
 # Refs: Wf-285D + Wf-291B — elapsed=0 MUST be initialised BEFORE the loop
 # Refs: Wf-298E critical remaining #2 — bash wait_until_epoch_reached was MISSING
@@ -353,11 +567,37 @@ run_pair() {
   # `|| { ...; return 1; }` guard shape (scripts/launch_wf124_p3_g6.sh:354).
   # `local rc_c2` MUST be declared before the call under `set -u` semantics.
   local rc_c2=0
+  # Wf-A269 (2026-11-04, MEASURED): the per-wave check must validate the
+  # config the run ACTUALLY uses.  SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   --config configs/wf124_p3_50epoch_full_sweep_g5.yaml
+  # The superseded rendering above named the SWEEP-SPEC config, whose
+  # `protocol.batch_size` is 64 — but the G5 run uses 256 (the static
+  # per-tuple configs carry `train.batch_size: 256`, and the pre-migration CLI
+  # passed `--batch-size 256`).  MEASURED 2026-11-04 with the trainer's own
+  # parse_args + the real loader (molmetal/scripts/wfA2_config_loader.py):
+  #   configs/wf124_p3_50epoch_full_sweep_g5.yaml  -> batch_size == 64
+  #   configs/wfa269_c1_dmpnn_pair_sweep_g5_Ru_seed0.yaml -> batch_size == 256
+  # and `protocol.batch_size` in the sweep spec DOES resolve to the trainer's
+  # `batch_size` dest (loader `_resolve_dest` -> dest 'batch_size', value 64),
+  # so the check was validating a config whose batch_size the run does not use.
+  # REPAIR: point the check at the per-tuple config for THIS (metal, seed) —
+  # run_pair() knows both, and `pair_config_path` (defined above) resolves the
+  # same static file the trainer is launched with a few lines below.  The
+  # fail-closed existence check on that path stays below, unchanged.
+  # The check reads only two things from the config
+  # (wf343c2_per_wave_check.py: check_hyperparams_config_complete and
+  # check_yuelbond_decoder_registered); MEASURED 2026-11-04, all 7 sub-check
+  # statuses are IDENTICAL before and after the switch (the one FAIL,
+  # hyperparams_config_complete, is a pre-existing schema FAIL — the sweep spec
+  # is missing keys 'flow, train', the per-tuple config missing
+  # 'flow, honest_framing'; REQUIRED_CONFIG_KEYS is a CFM-shaped contract).
+  local pair_cfg_for_check
+  pair_cfg_for_check="$(pair_config_path "${metal}" "${seed}")"
   PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c2_per_wave_check.py \
     --wave "Wf-124-P3-G5-${metal}-seed${seed}" \
     --pairs-metals "${metal}" \
     --pairs-seeds "${seed}" \
-    --config configs/wf124_p3_50epoch_full_sweep_g5.yaml \
+    --config "${pair_cfg_for_check}" \
     --budget-hr 0.9 \
     --min-vram-mib 8192 \
     --min-disk-gib 50 \
@@ -377,15 +617,72 @@ run_pair() {
   # GPU 0 (RTX PRO 6000) — aligns with this script's GPU="cuda:0" header
   # and the --cuda-visible-devices 0 flag above; the old '1' predated the
   # GPU-0 resolver default.  (G6 recovery holds GPU-1.)
-  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} ${SCRIPT} \
-    --config "${DMPNN_CONFIG}" \
-    --metals "${metal}" \
-    --seeds "${seed}" \
-    --csv "${DATA_CSV}" \
-    --data-csv "${DATA_CSV}" \
-    --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
-    --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
-"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+  # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+  #
+  # Wf-A269 §5.11 (2026-11-03): the per-pair cohort and the corpus paths are
+  # no longer CLI flags — they live in the per-pair yaml that was, at that
+  # time, derived at launch time from ${DMPNN_CONFIG}.  The values the
+  # trainer reads are unchanged.
+  # Wf-A269 §5.11 (2026-11-04): the per-pair cohort AND every hyperparameter
+  # now live in a STATIC per-tuple config; the trainer invocation carries only
+  # the three allowed run-control flags.  The config is copied into the run
+  # directory so the run's own artefacts record exactly what was configured.
+  local pair_cfg
+  pair_cfg="$(pair_config_path "${metal}" "${seed}")"
+  if [[ ! -f "${pair_cfg}" ]]; then
+    echo "FAIL: static pair config missing: ${pair_cfg}" | tee -a "${LOG}"
+    return 1
+  fi
+  install -m 0644 "${pair_cfg}" "${OUT_BASE}/${metal}/seed${seed}/config.yaml"
+
+  # Wf-A269 (2026-11-04) — LAUNCH PROVENANCE.
+  #
+  # WHY: §5.11 puts every hyperparameter in a FILE, but the file records the
+  # DECLARED value and nothing recorded what the trainer ACTUALLY read.  A
+  # config edited after the run silently turns the declaration into a lie.
+  # Hydra writes the RESOLVED config into the run dir at launch; this is the
+  # same mechanism.  The wrapper registers what it is ABOUT to run
+  # (resolved_config.expected.yaml + launch_provenance.json), the trainer
+  # records what it ACTUALLY consumed (resolved_config.actual.yaml, written
+  # by the loader when MOLMETAL_RESOLVED_CONFIG_PATH is set), and the check
+  # below compares the two — in two different processes, from two different
+  # inputs, so the comparison is a check and not a transcript.
+  #
+  # The four flags below are the §5.11 legal set (they select the RUN, not
+  # WHAT to train); this is not a trainer invocation.
+  local pair_out="${OUT_BASE}/${metal}/seed${seed}"
+  local pair_ckpt="${pair_out}/ckpts"
+  mkdir -p "${pair_out}"
+  "${PY}" scripts/_wf_launch_provenance.py emit \
+    --trainer "${SCRIPT}" \
+    --config "${pair_cfg}" \
+    --out-dir "${pair_out}" \
+    --ckpt-dir "${pair_ckpt}" \
+    2>&1 | tee -a "${LOG}"
+  local prov_rc=${PIPESTATUS[0]}
+  if [ "$prov_rc" -ne 0 ]; then
+    echo "FAIL: launch-provenance registration failed for ${metal} seed=${seed} (rc=${prov_rc})" | tee -a "${LOG}"
+    return 1
+  fi
+
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6
+  # (Wf-A269 wave-3, 2026-11-02 — the launch-time derivation + the CLI array):
+  #   CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid nohup ${PY} ${SCRIPT} \
+  #     --config "${DMPNN_CONFIG}" \
+  #     --metals "${metal}" \
+  #     --seeds "${seed}" \
+  #     --csv "${DATA_CSV}" \
+  #     --data-csv "${DATA_CSV}" \
+  #     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
+  #     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
+  #     "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" \
+  MOLMETAL_RESOLVED_CONFIG_PATH="${pair_out}/resolved_config.actual.yaml" \
+  setsid nohup ${PY} ${SCRIPT} \
+    --config "${pair_cfg}" \
+    --out-dir "${pair_out}" \
+    --ckpt-dir "${pair_ckpt}" \
+    2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
 
   # Wf-347-B1: per-pair budget tracking — capture end time + emit delta
@@ -394,10 +691,23 @@ run_pair() {
   pair_elapsed_s=$(( pair_end_s - pair_start_s ))
   echo "PAIR_BUDGET_END ${metal} seed=${seed} elapsed_s=${pair_elapsed_s} rc=${rc}" | tee -a "${LOG}"
 
+  # Wf-A269 (2026-11-04) — the provenance check.  It compares the config the
+  # wrapper REGISTERED against the config the trainer CONSUMED.  A mismatch
+  # means the run was not the run the wrapper intended.  --require-actual
+  # makes a missing actual artefact a FAIL rather than a SKIP: a run that
+  # recorded no provenance has not proven anything.
+  "${PY}" scripts/_wf_launch_provenance.py verify \
+    --out-dir "${pair_out}" --require-actual 2>&1 | tee -a "${LOG}"
+  local prov_verify_rc=${PIPESTATUS[0]}
+
   echo "=== $(date '+%H:%M:%S') END ${metal} seed=${seed} (rc=${rc}) ===" | tee -a "${LOG}"
   if [ "$rc" -ne 0 ]; then
     echo "FAIL: ${metal} seed=${seed} exited rc=${rc}"
     return "$rc"
+  fi
+  if [ "$prov_verify_rc" -ne 0 ]; then
+    echo "FAIL: launch-provenance mismatch for ${metal} seed=${seed} (rc=${prov_verify_rc})" | tee -a "${LOG}"
+    return 1
   fi
   # Wf-302B guard: verify the pair actually reached target epoch (50)
   wait_until_epoch_reached "${pair_log}" 50 1200 || { echo "FAIL: ${metal} seed=${seed} did not reach epoch 50"; return 1; }

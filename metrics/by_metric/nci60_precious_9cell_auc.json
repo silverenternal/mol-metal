@@ -545,5 +545,6 @@
     "reason": "3-seed run on a splitter whose _scaffold_for returned '' for every molecule — a molecule-level split labelled 'scaffold' (BLK-PA12). Do not quote this as the m21 headline.",
     "superseded_by": "value_overall_mean_auc (5 seeds, fixed Bemis-Murcko splitter)",
     "deprecated_on": "2026-10-20"
-  }
+  },
+  "headline_caveat": "0.7294 is the 9-cell panel mean and it clears this metric's own 0.7 gate. But DU145 (n_test=7) and SKOV3 (n_test=3, n_val=0) both score AUC = 1.0 on single-digit test sets, where such an AUC is not informative, while the other seven cells average 0.6521; the identity (7 x 0.6520602689568208 + 1.0 + 1.0) / 9 == 0.7293802091886383 therefore holds exactly and the headline is carried by the two smallest test sets. Under the recorded minimum-test-set filters the panel mean is 0.6521 over 7 cells (n_test>=10) and 0.5923 over 5 cells (n_test>=20), both below the 0.81 Krasnov 2026 comparator, so on this panel the honest reading is an explicit miss, not a tie, and not a win. The comparison is also protocol-mismatched: this panel is a Bemis-Murcko scaffold split, whereas Krasnov's 0.81 is a within-metal stratified CV on a random split."
 }

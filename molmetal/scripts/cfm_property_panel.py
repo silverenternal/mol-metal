@@ -75,6 +75,62 @@ Outputs
 
   ``sa`` / ``qed`` are ``null`` for SMILES that fail to parse.
 
+* ``decode_cohort`` — Wf-A128 (2026-10-31), a TOP-LEVEL key of the output
+  artifact that states WHICH decode cohort produced these numbers.
+  Wf-A129 (2026-10-31) rewrote the block so that it states ONLY what it
+  measured — see ``decode_state`` below::
+
+    {
+      "decode_cohort": {
+        "decode_source": "checkpoint" | "smiles_csv",
+        "decode_state": "decoded" | "decode_failed" |
+                        "not_decoded_by_panel" | "outcome_unknown",
+        "panel_decode_params": {"method": str, "n_steps": int,
+                                "noise_sigma": float} | null,
+        "panel_decode_params_status": "applied" | "not_applied" |
+                                      "not_applicable" | "unknown",
+        "seed": int | null,
+        "n_samples": int | null,
+        "n_input": int | null,
+        "checkpoint_path": str | null,
+        "checkpoint_mtime_epoch": float | null,
+        "checkpoint_mtime_iso": str | null,
+        "decode_succeeded": bool | null,
+        "is_trainer_decode_cohort": false,
+        "trainer_decode_cohort": {"n_steps": int, "method": str,
+                                  "fm_noise_sigma": float} | null,
+        "trainer_decode_cohort_source": str | null,
+        "trainer_args_state": "read" | "absent" | "unreadable" |
+                              "not_applicable" | "unknown",
+        "trainer_args_state_reason": str | null,
+        "panel_vs_trainer_differences": [str, ...],
+        "panel_vs_trainer_differences_basis": "applied" | "configured_only" |
+                                              "not_compared",
+        "compared_parameters": [str, ...],
+        "comparability": str,
+        "notes": [str, ...]
+      }
+    }
+
+  The panel decodes with its OWN smoke-grade settings (``euler`` / 10 steps
+  / noise sigma 1.0), which are NOT the trainer's (``midpoint`` / 50 steps /
+  noise sigma 2.485 — MEASURED from
+  ``configs/c7_fullgen_2026_10_20.yaml:579-580`` and :271, and
+  ``configs/c8_fullgen_b64_2026_10_24.yaml:632-633`` and :307).  Whether a
+  number from this artifact is comparable with the trainer's number for the
+  same checkpoint is decided by ``panel_vs_trainer_differences`` — and the
+  ``comparability`` sentence is derived FROM that list, never the other way
+  round.  The panel's decode PARAMETERS are unchanged by Wf-A128 — only
+  their disclosure is added.
+
+  Wf-A129's three rules, in one line each: (1) a decode that produced no
+  molecules claims no decode method; (2) a checkpoint whose ``args`` could
+  not be READ is not described as a checkpoint that does not RECORD them
+  (``trainer_args_state`` distinguishes ``read`` / ``absent`` /
+  ``unreadable``); (3) no sentence in this block may contradict the
+  artifact's own ``decode_succeeded`` / ``n_input`` /
+  ``panel_vs_trainer_differences``.
+
 Usage
 -----
 ::
@@ -104,6 +160,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime
 import json
 import math
 import sys
@@ -112,6 +169,40 @@ from typing import Any
 
 
 PANEL_VERSION = "wf264-sa/v1"
+
+# ---------------------------------------------------------------------------
+# Wf-A128 (2026-10-31) — THE PANEL'S OWN DECODE COHORT.
+#
+# The panel decodes with its OWN sampler settings, and they are NOT the
+# trainer's.  MEASURED on the trainer's own run configs:
+# ``configs/c7_fullgen_2026_10_20.yaml`` declares ``sample.n_steps: 50``
+# (line 579), ``sample.method: midpoint`` (line 580) and
+# ``train.fm_noise_sigma: 2.485`` (line 271);
+# ``configs/c8_fullgen_b64_2026_10_24.yaml`` declares the same three at
+# lines 632 / 633 / 307.  The panel decodes with ``euler`` / 10 steps /
+# noise sigma 1.0 — a 1st-order integrator at a tenth of the step count and
+# at half the prior scale.
+#
+# So a number produced by THIS panel is NOT comparable with the trainer's
+# number for the same checkpoint, and before Wf-A128 nothing in the panel's
+# output said so.  The values below are NOT changed by Wf-A128 — changing
+# them would silently move every published panel number — they are only
+# NAMED, so the panel's output artifact can disclose its own cohort.
+# ---------------------------------------------------------------------------
+
+#: The integrator the panel decodes with.
+PANEL_DECODE_METHOD = "euler"
+
+#: The integrator step count the panel decodes with (smoke-grade: 10 steps
+#: for sub-5s wall).
+PANEL_DECODE_N_STEPS = 10
+
+#: The base-distribution scale the panel decodes with.
+PANEL_DECODE_NOISE_SIGMA = 1.0
+
+#: The trainer's own decode-cohort keys, as the trainer's argparse names
+#: them (``--n-steps`` / ``--method`` / ``--fm-noise-sigma``).
+_TRAINER_DECODE_KEYS = ("n_steps", "method", "fm_noise_sigma")
 
 
 def _load_sascorer():
@@ -1003,11 +1094,435 @@ def _panel_templates(ckpt: object, n_samples: int) -> "list":
             )
     return templates[: int(n_samples)]
 
+
+def _trainer_decode_cohort(trainer_args: Any) -> dict:
+    """The TRAINER's own decode cohort, read from a checkpoint's ``args``.
+
+    A checkpoint written by the trainer records the argparse namespace it was
+    trained/evaluated under, so the trainer's own ``n_steps`` / ``method`` /
+    ``fm_noise_sigma`` are recoverable from the checkpoint itself — which is
+    the authoritative source for "what cohort was this checkpoint's own
+    number measured under", better than a config file that a later run may
+    have overwritten.
+
+    Returns ``{}`` when the checkpoint carries no ``args`` (a head-only smoke
+    stub, or a checkpoint written before the namespace was recorded).
+    """
+    if not isinstance(trainer_args, dict):
+        return {}
+    out: dict = {}
+    for key in _TRAINER_DECODE_KEYS:
+        if key not in trainer_args:
+            continue
+        value = trainer_args.get(key)
+        if value is None:
+            continue
+        try:
+            if key == "n_steps":
+                out[key] = int(value)
+            elif key == "fm_noise_sigma":
+                out[key] = float(value)
+            else:
+                out[key] = str(value)
+        except (TypeError, ValueError):
+            out[key] = str(value)
+    return out
+
+
+def _decode_cohort_disclosure(
+    *,
+    decode_source: str,
+    ckpt_path: Path | None = None,
+    seed: int | None = None,
+    n_samples: int | None = None,
+    trainer_args: Any = None,
+    decode_succeeded: bool | None = None,
+    n_input: int | None = None,
+    trainer_args_state: str | None = None,
+    trainer_args_state_reason: str | None = None,
+) -> dict:
+    """Wf-A128 / Wf-A129 — the panel's OWN decode cohort, as data.
+
+    Wf-A128 added this block because the panel decodes with its OWN
+    sampler settings and nothing in the output artifact said so: a reader
+    could compare a panel number with the trainer's number for the same
+    checkpoint without knowing that the two cohorts differ.
+
+    Wf-A129 (this revision) removes the three ways the Wf-A128 wording
+    could state a fact the artifact had NOT measured:
+
+    * it asserted "the checkpoint does not record its own sampling args"
+      whenever those args could not be read.  On a CPU-only host a
+      CUDA-saved checkpoint cannot be loaded AT ALL, so the panel
+      declared a property of a checkpoint it had never inspected — "the
+      checkpoint does not record them" and "nobody could read them" are
+      different facts.
+    * it asserted "the panel decoded with method=euler, ..." on a decode
+      that produced no molecules at all.
+    * its ``comparability`` string was hard-coded to "they differ" while
+      the measured ``panel_vs_trainer_differences`` beside it could be
+      empty.
+
+    The rule now: **the disclosure states only what it measured.**  Every
+    sentence is selected by the state the artifact is in, and the
+    ``comparability`` sentence is derived FROM ``panel_vs_trainer_differences``
+    — never the other way round.
+
+    States
+    ------
+    ``decoded``
+        molecules were produced and scored — the panel's decode
+        parameters apply and are disclosed.
+    ``decode_failed``
+        the decode produced NO molecules — nothing was decoded, so no
+        decode method / step count / noise scale is claimed at all, and
+        comparability is explicitly NOT ASSESSED.
+    ``not_decoded_by_panel``
+        the cohort came from an input CSV — the panel never decoded, so
+        it has no decode cohort of its own to disclose.
+    ``outcome_unknown``
+        the caller did not record the decode outcome — the parameters
+        below are the panel's CONFIGURED settings, not evidence that a
+        decode ran.
+    """
+    trainer_cohort = _trainer_decode_cohort(trainer_args)
+
+    # --- (1) WHAT ACTUALLY HAPPENED ----------------------------------
+    # Wf-A129 — the disclosure may only assert what it measured, so the
+    # state decides which words may appear below.
+    n_input_i: int | None = None if n_input is None else int(n_input)
+    if decode_source != "checkpoint":
+        decode_state = "not_decoded_by_panel"
+    elif decode_succeeded is False:
+        decode_state = "decode_failed"
+    elif decode_succeeded is True and n_input_i == 0:
+        # The decode RAN but produced no usable molecule.  Same honesty
+        # requirement as a decode that raised: nothing was decoded.
+        decode_state = "decode_failed"
+    elif decode_succeeded is True:
+        decode_state = "decoded"
+    else:
+        decode_state = "outcome_unknown"
+
+    # --- (2) WAS THE CHECKPOINT'S OWN 'args' READ? -------------------
+    # Wf-A129 — "absent" (the checkpoint carries no 'args' namespace) and
+    # "unreadable" (the checkpoint could not be loaded, so nobody looked)
+    # are DIFFERENT facts and must not share a sentence.
+    if decode_source != "checkpoint":
+        args_state = "not_applicable"
+    elif trainer_args_state in ("read", "absent", "unreadable"):
+        args_state = trainer_args_state
+    elif trainer_cohort:
+        args_state = "read"
+    else:
+        args_state = "unknown"
+
+    # --- (3) THE PANEL'S DECODE PARAMETERS ----------------------------
+    # Only a decode that PRODUCED molecules has decode parameters to
+    # disclose.  A failed decode used no method, no step count and no
+    # noise scale, so none is claimed here.
+    panel_params: dict | None = None
+    if decode_state in ("decoded", "outcome_unknown"):
+        panel_params = {
+            "method": PANEL_DECODE_METHOD,
+            "n_steps": PANEL_DECODE_N_STEPS,
+            "noise_sigma": PANEL_DECODE_NOISE_SIGMA,
+        }
+
+    # --- (4) THE MEASURED DIFFERENCES --------------------------------
+    differences: list[str] = []
+    compared_parameters: list[str] = []
+    if panel_params is not None and trainer_cohort:
+        if "method" in trainer_cohort:
+            compared_parameters.append("method")
+        if "n_steps" in trainer_cohort:
+            compared_parameters.append("n_steps")
+        if "fm_noise_sigma" in trainer_cohort:
+            compared_parameters.append("noise_sigma")
+        if (
+            "method" in trainer_cohort
+            and trainer_cohort["method"] != panel_params["method"]
+        ):
+            differences.append(
+                f"method: panel={panel_params['method']} vs trainer="
+                f"{trainer_cohort['method']}"
+            )
+        if (
+            "n_steps" in trainer_cohort
+            and trainer_cohort["n_steps"] != panel_params["n_steps"]
+        ):
+            differences.append(
+                f"n_steps: panel={panel_params['n_steps']} vs trainer="
+                f"{trainer_cohort['n_steps']}"
+            )
+        if (
+            "fm_noise_sigma" in trainer_cohort
+            and abs(float(trainer_cohort["fm_noise_sigma"]) - float(
+                panel_params["noise_sigma"]
+            )) > 1e-12
+        ):
+            differences.append(
+                f"noise_sigma: panel={panel_params['noise_sigma']} vs trainer="
+                f"{trainer_cohort['fm_noise_sigma']}"
+            )
+
+    # What the differences list is a comparison OF — so a reader can tell
+    # "the cohorts match" from "no comparison was made" (both give []).
+    if decode_state == "decoded" and trainer_cohort:
+        differences_basis = "applied"
+    elif panel_params is not None and trainer_cohort:
+        differences_basis = "configured_only"
+    else:
+        differences_basis = "not_compared"
+
+    params_text = ", ".join(compared_parameters) if compared_parameters else "none"
+
+    # --- (5) THE COMPARABILITY SENTENCE ------------------------------
+    # Wf-A129 — derived FROM the measured differences, never asserted.
+    if decode_state == "not_decoded_by_panel":
+        comparability = (
+            "NOT ESTABLISHED: this panel did not decode — the cohort was "
+            "produced by whatever wrote the input CSV, so it is neither the "
+            "panel's nor shown to be the trainer's."
+        )
+    elif decode_state == "decode_failed":
+        comparability = (
+            "NOT ASSESSED (decode produced no molecules): the decode "
+            "produced no molecules at all, so there is no panel cohort to "
+            "compare against the trainer's and no decode method was "
+            "applied; no comparability is claimed."
+        )
+    elif not trainer_cohort:
+        comparability = (
+            "NOT ASSESSED: the trainer's decode cohort for this checkpoint "
+            "was not established (the checkpoint's 'args' namespace is "
+            f"{args_state}), so the panel's cohort was not compared against "
+            "it."
+        )
+    elif not differences:
+        comparability = (
+            "the panel's decode settings and the trainer's own recorded "
+            "decode cohort MATCH on every compared parameter "
+            f"({params_text}) — panel_vs_trainer_differences is empty. This "
+            "covers the decode PARAMETERS only: the panel still decodes "
+            "with its own templates and its own seed, so the two are not "
+            "the same cohort of molecules."
+        )
+    else:
+        comparability = (
+            "NOT COMPARABLE on the compared parameters: the panel's decode "
+            "settings and the trainer's own recorded decode cohort DIFFER "
+            "— " + "; ".join(differences) + " — do not compare a number "
+            "from this artifact with the trainer's number for the same "
+            "checkpoint."
+        )
+
+    mtime_epoch: float | None = None
+    mtime_iso: str | None = None
+    if ckpt_path is not None:
+        try:
+            stat = ckpt_path.stat()
+            mtime_epoch = float(stat.st_mtime)
+            mtime_iso = datetime.datetime.fromtimestamp(
+                stat.st_mtime, tz=datetime.timezone.utc
+            ).isoformat()
+        except OSError:
+            pass
+
+    # --- (6) THE NOTES ------------------------------------------------
+    notes: list[str] = []
+    if decode_state == "decoded":
+        notes.append(
+            "Wf-A128: this panel discloses its OWN decode cohort.  Whether a "
+            "number in this artifact is comparable with the trainer's "
+            "number for the same checkpoint is decided by "
+            "panel_vs_trainer_differences below, not assumed."
+        )
+        notes.append(
+            f"the panel decoded with method={PANEL_DECODE_METHOD}, "
+            f"n_steps={PANEL_DECODE_N_STEPS}, noise_sigma="
+            f"{PANEL_DECODE_NOISE_SIGMA} — the panel's OWN settings, which "
+            f"were NOT changed by Wf-A128 (changing them would silently "
+            f"move every published panel number)."
+        )
+        notes.append(
+            f"the decode produced {n_input_i} molecule(s) (n_input="
+            f"{n_input_i}); those are the molecules this panel scored."
+        )
+    elif decode_state == "decode_failed":
+        notes.append(
+            "Wf-A128: this panel discloses its OWN decode cohort.  The decode "
+            "produced NO molecules, so this artifact carries no "
+            "molecule-level number and there is no panel decode cohort to "
+            "disclose."
+        )
+        if decode_succeeded is False:
+            notes.append(
+                "the decode FAILED (decode_succeeded=false, n_input="
+                f"{n_input_i}): NOTHING was decoded, so no decode method, "
+                "step count or noise scale was applied and none is claimed "
+                "here."
+            )
+        else:
+            notes.append(
+                "the decode ran but produced no usable molecule "
+                f"(decode_succeeded=true, n_input={n_input_i}): NOTHING was "
+                "decoded, so no decode method, step count or noise scale "
+                "was applied and none is claimed here."
+            )
+        notes.append(
+            "the panel's CONFIGURED decode settings are therefore not "
+            "disclosed as APPLIED settings, because they were not applied; "
+            "they are the module constants PANEL_DECODE_METHOD / "
+            "PANEL_DECODE_N_STEPS / PANEL_DECODE_NOISE_SIGMA in "
+            "molmetal/scripts/cfm_property_panel.py."
+        )
+    elif decode_state == "not_decoded_by_panel":
+        notes.append(
+            "Wf-A128: this panel discloses its OWN decode cohort.  This panel "
+            "did NOT decode — the cohort came from the input CSV — so no "
+            "panel decode cohort is disclosed."
+        )
+        notes.append(
+            "this panel did NOT decode: the cohort was produced by whatever "
+            "wrote the input CSV, so the decode parameters are UNKNOWN here "
+            "— not the panel's and not established as the trainer's."
+        )
+    else:
+        notes.append(
+            "Wf-A128: this panel discloses its OWN decode cohort.  The decode "
+            "outcome was NOT recorded for this disclosure (decode_succeeded "
+            "is null), so the statements below describe the panel's "
+            "CONFIGURED settings and are not evidence that a decode ran."
+        )
+        notes.append(
+            f"the panel's CONFIGURED decode settings are method="
+            f"{PANEL_DECODE_METHOD}, n_steps={PANEL_DECODE_N_STEPS}, "
+            f"noise_sigma={PANEL_DECODE_NOISE_SIGMA} — the panel's OWN "
+            f"settings, which were NOT changed by Wf-A128 (changing them "
+            f"would silently move every published panel number)."
+        )
+
+    if args_state == "read":
+        if trainer_cohort:
+            notes.append(
+                "the trainer's own cohort for this checkpoint is recorded "
+                "under 'trainer_decode_cohort' (read from the checkpoint's "
+                "own args)."
+            )
+        else:
+            notes.append(
+                "the checkpoint's own 'args' namespace WAS read, but it "
+                "records none of the decode parameters compared here "
+                "(method / n_steps / fm_noise_sigma), so the trainer's "
+                "decode cohort is NOT established here."
+            )
+    elif args_state == "absent":
+        notes.append(
+            "the checkpoint carries no 'args' namespace, so it does not "
+            "record its own sampling args; the trainer's cohort for it is "
+            "NOT established here; it is declared in the run configs "
+            "(configs/c7_fullgen_2026_10_20.yaml:579-580 and :271; "
+            "configs/c8_fullgen_b64_2026_10_24.yaml:632-633 and :307 declare "
+            "sample.n_steps=50, sample.method=midpoint, "
+            "train.fm_noise_sigma=2.485)."
+        )
+    elif args_state == "unreadable":
+        reason = f" ({trainer_args_state_reason})" if trainer_args_state_reason else ""
+        notes.append(
+            "the checkpoint's own 'args' namespace could NOT be read"
+            f"{reason}, so this disclosure does NOT establish whether the "
+            "checkpoint records its own sampling args — that is a different "
+            "fact from a checkpoint that does not record them.  The "
+            "trainer's cohort for this checkpoint is NOT established here."
+        )
+    elif args_state == "not_applicable":
+        notes.append(
+            "no checkpoint was read for this artifact (the cohort came from "
+            "the input CSV), so the trainer's decode cohort for it is NOT "
+            "established here."
+        )
+    else:
+        notes.append(
+            "the checkpoint's 'args' namespace was not read, so the "
+            "trainer's decode cohort for this checkpoint is NOT established "
+            "here."
+        )
+
+    if differences:
+        notes.append(
+            "the panel's decode settings and the trainer's own recorded "
+            "decode cohort DIFFER: " + "; ".join(differences) + " — do not "
+            "compare a number from this artifact with the trainer's number "
+            "for the same checkpoint."
+        )
+    elif differences_basis == "applied":
+        notes.append(
+            "the panel's decode settings and the trainer's own recorded "
+            f"decode cohort MATCH on every compared parameter ({params_text}"
+            "); panel_vs_trainer_differences is empty because there was no "
+            "difference to report, not because no comparison was made."
+        )
+    if differences_basis == "configured_only":
+        notes.append(
+            "panel_vs_trainer_differences compares the CONFIGURED decode "
+            "settings with the trainer's recorded cohort; whether those "
+            "settings were applied is decided by decode_state, not by this "
+            "list."
+        )
+    elif differences_basis == "not_compared":
+        notes.append(
+            "no panel-vs-trainer comparison was made: "
+            "panel_vs_trainer_differences is empty because there was "
+            "nothing to compare, not because the two cohorts were shown to "
+            "match."
+        )
+
+    return {
+        "decode_source": decode_source,
+        "decode_state": decode_state,
+        "panel_decode_params": panel_params,
+        "panel_decode_params_status": (
+            "applied"
+            if decode_state == "decoded"
+            else (
+                "not_applied"
+                if decode_state == "decode_failed"
+                else (
+                    "not_applicable"
+                    if decode_state == "not_decoded_by_panel"
+                    else "unknown"
+                )
+            )
+        ),
+        "seed": seed,
+        "n_samples": n_samples,
+        "n_input": n_input_i,
+        "checkpoint_path": str(ckpt_path) if ckpt_path is not None else None,
+        "checkpoint_mtime_epoch": mtime_epoch,
+        "checkpoint_mtime_iso": mtime_iso,
+        "decode_succeeded": decode_succeeded,
+        "is_trainer_decode_cohort": False,
+        "trainer_decode_cohort": trainer_cohort or None,
+        "trainer_decode_cohort_source": (
+            "the checkpoint's own 'args' namespace" if trainer_cohort else None
+        ),
+        "trainer_args_state": args_state,
+        "trainer_args_state_reason": trainer_args_state_reason,
+        "panel_vs_trainer_differences": differences,
+        "panel_vs_trainer_differences_basis": differences_basis,
+        "compared_parameters": compared_parameters,
+        "comparability": comparability,
+        "notes": notes,
+    }
+
+
 def _decode_smiles_from_ckpt(
     ckpt_path: Path,
     *,
     n_samples: int,
     seed: int,
+    provenance: dict | None = None,
 ) -> list[str]:
     """Wf-A54 (2026-10-16) — load a CFM checkpoint and decode ``n_samples``
     molecules to canonical SMILES.
@@ -1039,7 +1554,25 @@ def _decode_smiles_from_ckpt(
 
     Returns ``[]`` on any failure so the caller can write a valid (empty)
     JSON + a 1-row CSV (so downstream consumers that re-parse don't crash).
+
+    ``provenance`` (Wf-A128) is an optional out-parameter: when a dict is
+    passed, it is filled with the checkpoint's own ``args`` namespace, so the
+    caller can disclose the trainer's decode cohort in the panel's output
+    artifact without loading the checkpoint a SECOND time.
     """
+    # Wf-A128 — a decode that fails must say so in the disclosure, so the
+    # default is False and only the success path flips it.
+    if provenance is not None:
+        provenance["decode_succeeded"] = False
+        # Wf-A129 — the checkpoint's own 'args' namespace is UNREADABLE
+        # until the checkpoint actually loads.  Wf-A128's disclosure said
+        # "the checkpoint does not record its own sampling args" whenever
+        # it could not read them, which conflated "absent" with "not
+        # readable": on a CPU-only host a CUDA-saved checkpoint cannot be
+        # loaded at all, so the panel declared a fact about the
+        # checkpoint it had never inspected.
+        provenance["checkpoint_args_state"] = "unreadable"
+        provenance["checkpoint_args_state_reason"] = None
     # 2026-10-16 — make ``molmetal.*`` importable when this script is
     # invoked as ``python molmetal/scripts/cfm_property_panel.py`` (the
     # standard invocation puts the scripts/ dir on sys.path but NOT the
@@ -1052,6 +1585,10 @@ def _decode_smiles_from_ckpt(
     try:
         import torch  # noqa: WPS433 — lazy
     except ImportError as exc:
+        if provenance is not None:
+            provenance["checkpoint_args_state_reason"] = (
+                f"torch import failed ({exc!r})"
+            )
         print(
             f"[wfA54-decode] HONEST-NEGATIVE: torch import failed "
             f"({exc!r}); cannot load checkpoint. "
@@ -1060,6 +1597,10 @@ def _decode_smiles_from_ckpt(
         return []
 
     if not ckpt_path.is_file():
+        if provenance is not None:
+            provenance["checkpoint_args_state_reason"] = (
+                f"checkpoint file not found at '{ckpt_path}'"
+            )
         print(
             f"[wfA54-decode] HONEST-NEGATIVE: ckpt-path '{ckpt_path}' "
             f"is not a file. Returning empty SMILES list."
@@ -1078,6 +1619,10 @@ def _decode_smiles_from_ckpt(
             generate_clouds_from_noise,
         )
     except ImportError as exc:
+        if provenance is not None:
+            provenance["checkpoint_args_state_reason"] = (
+                f"trainer / decoder import failed ({type(exc).__name__}: {exc})"
+            )
         print(
             f"[wfA54-decode] HONEST-NEGATIVE: trainer / decoder import "
             f"failed ({type(exc).__name__}: {exc}); the production "
@@ -1089,6 +1634,10 @@ def _decode_smiles_from_ckpt(
     try:
         ckpt = _load_checkpoint_any(ckpt_path)
     except Exception as exc:
+        if provenance is not None:
+            provenance["checkpoint_args_state_reason"] = (
+                f"checkpoint load failed ({type(exc).__name__}: {exc})"
+            )
         print(
             f"[wfA54-decode] HONEST-NEGATIVE: load('{ckpt_path}') "
             f"failed ({type(exc).__name__}: {exc}). Returning empty "
@@ -1097,6 +1646,18 @@ def _decode_smiles_from_ckpt(
         return []
 
     state = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else None
+    # Wf-A128 — keep the checkpoint's own args so the caller can disclose the
+    # TRAINER's decode cohort without loading the checkpoint twice.
+    # Wf-A129 — also record whether that namespace was actually READ:
+    # "read" (the checkpoint carries an args namespace), "absent" (it
+    # carries none) and "unreadable" (the checkpoint could not be loaded,
+    # so nobody looked) are three different facts.
+    if provenance is not None:
+        _ckpt_args = ckpt.get("args") if isinstance(ckpt, dict) else None
+        provenance["trainer_args"] = _ckpt_args
+        provenance["checkpoint_args_state"] = (
+            "read" if isinstance(_ckpt_args, dict) and _ckpt_args else "absent"
+        )
     if state is None:
         print(
             f"[wfA54-decode] HONEST-NEGATIVE: ckpt at '{ckpt_path}' has "
@@ -1248,10 +1809,15 @@ def _decode_smiles_from_ckpt(
             model,
             templates,
             device,
-            method="euler",
-            n_steps=10,  # smoke-grade: 10 steps for sub-5s wall
+            # Wf-A128 — the values are NAMED now (PANEL_DECODE_* above) so
+            # the panel's output artifact can disclose its own cohort.  The
+            # VALUES are unchanged: euler / 10 steps / noise sigma 1.0 is
+            # the panel's smoke-grade decode and every published panel
+            # number was measured under it.
+            method=PANEL_DECODE_METHOD,
+            n_steps=PANEL_DECODE_N_STEPS,  # smoke-grade: 10 steps for sub-5s wall
             seed=seed,
-            noise_sigma=1.0,
+            noise_sigma=PANEL_DECODE_NOISE_SIGMA,
             pad_groups=True,  # Wf-A49: per-bucket batching
             pad_group_bucket=8,
         )
@@ -1392,6 +1958,8 @@ def _decode_smiles_from_ckpt(
         f"teacher_forced={_n_teacher_forced}/{len(clouds)} "
         "(z_rule = Z-only heuristic, NOT the cloud's label truth)"
     )
+    if provenance is not None:
+        provenance["decode_succeeded"] = True
     return smiles_list
 
 
@@ -1410,6 +1978,11 @@ def main(argv: list[str] | None = None) -> int:
             "cfm_property_panel: --smiles-csv and --ckpt-path are "
             "mutually exclusive; pick one (Wf-A54)."
         )
+    # Wf-A128 — the panel's OWN decode cohort, captured for the output
+    # artifact.  ``provenance`` is filled by the decode helper with the
+    # checkpoint's own ``args`` namespace, so the trainer's cohort is
+    # disclosed without loading the checkpoint twice.
+    provenance: dict = {}
     if args.ckpt_path is not None:
         # Decode → write to a temp CSV → fall through to read_smiles_csv.
         # The temp file is auto-cleaned by tempfile.NamedTemporaryFile.
@@ -1419,6 +1992,7 @@ def main(argv: list[str] | None = None) -> int:
             args.ckpt_path,
             n_samples=args.n_samples,
             seed=args.decode_seed,
+            provenance=provenance,
         )
         if not decoded:
             # HONEST-NEGATIVE surfaced from the helper; emit an empty
@@ -1445,6 +2019,33 @@ def main(argv: list[str] | None = None) -> int:
             args.smiles_csv = tmp_path
     smiles_list = read_smiles_csv(args.smiles_csv, last_epoch=args.last_epoch)
     panel = build_panel(smiles_list, include_validity=args.decode_chemistry_validity)
+    # Wf-A128 — THE DISCLOSURE.  It lands as a TOP-LEVEL ``decode_cohort``
+    # key of the panel's output artifact (``--out-json``), next to
+    # ``panel_version`` / ``n_input`` / ``aggregate`` — so a reader of the
+    # artifact sees WHICH cohort produced these numbers without having to
+    # read the panel's source.  The panel's decode PARAMETERS are NOT
+    # changed by this; only their disclosure is added.
+    panel["decode_cohort"] = _decode_cohort_disclosure(
+        decode_source=(
+            "checkpoint" if args.ckpt_path is not None else "smiles_csv"
+        ),
+        ckpt_path=args.ckpt_path,
+        seed=args.decode_seed,
+        n_samples=args.n_samples,
+        trainer_args=provenance.get("trainer_args"),
+        decode_succeeded=(
+            provenance.get("decode_succeeded")
+            if args.ckpt_path is not None
+            else None
+        ),
+        # Wf-A129 — the disclosure must see the cohort it describes: the
+        # number of molecules the panel actually scored (0 when the decode
+        # produced none), and whether the checkpoint's own 'args' namespace
+        # was read, absent, or unreadable.
+        n_input=int(panel.get("n_input", 0)),
+        trainer_args_state=provenance.get("checkpoint_args_state"),
+        trainer_args_state_reason=provenance.get("checkpoint_args_state_reason"),
+    )
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     with args.out_json.open("w", encoding="utf-8") as fh:
         json.dump(panel, fh, indent=2)

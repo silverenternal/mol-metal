@@ -165,6 +165,14 @@ from molmetal.molmetal_lam.reward.lambda_astsr import (
     DEFAULT_ASTSR_SCALE_CLIP,
     clip_astr_signature,
 )
+# Wf-A205 -- the annotation layer this metric publishes must be derivable
+# from the values the run just measured, so a fresh execution of this
+# producer does not silently drop it.  The builders are pure functions:
+# no file access, no clock, no randomness.
+from molmetal.scripts.wfa205_lomo_annotation_builders import (
+    build_lomo_headline_caveat,
+    resolve_min_unique_for_gate,
+)
 
 logger = logging.getLogger("wf125_p2")
 if not logger.handlers:
@@ -2493,6 +2501,54 @@ def _build_dataset(
     return ds, n_appended
 
 
+def _per_metal_resolvability(ds: MetalCytotoxDataset) -> Dict[str, object]:
+    """Per-metal unique-ligand counts + the gate's minimum count.
+
+    Wf-A205.  The headline caveat this metric publishes has to say which
+    folds sit below the gate's minimum unique-ligand count, and that
+    quantity must be DERIVED from the cohort this run actually used: a
+    caveat that carries a transcribed count is a live false claim the
+    moment the cohort changes.
+
+    The count is the number of distinct ligand SMILES the metal carries in
+    the run's own dataset.  It is identity-based, exactly like the LOMO
+    splitter's own view of a ligand (``dataset.df[smiles_col].astype(str)``),
+    so it is unaffected by the ``--dedup-ligands`` switch -- that switch
+    merges repeated measurements of one ligand, it does not add ligands.
+
+    Fabricated rows are EXCLUDED.  The synthetic block would otherwise
+    inflate its metal's count and make an unresolvable fold look
+    resolvable, which is the opposite of what the caveat is for.
+
+    The threshold is the project's own rule constant, taken from the one
+    module that owns it (``metal_activity_transfer_probe``).  When that
+    constant cannot be resolved the block carries ``None`` and the caveat
+    builder degrades to "resolvability not computed" rather than
+    inventing a threshold.
+    """
+    df = ds.df
+    mask = synthetic_row_mask(df)
+    real = df[~mask]
+    counts: Dict[str, int] = {}
+    if "Metal" in real.columns and "SMILES_Ligands" in real.columns:
+        for metal, group in real.groupby("Metal"):
+            counts[str(metal)] = int(
+                group["SMILES_Ligands"].astype(str).nunique()
+            )
+    threshold = resolve_min_unique_for_gate({})
+    return {
+        "rule": "MIN_UNIQUE_FOR_GATE",
+        "rule_source": "molmetal/scripts/metal_activity_transfer_probe.py",
+        "min_unique_for_gate": threshold,
+        "n_unique_ligands": counts,
+        "n_fabricated_rows_excluded": int(mask.sum()),
+        "cohort": (
+            "distinct ligand SMILES per metal over this run's own dataset, "
+            "fabricated rows excluded"
+        ),
+    }
+
+
 def _run_one(
     args: argparse.Namespace,
     ds: MetalCytotoxDataset,
@@ -3045,6 +3101,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     ds, n_synthetic_rh = _build_dataset(args, rh_over=args.rh_oversample)
+    # Wf-A205 -- the resolvability inputs the headline caveat needs, taken
+    # from the cohort this run actually used.
+    per_metal_resolvability = _per_metal_resolvability(ds)
 
     per_run: List[Dict[str, object]] = []
     # Group writes by metal so the Wf-131 P3 layout matches the Wf-131 P1
@@ -3182,6 +3241,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         # a noise SD of 0.085, which swamps every ablation run against it.
         "per_fold_resolution": agg["per_fold_resolution"],
         "worst_fold_resolution": agg["worst_fold_resolution"],
+        # Wf-A205 -- the resolvability inputs for the headline caveat.  They
+        # are derived from the cohort this run used (see
+        # ``_per_metal_resolvability``) so the caveat below can be computed
+        # instead of transcribed.
+        "per_metal_resolvability": per_metal_resolvability,
         "n_runs": agg["n_runs"],
         "n_folds": agg["n_folds"],
         "metals": args.metals,
@@ -3242,6 +3306,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         "overall_target_hit": bool(auc_mean >= TARGET_OVERALL_AUC),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
+    # Wf-A205 -- the headline caveat, COMPUTED from the values this run just
+    # measured (every figure and every metal name in it is derived from the
+    # payload above; none of it is transcribed from an earlier artefact).
+    # A caveat that hard-codes a number is a false claim as soon as the
+    # producer is executed again on other data, which is why the builder
+    # lives in ``wfa205_lomo_annotation_builders`` and why the threshold
+    # travels with the measurement in ``per_metal_resolvability``.
+    payload["headline_caveat"] = build_lomo_headline_caveat(payload)
     # --- Wf-C2: --out-metric is mandatory, and the canonical headline file
     # is off-limits unless the caller explicitly re-claims it. A round-1
     # smoke overwrote metrics/by_metric/metal_lomo_auc_wasserstein.json

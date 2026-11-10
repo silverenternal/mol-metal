@@ -18,14 +18,15 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh"
-PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+PY = sys.executable
 
 
 def _run_wrapper(

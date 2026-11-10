@@ -52,7 +52,8 @@ if ! "$PY" "$REPO_ROOT/molmetal/scripts/pre_flight_check.py" \
 fi
 echo "[m19_4metal] pre-flight PASS ($OUT_DIR/preflight.log)"
 
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBIZITY=error
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

@@ -152,12 +152,24 @@ def main() -> int:
     # Summary
     print()
     print("=" * 80)
-    print(f"SUMMARY: {n_pass}/{n_total} evaluators PASS")
+    # Wf-A269 wave-28 (2026-11-06) — POPULATION NAMED.  `n_total` counts
+    # PROBES — one per checked assertion (a SA score, an import, an
+    # instantiation) — and NOT evaluators: the 14 probes span the 9
+    # evaluator SECTIONS below, and the Wf-395-A1 audit counts 12 R17-tier
+    # EVALUATORS in its own inventory.  Calling a probe an evaluator is the
+    # §6.269.38 class (a true number next to a lying label), and it
+    # laundered the 14 into `r17_canonical_pass` in that audit.
+    print(f"SUMMARY: {n_pass}/{n_total} PROBES PASS")
     print("=" * 80)
     if n_pass == n_total:
-        print("✓ All evaluators ready for paper §4 evaluation suite")
+        print("✓ All PROBES passed — the evaluator suite is ready for paper §4")
     else:
-        print(f"✗ {n_total - n_pass} evaluators need attention")
+        # Wf-A269 wave-28 (2026-11-06) — the FAILURE branch names the
+        # same POPULATION as the PASS branch (PROBES, not evaluators).
+        # `n_total` counts probes; calling them evaluators in one branch
+        # and probes in the other is the §6.269.38 class with a true
+        # number and a lying label.
+        print(f"✗ {n_total - n_pass} PROBES need attention")
     return 0 if n_pass == n_total else 1
 
 

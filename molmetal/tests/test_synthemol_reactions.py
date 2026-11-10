@@ -25,7 +25,9 @@ import pytest
 
 import molmetal_lam.sbdd_env.syntemol_reactions as _stm  # noqa: E402
 
-_SYNTHEMOL_TREE = Path("/home/hugo/codes/mol-metal/references/SyntheMol/synthemol")
+_SYNTHEMOL_TREE = (
+    Path(__file__).resolve().parents[2] / "references" / "SyntheMol" / "synthemol"
+)
 if not _SYNTHEMOL_TREE.is_dir():
     pytest.skip(f"SyntheMol tree missing at {_SYNTHEMOL_TREE}", allow_module_level=True)
 _stm._SYNTHEMOL_PATH = _SYNTHEMOL_TREE  # type: ignore[attr-defined]

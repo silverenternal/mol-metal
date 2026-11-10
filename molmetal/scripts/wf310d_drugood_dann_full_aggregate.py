@@ -4,7 +4,7 @@
 Wf-310D (Wf-301A full run aggregation, follow-up of Wf-306A Phase-A):
 
 Inputs (read-only, written by Wf-301A full 5-seed × 50-epoch GPU run launched
-via molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh --phase A):
+via scripts/launch_wf306a_drugood_vina_gpu.sh --phase A):
 
 * molmetal/reports/wf301a_drugood_dann/seed<N>.json   (N in {0,1,2,3,4})
 * molmetal/reports/wf301a_drugood_dann/aggregate.json (smoke checkpoint)

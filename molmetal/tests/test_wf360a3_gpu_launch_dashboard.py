@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DASHBOARD_SH = PROJECT_ROOT / "scripts" / "gpu_launch_dashboard.sh"
 AGGREGATOR_PY = PROJECT_ROOT / "molmetal" / "scripts" / "gpu_launch_aggregator.py"
 DASHBOARD_JSON = PROJECT_ROOT / "molmetal" / "reports" / "gpu_launch_dashboard.json"

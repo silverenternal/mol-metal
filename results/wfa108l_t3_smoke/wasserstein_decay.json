@@ -1,0 +1,10 @@
+{
+  "wf": "wf124_phase_2",
+  "w2_history": [
+    0.780753381550312
+  ],
+  "decay_window": 10,
+  "decay_tol": 0.001,
+  "decay_pass": true,
+  "n_epochs": 1
+}

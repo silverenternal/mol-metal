@@ -106,7 +106,7 @@
     ],
     "cfm_baseline_facts": [
       "生成线池级验收表 10 行过 1 行（bond_type_macro_f1 0.618 >=0.60，OpenBabel 0.505）。⚠️ 该表的 now 值全部测在 radial 头上，而该头已被证不能拟合一个 batch（self_audit SA-3）；single_fragment 0.2505 / three_ring 0.6684 / six_ring 0.0292 / metal_ligand_min 1.234 A / hard_clash 0.0148 / SA 6.44 / QED 0.094 都是这个场的读数，不是模型能力上限。",
-      "全语料自由生成池 SA≤4.5 = 0.28%（36/12,668），联合闸（SA≤4.5 且 novelty≥0.90）0/10,190（metrics/by_metric/c7_scale_matched_pools.json）。",
+      "全语料自由生成池 SA≤4.5 = 0.4%（60/14,846，全语料层三池），联合闸（SA≤4.5 且 novelty≥0.90）0/10,190（metrics/by_metric/c7_scale_matched_pools.json）。",
       "typed edge 在 8/20/40 epoch 的 max rel change 是 0.39% / 0.50% / 0.22%，1e-2 阈值三个都不过（metrics/by_metric/wfa110_typed_edge_ablation_ep{8,20}.json）。",
       "M9 是唯一 FAIL 门：fm_term 在第 24/36 epoch 占总损失 91.47%，超过 90% 线；T3 的全语料臂决定它是小样本伪影还是真的需要权重调度。"
     ]
@@ -2508,7 +2508,7 @@
         "metrics/by_metric/wfa107_ring_prior_ab.json",
         "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json"
       ],
-      "result": "molecule_validity 与 rdkit_parse_rate 已同批输出，且前者能失败。c8_fullgen 三个 epoch 读 0.203/0.200/0.348，同一 pool 的 gen_validity 报 1.000/1.000/1.000；c7_fullgen 18 个 epoch 从 0.028 涨到 0.122（parse rate 全程 1.000，零变化）。wfa107 control/epoch0 由该 run 记录的 per-epoch 字段推导得 0.000（gen_single_fragment_ratio=0.000），而它的 gen_validity 报 1.000，正是 done_when 指定的那一格。kill 判据（与 gen_single_fragment_ratio 完全同值）在两个已发 pool 上成立，决定 KEEP：两者分母不同（全部抽样 vs 解析成功的行），且只有 molecule_validity 是 gate 能消费的单条 pass/fail。该等式已写进 artifact，不当独立证据用。",
+      "result": "molecule_validity 与 rdkit_parse_rate 已同批输出，且前者能失败。c8_fullgen 三个 epoch 读 0.203/0.200/0.348，同一 pool 的 gen_validity 报 1.000/1.000/1.000；c7_fullgen 池文件 18 个 epoch（被记录的运行只跑了 4..17）从 0.028 涨到 0.122（parse rate 全程 1.000，零变化）。wfa107 control/epoch0 由该 run 记录的 per-epoch 字段推导得 0.000（gen_single_fragment_ratio=0.000），而它的 gen_validity 报 1.000，正是 done_when 指定的那一格。kill 判据（与 gen_single_fragment_ratio 完全同值）在两个已发 pool 上成立，决定 KEEP：两者分母不同（全部抽样 vs 解析成功的行），且只有 molecule_validity 是 gate 能消费的单条 pass/fail。该等式已写进 artifact，不当独立证据用。",
       "artifact": "metrics/by_metric/cfm_molecule_validity_recompute.json",
       "tests": "molmetal/tests/test_wfa113_molecule_validity.py"
     },
@@ -4994,7 +4994,7 @@
       {
         "id": "SA-59",
         "finding": "_is_anti_aromatic 用 ring_size % 4 == 0 判断「RDKit 无法 kekulize 的环」。在 RDKit 2026.03.6 上直接测：4/6/8/10/12 元全芳香单环都能 kekulize，3/5/7/9 元都不能。规则恰好选中 RDKit 能处理的环，且从不碰真正失败的奇数环。另外六金属语料里 4n 全芳香环的数量是 0，所以这条规则在真值上从不触发，只在模型幻觉出 4 元芳香环时误伤。",
-        "evidence": "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_is_anti_aromatic",
+        "evidence": "molmetal/tests/test_wfa113_t86_no_anti_aromatic_demotion.py（守卫：demotion helper 已从 decoder 移除）；metrics/by_metric/wfa113_t83_truth_roundtrip.json（实测）",
         "measured": "33,429 个配合物中 complexes_with_a_4n_all_aromatic_ring = 0。",
         "artifact": "metrics/by_metric/wfa113_t83_truth_roundtrip.json",
         "addressed_by": [

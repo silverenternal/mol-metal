@@ -26,8 +26,8 @@ from molmetal.adapters.flow_matching_lipman._reference_loader import (
 if _reference_root is None:
     # Auto-bootstrap: try the canonical locations in order.
     for cand in (
-        Path("/home/hugo/codes/mol-metal/molmetal/references/flow_matching"),
-        Path("/home/hugo/codes/mol-metal/flow_matching"),
+        Path(__file__).resolve().parents[5] / "molmetal" / "references" / "flow_matching",
+        Path(__file__).resolve().parents[5] / "flow_matching",
     ):
         if cand.is_dir() and (cand / "__init__.py").is_file():
             configure_reference(cand)

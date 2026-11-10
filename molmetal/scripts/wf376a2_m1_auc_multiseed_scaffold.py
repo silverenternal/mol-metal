@@ -82,7 +82,7 @@ from typing import Dict, List, Optional, Tuple
 # Constants (per Wf-131 P3 anchor + Wf-335-M2 protocol + Wf-357-B3)
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf376a2_m1_auc_multiseed_scaffold"
 OUTPUT_FILE = OUTPUT_DIR / "aggregate.json"
 

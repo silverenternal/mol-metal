@@ -426,12 +426,32 @@ All 3 supplementary entries are **WEAK band** (|r| < 0.3 per Cohen 1988) and **s
 
 **预计 lift**: +5-15% on m14 CFM decode
 
-### Wf-353-A4 FlowMol unified atom-bond flow (arXiv 2412.01966 CC-BY-NC)
+### Wf-353-A4 FlowMol unified atom-bond flow (arXiv 2404.19739, CC BY-SA 4.0)
 
-**当前**: SCAFFOLD (~180 LOC, CC-BY-NC license)
+**当前**: SCAFFOLD (~180 LOC, CC BY-SA 4.0 license)
 **深集成**:
 - Replace separate atom + bond heads with unified atom-bond flow
-- LICENSE GATE: CC-BY-NC requires USER_OK
+- LICENSE GATE: CC BY-SA 4.0 requires USER_OK
+
+**CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+verbatim: “Wf-353-A4 FlowMol unified atom-bond flow (arXiv 2412.01966
+CC-BY-NC)” and “LICENSE GATE: CC-BY-NC requires USER_OK”. Verified against the
+primary sources on 2026-10-31: `arXiv:2412.01966` is **not** FlowMol — the
+arXiv abs page returns “Implementing Semiclassical Szegedy Walks in
+Classical-Quantum Circuits for Homomorphic Encryption” (Ortega, S. A.;
+Fernández, P.; Martin-Delgado, M. A.), a quantum-homomorphic-encryption paper,
+and the arXiv API returns no record titled “FlowMol: A Unified Flow Matching
+Model for 3D Molecular Generation” and no record authored by “Qiang, B.; Song,
+Y.; ...; Kingma, D. P.”. The real upstream is Dunn, I.; Koes, D. R. (2024),
+*Mixed Continuous and Categorical Flow Matching for 3D De Novo Molecule
+Generation* (FlowMol), `arXiv:2404.19739` — the identifier this repo’s own
+canonical `unified_atom_bond_flow.py` already cites — with siblings
+`arXiv:2411.16644` (FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3). **LICENCE:
+all three are CC BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+`creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged — CC
+BY-SA 4.0 still carries attribution + share-alike obligations, so USER_OK is
+still required. Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+#6.
 
 **文件改动**:
 - `molmetal/adapters/flow_matching_lipman/flowmol_unified.py`: NEW (license-gated)

@@ -171,7 +171,7 @@ phase2_gpu0() {
 
   # Job 1: Wf-310F frontier Wave C (~2-3 hr cuda:0)
   log "Launching Wf-310F frontier Wave C"
-  WF310F_NEXT_WAVE=C nohup bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --wave C \
+  WF310F_NEXT_WAVE=C nohup bash scripts/launch_wf310f_frontier_math_gpu.sh --wave C \
     > "${LOG_DIR}/wf310f_wave_c.log" 2>&1
   log "Wave C done (rc=$?)"
 
@@ -200,13 +200,13 @@ phase3_gpu1() {
 
   # Job 1: Wf-310F frontier Wave B (~0.5 hr cuda:0)
   log "Launching Wf-310F frontier Wave B"
-  WF310F_NEXT_WAVE=B nohup bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --wave B \
+  WF310F_NEXT_WAVE=B nohup bash scripts/launch_wf310f_frontier_math_gpu.sh --wave B \
     > "${LOG_DIR}/wf310f_wave_b.log" 2>&1
   log "Wave B done (rc=$?)"
 
   # Job 2: Wf-219 §4.1 Ru (13.5 min cuda:0)
   log "Launching Wf-219 §4.1 Ru"
-  USER_OK=1 nohup bash molmetal/scripts/launch_wf306b_wf219_ru_gpu.sh \
+  USER_OK=1 nohup bash scripts/launch_wf306b_wf219_ru_gpu.sh \
     > "${LOG_DIR}/wf219_ru.log" 2>&1
   log "Wf-219 §4.1 Ru done (rc=$?)"
 
@@ -214,27 +214,53 @@ phase3_gpu1() {
   # --status is read-only (USER_OK-exempt); the real launch path requires
   # USER_OK=1 and will BLOCK on Vina 1.2.7 conda install per AGENTS.md §5.4.
   log "Launching Wf-333 Vina 4-step (BLOCKED on Vina install)"
-  USER_OK=1 nohup bash molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh \
+  USER_OK=1 nohup bash scripts/launch_wf333_vina_4step_gpu_bench.sh \
     > "${LOG_DIR}/wf333_vina.log" 2>&1
   log "Wf-333 Vina 4-step done (rc=$?, BLOCKED on Vina install)"
 
   # Job 4: Wf-310C TODO-220 (3.9 hr cuda:0)
+  # Wf-A269 wave-3 (2026-11-02) — CORRECTION: the launcher now carries the
+  # canonical USER_OK env gate (AGENTS.md §5.9 / Wf-294B family) as its FIRST
+  # executable block, so it refuses with exit 64 unless USER_OK=1 is in the
+  # env.  This driver previously relied on the marker-file gate alone
+  # (`touch /tmp/USER_OK_WF310C_TODO220`), so the driver could no longer
+  # launch the wrapper it drives.  MEASURED before the repair: with the
+  # driver's exact env (no USER_OK) the launcher exits 64 and writes nothing.
+  # The fix is ADDITIVE and follows this script's own convention — 8 of the
+  # 11 jobs already set USER_OK=1 on the command line — and it does NOT
+  # weaken any gate: the marker-file gate still runs, so a launch now needs
+  # BOTH USER_OK=1 and the marker file.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+  #   nohup bash scripts/launch_wf310c_todo220_gpu.sh \
   log "Launching Wf-310C TODO-220"
   touch /tmp/USER_OK_WF310C_TODO220
-  nohup bash molmetal/scripts/launch_wf310c_todo220_gpu.sh \
+  USER_OK=1 nohup bash scripts/launch_wf310c_todo220_gpu.sh \
     > "${LOG_DIR}/wf310c_todo220.log" 2>&1
   log "TODO-220 done (rc=$?)"
 
   # Job 5: Wf-310C TODO-179 W2 PlatinAI 4-cell (4.5 hr cuda:0)
+  # Wf-A269 wave-3 (2026-11-02) — CORRECTION: same repair as Job 4 above —
+  # the canonical USER_OK env gate needs USER_OK=1 in the env, and this
+  # driver set only the marker file.  MEASURED before the repair: exit 64,
+  # nothing written.  Additive; the marker-file gate still runs.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+  #   nohup bash scripts/launch_wf310c_t179_w2_gpu.sh \
   log "Launching Wf-310C TODO-179"
   touch /tmp/USER_OK_WF310C_T179
-  nohup bash molmetal/scripts/launch_wf310c_t179_w2_gpu.sh \
+  USER_OK=1 nohup bash scripts/launch_wf310c_t179_w2_gpu.sh \
     > "${LOG_DIR}/wf310c_t179.log" 2>&1
   log "TODO-179 done (rc=$?)"
 
   # Job 6: Wf-310D DrugOOD DANN Phase A (3-4 hr cuda:0)
+  # Wf-A269 wave-3 (2026-11-02) — CORRECTION: same repair as Job 4 above.
+  # This wrapper has TWO gates — the canonical USER_OK=1 env gate (new) and
+  # its own historical WF306A_USER_OK=YES gate (Wf-300C) — so the driver
+  # must set BOTH.  MEASURED before the repair: exit 64, nothing written.
+  # Additive; neither gate is weakened.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+  #   WF306A_USER_OK=YES nohup bash scripts/launch_wf306a_drugood_vina_gpu.sh --phase A \
   log "Launching Wf-310D DrugOOD DANN Phase A"
-  WF306A_USER_OK=YES nohup bash molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh --phase A \
+  USER_OK=1 WF306A_USER_OK=YES nohup bash scripts/launch_wf306a_drugood_vina_gpu.sh --phase A \
     > "${LOG_DIR}/wf310d_drugood.log" 2>&1
   log "DrugOOD DANN done (rc=$?)"
 

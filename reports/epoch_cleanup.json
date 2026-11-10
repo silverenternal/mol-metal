@@ -1,0 +1,55 @@
+{
+  "created_at_utc": "2026-11-10T16:01:20.479181+00:00",
+  "status": "completed",
+  "items": [
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00005.pt",
+      "sha256": "533a673237f0b35379caaa6de953e9fcdfb84c502e3e9a1833c182b3facf3bd5",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00010.pt",
+      "sha256": "4b90b92e6d7e5042ee78780f6229013e2cc1aef8d23b7d7c9b29c8bed30beb27",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00015.pt",
+      "sha256": "d89f210de1a522bb6f0f6c607edfe81ec5872ed6687283c835baeaca1f4a600e",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00020.pt",
+      "sha256": "3b5b88fc636ff2e19142c0c1faa23489a6e7e1268b8d5db7e64d94a0a78a4b60",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00025.pt",
+      "sha256": "b88dc4bec3c5d4d969a79e05feba34408593fa80370a143d5d23d065b05fd94f",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00030.pt",
+      "sha256": "bb044466796099e9d0fdbbbe3529ee557a2b90814096f1f5b47b97c37713cadf",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00035.pt",
+      "sha256": "24bca21af59b02646016db7cb32690fbb8e2ddbc600f9c93ad602fc740abfe58",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00040.pt",
+      "sha256": "75c3b42c7787177e02555cb1522c2f0bd13de7b396b21535281ca605757691ce",
+      "logical_bytes": 2014413
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00045.pt",
+      "sha256": "796e3fce0ebe73ef0da1b414d30e8286832b8b7070fc574da72c2d70193afeb8",
+      "logical_bytes": 2014413
+    }
+  ],
+  "retained": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00050.pt",
+  "reason": "Old intermediate training snapshots with no linked epoch-level metric; final snapshot retained without claiming it is optimal.",
+  "logical_bytes": 18129717,
+  "retained_exists": true
+}

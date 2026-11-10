@@ -78,11 +78,15 @@ PLATINAI_A2780_DEFAULT = Path(
     "/mnt/storage/data/molmetal/PlatinAI_predicted_A2780.xlsx"
 )
 PLATINAI_MCF7_DEFAULT = Path("/mnt/storage/data/molmetal/PlatinAI_predicted_MCF7.xlsx")
-METAL_CYTOTOX_DEFAULT = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv"
+METAL_CYTOTOX_DEFAULT = (
+    Path(__file__).resolve().parents[3] / ".data" / "molmetal" / "MetalCytoToxDB.csv"
 )
-NCI60_GI50_DEFAULT = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/NCI60_GI50/GI50.csv"
+NCI60_GI50_DEFAULT = (
+    Path(__file__).resolve().parents[3]
+    / ".data"
+    / "molmetal"
+    / "NCI60_GI50"
+    / "GI50.csv"
 )
 
 # Heavy-atom window used in WF-R12 Path A model capacity

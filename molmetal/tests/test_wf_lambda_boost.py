@@ -24,11 +24,21 @@ Honest framing
 
 from __future__ import annotations
 
+import sys
 import time
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
+
+# Repo root, derived from this file's own location so the path resolves
+# on ANY checkout (this file lives at <repo>/molmetal/tests/, so
+# parents[0]=tests/, [1]=molmetal/, [2]=repo root).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Tracked location of the CLI runner under test.
+R4_LAMBDA_ONLY_RUN = REPO_ROOT / "molmetal" / "scripts" / "r4_lambda_only_run.py"
 
 # ---------------------------------------------------------------------------
 # Phase 1 — reference_ligand_resolver
@@ -327,13 +337,28 @@ class TestPtClickCompatMatrixUpdate:
         assert row["aqua_exchange"] == "compatible"
 
     def test_compat_matrix_version_marker(self):
+        import re
+
         from molmetal.molmetal_lam.lam_chem.pt_click_compat import (
             COMPAT_MATRIX_VERSION,
         )
 
-        # The version marker must be the WF-Lambda-Boost string
-        assert "wf-lambda-boost" in COMPAT_MATRIX_VERSION
-        assert "2026-09-16" in COMPAT_MATRIX_VERSION
+        # The marker records WHICH wave last touched the compat matrix, so it
+        # legitimately moves forward (Wf-223 added the 82-metal MLE rule library
+        # on 2026-09-28).  Pin the SHAPE and a date FLOOR -- never a second
+        # hard-coded literal -- otherwise this test goes stale on every
+        # legitimate bump.
+        m = re.match(
+            r"^wf-(?P<id>\d+)-(?P<date>\d{4}-\d{2}-\d{2})$", COMPAT_MATRIX_VERSION
+        )
+        assert m, (
+            "compat-matrix marker must look like wf-<id>-<YYYY-MM-DD>, got "
+            f"{COMPAT_MATRIX_VERSION!r}"
+        )
+        assert m.group("date") >= "2026-09-16", (
+            f"compat-matrix marker {COMPAT_MATRIX_VERSION!r} must not predate the "
+            "2026-09-16 WF-Lambda-Boost Phase 4 baseline"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -349,8 +374,8 @@ class TestR4LambdaOnlyRunCLIFlags:
 
         proc = subprocess.run(
             [
-                "python",
-                "/home/hugo/codes/try_triton_on_rocm/molmetal/scripts/r4_lambda_only_run.py",
+                sys.executable,
+                str(R4_LAMBDA_ONLY_RUN),
                 "--help",
             ],
             capture_output=True,
@@ -366,8 +391,8 @@ class TestR4LambdaOnlyRunCLIFlags:
 
         proc = subprocess.run(
             [
-                "python",
-                "/home/hugo/codes/try_triton_on_rocm/molmetal/scripts/r4_lambda_only_run.py",
+                sys.executable,
+                str(R4_LAMBDA_ONLY_RUN),
                 "--help",
             ],
             capture_output=True,

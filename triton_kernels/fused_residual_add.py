@@ -172,6 +172,42 @@ def _flatten(t: torch.Tensor) -> torch.Tensor:
 
 
 # ---------------------------------------------------------------------------
+# Pure-PyTorch reference implementation of the kernel's contract
+# ---------------------------------------------------------------------------
+def residual_add_fallback(
+    x: torch.Tensor,
+    residual: torch.Tensor,
+    alpha: float = 1.0,
+    beta: float = 1.0,
+) -> torch.Tensor:
+    """Pure-PyTorch ``alpha * x + beta * residual`` — the host-side reference.
+
+    This is the single source of truth for every non-Triton path of
+    :func:`fused_residual_add`, and it matches the Triton kernel's
+    arithmetic (``out = alpha * x + beta * res``) exactly.  It is
+    device-agnostic (CPU or CUDA) and broadcast-aware, so the CPU path
+    and the CUDA-shape fallbacks compute the *same* function.
+
+    Historical note (Wf-A127, 2026-10-31): the fallbacks previously used
+    ``torch.add(x, residual, alpha=alpha)``, whose ``alpha`` scales the
+    **second** operand (``input + alpha * other``).  That computes
+    ``x + alpha * residual`` — the ``alpha`` on ``x`` was silently
+    dropped and ``beta`` was dropped entirely.  The CPU branch tried to
+    patch this up with a second in-place ``add_(residual, alpha=beta-1)``,
+    which yields ``x + (alpha + beta - 1) * residual`` — still not
+    ``alpha * x + beta * residual``.  ``torch.add``'s argument order is
+    the trap; this helper sidesteps it.
+
+    At ``alpha == beta == 1.0`` this is **bit-identical** to the old
+    ``torch.add(x, residual, alpha=1.0)`` form (MEASURED 2026-10-31, CPU,
+    float16/bfloat16/float32/float64 over 4 shapes): multiplying by
+    ``1.0`` is exact in IEEE-754 and the old extra ``+ 0.0 * residual``
+    term is an exact identity for finite inputs.
+    """
+    return alpha * x + beta * residual
+
+
+# ---------------------------------------------------------------------------
 # torch.autograd.Function wrapper
 # ---------------------------------------------------------------------------
 class _FusedResidualAddFunction(torch.autograd.Function):
@@ -279,19 +315,21 @@ def fused_residual_add(
 
     Notes
     -----
-    On CPU tensors we fall back to ``torch.add`` so tests can run on
-    CPU-only machines.
+    On CPU tensors — and on the CUDA broadcast shapes the kernel does not
+    cover — we fall back to :func:`residual_add_fallback` (the pure-PyTorch
+    ``alpha * x + beta * residual`` reference) so tests can run on
+    CPU-only machines without changing the function being computed.
     """
     if not x.is_cuda:
-        return torch.add(x, residual, alpha=alpha).add_(residual, alpha=(beta - 1.0))
+        return residual_add_fallback(x, residual, alpha=alpha, beta=beta)
     # General PyTorch broadcast handles non-trailing-axis cases; we
     # delegate those to torch and only Triton-path the trailing-axis
     # case (which covers all transformer / ResNet residual patterns).
     if residual.dim() != x.dim() and residual.dim() != 0:
         # General broadcast; not handled by the kernel.
-        return torch.add(x, residual, alpha=alpha)
+        return residual_add_fallback(x, residual, alpha=alpha, beta=beta)
     if residual.dim() == 0:
-        return torch.add(x, residual, alpha=alpha)
+        return residual_add_fallback(x, residual, alpha=alpha, beta=beta)
 
     # The kernel's trailing-axis broadcast covers residual.shape == x.shape
     # (the common case) AND residual.shape == (..., 1) when the only
@@ -306,11 +344,12 @@ def fused_residual_add(
         return _FusedResidualAddFunction.apply(x, residual, alpha, beta)
 
     # Fallback for any other broadcast shape.
-    return torch.add(x, residual, alpha=alpha)
+    return residual_add_fallback(x, residual, alpha=alpha, beta=beta)
 
 
 __all__ = [
     "fused_residual_add",
+    "residual_add_fallback",
     "_fused_residual_add_kernel",
     "_fused_residual_add_bwd_kernel",
     "_FusedResidualAddFunction",

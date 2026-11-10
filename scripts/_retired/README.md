@@ -60,3 +60,35 @@ These seven are named in `TODO/completed/*.md` and `todo.json`. Those are
 historical records of completed waves, so the paths there now read
 `scripts/_retired/<name>.sh`. `train_cfm_yuelbond_wasserstein.py:5849` is the
 only *code* reference, and it points at `..._c5_repair.sh`, which did not move.
+
+## 2026-11-04 — one CPU-lock line repaired (Wf-A269 wave-21)
+
+`launch_wf_fix3lines_cfm.sh` line 61 read `export CUDA_VISIBLE_DEVICES=0`, which
+**hard-forces GPU 0** and defeats an ambient `CUDA_VISIBLE_DEVICES=""` lock. It is
+now
+
+```bash
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
+```
+
+— the **no-colon** `${VAR-default}` form, which substitutes only when the variable is
+**UNSET**, so an explicitly empty (locked) ambient mask survives.
+
+**The historical launch record is unaffected.** With no ambient mask set — the
+condition under which the 2026-10-09 wave actually ran — the value is still `0`,
+byte-identical in behaviour. The line differs **only** when an operator has set
+the ambient mask, which is exactly the case the repo's standing 0-GPU directive
+requires to be honoured.
+
+**Why a retired launcher was touched.** The re-run path documented above
+(`git mv scripts/_retired/<name>.sh scripts/<name>.sh`) makes the file a **LIVE**
+launcher under `scripts/`, where the old line was a live defect. The repair is
+therefore load-bearing for that documented operation.
+
+**Note for the next census.** `molmetal/scripts/wfa167_command_prefix_guard.py`
+classifies `ARCHIVED` by a **path prefix** (`TODO/archive/`, `results/`) and does
+**not** list `scripts/_retired/`, so this tree is scanned as **live** even though
+this directory's own policy (and `scripts/_yaml_only_gate.py:108,131`) call it
+archival. The correct repair is a **CITED** exclusion table, not a path heuristic
+— recorded as an OPEN item in `docs/HONEST_NEGATIVE_CATALOG.md` §6.269.31.
+

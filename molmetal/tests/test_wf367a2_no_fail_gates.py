@@ -31,6 +31,7 @@ Source: Wf-367-A2 closeout + Wf-364-A1 §4.2 root-cause recommendation.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 PREFLIGHT_CHECK_SCRIPT = SCRIPT_DIR = SCRIPTS_DIR / "pre_flight_check.py"
-VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VENV_PY = Path(sys.executable)
 
 # Pre-flight invocation tokens that we want to ensure are NOT used by the
 # gate.  Per Wf-367-A2 fix: --strict was removed from

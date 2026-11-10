@@ -16,7 +16,7 @@ import importlib.util as _ilu
 
 # Resolve repo + atomic_write helper without going through the package,
 # because the package's __init__ pulls in model code we do not need here.
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "molmetal" / "scripts"))
 _spec = _ilu.spec_from_file_location(
     "wf386a3_atomic_write",

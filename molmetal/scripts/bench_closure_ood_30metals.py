@@ -216,8 +216,11 @@ DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf130_p3_ood_3
 #: Path to the PlatinAI 5K CSV (R17 ship).
 DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 #: Path to the MetalCytoToxDB 5-metal CSV (Wf-21 ship).
-DEFAULT_METALCYTO_CSV: Path = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_METALCYTO_CSV: Path = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "metalcytotox_5metal_multitask_v4.csv"
 )
 FALLBACK_METALCYTO_CSV: Path = (
     _REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal.csv"

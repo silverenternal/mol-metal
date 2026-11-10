@@ -65,7 +65,8 @@ TREAT_DIR="molmetal/reports/cfm_frag_assemble"
 DRY=0
 [[ "${1:-}" == "--dry-run" ]] && DRY=1
 
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 

@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Dict, Sequence
 
 # Ensure imports work in headless test contexts.
-_REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPTS_DIR = _REPO_ROOT / "molmetal" / "scripts"
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))

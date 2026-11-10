@@ -70,8 +70,8 @@ work; MEASURED speedup requires Blackwell retrain per AGENTS.md §5.1 +
 **VERDICT**: 0 of 14 NEW CFM flags were present in `scripts/launch_wf299_cfm_main.sh`
 BEFORE this edit. After the edit, **13 of 14 NEW CFM flags pass through to the
 trainer on every Wave A invocation**; **1 flag (`--flowmol-unified`) is
-intentionally NOT passed** because it is LICENSE-GATED (CC-BY-NC; requires
-explicit `USER_OK` per AGENTS.md §5.1).
+intentionally NOT passed** because it is LICENSE-GATED (CC BY-SA 4.0;
+requires explicit `USER_OK` per AGENTS.md §5.1; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §3]).
 
 **Edits applied** (2 hunks, +42 LOC net):
 
@@ -163,10 +163,29 @@ Per `party-twenty-spirit` §3.5:
    which the chemprop and D-MPNN trainers do not import).
 
 6. **Wf-385-A2 cannot pass `--flowmol-unified`** because it is LICENSE-GATED
-   (CC-BY-NC; requires user OK per AGENTS.md §5.1).
+   (CC BY-SA 4.0; requires user OK per AGENTS.md §5.1).
 
-7. **`--flowmol-unified` requires explicit `USER_OK=1`** (FlowMol arXiv:2412.01966
-   CC-BY-NC license; production integration needs user authorization).
+7. **`--flowmol-unified` requires explicit `USER_OK=1`** (FlowMol arXiv:2404.19739
+   CC BY-SA 4.0 license; production integration needs user authorization).
+
+   **CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+   verbatim: “FlowMol arXiv:2412.01966” and “CC-BY-NC license”. Verified
+   against the primary sources on 2026-10-31: `arXiv:2412.01966` is **not**
+   FlowMol — the arXiv abs page returns “Implementing Semiclassical Szegedy
+   Walks in Classical-Quantum Circuits for Homomorphic Encryption” (Ortega, S.
+   A.; Fernández, P.; Martin-Delgado, M. A.), a quantum-homomorphic-encryption
+   paper, and the arXiv API returns no record titled “FlowMol: A Unified Flow
+   Matching Model for 3D Molecular Generation” and no record authored by
+   “Qiang, B.; Song, Y.; ...; Kingma, D. P.”. The real upstream is Dunn, I.;
+   Koes, D. R. (2024), *Mixed Continuous and Categorical Flow Matching for 3D
+   De Novo Molecule Generation* (FlowMol), `arXiv:2404.19739` — the identifier
+   this repo’s own canonical `unified_atom_bond_flow.py` already cites — with
+   siblings `arXiv:2411.16644` (FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3).
+   **LICENCE: all three are CC BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+   `creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged —
+   CC BY-SA 4.0 still carries attribution + share-alike obligations, so USER_OK
+   is still required. Superseded wording preserved verbatim per AGENTS.md §5.5
+   rule #6.
 
 8. **EXPECTED_GATE_COUNTS["all"] hardcoded count drift** (94 hardcoded vs
    117 runtime auto-recompute per Wf-345-B3; audit gate PASSES because runtime
@@ -203,7 +222,7 @@ Per `party-twenty-spirit` §3.5:
 > (deferred to Wf-381+ MEASURED wire-in on Blackwell); 9 honest-negative
 > caveats from Wf-386-B1 §5.3; 2 NEW pre-flight FAILs + 3 pre-existing SKIPs;
 > Wf-385-A3 NEW gate is `'all'-only; `--flowstream-unified` requires USER_OK
-> per LICENSE-GATED CC-BY-NC; EXPECTED_GATE_COUNTS["all"] hardcoded count
+> per LICENSE-GATED CC BY-SA 4.0 (FlowMol arXiv:2404.19739; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §3]); EXPECTED_GATE_COUNTS["all"] hardcoded count
 > drift; all PROJECTED speedup/lift claims remain PROJECTED; wetlab items
 > DEPRECATED per §10.
 >
@@ -232,7 +251,8 @@ Per `party-twenty-spirit` §3.5, the Wf-385 wave honestly reports:
   detection + 50-step CPU smoke + decode_ratio + loss decrease + module-export
   verification)
 - 1 Wf-299 launch wrapper edit (13 of 14 NEW CFM flags pass through;
-  `--flowmol-unified` LICENSE-GATED remains excluded per CC-BY-NC requirement)
+  `--flowmol-unified` LICENSE-GATED remains excluded per CC BY-SA 4.0
+  requirement; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §3])
 - 1 Wf-380 per-flag audit (0/17 wired in main loop — closure path Wf-381+)
 - 3 NEW Wf-385 closeout files on disk (385a1 + 385a2 + 385a3)
 - 20 NEW tests in `molmetal/tests/test_wf385a3_scaffold_wire_in_gate.py` (5 test
@@ -261,7 +281,7 @@ Per `party-twenty-spirit` §3.5, the Wf-385 wave honestly reports:
 - Wf-385-A1 audit finds 0/17 Wf-380 NEW flags wired in main loop — closure path
   is Wf-381 MEASURED wire-in (NOT Wf-385 — Wf-385 is docs+light-code only)
 - Wf-385-A2 cannot pass `--flowmol-unified` because it is LICENSE-GATED
-  (CC-BY-NC; requires user OK per AGENTS.md §5.1)
+  (CC BY-SA 4.0; requires user OK per AGENTS.md §5.1; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §3])
 - Wf-385-A3 NEW gate is `'all'-only` (not in `frontier` / `chemprop_v2_v3` /
   `cfm` pipelines because the Wf-380 SCAFFOLD chain is CFM-only)
 - EXPECTED_GATE_COUNTS["all"] hardcoded count is 94 (not 117) — the 22 Wf-353-B1

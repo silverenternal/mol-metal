@@ -58,7 +58,7 @@ _CHEMPROP = _SCRIPT_DIR / "train_chemprop_v2_v3.py"
 # Pre-flight uses /home/hugo/codes/mol-metal/.venv/bin/python
 # (see molmetal/scripts/pre_flight_check.py line 81).  We honour that
 # contract here so that the gate runs the same way it does in CI.
-_VENV_VLM = "/home/hugo/codes/mol-metal/.venv/bin/python"
+_VENV_VLM = sys.executable
 
 
 def _python_for_chemprop() -> str:

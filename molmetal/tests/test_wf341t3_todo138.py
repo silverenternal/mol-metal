@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PLAN_PATH = REPO_ROOT / "TODO" / "completed" / "341t3_todo138_tier2_rescope_plan.md"
 TODO_138_PATH = REPO_ROOT / "TODO" / "completed" / "138_paper_v2_submission_package.md"

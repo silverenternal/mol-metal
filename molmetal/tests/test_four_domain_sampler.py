@@ -427,6 +427,7 @@ def test_cli_accepts_four_domain_flag() -> None:
         text=True,
         cwd=str(PROJECT_ROOT),
         env={
+            "CUDA_VISIBLE_DEVICES": "",
             "PATH": "/usr/bin:/bin",
             "HOME": str(Path.home()),
             "PYTHONPATH": str(PROJECT_ROOT),

@@ -23,9 +23,17 @@
 #   USER_OK=1 bash scripts/launch_variance_puct_smoke.sh
 #
 # Exit codes: 0 = PASS, 1 = FAIL, 64 = missing USER_OK.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
 # 2026-10-08 pipefix: drop pipefail from `set -e` (SIGPIPE from forked
 # DataLoader workers flushing stdout after trainer exit killed the wrapper
 # silently via `tee`). rc captured below via ${PIPESTATUS[0]}.
+#
+# Wf-A269 wave-10 (2026-11-02): the rc capture was DEAD.  `|| true` runs
+# AFTER the failing pipeline and CLOBBERS PIPESTATUS to (0), so this
+# AGENTS.md §5.7 smoke gate could never FAIL even though its producer
+# (scripts/variance_puct_smoke_invocation.py:150) exits non-zero on any
+# failed check.  The repaired shape is at the call site below
+# (scripts/_WRAPPER_TEMPLATE.sh:190-193).
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -55,9 +63,20 @@ STAMP="$(date +%Y%m%d_%H%M%S)"
 LOG="$LOG_DIR/${STAMP}.log"
 
 cd "$REPO_ROOT"
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   WFA2_CONFIG_STRICT=1 "$PY" "$SMOKE" 2>&1 | tee "$LOG" || true   # 2026-10-08 pipefix
+#   RC="${PIPESTATUS[0]}"
+#
+# Canonical shape (scripts/_WRAPPER_TEMPLATE.sh:190-193): pipefail off for
+# this ONE pipeline (a trainer killed by SIGPIPE from a forked worker would
+# otherwise report 141 instead of its own status) and the rc read BETWEEN the
+# two `set` lines, while PIPESTATUS still holds the pipeline's statuses — so
+# the FAIL branch below is reachable for a non-zero trainer exit.
 set +e
-WFA2_CONFIG_STRICT=1 "$PY" "$SMOKE" 2>&1 | tee "$LOG" || true   # 2026-10-08 pipefix
+set +o pipefail
+WFA2_CONFIG_STRICT=1 "$PY" "$SMOKE" 2>&1 | tee "$LOG"
 RC="${PIPESTATUS[0]}"
+set -o pipefail
 set -e
 
 if [[ "$RC" -ne 0 ]]; then

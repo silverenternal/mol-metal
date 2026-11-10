@@ -1,5 +1,23 @@
 """Verify the 8-skill ecosystem for Mol-Metal (Wf-19 / Wf-Skill-Ecosystem, 2026-09-26).
 
+**Count re-synced 2026-11-04 (Wf-A269 stale-pins sweep).**  The title
+line above and the ``"n_skills": 8`` example below are the Wf-19
+(2026-09-26) rendering and are PRESERVED VERBATIM per AGENTS.md §5.5
+rule #6.  MEASURED 2026-11-04 by a live run of this script: the
+ecosystem now holds **29** SKILL.md files on disk (the 8 Wf-19
+baseline + 21 added since), the report reads ``n_skills: 29,
+n_passed: 8, n_failed: 21`` and the producer prints
+``skill-ecosystem: 8/29 PASS``.  The 21 post-Wf-19 skills FAIL the
+R18-era format gates (no ``Cross-reference`` section, no worked
+example, no R18 mechanism reference); 3 of them additionally ship no
+``name``/``description`` frontmatter
+(mol-metal-hierarchical-multimetal, mol-metal-neural-ode-kinetics,
+mol-metal-wetlab-bayesian).  The per-skill contract decision (does
+the Wf-19 format gate apply to all 29, or only to the Wf-19 cohort?)
+is OPEN — ``molmetal/tests/test_skill_ecosystem.py`` is still RED.
+The CODE below counts whatever it finds; the title and the example
+are historical.
+
 ================================================================
 Skill ecosystem verification — content + cross-reference integrity.
 ================================================================
@@ -41,6 +59,11 @@ following shape::
         ...
       }
     }
+
+(The example above is the Wf-19 (2026-09-26) rendering, PRESERVED VERBATIM
+per AGENTS.md §5.5 rule #6.  MEASURED 2026-11-04: the live population is
+**29** skills — the 8 baseline + 21 post-Wf-19 — and the live report is
+``n_skills: 29, n_passed: 8, n_failed: 21``.)
 
 Run via::
 

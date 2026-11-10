@@ -45,28 +45,89 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "${REPO_ROOT}"
 
+# ---------------------------------------------------------------------------
+# CPU LOCK (AGENTS.md §5.1 + the repo's standing 0-GPU session contract)
+#
+# MEASURED 2026-11-04: running this script WITHOUT the lock allocated
+# 694 MiB of GPU memory per process, while the smoke itself ran on CPU.
+# The cause is the IMPORT CHAIN, not the smoke: it reaches
+# ``torch.cuda.get_device_capability()``
+# (molmetal/adapters/flow_matching_lipman/amp.py:187), and
+# ``torch.cuda.is_available()`` initialises the CUDA driver (``cuInit``),
+# which creates the context.  This is the SAME class Wf-A162 repaired
+# inside the pre-flight (molmetal/scripts/pre_flight_check.py::_smoke_device)
+# -- but these smoke scripts carried no lock of their own, so a caller who
+# forgot it silently paid the allocation (this repo's own session did,
+# twice, before the lock existed).
+#
+# These smokes are CPU-BY-DESIGN (each script's own header budgets the run
+# as "<2 min on CPU"), so the lock is the DEFAULT rather than a caller
+# obligation: an unset ``CUDA_VISIBLE_DEVICES`` becomes "" (no device
+# visible), and an explicit value is PRESERVED so a deliberate GPU smoke
+# is still possible.  ``MOLMETAL_SMOKE_DEVICE=cpu`` is the repo's parity
+# kill-switch (honoured by ``metallo_drug_smoke_retrain.py::_resolve_device``).
+# ---------------------------------------------------------------------------
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-}"
+export MOLMETAL_SMOKE_DEVICE="${MOLMETAL_SMOKE_DEVICE:-cpu}"
+
 # Locate the canonical repo-local venv (AGENTS.md §5.9 single-venv rule).
 SHARED_VENV="${REPO_ROOT}/.venv/bin/python"
 if [[ -x "${SHARED_VENV}" ]]; then
     PY="${SHARED_VENV}"
+elif [[ -n "${PYTHON-}" && -x "${PYTHON}" ]]; then
+    # An EXPLICIT override is honoured; a BARE `python` is not (AGENTS.md
+    # §5.9: the smoke must run under the repo's single venv, never under an
+    # ambient interpreter that may be another project's -- `kanzi_venv`,
+    # `CadButEaas`, or a system python with a different torch).
+    PY="${PYTHON}"
 else
-    PY="${PYTHON:-python}"
+    echo "[smoke] FATAL: no interpreter." >&2
+    echo "[smoke]   expected the repo venv: ${SHARED_VENV}" >&2
+    echo "[smoke]   (missing or not executable) -- AGENTS.md §5.9 forbids a" >&2
+    # Wf-A269 wave-26 (2026-11-04) — THE MESSAGE MENTIONS AN INTERPRETER
+    # PATH, AND THE REPO'S OWN §5.9 GATE READS MENTIONS AS USE.
+    # `scripts/_wrapper_audit.py::interpreter_census` adjudicates a LITERAL
+    # absolute interpreter path wherever it appears on a CODE line (comments
+    # are stripped, but a path inside an `echo` ARGUMENT is not a comment).
+    # The message below therefore tripped the gate:
+    #   VIOLATION molmetal/scripts/smoke/<smoke>.sh:<line> [/abs/path/to/python]
+    #   -- §5.9 forbids an interpreter outside the repo venv
+    # MEASURED 2026-11-04: 4 files / 4 violations, all from THIS message.
+    # The gate is CORRECT as documented ("the rule is LITERAL by construction:
+    # an interpreter path is adjudicated when it is written out in full") — the
+    # defect was the MESSAGE, not the gate.  => the message now names the
+    # override VARIABLE without writing out a literal absolute path, and the
+    # gate returns to 0 violations.  The gate's own imprecision (it cannot
+    # tell an interpreter INVOCATION from an interpreter MENTION) is
+    # disclosed separately, not silently reworded away.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #   echo "[smoke]   bare \`python\`.  Set PYTHON=/abs/path/to/python to" >&2
+    echo "[smoke]   bare \`python\`.  Set PYTHON=<absolute python path> to" >&2
+    echo "[smoke]   override explicitly, or create the repo venv." >&2
+    exit 1
 fi
 
 # Use a stable per-run temp dir so re-runs don't collide.
 TMP_DIR="$(mktemp -d /tmp/molmetal_smoke_lambda.XXXXXX)"
-trap 'rm -rf "${TMP_DIR}"' EXIT
+# The runner writes its report under molmetal/reports/wf_lambda1_<output-dir>/,
+# NOT under the temp dir (MEASURED 2026-11-04: the runner's own code does
+#   out = _REPO_ROOT / "molmetal" / "reports" / f"wf_lambda1_{args.output_dir}"
+# and then writes report.json + summary.md + seeds.json there).  The
+# pre-repair smoke looked for ${TMP_DIR}/report.json, which the runner never
+# writes, so the smoke could not have passed even with a valid command line.
+OUT_NAME="smoke_lambda_$$"
+OUT_DIR="${REPO_ROOT}/molmetal/reports/wf_lambda1_${OUT_NAME}"
+trap 'rm -rf "${TMP_DIR}" "${OUT_DIR}"' EXIT
 
-echo "[smoke_lambda] Launching r4_lambda_only_run.py --smoke --quiet --out-dir ${TMP_DIR}" >&2
+echo "[smoke_lambda] Launching r4_lambda_only_run.py --config configs/lambda_smoke.yaml --output-dir ${OUT_NAME}" >&2
 echo "[smoke_lambda] (10 pockets × 1 seed × 20 sims; <2 min on CPU)" >&2
 
 T_START=$(date +%s)
 set +e
 "${PY}" -u molmetal/scripts/r4_lambda_only_run.py \
-    --smoke \
-    --quiet \
-    --output-dir "smoke_lambda_$$" \
-    --out-dir "${TMP_DIR}" \
+    --config configs/lambda_smoke.yaml \
+    --output-dir "${OUT_NAME}" \
     > "${TMP_DIR}/stdout.log" 2> "${TMP_DIR}/stderr.log"
 RC=$?
 set -e
@@ -80,7 +141,7 @@ if [[ ${RC} -ne 0 ]]; then
     exit 1
 fi
 
-REPORT_JSON="${TMP_DIR}/report.json"
+REPORT_JSON="${OUT_DIR}/report.json"
 if [[ ! -f "${REPORT_JSON}" ]]; then
     echo "[smoke_lambda] FAIL no_report: ${REPORT_JSON} not produced" >&2
     tail -20 "${TMP_DIR}/stderr.log" >&2 || true

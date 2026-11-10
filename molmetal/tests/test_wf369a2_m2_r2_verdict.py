@@ -24,9 +24,10 @@ from __future__ import annotations
 import os
 import re
 import unittest
+from pathlib import Path
 
 
-REPO_ROOT = "/home/hugo/codes/mol-metal"
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
 VERDICT_DOC_PATH = os.path.join(REPO_ROOT, "docs", "M2_R2_FINAL_VERDICT.md")
 WF335M2_CLOSEOUT_PATH = os.path.join(
     REPO_ROOT, "TODO", "completed", "335m2_r2_w2_chemprop_full.md"

@@ -109,7 +109,7 @@ class TestBenchCatherine30Metals:
 
         proc = subprocess.run(
             [
-                "/home/hugo/codes/mol-metal/.venv/bin/python",
+                sys.executable,
                 str(Path(_REPO) / "molmetal/scripts/bench_catherine_30metals.py"),
                 "--help",
             ],

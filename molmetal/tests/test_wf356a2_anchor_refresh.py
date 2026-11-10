@@ -73,8 +73,8 @@ REFRESH_TARGET_ANCHORS = (
     "molmetal/reports/wf170_permetal_singletask/sweep_summary.json",
 )
 
-PYTHONPATH = "/home/hugo/codes/mol-metal"
-PYTHON_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
+PYTHONPATH = str(pathlib.Path(__file__).resolve().parents[2])
+PYTHON_BIN = sys.executable
 PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 ANCHOR_FRESHNESS_GATE_NAME = "p3_wf343c4_anchor_freshness_24h"
 
@@ -155,7 +155,7 @@ def test_wf356a2_preflight_anchor_freshness_gate_passes():
         capture_output=True,
         text=True,
         timeout=300,
-        env={"PYTHONPATH": PYTHONPATH, "PATH": "/usr/bin:/bin"},
+        env={"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": PYTHONPATH, "PATH": "/usr/bin:/bin"},
     )
     # The pre-flight may exit non-zero when OTHER gates FAIL (e.g.
     # p2_tests_pass when some pytest tests regress). We only care

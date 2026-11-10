@@ -56,7 +56,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOLMETAL_PKG = REPO_ROOT / "molmetal"
 VENV_SYMLINK = MOLMETAL_PKG / ".venvs" / "mol-metal-venv"
-SHARED_VENV = Path("/home/hugo/codes/mol-metal/.venv")
+SHARED_VENV = Path(__file__).resolve().parents[2] / ".venv"
 SHARED_PY = SHARED_VENV / "bin" / "python"
 SETUP_SCRIPT = MOLMETAL_PKG / "scripts" / "setup_molmetal_env.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"

@@ -83,7 +83,13 @@ References
   neural networks and tree search".  *Nature* 529, 484-489.
 * Liu J., Feng H. (2026) "Persistent Local Laplacian Prediction
   of Protein–Ligand Binding Affinities".  *J. Chem. Inf. Model.*
-  66 (3), 1024-1037.
+  66 (18), 11767-11777.
+  [CITATION CORRECTED 2026-10-31, Wf-A149 — the volume/issue/pages above
+  previously read "66 (3), 1024-1037"; the Crossref record for
+  DOI 10.1021/acs.jcim.6c02460 (MEASURED 2026-10-31, HTTP 200) gives
+  volume 66, issue 18, pages 11767-11777 (online 2026-09-04, print
+  2026-09-28).  The DOI was absent from this entry and is still
+  absent; the year 2026 is unchanged.]
 """
 
 from __future__ import annotations

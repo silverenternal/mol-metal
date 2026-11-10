@@ -25,7 +25,7 @@ file provides the CPU scaffold verification: 12 tests covering
           ``v3-fallback`` choice
         — pre-flight script imports cleanly with the new gate stub
   (iv)  GPU portion integration readiness (3 tests)
-        — ``scripts/launch_wf300_cfm_main.sh`` exists
+        — ``TODO/archive/wf437_simplify/launch_wf300_cfm_main.sh`` exists
         — Wf-300C launcher references TODO-119 + P1.4 wave-A
         — Wf-300C launcher's --dry-run mode is wired (no GPU work on
           CPU scaffold pass)
@@ -61,7 +61,26 @@ _SCRIPT_DIR = _REPO_ROOT / "molmetal" / "scripts"
 _LAUNCH_DIR = _REPO_ROOT / "scripts"
 _PRE_FLIGHT = _SCRIPT_DIR / "pre_flight_check.py"
 _CHEMPROP = _SCRIPT_DIR / "train_chemprop_v2_v3.py"
-_WF300_LAUNCHER = _LAUNCH_DIR / "launch_wf300_cfm_main.sh"
+# Wf-A269 wave-3 (2026-11-02): ``launch_wf300_cfm_main.sh`` was MOVED
+# to ``TODO/archive/wf437_simplify/`` by the Wf-437 simplification wave.
+# The old reference named ``scripts/launch_wf300_cfm_main.sh`` -- a path
+# that resolves to NOTHING (MEASURED 2026-11-02: ``git ls-files`` holds no
+# such file; it was never committed under that name either) -- so the three
+# Wf-300C tests below asserted on a file they could not read.
+# Wf-A269 wave-3 (2026-11-02) — CORRECTION: this comment named the ARCHIVE
+# path, but the old CODE was ``_LAUNCH_DIR / "launch_wf300_cfm_main.sh"``
+# with ``_LAUNCH_DIR = _REPO_ROOT / "scripts"`` (the constant below), i.e.
+# ``scripts/...``.  SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md
+# §5.5 rule #6:
+#   The old reference named ``TODO/archive/wf437_simplify/launch_wf300_cfm_main.sh`` -- a path  The repo's own convention
+# (test_wf327:58-66, test_wf333t3:273-279) is that an archived launcher
+# must be ABSENT from ``scripts/``; the two constants below encode
+# exactly that.
+_WF300_LAUNCHER = (
+    _REPO_ROOT / "TODO" / "archive" / "wf437_simplify"
+    / "launch_wf300_cfm_main.sh"
+)
+_WF300_LAUNCHER_AT_SCRIPTS = _LAUNCH_DIR / "launch_wf300_cfm_main.sh"
 
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -385,11 +404,24 @@ def test_pre_flight_gate_p3_todo_119_p14_cpu_smoke_ready_wired():
 # (iv) GPU portion integration readiness (3 tests)
 # ---------------------------------------------------------------------------
 def test_wf300c_launch_script_exists():
-    """``scripts/launch_wf300_cfm_main.sh`` exists (GPU portion launcher)."""
+    """The Wf-300C GPU launcher is ARCHIVED (Wf-437), not under ``scripts/``.
+
+    Wf-A269 wave-3 (2026-11-02): the launcher was moved to
+    ``TODO/archive/wf437_simplify/`` by the Wf-437 simplification wave and
+    the reference named a path that resolves to nothing, so this test
+    asserted on a file it could not read.  It now asserts the repo's own
+    convention: the ARCHIVED copy exists and the ``scripts/`` copy does
+    NOT (test_wf327:58-66, test_wf333t3:273-279).
+    """
     assert _WF300_LAUNCHER.exists(), (
-        f"GPU portion launcher not found at {_WF300_LAUNCHER}. "
-        f"Wf-300C is the TODO-119 P1.4 GPU pipeline; the launcher "
-        f"must be present for the GPU portion to integrate."
+        f"archived GPU launcher not found at {_WF300_LAUNCHER}. "
+        f"Wf-300C is the TODO-119 P1.4 GPU pipeline; its launcher was "
+        f"archived by Wf-437 and the archived copy must stay on disk."
+    )
+    assert not _WF300_LAUNCHER_AT_SCRIPTS.exists(), (
+        f"{_WF300_LAUNCHER_AT_SCRIPTS.name} is back on disk but listed "
+        f"as archived - either restore it to scripts/ or drop the archive "
+        f"note, but not both."
     )
 
 
@@ -409,7 +441,7 @@ def test_wf300c_launcher_references_todo119_p14_wave_a():
 def test_wf300c_launcher_dry_run_mode_wired_no_gpu_work():
     """Wf-300C ``--dry-run`` mode is wired (CPU scaffold safe).
 
-    Per Wf-300C launch script §3: ``bash scripts/launch_wf300_cfm_main.sh --dry-run``
+    Per Wf-300C launch script §3: ``bash TODO/archive/wf437_simplify/launch_wf300_cfm_main.sh --dry-run``
     runs CPU verification only.  The Wf-321H CPU scaffold assumes the
     dry-run mode is wired so that we can validate the launch shape on CPU.
     """

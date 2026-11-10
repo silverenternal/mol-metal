@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -38,16 +39,16 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     safe_overwrite_check = None  # type: ignore[assignment]
     detect_truncation = None  # type: ignore[assignment]
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 WORKDIR = REPO / "molmetal/reports/wf179_bd9_m15_rmsd_p2"
 LIGAND_META = REPO / "molmetal/data/pocket_ref_ligands/ligand_metadata.json"
 WF141_DATA = REPO / "molmetal/reports/wf141_ex32_lift"
 RECEPT_DIR = REPO / "molmetal/reports/wf30_pocket_prep"
 
 VINA_BIN = "/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"
-CADVENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
-MKPREP_LIG = "/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py"
-MOL_VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+CADVENV_PY = sys.executable
+MKPREP_LIG = str(Path(__file__).resolve().parents[2] / ".venv" / "bin" / "mk_prepare_ligand.py")
+MOL_VENV_PY = sys.executable
 
 POCKETS = ["1h36", "3eml", "3ny8", "4aaw", "4rlu"]
 SEEDS = [0, 1, 2]

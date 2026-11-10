@@ -1,0 +1,313 @@
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+# =============================================================================
+# Wf-A269 (2026-11-04) — §5.11 REPAIR: per-(pocket, seed) config, GENERATED.
+#
+# DO NOT HAND-EDIT: regenerate with
+#   CUDA_VISIBLE_DEVICES="" .venv/bin/python scripts/_wfA269_gen_cfm_full_retrain_configs.py
+#
+# Base: configs/cfm_full_retrain.yaml — this file is that config plus the two
+# per-run identity keys below, the per-run output paths, and the §5.11-legal
+# entry.command_template.  The base's comments are preserved VERBATIM.
+#
+# WHY the two keys exist: AGENTS.md §5.11 lets a wrapper pass only --config /
+# --out-dir / --ckpt-dir / --help, so a value that VARIES per invocation cannot
+# be passed as a flag.  The pre-repair wrapper passed --pocket-id and --seed on
+# the invocation line (results/cfm_full_retrain/launch_loop.sh, pre-repair).
+#
+# Both keys resolve to the CFM trainer's own argparse dests (no new flag, so
+# §5.7's 50-step CPU smoke is NOT triggered):
+#   seed      -> --seed       (int)  train_cfm_yuelbond_wasserstein.py:15227
+#   pocket_id -> --pocket-id  (str)  train_cfm_yuelbond_wasserstein.py:15221
+#
+# pocket: 4aaw   seed: 2
+# =============================================================================
+seed: 2
+pocket_id: 4aaw
+
+data:
+  # 2026-10-04 — REPOINTED: MetalCytoToxDB -> tmQM.
+  #
+  # This config used to declare `dataset: metalcytotox_5metal` plus a full
+  # MetalCytoToxDB cohort schema, and its honest_framing claimed
+  # "MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko
+  # 70/10/20, 0 leak)".  None of that ever reached the trainer:
+  #
+  #   * `data.dataset` resolved to no argparse dest, so the loader dropped it.
+  #   * the corpus schema (n_rows_expected / cohort_filter / split) likewise.
+  #   * the trainer found neither --tmqm-dir nor --data-csv and took the else
+  #     branch: build_synthetic_pt_click_clouds -- ONE jittered square-planar
+  #     Pt layout, the same 5 atoms every time.
+  #
+  # So the run advertised 26,632 property rows and trained on a single
+  # geometry.  The corpus is also the wrong KIND of data for this entry: its
+  # structure column is `SMILES_Ligands`, the metal is a separate column, and
+  # MEASURED on 800-row samples of v1 and v2 ZERO rows contain any metal atom.
+  # A CFM whose claim is metal-GEOMETRY-conditioned decoding has no metal
+  # centre to condition on; pointed at it, decode_ratio collapsed 1.000->0.000.
+  #
+  # tmQM replaces it: 108,541 CSD-derived mononuclear d-block complexes with
+  # the metal IN the geometry, MIT-licensed, already on disk.  MEASURED with a
+  # disjoint CSD-code-hash split, 20 epochs, 120 train / 48 held-out val:
+  # decode_ratio 1.000 for each of Pt / Ru / Ir / Os / Re / Rh.
+  #
+  # The property corpus still belongs to the D-MPNN entry, which consumes it
+  # correctly -- see the `data.dataset: metalcytotox_5metal` configs under
+  # configs/training/.
+  dataset: tmqm
+  tmqm_dir: .data/molmetal/tmQM
+  # All six target metals.  Order is irrelevant; it is a filter, and the
+  # loader raises on an unknown symbol rather than dropping it.
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
+  # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
+  tmqm_coord_number: -1
+  # Val fraction of the DISJOINT split (assigned by CSD-code hash).  Drawing
+  # train and val separately with different seeds LEAKS: MEASURED, the val
+  # candidate pool was a strict subset of the train one, 160/160.
+  tmqm_val_frac: 0.2
+model:
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
+  hidden_dim: 128
+  n_layers: 3
+  # 2026-10-04: was 14, which matched NOTHING.  The YuelBond path derives
+  # its width from _YUELBOND_Z_TABLE (13 entries) and the Lipman adapter
+  # uses 12; the declared value reached no code path, so it was never
+  # checked.  It is now a GUARD: --atom-vocab-size fails loudly on mismatch.
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  # 2026-10-04 — production EGNN velocity field (see configs/cfm_tmqm_all6.yaml
+  # for the full rationale).  Without this the trainer builds CFMJointModel,
+  # whose velocity path is a 2-layer MLP placeholder, and every `flow:` term
+  # below regularises that placeholder instead of a real SE(3) field.
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # 2026-10-04 — warm-start the EGNN encoder from the F2 tmQM pretrain
+  # output (138,112 params, 5 regression targets incl. metal_bo_total and
+  # coord_number).  The interface has existed since TODO-08 and the checkpoint
+  # has been on disk all along, but no config-driven path ever set it, so the
+  # velocity field trained from random init in every shipped run.
+  use_tmqm_init: true
+  pcgrad_multi_task: false
+  # Wf-A15 (2026-10-13) Track-A L3a — opt-in per-atom q-prediction head.
+  # When ``false`` (YAML default) the EGNN velocity field does NOT
+  # register a ``q_head`` parameter, the forward dict never carries
+  # ``q_pred``, and the legacy bit-exact path is preserved.  When
+  # ``true`` the q_head emits per-atom NBO Loewdin q targets but the
+  # loss term stays at weight 0 until ``natural_charge_mse_weight``
+  # is also set > 0 (see below).  Both keys are part of the proof-
+  # of-concept binding for AGENTS.md §5.11 round-trip.
+  q_head_enabled: false
+flow:
+  # 2026-10-04 — bond head objective + decision rule.  See
+  # configs/cfm_tmqm_all6.yaml for the full reasoning and the MEASURED
+  # numbers behind each value.
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  # 2026-10-04 — RESTORED, now that there is a sampler to configure.
+  #
+  # These keys were removed earlier the same day because the CFM trainer had
+  # no generation path at all: no --n-steps, no --method, no generate(), so a
+  # step count and an integrator configured nothing.  `decode_ratio` measures
+  # the bond decoder on the REAL geometry, which is perception, not sampling.
+  #
+  # The trainer now integrates v(x,t) from x0 ~ N(0,I) with the cloned
+  # reference solver (molmetal/adapters/flow_matching_lipman/_reference/solver)
+  # and decodes the result — `gen_validity` in the metrics.  Integrator
+  # accuracy verified against the exact solution of dx/dt = -x at 64 steps:
+  # euler 2.9e-3, midpoint 1.5e-5, rk4 6.0e-8.
+  n_steps: 100
+  method: rk4
+  # NOTE: `ot_solver: w_flow` is NOT restored.  The trainer's OT switch is
+  # `--ot-coupling-mode {assignment,sample}` (plus --use-ot-cfm), which picks
+  # between an exact permutation and a two-point Bass draw — not the
+  # solver/loss pairing the old key name implied.  Naming it `ot_solver` here
+  # would re-create exactly the kind of key that looks wired and is not.
+  optimizer: adam
+  # 2026-10-04 — `batch_size` / `lr` MOVED to `protocol:`.  They sat under
+  # `flow:` here while every sibling CFM config declares them under
+  # `protocol:`; the trainer resolved them anyway (the yaml loader's leaf
+  # fallback spans flow/protocol/data/...), so the misplacement was invisible
+  # to a run and visible only to pre-flight's
+  # `p3_wf343c4_hyperparams_config_complete`, which accepts `train.*`,
+  # `protocol.*` and `data.*` but not `flow.*`.  A batch size is a training
+  # setting, not a flow-matching one.
+  warmup_steps: 200
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 1.0' REMOVED — never reached the trainer (real dest --max-norm, declared 5.0 below). Intent flagged AMBIGUOUS.
+  ema_decay: 0.999
+  wasserstein_weight: 0.1
+  closure_bounded: true
+  use_yuelbond: true
+  # 2026-10-04: was 6.0, which the run never used — the decoder's own
+  # default of 3.5 was in force, so this key misreported the geometry the
+  # run actually had.  3.5 is the value YuelBond actually filters at
+  # ("cutoff=3.5 A excludes 4.1 A Cl-Cl"), and --edge-cutoff now carries
+  # it into YuelBondDecoderHead.  Changing this number now changes the run.
+  edge_cutoff: 3.5
+  # 2026-10-04 — REMOVED the eval:/orchestration keys and the
+  # protocol.full_protocol block.  They described an evaluation panel
+  # (decode-smoke cadence, 5-pocket sweep, per-pocket output dirs,
+  # a launch_loop.sh) that this trainer does not implement: it takes a
+  # single --pocket-id, emits one metrics JSON per run, and has no
+  # smoke/panel/sweep driver.  Like the old flow: block they are
+  # residue from metallo_drug_smoke_retrain.py.  The intent is now
+  # recorded under honest_framing.deferred instead of sitting in the
+  # config as keys that configure nothing.
+protocol:
+  # 2026-10-04 — moved here from `flow:` (see the note there).
+  batch_size: 16
+  lr: 0.0001
+  # 2026-10-04 — how many val compositions to generate from noise
+  # and decode for RDKit validity each epoch.  0 disables (decode-only).
+  gen_validity_samples: 16
+  # 2026-10-05 (Round-3 D3) — n=16 was MEASURED too noisy to gate on:
+  # gen_validity read 0.375/0.312/0.562/0.688/0.750 over five
+  # consecutive epochs of one run, a 44pp swing on a monotone
+  # trajectory (binomial 1-sigma at p~0.5, n=16 is +-12.5pp).  Below
+  # turns the eval into 3 seeds x 64 samples over 3 DISJOINT windows of
+  # val compositions — 192 distinct chemistries, 1-sigma +-3.6pp.
+  # EVAL-ONLY: no training or checkpoint behaviour changes.
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 5
+  epochs: 50
+  n_seeds_min: 3
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_full_retrain/4aaw/seed2
+  log_master: results/cfm_full_retrain/master.log
+  ckpt_dir: results/cfm_full_retrain/4aaw/seed2/checkpoints
+  # 2026-10-04 — was `molmetal/checkpoints`, the repo-global directory.
+  # MEASURED: that default let a 1-epoch/32-sample pytest run overwrite the
+  # shipped `cfm_yuelbond_wasserstein.pt`, whose 50-epoch weights are not in
+  # git and had no surviving copy.  With `--resume-from auto` also reading
+  # this directory, a stale smoke checkpoint then poisons the next real
+  # launch.  Pointed at this run's own directory so a run can only ever
+  # resume from itself.  See the `--ckpt-dir` help in the trainer.
+  events_jsonl: true
+  # 2026-10-04 — `resume_from` replaces the `entry.warm_start_checkpoint`
+  # key, which was DEAD: grep across *.py/*.sh finds zero readers, and
+  # `entry:` is outside the config loader's whitelisted sections, so it
+  # was dropped without even the usual skip warning.  start.sh reads
+  # THIS key (scripts/start.sh:438) and passes it as --resume-from, which
+  # the trainer now implements (it, too, had zero read sites before).
+  # 'auto' = resume ckpt_dir/cfm_yuelbond_wasserstein_seed{seed}.pt when
+  # present; 'none' = cold start; 'path' = --resume-from-path.
+  resume_from: auto
+  resume_from_path: null
+# Wf-A15 (2026-10-13) Track-A L6 — per-atom NBO natural-charge MSE loss.
+# Both keys are part of the AGENTS.md §5.11 round-trip binding proof:
+# YAML leaf → argparse dest.  Default OFF (weight=0, enabled=False) so
+# the legacy bit-exact sum is preserved.
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+# Wf-A15 (2026-10-13) Track-A L7 — q-channel param group in the
+# differential optimiser.  Default 1.0 = legacy single-group Adam
+# fast-path in build_differential_optimizer; no 5th group emitted.
+q_channel_lr_multiplier: 1.0
+# q-channel param-name substrings (LIST per AGENTS.md §5.11 trap
+# warning).  Empty list ⇒ disable; explicit list ⇒ enable the
+# Trainer's ``--q-channel-hints`` opt-in.
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'cpu_workers: 4' removed (CFM trainer has no --cpu-num-workers dest; only D-MPNN does).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (zero bf16/autocast in either trainer).
+directives:
+  kill_then_adapt: true
+  # 2026-10-03 user directive: session budget is 48h ("我给48小时的预算").
+  # The old 10h/13h values made the per-wave budget gate FAIL on a resource
+  # dimension that is not actually constrained; with 48h the gate still does
+  # real work (it FAILs a wave whose declared grid exceeds the declared
+  # budget) but no longer blocks a legitimate launch.
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 10h budget + PRO 6000 + project root results/ + GPU util ≥90% check (2026-09-28)
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
+  pre_flight_gates_required:
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  # 2026-10-04 (user decision): was molmetal/scripts/metallo_drug_smoke_retrain.py
+  # — a 1000-step SMOKE script — on a config named `cfm_full_retrain`.  Every
+  # train.*/flow.*/model.* key below was therefore unresolved against the entry
+  # trainer and silently dropped.  Repointed at the real CFM trainer; those keys
+  # are re-evaluated against it (see todo.json).
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  # Wf-A8c FIX C: replace inline CLI flags with yaml-driven --config pattern
+  # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
+  # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);
+  # trainer applies via wfA2_config_loader.py
+  # 2026-10-04: the repoint above changed `entry.script` but NOT this line, and
+  # THIS is what start.sh actually executes (it renders command_template into
+  # TRAINER_CMD).  So the launch kept running the 1000-step smoke script while
+  # the file, the comment and the pre-flight classifier all said the real CFM
+  # trainer -- the fix looked applied and was not.  Both must name the same
+  # script; two other configs spell the entry ONLY here, which is why start.sh
+  # scans the command for a .py path as well as reading entry.script.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  # FIX C: yaml-driven config + only debug/seed/out-dir CLI flags remain (per task brief DEBUG_FLAG_OVERRIDES)
+  # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
+  # NOT used by start.sh per ~~AGENTS.md §5.8~~ → AGENTS.md §5.11 (YAML-only launch) + §5.5 filesystem-truth; corrected 2026-11-01
+  legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \\n  molmetal/scripts/metallo_drug_smoke_retrain.py\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\n  --n-train 26632 \\n  --steps 5000 \\n  --batch-size 16 \\n  --lr 1e-4 \\n  --hidden-dim 128 \\n  --n-layers 3 \\n  --joint-train \\n  --bond-head learned \\n  --decode-smoke-every 500 \\n  --decode-smoke-samples 16 \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
+honest_framing:
+  # 2026-10-04 CORRECTION — the four `claims` below used to assert a
+  # MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko
+  # 70/10/20, 0 leak) that this config never read: `data.dataset` had no
+  # argparse dest, and with no --tmqm-dir / --data-csv the trainer took the
+  # synthetic Pt-click branch.  Meanwhile `do_not_claim[0]` forbade exactly
+  # that ("Synthesized Pt click clouds (this is a decoder smoke, not full
+  # retrain)") — the config's own do-not-claim list prohibited what it was
+  # doing.  The data block is now repointed to tmQM and the claims below
+  # describe what the run actually consumes.  Any number still belongs to a
+  # report path on disk per AGENTS.md section 5.2; the decode_ratio figures
+  # are from results/cfm_tmqm_all6/ (20 epochs, 120 train / 48 held-out).
+  claims:
+  - CFM retrain on tmQM CSD-derived metal-bearing 3D geometry (108,541 mononuclear d-block complexes, MIT;
+    six target metals Pt/Ru/Ir/Rh/Os/Re), split disjointly by CSD-code hash
+  - decode_ratio 1.000 per metal on held-out real geometry (MEASURED, 20 epochs, 120 train / 48 val)
+  - 5 seeds × 50 epochs
+  - GPU util ≥90% on PRO 6000 Blackwell (or honest-negative)
+  do_not_claim:
+  # NB: keep each entry on ONE line.  A wrapped plain scalar whose
+  # continuation contains ': ' is a YAML mapping, and safe_load rejects the
+  # file outright ("mapping values are not allowed here").
+  - MetalCytoToxDB 5-metal v2 corpus (26632 rows) — its structures contain NO metal atom, MEASURED 0 of 800 sampled rows; it belongs to the D-MPNN property entry, not to CFM decoder training
+  - Krasnov head-to-head parity via a shared corpus — the CFM and the D-MPNN now read DIFFERENT datasets by design
+  - Aggregate lift before per-lever ablation (Wf-256 honest-negative BCa CI)
+  - Best-seed selection (per Wf-245 n-seeds-min + Wf-126 §7)
+  - Beat TargetDiff 0.86 m7 diversity (long-standing honest-negative)
+  deferred:
+  - F5_RDKIT_2D 32-d integration into CFM training (CPU code done, GPU run pending)
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - M1/M2 master module full retrain (Wf-250 fix shipped, GPU run pending)
+  - W₂ pic50 as GRADIENT (Wf-246 wired as diagnostic only)
+  - m17 DrugOOD forward pass (Wf-256 deferred)
+  - Flow-matching ODE sampler (n_steps / method / ot_solver) — NOT IMPLEMENTED in this trainer; the pieces exist in molmetal/adapters/flow_matching_lipman incl. the cloned reference solver
+  - Evaluation panel (decode-smoke cadence, 5-pocket sweep, per-pocket output dirs, launch_loop.sh) — NOT IMPLEMENTED; this trainer takes one --pocket-id and has no panel driver

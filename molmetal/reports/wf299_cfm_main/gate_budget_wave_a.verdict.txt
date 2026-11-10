@@ -1,0 +1,1 @@
+PASS remaining_hr=0.0 [2.0h budget exactly consumed by projected waves; no buffer remaining. 0 wave(s) DEFERRED.]

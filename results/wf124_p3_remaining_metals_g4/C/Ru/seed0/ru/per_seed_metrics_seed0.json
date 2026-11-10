@@ -1,1 +1,12 @@
-/home/hugo/codes/mol-metal/results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics_seed0.json
+{
+  "status": "MIS_PATHED_DUPLICATE",
+  "is_a_measurement": false,
+  "MEASURED_vs_PROJECTED": "NOT_A_MEASUREMENT",
+  "content_was_path": "/home/hugo/codes/mol-metal/results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics_seed0.json",
+  "content_was_bytes": 105,
+  "intended_source_path": "results/wf124_p3_remaining_metals_g4/C/Ru/seed0/ru/per_seed_metrics_seed0.json",
+  "mis_pathed_source_path": "results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics_seed0.json",
+  "note": "This file previously contained a bare filesystem path string, not JSON, so json.load() raised. It was a mis-pathed duplicate of a G5 artifact written into a G4 slot; no G4 C/Ru/seed0 measurement exists behind it. Repaired by Wf-A124 on 2026-10-31 as a provenance stub - it carries NO metric value. PRECISION (MEASURED 2026-10-31): in git this path is mode 120000 (symlink) whose 105-byte blob is that target path; on disk it was a live symlink, so json.load() on the worktree path FOLLOWED it and silently served the G5 Ru/seed0 metrics instead of raising, while parsing the committed 105-byte blob raises json.JSONDecodeError (Expecting value: line 1 column 1, char 0). The symlink was replaced by this regular-file stub; the G5 target file is untouched.",
+  "repaired_by": "Wf-A124",
+  "repaired_on": "2026-10-31"
+}

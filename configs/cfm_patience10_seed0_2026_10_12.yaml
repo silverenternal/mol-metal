@@ -8,7 +8,27 @@
 #
 entry:
   script: molmetal/scripts/bench_cfm_decode_real.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/bench_cfm_decode_real.py --config {yaml_path} --out-dir {out_dir}
+  # 2026-11-04 (Wf-A269) — `--config {yaml_path}` REMOVED.
+  #
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5
+  # rule #6: the template used to read, in full —
+  #
+  #   command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/bench_cfm_decode_real.py --config {yaml_path} --out-dir {out_dir}
+  #
+  # MEASURED 2026-11-04 by scripts/_runtime_transport_gate.py: the
+  # benchmark script's parser declares --out-dir but NOT --config
+  # (molmetal/scripts/bench_cfm_decode_real.py::parse_args declares
+  # --ckpt-path / --data-path / --data-config / --nci60-path /
+  # --drugood-path / --out-dir / --out-json / --n-samples / --n-rows /
+  # --seeds / --device / --pocket-id / --jitter / --smoke), so the launch
+  # aborted with argparse's "unrecognized arguments: --config" before the
+  # benchmark ran a single sample.
+  #
+  # The script imports no YAML loader and reads no `cfg[...]`, so the
+  # `dest:` pointers in the annotation blocks below have never reached
+  # it either — the config is DECLARATION-ONLY.  Recorded as an
+  # honest-negative in docs/HONEST_NEGATIVE_CATALOG.md §6.269.23.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/bench_cfm_decode_real.py --out-dir {out_dir}
   legacy_inline_command: ""
 
 # ---- m14 per-atom decode ratio gate (Track E EV1) ----------------------
@@ -30,7 +50,10 @@ largest_frag_min_frac:
   dest: bench_cfm_decode_real.py::largest_frag_min_frac
   desc: >
     Per-atom largest-frag threshold (largest_fragment_atoms / total_atoms).
-    0.80 = standard MOSES / GuacaMol acceptance floor.
+    0.80 = this repo's OWN project-strict choice, not a published standard.
+    MOSES (arXiv:1811.12823) has NO fragment term; GuacaMol's is_valid
+    (Brown et al., J. Chem. Inf. Model. 2019, 59(3), 1096-1108) requires
+    only >= 1 fragment.  See molmetal/eval/scoring/decode_gate.py.
     0.0  = no per-atom fragment gate (legacy RDKit-strict only).
 
 min_atoms_per_mol:
@@ -39,7 +62,8 @@ min_atoms_per_mol:
   dest: bench_cfm_decode_real.py::min_atoms_per_mol
   desc: >
     Reject molecules with < N heavy atoms.
-    2 = standard MOSES floor (rejects [He], [Pt], etc.).
+    2 = this repo's OWN floor (rejects [He], [Pt], etc.); MOSES
+    (arXiv:1811.12823) has no such floor.
     0 = no min-atoms gate (legacy RDKit-strict only).
 
 # ---- 8 ADMET proxy emission (Track E EV2) -----------------------------

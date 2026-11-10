@@ -52,7 +52,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 TODO_PENDING = ROOT / "TODO" / "pending"
 
 # Per Wf-324C + Wf-337-W1: the full 10-file wetlab catalogue. Files 9 + 10

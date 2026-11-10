@@ -32,6 +32,7 @@ Run via::
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 
 # Lazy import so missing torch / score_repellent_mc is caught at
@@ -236,7 +237,7 @@ def test_cli_smoke_default_on():
     import subprocess
     import sys as _sys
 
-    repo_root = "/home/hugo/codes/mol-metal"
+    repo_root = str(Path(__file__).resolve().parents[2])
     out = subprocess.run(
         [
             _sys.executable,
@@ -261,7 +262,7 @@ def test_cli_smoke_legacy_dirichlet():
     import subprocess
     import sys as _sys
 
-    repo_root = "/home/hugo/codes/mol-metal"
+    repo_root = str(Path(__file__).resolve().parents[2])
     out = subprocess.run(
         [
             _sys.executable,

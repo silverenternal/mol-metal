@@ -233,7 +233,8 @@ for METAL in "${RUN_METALS[@]}"; do
         log "=== metal=${METAL} seed=${SEED} hidden=${HIDDEN}/depth=${DEPTH} on ${GPU} ==="
         # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
         # directive; this call site is serial with every other job.
-        if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
+        # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+        if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" "${PY}" "${TRAINER}" \
                 --metals "${METAL}" \
                 --seeds "${SEED}" \
                 --epochs "${EPOCHS}" \

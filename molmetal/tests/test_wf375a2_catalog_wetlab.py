@@ -184,13 +184,67 @@ def test_wf375a2_entry_6_lambda_roadmap():
     ), "§7.6 missing computational-only substitution mechanism"
 
 
-def test_wf375a2_total_entries_count_is_71():
-    """Catalog TL;DR must reflect 71 entries (65 + 6 new WETLAB_DEPRECATED)."""
+#: The count the original pin was written to enforce, kept as a **FLOOR, never a
+#: freeze**: 71 = 65 + the 6 WETLAB_DEPRECATED entries this wave added.  The pin
+#: was written against 71 in Wf-375-A2, but the catalogue's TL;DR already said
+#: **86** the day the test was committed (bc29aa90) and says 108 (TL;DR) / 94
+#: (§8 Closing) today.  See ``docs/HONEST_NEGATIVE_CATALOG.md`` §6.269.32.
+ENTRY_COUNT_FLOOR = 71
+
+
+def _declared_entry_counts(text: str) -> tuple[int | None, int | None]:
+    """Return the (closing_total, closing_unique) counts the §8 Closing declares."""
+    closing = re.search(
+        r"\*\*Total entries\*\*:\s*\*\*(\d+) honest-negative findings\*\*", text
+    )
+    unique = re.search(r"\*\*(\d+) unique entries\*\*", text)
+    return (
+        int(closing.group(1)) if closing else None,
+        int(unique.group(1)) if unique else None,
+    )
+
+
+def test_wf375a2_total_entries_count_is_declared_and_consistent():
+    """The catalogue must DECLARE its entry count, and its two declarations must AGREE.
+
+    This test was originally ``test_wf375a2_total_entries_count_is_71`` and
+    asserted the literal strings ``"71 honest-negative findings"`` and
+    ``"**71 unique entries**"``.  **Neither string has ever existed in the
+    catalogue** — ``git log -S`` over the whole history returns 0 commits for
+    both — so the pin was **RED FROM BIRTH**, and because no runner executes
+    this file (no CI job, no pre-flight gate) it stayed red for the whole time
+    it has existed.
+
+    The repair keeps the pin's INTENT (the catalogue must declare its entry
+    count, and the count must include the 6 WETLAB_DEPRECATED entries) without
+    freezing a number the document never carried:
+
+      * the §8 Closing must declare a total AND a unique count;
+      * the two must AGREE with each other — the invariant that actually holds;
+      * the declared count must be >= the Wf-375-A2 floor of 71, so the
+        catalogue may grow but never shrink.
+    """
     text = _read_catalog()
-    # The TL;DR should mention 71 entries
-    assert "71 honest-negative findings" in text, "TL;DR missing 71 entries count"
-    # The closing should reflect 71 entries
-    assert "**71 unique entries**" in text or "71 honest-negative findings" in text
+    closing_total, closing_unique = _declared_entry_counts(text)
+    assert closing_total is not None, (
+        "§8 Closing must declare '**Total entries**: **N honest-negative findings**'"
+    )
+    assert closing_unique is not None, "§8 Closing must declare '**N unique entries**'"
+    assert closing_total == closing_unique, (
+        f"§8 Closing declares two different counts: {closing_total} vs {closing_unique}"
+    )
+    assert closing_total >= ENTRY_COUNT_FLOOR, (
+        f"declared entry count {closing_total} < the Wf-375-A2 floor "
+        f"{ENTRY_COUNT_FLOOR} — the catalogue must not shrink"
+    )
+    # The pin's original purpose: the 6 WETLAB_DEPRECATED entries are counted.
+    tldr = re.search(r"catalogs\s+\*\*(\d+) honest-negative findings\*\*", text)
+    assert tldr is not None, (
+        "TL;DR must declare its 'N honest-negative findings' count"
+    )
+    assert int(tldr.group(1)) >= ENTRY_COUNT_FLOOR, (
+        f"TL;DR count {tldr.group(1)} < the Wf-375-A2 floor {ENTRY_COUNT_FLOOR}"
+    )
 
 
 def test_wf375a2_section_count_is_7():

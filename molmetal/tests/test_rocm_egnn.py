@@ -60,6 +60,16 @@ def build_8node_graph(device):
 # ---------------------------------------------------------------------------
 
 
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_egnn_forward_on_gpu():
     """Build small EGNN (4 layers, 64 hidden), 16-node graph, move to GPU,
     run forward pass, assert output on cuda and matches expected shape."""
@@ -103,6 +113,16 @@ def test_egnn_forward_on_gpu():
 # ---------------------------------------------------------------------------
 
 
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_egnn_backward_on_gpu():
     """Same setup as forward, compute loss = output.sum(), backward(),
     assert gradients exist and are on cuda."""
@@ -146,6 +166,16 @@ def test_egnn_backward_on_gpu():
 # ---------------------------------------------------------------------------
 
 
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_egnn_se3_invariance_check():
     """Build EGNN, freeze params. Take 8-node molecule, get feature output h1.
     Apply random rotation R and translation t (QR-based). Compute h2 = EGNN(rotated_mol).
@@ -230,6 +260,16 @@ def test_egnn_se3_invariance_check():
 # ---------------------------------------------------------------------------
 
 
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_egnn_speed_gpu_vs_cpu():
     """50 forward+backward on cuda:0 with batch=8, time it.
     Same on cpu, time it. Print speedup ratio."""

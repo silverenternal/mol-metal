@@ -1169,14 +1169,22 @@ class _BondLengthGuidance:
     """Wf-A75 (2026-10-18) — bond-length regulariser added to the EGNN
     velocity at every ODE step.
 
-    Per Vignac et al. "MolDiff: Addressing the Atom-Bond Inconsistency
-    Problem in 3D Molecule Diffusion" (ICML 2023, arXiv:2305.07508) the
+    Per Peng, Guan, Liu & Ma "MolDiff: Addressing the Atom-Bond
+    Inconsistency Problem in 3D Molecule Diffusion Generation"
+    (ICML 2023, arXiv:2305.07508; venue VERIFIED 2026-10-31 from the
+    publisher's own entry, PMLR v202 ``peng23b`` — "Proceedings of the
+    40th International Conference on Machine Learning", Honolulu) the
     central failure mode of vanilla Cartesian-coordinate diffusion is
     that bonded atom pairs drift past ~3 Å during denoising; the
     molecule comes out with a graph topology that is topologically
     disconnected (longest fragment_frac → 0.05).  MolDiff's full fix
     decouples bond and atom noise schedules AND uses a bond-classifier
     gradient w.r.t. positions as a guidance term.
+
+    (Wf-A128, 2026-10-31: this repo previously attributed the paper to
+    "Vignac et al. 2023", which is a different paper — Vignac is MiDi /
+    DiGress, arXiv:2303.04791.  Only the AUTHORS were wrong; the
+    "ICML 2023" venue was right.)
 
     Wf-A75 ships the simpler, lower-cost component: a "bond length
     prior" that is added to the EGNN velocity at every step.  For each
@@ -1188,6 +1196,72 @@ class _BondLengthGuidance:
     ``guidance_weight=0`` the wrapper is a strict no-op (the
     default), so Wf-A75 is bit-exact back-compatible with the existing
     sampling loop.
+
+    Wf-A128 (2026-10-31) — the REACH GAP.  The spring above only fires
+    for pairs at ``d < _INNER_BOND_CUTOFF`` (2.5 Å), but the YuelBond
+    head's own candidate set on the CFM path is 3.5 Å
+    (``molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py``,
+    ``distance_cutoff: float = 3.5``).  So a pair sitting at 2.5-3.5 Å
+    is INSIDE the head's candidate set — the head could have bonded it
+    — and yet the guidance hands it NO restoring force at all: the
+    guidance could only ever TIGHTEN a near-bond, never pull an atom
+    into the head's candidate set.  MEASURED (Wf-A128, CPU): the
+    pre-fix force on a C-C pair is exactly 0.0 at d = 2.5, 2.6, 2.8,
+    3.0 and 3.4 Å, while the same pair at d = 2.4 Å gets
+    ``+90.0`` (attractive).  The same failure mode is documented for
+    the loss path in
+    ``molmetal/molmetal_lam/lam_chem/assemble_connectivity.py``:
+    "an atom with no candidate edge at all ... has an all-zero
+    adjacency row, so its penalty is a constant and its gradient is
+    exactly zero".
+
+    Wf-A146 (2026-10-31) — the 3.5 Å above is a DECLARED DEVIATION
+    from the YuelBond paper, which connects "any pair of atoms within
+    3 Å" (the paper's own words).  The value is disclosed at its
+    definition sites (`molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py`
+    `YuelBondDecoderHead.cutoff`, `molmetal/scripts/
+    train_cfm_yuelbond_wasserstein.py` `DEFAULT_EDGE_CUTOFF`, and
+    `cfm_decoder_yuelbond.py` `distance_cutoff`) and is deliberately
+    UNCHANGED — re-validating it needs a GPU run.  Any number measured
+    under it must be labelled as produced under a 3.5 Å cutoff.  See
+    `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
+
+    The Wf-A128 fix is a ONE-SIDED UPPER BOUND, behind the
+    ``upper_bound`` switch (DEFAULT OFF — the flag-off path is
+    bit-exact with the pre-Wf-A128 sampler, see
+    ``molmetal/tests/test_wfa128_bond_length_reach.py``).  Where the
+    spring is a two-sided Hooke term that fires only below 2.5 Å, the
+    upper bound is a ONE-SIDED penalty that fires ONLY when the
+    distance EXCEEDS the expected bond length and has NO inner
+    truncation: it reaches out to ``upper_bound_reach`` (default 3.5 Å
+    = the bond head's own candidate cutoff, i.e. exactly the set the
+    head has authority over).  A pair at 2.8 Å therefore receives an
+    attractive force it never received before, and the pair can be
+    pulled down into the head's candidate set.
+
+    The bound follows the published mechanism: Peng/Guan/Liu/Ma
+    (MolDiff, arXiv:2305.07508) §3.4 "Guidance of Bond Predictor" guides
+    the atom positions with the gradient of the bond predictor's
+    log-confidence w.r.t. the positions, and notes that real bond
+    lengths occupy a narrow canonical range per bond type (the paper's
+    own example: an N-O single bond is ~1.35 Å, seldom below 1.31 or
+    above 1.39).  TABASCO (Vonessen et al., arXiv:2507.00899) turns the
+    same idea into parameter-free distance BOUNDS: a per-pair
+    lower/upper bound matrix over 1-5 bond separations, penalised
+    ONE-SIDEDLY on each side of the interval (below the lower bound and
+    above the upper bound are separate penalties).  The bound here is
+    the "above the bound" half of that.  Two honest limits on this
+    implementation:
+
+    * **No confidence scaling.**  The bond head's per-pair logits are
+      not available inside the ODE loop (the head runs at decode time,
+      after sampling), so the bound here is un-scaled — every pair
+      inside the reach is treated alike.
+    * **The reach is a cutoff, not a soft window.**  A pair at 2.9 Å
+      is pulled toward its expected length whether or not it is a
+      genuine bond; the sampler cannot know.  The legacy spring has
+      the same ambiguity below 2.5 Å, but the bound widens the region
+      where it can act.
 
     Cost: one extra forward + one gradient call per ODE step (n_steps
     times), so at n_steps=100 this is a 100x cost multiplier on the
@@ -1222,6 +1296,26 @@ class _BondLengthGuidance:
         # interact with nothing.  ``None`` is the pre-A113 behaviour and is
         # correct for an unpadded batch, where every atom is real.
         node_mask: Optional[torch.Tensor] = None,
+        # Wf-A128 (2026-10-31) — the one-sided upper-bound companion
+        # switch.  DEFAULT OFF.  When off, ``__call__`` is bit-exact with
+        # the pre-Wf-A128 sampler (the flag-off path performs exactly the
+        # same arithmetic in exactly the same order).
+        #
+        # When ON, a SECOND force is added on top of the spring: a
+        # one-sided penalty that fires ONLY when the pair distance
+        # EXCEEDS the expected bond length, with NO inner truncation —
+        # it reaches out to ``upper_bound_reach`` (default 3.5 Å, the
+        # YuelBond head's own candidate cutoff).  That is the gap the
+        # spring's 2.5 Å inner cutoff leaves open: a pair at 2.5-3.5 Å
+        # is inside the head's candidate set and the head could bond it,
+        # but the spring never touched it.
+        #
+        # ``upper_bound_strength`` defaults to ``spring_constant`` (None
+        # means "same stiffness as the spring"); 0.0 disables the extra
+        # term while leaving the switch itself on.
+        upper_bound: bool = False,
+        upper_bound_reach: float = 3.5,
+        upper_bound_strength: Optional[float] = None,
     ) -> None:
         # Normalize atom_types to 2-D ``(B, N)`` so the per-batch
         # ``__call__`` loop can index it as ``atom_types[bi, idx]``.
@@ -1235,6 +1329,13 @@ class _BondLengthGuidance:
         self._guidance_weight = float(guidance_weight)
         self._spring_constant = float(spring_constant)
         self._node_mask = node_mask
+        self._upper_bound = bool(upper_bound)
+        self._upper_bound_reach = float(upper_bound_reach)
+        self._upper_bound_strength = (
+            float(spring_constant)
+            if upper_bound_strength is None
+            else float(upper_bound_strength)
+        )
 
     @torch.no_grad()
     def _expected_length_table(self) -> torch.Tensor:
@@ -1269,7 +1370,19 @@ class _BondLengthGuidance:
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         """Return the per-atom guidance force (B, N, 3) given current
         positions (B, N, 3).  Zero force when guidance_weight=0 or
-        when the edge list is empty."""
+        when the edge list is empty.
+
+        Two terms, added:
+
+        * the Wf-A75 two-sided Hooke spring, restricted to pairs below
+          2.5 Å (``_INNER_BOND_CUTOFF``);
+        * the Wf-A128 one-sided UPPER BOUND — only when ``upper_bound``
+          is True — which fires solely when the distance EXCEEDS the
+          expected bond length and reaches out to
+          ``upper_bound_reach`` (default 3.5 Å, the bond head's own
+          candidate cutoff).  With ``upper_bound=False`` (the default)
+          only the spring runs and the result is bit-exact with the
+          pre-Wf-A128 sampler."""
         if self._guidance_weight <= 0.0:
             return torch.zeros_like(x)
         # Build the edge list on the same radius-graph logic as the
@@ -1286,12 +1399,22 @@ class _BondLengthGuidance:
         b, n, _ = x.shape
         flat = x.reshape(b * n, 3)
         flat_force = torch.zeros_like(flat)  # (B*N, 3)
-        # Inner-bond cutoff: pairs at distance > 2.5 Å are not real
-        # bonds (the decoder uses 2.4 Å for bond candidacy per Wf-A71
-        # §6.99) and should NOT receive a restoring force — otherwise
-        # a 3-atom chain [0, 1.5, 3.0] at the C-C target would still
-        # see a force on the (0, 2) pair at d=3.0 (the long chain
-        # span), which is not a bond at all.
+        # Inner-bond cutoff: the SPRING only restores pairs that are
+        # already inside bond range (d < 2.5 Å).  Note that 2.5 Å is
+        # NOT the head's candidacy radius: the bond head this guidance
+        # feeds uses a 3.5 Å candidate cutoff (`edge_cutoff: 3.5` in the
+        # CFM configs; YuelBondDecoderHead.cutoff, yuelbond_decoder.py
+        # :531/:903), so a pair at 2.5-3.5 Å IS a bond candidate for the
+        # head but receives NO restoring force here — that is the known
+        # reach gap, and the Wf-A128 one-sided upper bound below
+        # (`upper_bound`, default OFF) is the only thing that reaches
+        # into that band.  The inner spring exists so the prior does not
+        # over-pull long chain spans (e.g. the (0, 2) pair of a
+        # [0, 1.5, 3.0] Å chain at d = 3.0 Å, which is not a bond).
+        # Wf-A146 (2026-10-31) — the 3.5 Å candidate cutoff above is a
+        # DECLARED DEVIATION from the YuelBond paper's 3 Å (disclosed at
+        # the definition sites; value deliberately UNCHANGED).  See
+        # `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
         _INNER_BOND_CUTOFF = 2.5
         for bi in range(b):
             src_bi = edge_index[bi, 0, :]  # (E,)
@@ -1300,38 +1423,83 @@ class _BondLengthGuidance:
             if not bool(mask_bi.any().item()):
                 continue
             # Vector and distance between each pair.
-            diff_bi = x[bi, dst_bi[mask_bi]] - x[bi, src_bi[mask_bi]]  # (E', 3)
-            d_bi = diff_bi.norm(dim=-1).clamp(min=1e-3)  # (E',)
-            # Only apply force to inner-bond pairs (d < 2.5 Å).  This
-            # matches the decoder's bond candidacy cutoff (2.4 Å) and
-            # prevents the prior from over-pulling long chain spans.
-            inner_mask = d_bi < _INNER_BOND_CUTOFF
-            if not bool(inner_mask.any().item()):
-                continue
-            diff_bi = diff_bi[inner_mask]
-            d_bi = d_bi[inner_mask]
-            src_bi_eff = src_bi[mask_bi][inner_mask]
-            dst_bi_eff = dst_bi[mask_bi][inner_mask]
-            # Expected distance from the (Z, Z) table.
-            table = self._expected_length_table().to(x.device).to(x.dtype)
-            expected_bi = table[
-                self._atom_types[bi, src_bi_eff],
-                self._atom_types[bi, dst_bi_eff],
-            ].clamp(min=0.5)  # (E'',)
-            # Spring force: F = k * (d - d_target) * unit(diff).
-            residual_bi = (d_bi - expected_bi)  # (E'',)
-            force_mag_bi = self._spring_constant * residual_bi  # (E'',)
-            unit_bi = diff_bi / d_bi.unsqueeze(-1)  # (E'', 3)
-            # Newton 3rd law: +i side gets +force*unit, -j side gets
-            # -force*unit.  Accumulate via index_add.
-            src_idx = src_bi_eff + bi * n
-            dst_idx = dst_bi_eff + bi * n
-            flat_force.index_add_(
-                0, src_idx, force_mag_bi.unsqueeze(-1) * unit_bi
-            )
-            flat_force.index_add_(
-                0, dst_idx, -force_mag_bi.unsqueeze(-1) * unit_bi
-            )
+            diff_all = x[bi, dst_bi[mask_bi]] - x[bi, src_bi[mask_bi]]  # (E', 3)
+            d_all = diff_all.norm(dim=-1).clamp(min=1e-3)  # (E',)
+            # Only apply force to inner-bond pairs (d < 2.5 Å).  2.5 Å is
+            # the SPRING's reach, NOT the head's candidacy radius (the
+            # YuelBond head uses 3.5 Å) — a pair at 2.5-3.5 Å is a bond
+            # candidate for the head but gets no restoring force from this
+            # spring (the known reach gap; the Wf-A128 one-sided upper
+            # bound below is the only thing that reaches into it).  The
+            # cutoff prevents the prior from over-pulling long chain spans.
+            inner_mask = d_all < _INNER_BOND_CUTOFF
+            if bool(inner_mask.any().item()):
+                diff_bi = diff_all[inner_mask]
+                d_bi = d_all[inner_mask]
+                src_bi_eff = src_bi[mask_bi][inner_mask]
+                dst_bi_eff = dst_bi[mask_bi][inner_mask]
+                # Expected distance from the (Z, Z) table.
+                table = self._expected_length_table().to(x.device).to(x.dtype)
+                expected_bi = table[
+                    self._atom_types[bi, src_bi_eff],
+                    self._atom_types[bi, dst_bi_eff],
+                ].clamp(min=0.5)  # (E'',)
+                # Spring force: F = k * (d - d_target) * unit(diff).
+                residual_bi = (d_bi - expected_bi)  # (E'',)
+                force_mag_bi = self._spring_constant * residual_bi  # (E'',)
+                unit_bi = diff_bi / d_bi.unsqueeze(-1)  # (E'', 3)
+                # Newton 3rd law: +i side gets +force*unit, -j side gets
+                # -force*unit.  Accumulate via index_add.
+                src_idx = src_bi_eff + bi * n
+                dst_idx = dst_bi_eff + bi * n
+                flat_force.index_add_(
+                    0, src_idx, force_mag_bi.unsqueeze(-1) * unit_bi
+                )
+                flat_force.index_add_(
+                    0, dst_idx, -force_mag_bi.unsqueeze(-1) * unit_bi
+                )
+            # Wf-A128 (2026-10-31) — the ONE-SIDED UPPER BOUND.  Off by
+            # default; the block above is the whole pre-Wf-A128 sampler and
+            # the two blocks never touch each other's arithmetic, so the
+            # flag-off path is bit-exact with the pre-fix behaviour.
+            #
+            # The bound fires ONLY when the distance EXCEEDS the expected
+            # bond length and has NO inner truncation: it reaches out to
+            # ``_upper_bound_reach`` (default 3.5 Å = the YuelBond head's
+            # own candidate cutoff).  A pair at 2.5-3.5 Å is therefore
+            # pulled toward bonding for the first time.
+            if self._upper_bound and self._upper_bound_strength > 0.0:
+                reach_mask = d_all <= self._upper_bound_reach
+                if bool(reach_mask.any().item()):
+                    diff_ub = diff_all[reach_mask]
+                    d_ub = d_all[reach_mask]
+                    src_ub = src_bi[mask_bi][reach_mask]
+                    dst_ub = dst_bi[mask_bi][reach_mask]
+                    table_ub = (
+                        self._expected_length_table().to(x.device).to(x.dtype)
+                    )
+                    expected_ub = table_ub[
+                        self._atom_types[bi, src_ub],
+                        self._atom_types[bi, dst_ub],
+                    ].clamp(min=0.5)  # (E_ub,)
+                    # ONE-SIDED: the excess above the target, clamped at 0.
+                    # A pair at or below its target gets NOTHING from this
+                    # term — the bound never pushes atoms apart.
+                    excess_ub = (d_ub - expected_ub).clamp(min=0.0)
+                    active_ub = excess_ub > 0.0
+                    if bool(active_ub.any().item()):
+                        unit_ub = diff_ub[active_ub] / d_ub[active_ub].unsqueeze(-1)
+                        force_mag_ub = (
+                            self._upper_bound_strength * excess_ub[active_ub]
+                        )
+                        src_idx_ub = src_ub[active_ub] + bi * n
+                        dst_idx_ub = dst_ub[active_ub] + bi * n
+                        flat_force.index_add_(
+                            0, src_idx_ub, force_mag_ub.unsqueeze(-1) * unit_ub
+                        )
+                        flat_force.index_add_(
+                            0, dst_idx_ub, -force_mag_ub.unsqueeze(-1) * unit_ub
+                        )
         force = flat_force.reshape(b, n, 3)
         # Per-atom norm is bounded by the largest |d - d_target| in
         # the cloud (~ 1.5 Å at init), so the per-atom force is
@@ -4196,9 +4364,18 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # is added to the EGNN velocity.  Default 0 = no-op
         # (back-compat with the existing sampler).  See the
         # `_BondLengthGuidance` class docstring for the prior
-        # construction and the rationale (per Vignac et al. 2023,
-        # atom-bond inconsistency is the dominant failure mode of
+        # construction and the rationale (per Peng, Guan, Liu & Ma,
+        # "MolDiff", ICML 2023, PMLR v.202 (peng23b), arXiv:2305.07508
+        # — venue VERIFIED 2026-10-31 — atom-bond
+        # inconsistency is the dominant failure mode of
         # Cartesian-coordinate diffusion on metal complexes).
+        #
+        # Wf-A128 (2026-10-31) — the one-sided upper-bound COMPANION
+        # switch.  Default OFF.  It is additive to the existing surface:
+        # `bond_length_guidance_upper_bound` only widens the reach of the
+        # guidance (to the bond head's own candidate cutoff), it does not
+        # repurpose `bond_length_guidance_weight`.  With the switch off
+        # the sampler is bit-exact with the pre-Wf-A128 path.
         _bond_guidance_weight = float(
             getattr(config, "bond_length_guidance_weight", 0.0) or 0.0
         )
@@ -4209,6 +4386,21 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                     atom_types=atom_types,
                     cutoff=self._cutoff,
                     guidance_weight=_bond_guidance_weight,
+                    upper_bound=bool(
+                        getattr(config, "bond_length_guidance_upper_bound", False)
+                    ),
+                    upper_bound_reach=float(
+                        getattr(
+                            config,
+                            "bond_length_guidance_upper_bound_reach",
+                            3.5,
+                        )
+                    ),
+                    upper_bound_strength=getattr(
+                        config,
+                        "bond_length_guidance_upper_bound_strength",
+                        None,
+                    ),
                 ),
             )
 

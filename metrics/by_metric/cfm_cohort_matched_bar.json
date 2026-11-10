@@ -1,0 +1,262 @@
+{
+  "metric": "cfm_cohort_matched_bar",
+  "status": "MEASURED",
+  "measured_at": "2026-10-30",
+  "generated_by": "molmetal/scripts/cfm_cohort_matched_bar.py -- this artifact has a GENERATOR; it is not hand-written",
+  "generated_at": "2026-10-30T13:19:45+00:00",
+  "headline_key": "bars.primary.value",
+  "unit": "ratio",
+  "scope": "CFM (Conditional Flow Matching) free-generation path -- the share of ALL generated samples that are one connected molecule",
+  "purpose": "The cohort- and budget-MATCHED bar for the CFM line's generation quality. A bar must be a PER-RUN, same-reading, same-cohort, same-budget comparison against a NAMED run -- never a cohort median.",
+  "source": "molmetal/scripts/cfm_cohort_matched_compare.py over each run's own per_epoch_metrics.json (FULL float precision); nothing re-derived. The per_epoch_metrics.csv rendering rounds every rate to 4 decimals, so the harness never reads it.",
+  "formula": "(gen_validity_val / gen_validity_n) * gen_single_fragment_ratio",
+  "formula_meaning": "gen_validity is an RDKit PARSE rate and gen_single_fragment_ratio is conditioned on the PARSED rows only; their product is the share of ALL generated samples that are one connected molecule",
+  "harness": {
+    "script": "molmetal/scripts/cfm_cohort_matched_compare.py",
+    "test": "molmetal/tests/test_cfm_cohort_matched_compare.py",
+    "generator": "molmetal/scripts/cfm_cohort_matched_bar.py",
+    "invocation": ".venv/bin/python molmetal/scripts/cfm_cohort_matched_compare.py --run-a <A> --run-b <B> [--reading epoch|best] [--epoch N] [--bar F] [--census PATH]",
+    "exit_codes": {
+      "0": "VERDICT",
+      "1": "REFUSED",
+      "2": "SKIP"
+    },
+    "axes": [
+      "cohort",
+      "epoch_budget",
+      "not_measured",
+      "reading",
+      "history",
+      "provenance"
+    ],
+    "pool_kind_owner": "molmetal/scripts/cfm_pool_kind.py (Wf-A114 cluster C)",
+    "atomic_write": "molmetal/scripts/wf386a3_atomic_write.py::atomic_write_file (AGENTS.md 5.6)",
+    "cpu_only": true
+  },
+  "bars": {
+    "primary": {
+      "value": 0.41145833333333337,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json -> per_epoch_metrics[epoch==10]",
+      "traced_to": {
+        "run": "cfm_r9_fix_v2",
+        "epoch": 10,
+        "value": 0.41145833333333337,
+        "integrity_ok": true
+      },
+      "reading": "epoch (the run's own FINAL epoch; the run recorded 11 epochs, 0-10)",
+      "cohort": {
+        "n_train": 26715,
+        "n_val": 6714
+      },
+      "cohort_strict": "26715/6714",
+      "budget_epochs": 11,
+      "budget_epochs_meaning": "the number of training epochs the run had completed WHEN THE BAR VALUE WAS OBSERVED (epoch index + 1).  It is NOT the run's total recorded epoch count: the secondary bar's maximum sat at epoch 13 of a run that recorded 15 epochs, so its budget is 14, not 15",
+      "run_epochs_recorded": 11,
+      "rule": "a new run in this cohort must EXCEED this value under the SAME reading and a budget-matched epoch index, with a contiguous-from-zero history",
+      "pass_fail": true
+    },
+    "secondary": {
+      "value": 0.5260416666666666,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_fullcorpus_seed1/per_epoch_metrics.json -> per_epoch_metrics[epoch==13]",
+      "traced_to": {
+        "run": "cfm_fullcorpus_seed1",
+        "epoch": 13,
+        "value": 0.5260416666666666,
+        "integrity_ok": true
+      },
+      "reading": "best (the max over the run's own series -- optimistically biased; never a bar by itself)",
+      "cohort": {
+        "n_train": 26715,
+        "n_val": 192
+      },
+      "cohort_strict": "26715/192",
+      "budget_epochs": 14,
+      "budget_epochs_meaning": "the number of training epochs the run had completed WHEN THE BAR VALUE WAS OBSERVED (epoch index + 1).  It is NOT the run's total recorded epoch count: the secondary bar's maximum sat at epoch 13 of a run that recorded 15 epochs, so its budget is 14, not 15",
+      "run_epochs_recorded": 15,
+      "rule": "a new run in this cohort must EXCEED this value under the SAME reading, and only when BOTH runs' recorded epoch sets are identical.  The best reading is a MAX over a noisy series (the census labels it 'optimistically biased'), so it is a SECONDARY bar and never interchangeable with the primary one",
+      "pass_fail": true
+    },
+    "stretch": {
+      "value": 0.9375,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_fm_ab_2026_10_09/per_epoch_metrics.json -> per_epoch_metrics[epoch==12]",
+      "traced_to": {
+        "run": "cfm_fm_ab_2026_10_09",
+        "epoch": 12,
+        "value": 0.9375,
+        "integrity_ok": true
+      },
+      "reading": "epoch (the run's own FINAL epoch; the run recorded 30 epochs, 0-29)",
+      "cohort": {
+        "n_train": 256,
+        "n_val": 192
+      },
+      "cohort_strict": "256/192",
+      "budget_epochs": 13,
+      "budget_epochs_meaning": "the number of training epochs the run had completed WHEN THE BAR VALUE WAS OBSERVED (epoch index + 1).  It is NOT the run's total recorded epoch count: the secondary bar's maximum sat at epoch 13 of a run that recorded 15 epochs, so its budget is 14, not 15",
+      "run_epochs_recorded": 30,
+      "rule": "a DIFFERENT cohort AND a DIFFERENT budget: report-only, NEVER a pass/fail.  It is what the 256-cohort runs reached at epoch 12; the 26715-cohort runs are out of phase in the same oscillation and reach it at a different index",
+      "pass_fail": false,
+      "also_carried_by": {
+        "run": "cfm_pcgrad_off_2026_10_15",
+        "epoch": 12,
+        "value": 0.9375,
+        "source": "molmetal/reports/cfm_pcgrad_off_2026_10_15/per_epoch_metrics.json -> per_epoch_metrics[epoch==12]"
+      }
+    }
+  },
+  "verdicts": [
+    {
+      "verdict": "VERDICT",
+      "run_a": "cfm_frag_assemble",
+      "run_b": "cfm_frag_control",
+      "reading": "epoch",
+      "epoch_index": 29,
+      "compared_budget_epochs": 30,
+      "compared_epochs": {
+        "cfm_frag_assemble": 29,
+        "cfm_frag_control": 29
+      },
+      "unmatched_axes": [],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_frag_assemble__vs__cfm_frag_control/compare.json",
+      "note": "the assemble/connectivity loss term was already tried and made fragmentation WORSE on both views",
+      "e2e_a": 0.015625,
+      "e2e_b": 0.03125,
+      "delta_b_minus_a": 0.015625
+    },
+    {
+      "verdict": "VERDICT",
+      "run_a": "cfm_frag_assemble",
+      "run_b": "cfm_frag_control",
+      "reading": "best",
+      "epoch_index": 29,
+      "compared_budget_epochs": 30,
+      "compared_epochs": {
+        "cfm_frag_assemble": 16,
+        "cfm_frag_control": 24
+      },
+      "unmatched_axes": [],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_frag_assemble__vs__cfm_frag_control__reading_best/compare.json",
+      "note": "the same pair under the 'best' reading (identical epoch sets)",
+      "e2e_a": 0.1953125,
+      "e2e_b": 0.28125,
+      "delta_b_minus_a": 0.0859375,
+      "reading_note": "under the 'best' reading each arm contributes its OWN maximum over the searched window; the two maxima need not sit at the same epoch -- the per-arm epoch is in `compared_epochs`"
+    },
+    {
+      "verdict": "VERDICT",
+      "run_a": "cfm_r9_fix_v2",
+      "run_b": "cfm_r8_cosine_40ep",
+      "reading": "epoch",
+      "epoch_index": 8,
+      "compared_budget_epochs": 9,
+      "compared_epochs": {
+        "cfm_r9_fix_v2": 8,
+        "cfm_r8_cosine_40ep": 8
+      },
+      "unmatched_axes": [],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_r9_fix_v2__vs__cfm_r8_cosine_40ep/compare.json",
+      "note": "the PRIMARY bar's own run, against a same-cohort peer",
+      "e2e_a": 0.24479166666666669,
+      "e2e_b": 0.057291666666666664,
+      "delta_b_minus_a": -0.18750000000000003,
+      "census_crosscheck": {
+        "census_path": "metrics/by_metric/cfm_run_census.json",
+        "role": "cross-check only, never a gate",
+        "runs": {
+          "cfm_r9_fix_v2": {
+            "census_field": "gen_single_molecule_rate_end",
+            "census_epoch": 10,
+            "census_value": 0.41145833333333337,
+            "harness_value_at_last_epoch": 0.41145833333333337,
+            "delta": 0.0,
+            "agrees_within_1e-9": true,
+            "status": "AGREES",
+            "note": "the census multiplies the trainer's rounded gen_validity rate by gen_single_fragment_ratio; this harness divides gen_validity_val by gen_validity_n, so a last-bit delta is expected and is reported, not hidden"
+          },
+          "cfm_r8_cosine_40ep": {
+            "census_field": "gen_single_molecule_rate_end",
+            "census_epoch": 8,
+            "census_value": 0.057291666666666664,
+            "harness_value_at_last_epoch": 0.057291666666666664,
+            "delta": 0.0,
+            "agrees_within_1e-9": true,
+            "status": "AGREES",
+            "note": "the census multiplies the trainer's rounded gen_validity rate by gen_single_fragment_ratio; this harness divides gen_validity_val by gen_validity_n, so a last-bit delta is expected and is reported, not hidden"
+          }
+        },
+        "status": "DONE"
+      }
+    },
+    {
+      "verdict": "VERDICT",
+      "run_a": "cfm_fullcorpus_seed1",
+      "run_b": "cfm_fullcorpus_seed2",
+      "reading": "epoch",
+      "epoch_index": 14,
+      "compared_budget_epochs": 15,
+      "compared_epochs": {
+        "cfm_fullcorpus_seed1": 14,
+        "cfm_fullcorpus_seed2": 14
+      },
+      "unmatched_axes": [],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_fullcorpus_seed1__vs__cfm_fullcorpus_seed2/compare.json",
+      "note": "the SECONDARY bar's own run, against a same-cohort peer",
+      "e2e_a": 0.38020833333333337,
+      "e2e_b": 0.4518229166666667,
+      "delta_b_minus_a": 0.07161458333333331
+    },
+    {
+      "verdict": "VERDICT",
+      "run_a": "cfm_fm_ab_2026_10_09",
+      "run_b": "cfm_pcgrad_off_2026_10_15",
+      "reading": "epoch",
+      "epoch_index": 12,
+      "compared_budget_epochs": 13,
+      "compared_epochs": {
+        "cfm_fm_ab_2026_10_09": 12,
+        "cfm_pcgrad_off_2026_10_15": 12
+      },
+      "unmatched_axes": [],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_fm_ab_2026_10_09__vs__cfm_pcgrad_off_2026_10_15/compare.json",
+      "note": "the STRETCH pair: two 256-cohort runs at epoch 12",
+      "e2e_a": 0.9375,
+      "e2e_b": 0.9375,
+      "delta_b_minus_a": 0.0
+    },
+    {
+      "verdict": "REFUSED",
+      "run_a": "cfm_r11_eval256",
+      "run_b": "cfm_fm_ab_2026_10_09",
+      "reading": "epoch",
+      "epoch_index": 19,
+      "compared_budget_epochs": 20,
+      "compared_epochs": {
+        "cfm_r11_eval256": 19,
+        "cfm_fm_ab_2026_10_09": 19
+      },
+      "unmatched_axes": [
+        "cohort",
+        "history",
+        "provenance"
+      ],
+      "compare_json": "molmetal/reports/wfa114_cohort_matched_compare/cfm_r11_eval256__vs__cfm_fm_ab_2026_10_09/compare.json",
+      "note": "A REFUSAL IS A SUCCESS: this pair does not match",
+      "e2e_a": null,
+      "e2e_b": null,
+      "delta_b_minus_a": null,
+      "refusal_detail": {
+        "cohort": "the two runs are not the same cohort: n_train differs (A=26715, B=256); n_val differs (A=6714, B=192)",
+        "history": "cfm_r11_eval256's recorded epochs start at 19, not 0: 19 epoch(s) are invisible, so its epoch index is not the same training amount as another run's; cfm_r11_eval256's recorded epoch(s) [19] carry train_loss = nan (the whole history is scanned, not only the contributing row)",
+        "provenance": "the two runs' pools were not constructed the same way: gen_solver ('midpoint/50' vs 'rk4/100'), gen_eval_n (256 vs 16), gen_eval_seeds ('0,1,2,3' vs '0,1,2')"
+      }
+    }
+  ],
+  "retracted_numbers": {
+    "0.572276953125": "cfm_r11_eval256 -- WITHDRAWN as a bar. MEASURED: its own per_epoch_metrics carries exactly ONE recorded epoch (index 19) out of a declared 20, the history is not contiguous from zero, and its train_loss is nan.  The full-precision JSON value of the same cell is 0.572265625; the 0.572276953125 form is the 4-decimal CSV rendering.  This artifact and the harness read the JSON."
+  },
+  "caveat": "one run is one run: no error bar, finite generation pool (gen_eval_n=32) => sampling noise of unknown sign; 2 seeds is still n=2",
+  "why_not_a_cohort_median": "a cohort median averages runs that did not train the same amount on the same data, and the two cohorts are OUT OF PHASE in the same oscillation -- the ordering between them flips at nearly every budget-matched epoch index. A bar is therefore always per-run, against a NAMED run, under one reading, at one budget."
+}

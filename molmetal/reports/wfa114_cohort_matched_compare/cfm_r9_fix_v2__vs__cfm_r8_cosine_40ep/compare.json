@@ -1,0 +1,296 @@
+{
+  "metric": "cfm_cohort_matched_compare",
+  "schema_version": 1,
+  "generated_at": "2026-10-30T12:36:34+00:00",
+  "verdict": "VERDICT",
+  "reading": "epoch",
+  "reading_requested": "epoch",
+  "epoch_index": 8,
+  "compared_budget_epochs": 9,
+  "metric_family": "generation",
+  "e2e_formula": "(gen_validity_val / gen_validity_n) * gen_single_fragment_ratio",
+  "runs": {
+    "a": {
+      "run": "cfm_r9_fix_v2",
+      "run_path": "molmetal/reports/cfm_r9_fix_v2",
+      "source": "molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json",
+      "n_train": 26715,
+      "n_val": 6714,
+      "epochs_recorded": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "n_epochs_recorded": 11,
+      "last_epoch": 10,
+      "declared_epochs": 40,
+      "history_contiguous_from_zero": true
+    },
+    "b": {
+      "run": "cfm_r8_cosine_40ep",
+      "run_path": "molmetal/reports/cfm_r8_cosine_40ep",
+      "source": "molmetal/reports/cfm_r8_cosine_40ep/per_epoch_metrics.json",
+      "n_train": 26715,
+      "n_val": 6714,
+      "epochs_recorded": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "n_epochs_recorded": 9,
+      "last_epoch": 8,
+      "declared_epochs": 40,
+      "history_contiguous_from_zero": true
+    }
+  },
+  "axes": {
+    "cohort": {
+      "axis": "cohort",
+      "status": "PASS",
+      "detail": "both runs trained on n_train=26715, n_val=6714",
+      "evidence": {
+        "n_train": {
+          "cfm_r9_fix_v2": 26715,
+          "cfm_r8_cosine_40ep": 26715
+        },
+        "n_val": {
+          "cfm_r9_fix_v2": 6714,
+          "cfm_r8_cosine_40ep": 6714
+        }
+      }
+    },
+    "epoch_budget": {
+      "axis": "epoch_budget",
+      "status": "PASS",
+      "detail": "both runs recorded a row at epoch 8 (compared budget = 9 epochs)",
+      "evidence": {
+        "compared_epoch_index": 8,
+        "compared_budget_epochs": 9,
+        "recorded_epochs": {
+          "cfm_r9_fix_v2": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "cfm_r8_cosine_40ep": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      }
+    },
+    "not_measured": {
+      "axis": "not_measured",
+      "status": "PASS",
+      "detail": "the contributing row of each run carries a generation measurement (gen_validity_n > 0)",
+      "evidence": {
+        "cfm_r9_fix_v2": {
+          "gen_validity_n": 192,
+          "gen_validity_val": 65,
+          "gen_single_fragment_ratio": 0.7230769230769231
+        },
+        "cfm_r8_cosine_40ep": {
+          "gen_validity_n": 192,
+          "gen_validity_val": 22,
+          "gen_single_fragment_ratio": 0.5
+        }
+      }
+    },
+    "reading": {
+      "axis": "reading",
+      "status": "PASS",
+      "detail": "the fixed-epoch reading compares one index for both arms, so the two series need not cover the same epochs",
+      "evidence": {
+        "reading": "epoch",
+        "epoch_set_a": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "epoch_set_b": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "epoch_sets_identical": false
+      }
+    },
+    "history": {
+      "axis": "history",
+      "status": "PASS",
+      "detail": "both runs recorded a contiguous epoch history from 0 and their contributing rows carry a finite train_loss",
+      "evidence": {
+        "cfm_r9_fix_v2": {
+          "first_epoch": 0,
+          "last_epoch": 10,
+          "contiguous_from_zero": true,
+          "missing_epochs_in_range": []
+        },
+        "cfm_r8_cosine_40ep": {
+          "first_epoch": 0,
+          "last_epoch": 8,
+          "contiguous_from_zero": true,
+          "missing_epochs_in_range": []
+        }
+      }
+    },
+    "provenance": {
+      "axis": "provenance",
+      "status": "PASS",
+      "detail": "both arms read the GENERATION pool, their pool construction matches, and no on-disk pool contradicts the per-epoch metric",
+      "evidence": {
+        "metric_family": "generation",
+        "generation_fields_read": [
+          "gen_validity_val",
+          "gen_validity_n",
+          "gen_single_fragment_ratio"
+        ],
+        "reconstruction_fields_not_read": [
+          "decode_ratio_val",
+          "decode_single_fragment_ratio"
+        ],
+        "pool_construction": {
+          "gen_solver": {
+            "cfm_r9_fix_v2": "midpoint/100",
+            "cfm_r8_cosine_40ep": "midpoint/100"
+          },
+          "gen_eval_n": {
+            "cfm_r9_fix_v2": 64,
+            "cfm_r8_cosine_40ep": 64
+          },
+          "gen_eval_seeds": {
+            "cfm_r9_fix_v2": "0,1,2",
+            "cfm_r8_cosine_40ep": "0,1,2"
+          }
+        },
+        "pool_kind": {
+          "cfm_r9_fix_v2": {
+            "pool_csv": null,
+            "pool_kind": "absent",
+            "pool_marker": null,
+            "pool_reason": "the run directory holds no on-disk pool CSV; the compared number comes from the per-epoch generation path and needs no pool file"
+          },
+          "cfm_r8_cosine_40ep": {
+            "pool_csv": null,
+            "pool_kind": "absent",
+            "pool_marker": null,
+            "pool_reason": "the run directory holds no on-disk pool CSV; the compared number comes from the per-epoch generation path and needs no pool file"
+          }
+        }
+      }
+    }
+  },
+  "unmatched_axes": [],
+  "sources": {
+    "a": "molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json",
+    "b": "molmetal/reports/cfm_r8_cosine_40ep/per_epoch_metrics.json"
+  },
+  "reports_root": "molmetal/reports",
+  "out_dir": "molmetal/reports/wfa114_cohort_matched_compare/cfm_r9_fix_v2__vs__cfm_r8_cosine_40ep",
+  "caveat": "one run is one run: no error bar, finite generation pool (gen_eval_n=64) => sampling noise of unknown sign; 2 seeds is still n=2",
+  "suggested_matched_comparison": null,
+  "e2e": {
+    "a": {
+      "value": 0.24479166666666669,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json -> per_epoch_metrics[epoch==8]",
+      "epoch": 8,
+      "gen_validity_n": 192.0
+    },
+    "b": {
+      "value": 0.057291666666666664,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_r8_cosine_40ep/per_epoch_metrics.json -> per_epoch_metrics[epoch==8]",
+      "epoch": 8,
+      "gen_validity_n": 192.0
+    },
+    "delta_b_minus_a": {
+      "value": -0.18750000000000003,
+      "label": "MEASURED",
+      "source": "molmetal/reports/cfm_r8_cosine_40ep/per_epoch_metrics.json -> per_epoch_metrics[epoch==8] minus molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json -> per_epoch_metrics[epoch==8]"
+    }
+  },
+  "bar": {
+    "value": 0.41145833333333337,
+    "label": "MEASURED",
+    "source": "molmetal/reports/cfm_r9_fix_v2/per_epoch_metrics.json -> per_epoch_metrics[epoch==10]",
+    "note": "a bar is a THRESHOLD, not a measurement; it is traced to disk when a run on disk carries it",
+    "traced_to": {
+      "run": "cfm_r9_fix_v2",
+      "epoch": 10,
+      "value": 0.41145833333333337
+    },
+    "b_meets_bar": false,
+    "a_meets_bar": false
+  },
+  "census_crosscheck": {
+    "census_path": "metrics/by_metric/cfm_run_census.json",
+    "role": "cross-check only, never a gate",
+    "runs": {
+      "cfm_r9_fix_v2": {
+        "census_field": "gen_single_molecule_rate_end",
+        "census_epoch": 10,
+        "census_value": 0.41145833333333337,
+        "harness_value_at_last_epoch": 0.41145833333333337,
+        "delta": 0.0,
+        "agrees_within_1e-9": true,
+        "status": "AGREES",
+        "note": "the census multiplies the trainer's rounded gen_validity rate by gen_single_fragment_ratio; this harness divides gen_validity_val by gen_validity_n, so a last-bit delta is expected and is reported, not hidden"
+      },
+      "cfm_r8_cosine_40ep": {
+        "census_field": "gen_single_molecule_rate_end",
+        "census_epoch": 8,
+        "census_value": 0.057291666666666664,
+        "harness_value_at_last_epoch": 0.057291666666666664,
+        "delta": 0.0,
+        "agrees_within_1e-9": true,
+        "status": "AGREES",
+        "note": "the census multiplies the trainer's rounded gen_validity rate by gen_single_fragment_ratio; this harness divides gen_validity_val by gen_validity_n, so a last-bit delta is expected and is reported, not hidden"
+      }
+    },
+    "status": "DONE"
+  }
+}

@@ -1,0 +1,47 @@
+# Lambda P4 per-seed sweep — the hyperparameters of
+#   logs/lambda_p4_sweep/run_seed_sweep.sh
+#
+# WHY THIS FILE EXISTS (2026-11-04 — Wf-A269 §5.11 coverage hole):
+#   The sweep wrapper passed its five values straight onto the command line
+#   (``--pockets --seeds --n-simulations --n-top-k --output-dir``).  The
+#   sweep script was invisible to scripts/_yaml_only_gate.py — that gate's
+#   trainer predicate is the regex ``train_[a-z0-9_]+\.py``, and the sweep
+#   runs ``r4_lambda_only_run.py``, which does not match — so the flags were
+#   never audited, and no YAML declared them.
+#   The values below are the SAME values the wrapper hardcoded (MEASURED on
+#   the pre-change file, read 2026-11-04).
+#
+# WHAT IS *NOT* HERE, AND WHY:
+#   ``output_dir`` is a RUN SELECTOR, not a hyperparameter: the sweep writes
+#   one report per seed (``_lambda_p4_seed_<idx>``), so a static value would
+#   be wrong for 2 of the 3 seeds.  It stays on the command line — the same
+#   class as ``--out-dir``, which §5.11's allowlist permits because it
+#   selects WHICH run, never WHAT to train.
+#   ``seeds`` is the sweep AXIS: the wrapper passes it explicitly whenever the
+#   caller supplies a seed value (an explicit CLI flag outranks the YAML per
+#   §5.11's precedence rule); when the caller supplies none, this file's
+#   cohort applies.
+#
+# TRAINER-SIDE SUPPORT (2026-11-04, the minimal change this needed):
+#   molmetal/scripts/r4_lambda_only_run.py did NOT declare --config and did
+#   NOT call apply_yaml_overrides (MEASURED: grep for '"--config"' and
+#   'apply_yaml_overrides' returned nothing).  It also declared --output-dir
+#   with required=True, which makes the parser INCOMPATIBLE with the loader:
+#   apply_yaml_overrides re-parses the parser with an EMPTY argv to capture
+#   the default namespace, and argparse exits 2 on a required flag.  Both
+#   were fixed in that file; the missing-output-dir case is still a hard
+#   error (exit 2), just not at argparse time.
+
+entry:
+  script: molmetal/scripts/r4_lambda_only_run.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/r4_lambda_only_run.py --config {yaml_path} --output-dir {out_dir}
+
+protocol:
+  # Number of test pockets (first N rows of the manifest CSV).
+  pockets: 100
+  # Random seeds — a LIST because --seeds is nargs="+".
+  seeds: [42]
+  # MCTS simulation budget per cell.
+  n_simulations: 20
+  # Number of top candidates returned per cell.
+  n_top_k: 5

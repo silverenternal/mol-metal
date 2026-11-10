@@ -59,7 +59,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Project + path constants
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MOLMETAL_ROOT = REPO_ROOT / "molmetal"
 SCRIPTS_DIR = MOLMETAL_ROOT / "scripts"
 TESTS_DIR = MOLMETAL_ROOT / "tests"
@@ -75,7 +75,11 @@ WF264_VINA_PANEL = SCRIPTS_DIR / "cfm_vina_dock_panel.py"
 # Wf-176 m19 LOMO USER_OK gate + Wf-338-M3 CPU portion
 WF176_GPU_WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
 WF176_CPU_WRAPPER_WF338V2 = (
-    REPO_ROOT / "scripts" / "launch_wf338v2_wf176_m19_lomo_cpu.sh"
+    Path(__file__).resolve().parents[2]
+    / "TODO"
+    / "archive"
+    / "wf437_simplify"
+    / "launch_wf338v2_wf176_m19_lomo_cpu.sh"
 )
 
 # Phase 1 cohort (Wf-309A SHIPPED)
@@ -608,7 +612,11 @@ class TestPipelineMasterAndBackwardCompat:
         assert extractor is not None
 
         # Wf-264 CFM property panel launcher must parse.
-        wf264_launcher = REPO_ROOT / "scripts" / "launch_wf264_cfm_property_panel.sh"
+        wf264_launcher = (
+            Path(__file__).resolve().parents[2]
+            / "scripts"
+            / "launch_wf264_cfm_property_panel.sh"
+        )
         assert wf264_launcher.exists(), f"Wf-264 launcher missing: {wf264_launcher}"
         proc = subprocess.run(
             ["bash", "-n", str(wf264_launcher)],

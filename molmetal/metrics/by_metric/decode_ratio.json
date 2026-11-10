@@ -1,7 +1,7 @@
 {
   "hook": "decode_ratio",
-  "date": "2026-10-13T02:34:09+0800",
-  "wall_clock_s": 2.5003058910369873,
+  "date": "2026-10-31T05:05:16+0800",
+  "wall_clock_s": 0.022739410400390625,
   "checkpoint_path": "/tmp/__nonexistent_ckpt_for_test__.pt",
   "n_samples": 4,
   "n_steps": 8,

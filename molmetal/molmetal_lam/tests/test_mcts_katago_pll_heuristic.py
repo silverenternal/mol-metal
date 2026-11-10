@@ -10,10 +10,20 @@ components into :class:`MCTSProofSearch`:
 
 1. **PLL-distance leaf prior** — the leaf prior is multiplied by
    ``1 / (1 + ||PLL(state) - PLL(target)||_2)`` (Liu & Feng 2026,
-   *J. Chem. Inf. Model.*, DOI: 10.1021/acs.jcim.6c02460).  New
+   *J. Chem. Inf. Model.* 66 (18), 11767-11777; DOI:
+   10.1021/acs.jcim.6c02460).  New
    constructor fields ``use_pll_heuristic``, ``pll_target``,
    ``pll_k``, ``pll_knn`` and the ``search()`` keyword-only
    arguments of the same name drive the wire-up.
+
+   [CITATION RECORD COMPLETED 2026-10-31, Wf-A149 — the PLL citation above
+   previously read "(Liu & Feng 2026, *J. Chem. Inf. Model.*, DOI:
+   10.1021/acs.jcim.6c02460)": it carried the DOI but no volume /
+   issue / pages.  The Crossref record for that DOI (MEASURED 2026-10-31,
+   HTTP 200) gives volume 66, issue 18, pages 11767-11777 (online
+   2026-09-04, print 2026-09-28); the full venue record is now
+   printed inline.  No value here was wrong before — the citation
+   was incomplete.]
 
 2. **First Play Urgency (FPU)** — KataGo's heuristic for never-
    visited children; never-visited children receive an additive

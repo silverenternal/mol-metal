@@ -24,7 +24,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC = REPO_ROOT / "molmetal" / "reports" / "wf85_p3_hilbert_astr_combined_real"
 DST = REPO_ROOT / "molmetal" / "reports" / "wf86_p3_platinai_4cell_real"
 

@@ -41,6 +41,20 @@ Per user directive 2026-09-29 verbatim *"基于刚才所有结束的工作流以
 
 **Summary**: 6/7 wrappers fully conformant (USER_OK-gated + dry-runnable + DRY_RUN.log). 1/7 (G5) HONEST-NEGATIVE on USER_OK gate (legacy predates Wf-300C pattern).
 
+
+> **CORRECTION (2026-11-02, the main thread, Wf-A269 wave-12) — "✅ exit 0" IN THE `--dry-run` COLUMN IS A PLAN-EMISSION FACT; THE ROW-3 PLAN'S OWN VERDICT FIELD SAYS `BLOCKED_CAPABILITY`.**
+>
+> **SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:**
+>     | 3 | Wf-355-A3 | `scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` | ✅ | ✅ gate enforced (USER_OK=1, exit 64) | ✅ exit 0 | ✅ emitted at `wf355a3_r20_p5_tmqm_plat/` |
+>
+>     **Summary**: 6/7 wrappers fully conformant (USER_OK-gated + dry-runnable + DRY_RUN.log). 1/7 (G5) HONEST-NEGATIVE on USER_OK gate (legacy predates Wf-300C pattern).
+>
+> **MEASURED 2026-11-02 (CPU-only, `--dry-run` only, zero GPU).** The exit code is real — the dry run exits 0 and emits a plan into `wf355a3_r20_p5_tmqm_plat/`. But the plan it emits now carries `status = BLOCKED_CAPABILITY` and `capability = BLOCKED`, and its `honest_framing.MEASURED_today` names the reason: the trainer `train_dmpnn_multitask_wasserstein.py` does not declare **12 of 20** of the launcher's argv flags (cross-checked against `argv_capability.txt`'s `FAIL — 12 of 20 flag(s) are not declared` line and its **12** `MISSING ` rows). PRE-REPAIR the `status` field was hardcoded (`PLAN_ONLY` on the dry-run path, `READY_TO_RUN` on the launch path), so no dry-run plan could ever have carried the gate's real verdict.
+>
+> **⇒ THIS FILE'S USER_OK COLUMN IS THE CORRECT ONE, AND IT IS CONFIRMED BY BOTH THE CODE AND RUNTIME PROBES.** Rows 3 and 4 say `USER_OK=1, exit 64` — MEASURED: `launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh:182` and `launch_wf131_p3_deferred_runs.sh:132` gate on `${USER_OK:-0} != "1"`; probed, `USER_OK=YES` → **exit 64 (REFUSED)**, `USER_OK=1` → exit 0. Rows 1, 2 and 5 say `USER_OK=YES` — MEASURED: `launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh:173`, `launch_wf310e_r20_p4_bindingdb_1.07M.sh:202` and `launch_wf146_deferred_runs.sh:175` use the `&&` pair form, so they accept **both** `YES` and `1`.
+>
+> **⇒ ⇒ THE TWO "✅" COLUMNS MEASURE DIFFERENT THINGS, AND NEITHER IS A LAUNCHABILITY MEASUREMENT.** `USER_OK gate` = the wrapper refuses to proceed without an OK token. `--dry-run` = the wrapper produced a plan. **Neither column reads the plan's `status`, which is the launchability verdict.** ⇒ The "6/7 wrappers fully conformant" summary is **TRUE as stated** (conformant = gated + dry-runnable + log emitted) and must not be read as "6/7 launchable"; the difference is now on the record rather than implied.
+
 ---
 
 ## §2 Per-test status (25 tests, 24 passed + 1 skipped)
@@ -85,6 +99,14 @@ molmetal/tests/test_wf365b2_7_wrappers_final.py::test_integration_end_to_end_smo
 | Bash syntax check | `test_bash_syntax_all_7` | ✅ 7/7 SYNTAX OK |
 | USER_OK gate enforcement | `test_user_ok_gate_enforced[Wf-355-A1..B2, G6]` + `[G5]` skip | ✅ 6/6 enforced + 1 skip |
 | Dry-run with USER_OK | `test_dry_run_all_7[7 wrappers]` | ✅ 7/7 dry-run exit 0 |
+
+
+> **CORRECTION (2026-11-02, the main thread, Wf-A269 wave-12) — THE `7/7 dry-run exit 0` TEST ROW IS EXACT AS FAR AS IT GOES, AND IT IS NOT A LAUNCHABILITY MEASUREMENT.**
+>
+> **SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:**
+>     | Dry-run with USER_OK | `test_dry_run_all_7[7 wrappers]` | ✅ 7/7 dry-run exit 0 |
+>
+> **MEASURED 2026-11-02 by probe, CPU-only.** The five Wf-355 / Wf-131 / Wf-146 wrappers audited in this file (p3 drugood, p4 bindingdb, p5 tmqm_plat, wf131, wf146) all exit **0** under `USER_OK=… --dry-run`; the two G5/G6 wrappers were not re-probed in this correction. **⇒ The row is EXACT.** What it does not measure is the launchability verdict, which lives in the emitted plan's `status` field — for row 3 that field reads `BLOCKED_CAPABILITY` (see the §1 correction above). The test's own assertion — *"With USER_OK + `--dry-run` → exit 0"* — is correct for what it claims; this entry records only the boundary of what "exit 0" licenses a reader to conclude.
 | DRY_RUN.log emission | `test_dry_run_log_emission[5 Wf-355 wrappers]` | ✅ 5/5 emitted at expected paths |
 | Helper scripts present | `test_helper_scripts_present` | ✅ pre_flight_gpu_ready.sh + wave_budget_tracker.py |
 | pre_flight_gpu_ready --dry-run | `test_preflight_gpu_dry_run` | ✅ exit-clean in ~30 s |

@@ -54,11 +54,11 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import paper_dashboard  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 # Fallback to the codes-prefixed venv if the cades-prefixed one is missing
 # (some symlink layouts).
 if not Path(VENV_PY).exists():
-    _alt = "/home/hugo/codes/mol-metal/.venv/bin/python"
+    _alt = sys.executable
     if Path(_alt).exists():
         VENV_PY = _alt
 

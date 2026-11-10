@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 # 3 of the 8 CANONICAL REAL wrappers that have full DRY_RUN.log + plan.json emission

@@ -70,6 +70,43 @@ entries, Wf-375 deferred).
    Wf-384-A1 (audit) + Wf-384-A2 (root cause) + Wf-384-A3 (re-author) + Wf-384-B1 (final sync).
 6. **Filesystem is the source of truth.** If disk has the file, the file SHIPPED — no matter what
    any agent's report says. Re-author the verify agent, not the source closeout.
+   **AND a correction is APPEND-ONLY** — when a published artifact or document is corrected,
+   the superseded rendering is **PRESERVED VERBATIM** and the correction is **ADDITIVE +
+   DATED**, never a silent edit and never a deletion. *(Clause restored 2026-10-31 by
+   Wf-A152 — see the note below.)*
+
+> **⚠️ WHY THIS CLAUSE IS BEING RESTORED (2026-10-31, Wf-A152).** §5.5's item 6 was
+> **REPLACED WHOLESALE** on 2026-09-30 (Wf-384-B1) when the filesystem-truth mandate
+> took over this slot; the APPEND-ONLY clause it used to carry was dropped in the
+> rewrite and never restored. MEASURED 2026-10-31: the repo carries **145**
+> citations of `§5.5 rule #6` for the append-only practice (across **~100**
+> documents — the `Append-only correction log.` footer in 8+ close-out reports, the
+> `HONEST_NEGATIVE_CATALOG.md` Wf-A131..Wf-A151 entries, `AGENTS.md` §2,
+> `TODO/README.md`, `TODO/INDEX.md`) and **~18** more for the filesystem-truth
+> meaning; **every one of the append-only citations pointed at a rule that did not
+> state it**, because the rule the working-tree AGENTS.md carried before the
+> 2026-09-30 rewrite was never committed and does not exist anywhere in `git
+> history`. The *practice* was correct and is preserved verbatim in every document
+> it touched; only its *stated authority* was broken. Both clauses now live in
+> item 6, so every citation in the repo resolves. Catalog **§6.264**.
+
+> **⚠️ THE COUNTS ABOVE ARE SUPERSEDED (2026-11-01, Wf-A154).** The **145** /
+> **~100 documents** / **~18** figures were true when measured on 2026-10-31 and are
+> **not** reproducible under any of four definitions re-tested on 2026-11-01. MEASURED
+> 2026-11-01, `rg --binary` over `git ls-files` **plus** untracked-not-ignored
+> (**9868** files): the **rule-6-form** citations (`§5.5` within 45 chars of
+> `rule #6` / `rule 6` / `rule-6` / `item 6`) number **285** across **70** files
+> (tracked-only: **248** / **59** files); the **filesystem-truth-form** citations
+> (`§5.5` followed by `filesystem-truth`) number **1017** across **329** files
+> (tracked-only: **1008** / **322** files); **2545** citations of `§5.5` in any form
+> across **592** files. Excluding `paper/**` and `.data/**` changes nothing — those
+> paths carry none of these citations. The count grew because the re-quote wave
+> itself added citations: the catalog alone now carries **96** rule-6-form citations
+> (`TODO/INDEX.md` **38**, `TODO/README.md` **16**). **A citation count is not a stable
+> property of a repo that is actively citing the rule it documents** — which is the
+> same lesson §6.263 records about `grep`, applied to a number. The superseded
+> rendering above is **PRESERVED VERBATIM** per AGENTS.md §5.5 rule 6. Catalog
+> **§6.264** §3.
 
 **Why this rule exists**: Wf-378-A3 cross-poll verify agent reported "Wf-377 0/5 SHIPPED" based
 on a stale snapshot query. The FALSE-NEGATIVE propagated downstream to Wf-379..Wf-383 wave

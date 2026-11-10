@@ -90,7 +90,7 @@
 ### M25 Hilbert primal-dual optimizer
 
 - **Mechanism**: Hilbert space primal-dual optimization (vs evolutionary search). `HilbertSpace(dim=64, basis="fourier")` constructs a finite Fourier approximation of ℋ = L²[0,1] with basis `{1, √2 sin(2πkt), √2 cos(2πkt) | k ≥ 1}` truncated at `dim` modes (default 64 = coupling-adapter 32 → 64 bridge dim, `L-C17-C1`). `PrimalDualOptimizer.step(x, grad)` follows Chambolle-Pock 2011 PD template with Hilbert-space inner product; `primal_dual_convergence_rate(k) = C / k` monotone non-increasing. Replaces F5 / LambdaASTSR evolutionary 64 × 50-gen PySR loop with deterministic O(1/k) iterate.
-- **Theorem anchor**: Sun X.-K. & Zheng L.-J. 2026, *Acta Math. Sin.* 53(4): 821-846, arXiv:2510.08423 — cite key `sun2026hilbert`.
+- **Theorem anchor**: Sun X.-K. (孙祥凯) & Zheng L.-J. (郑丽娟) 2026, “Hilbert空间上可分离凸优化的原始-对偶动力学方法”, 《数学学报》(Acta Math. Sin., 中文版) 2026 年第 4 期, DOI 10.12386/A20250022 (Wanfang article id `sxxb202604007`) — **volume / issue-pages UNVERIFIED** (journal page is captcha-gated; not guessed). The repo-local label `sun2026hilbert` is **NOT an existing BibTeX key**: `grep -c sun2026hilbert paper/refs.bib` = 0. **arXiv:2510.08423 is REFUTED** — it resolves to “Computational Bell Inequalities” (Merkulov & Arnon), not a Hilbert paper. The iteration actually implemented by `PrimalDualOptimizer.step` is Chambolle-Pock: Chambolle & Pock 2011, *J. Math. Imaging Vision* 40(1): 120-145, DOI 10.1007/s10851-010-0251-1 (Crossref issued 2010-12-21) — see the 2026-10-31 correction note in 附录 A.
 - **Affected metrics**: ASTSR R² (M8 LambdaASTSR replacement baseline), LambdaASTSR wall-time.
 - **Target gate (R18 Phase 3 GPU retrain)**: R² ≥ 0.62 (no regression), wall-time -50 % (PROJECTED).
 - **Expected delta**: **MEASURED** 452.16× speedup at n=30 vs evolutionary (CPU smoke); **PROJECTED** 100× at n=300.
@@ -251,7 +251,7 @@ Wf-380..390 wave shipped 10 CFM innovation SCAFFOLDS + Wf-380-B1 trainer integra
 - `triton_mini_batch_ot`: Khainb 2025 Triton-fused mini-batch OT kernel
 - `shortcut_distillation_wf380`: Frans 2024 shortcut consistency distillation
 - `consistency_regularization_wf380`: EDM Karras 2022 consistency regularization
-- `flowmol_unified`: FlowMol arXiv:2412.01966 (CC-BY-NC, USER_OK-gated production integration)
+- `flowmol_unified`: **the citation previously recorded here is REFUTED** — arXiv:2412.01966 resolves to “Implementing Semiclassical Szegedy Walks in Classical-Quantum Circuits for Homomorphic Encryption” (Ortega, Fernández, Martin-Delgado), NOT a FlowMol paper; no paper titled “FlowMol: A Unified Flow Matching Model for 3D Molecular Generation” was found (arXiv `all:"FlowMol"` search returns only 2404.19739 / 2411.16644 / 2508.12629 / 2505.00518; Crossref title query = 0 hits). The real FlowMol family is Dunn & Koes: **arXiv:2404.19739** (“Mixed Continuous and Categorical Flow Matching for 3D De Novo Molecule Generation” — presents FlowMol, i.e. the unified continuous atom flow + categorical bond flow this SCAFFOLD implements), arXiv:2411.16644, arXiv:2508.12629 — all three are **CC BY-SA 4.0**, NOT CC-BY-NC. The USER_OK licence gate itself is unchanged and still enforced in code; only the citation / licence attribution was wrong.
 - `log_normal_t`: log-normal t-sampling for CFM time-density
 - `lr_warmup`: linear LR warmup (existing M14 baseline; Wf-380 SCAFFOLD formalizes cosine variant)
 
@@ -386,7 +386,7 @@ Wf-380..390 wave shipped 10 CFM innovation SCAFFOLDS + Wf-380-B1 trainer integra
 ### M35 Multi-PH + PLL signature integration
 
 - **Mechanism**: Multi-PH features augmenting PLL (vs PLL alone). `MultiPHPLLSignature` wraps multi-PH (M24) + base PLL (M4) — accepts SMILES, returns `((n_bins, n_bins), (k,))` tuple. `MultiPHPLLAugment` concatenates `(B, n_bins ** 2)` multi-PH descriptor after `(B, H)` PLL feature matrix. `compare_multi_ph_vs_single_pll` verifies combined expressivity ≥ single (strict monotonicity: stacking a second filter dimension strictly increases descriptor range). **Does NOT modify** `pll_signature.py` — only imports public API; preserves `lru_cache` on `pll_signature`. Zero caching: multi-PH + PLL recomputed each call.
-- **Theorem anchor**: Kim & Jung 2026 (*Adv. Appl. Math.* 174) + Liu & Feng 2026 (PLL).
+- **Theorem anchor**: Kim & Jung 2026 (*Adv. Appl. Math.* 174) + Liu J. & Feng H. 2026, “Persistent Local Laplacian Prediction of Protein-Ligand Binding Affinities”, *J. Chem. Inf. Model.* 66(18): 11767-11777 (issued 2026-09-04), DOI 10.1021/acs.jcim.6c02460, arXiv:2603.21503 (Crossref + arXiv verified 2026-10-31; the previously recorded venue string is refuted and is used nowhere in this file — see the 2026-10-31 correction note in 附录 A).
 - **Affected metrics**: m7 Diversity, m11 n_distinct.
 - **Target gate (R18 Phase 3 GPU)**: combined ≥ single (PROJECTED; pure stacking, no regression on either).
 - **Expected delta**: +0.05 on m7 / m11 (PROJECTED).
@@ -636,7 +636,7 @@ Each cell denotes: ✓ 主要贡献 / ○ 次要 / ✗ 无影响.
 | 删 Wf-380-A1 SCAFFOLD (triton_mini_batch_ot) | m1 + m2 ↓ speedup | m1, m2 | ⏳ TODO (Wf-380-A1 SCAFFOLD; Triton kernel correctness verified but not re-baselined) |
 | 删 Wf-380-A1 SCAFFOLD (shortcut_distillation_wf380) | m14 → fewer sampling steps | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; Frans 2024 distillation fidelity TBD) |
 | 删 Wf-380-A1 SCAFFOLD (consistency_regularization_wf380) | m14 → drift | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; EDM Karras 2022 consistency regularizer TBD) |
-| 删 Wf-380-A1 SCAFFOLD (flowmol_unified) | m3 + m11 ↓ | m3, m11 | ⏳ TODO (Wf-380-A1 SCAFFOLD; CC-BY-NC LICENSE-GATED production integration per Wf-336-A1 honest-negative caveat) |
+| 删 Wf-380-A1 SCAFFOLD (flowmol_unified) | m3 + m11 ↓ | m3, m11 | ⏳ TODO (Wf-380-A1 SCAFFOLD; USER_OK LICENSE-GATED production integration per Wf-336-A1 honest-negative caveat; **licence attribution corrected 2026-10-31 (Wf-A149)** — the previously cited arXiv:2412.01966 is NOT a FlowMol paper, and the real FlowMol papers (Dunn & Koes, arXiv:2404.19739 / 2411.16644 / 2508.12629) are CC BY-SA 4.0, not CC-BY-NC) |
 | 删 Wf-380-A1 SCAFFOLD (log_normal_t) | m14 → t-sampling variance ↑ | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; log-normal vs uniform t-sampling variance TBD) |
 | 删 Wf-380-A1 SCAFFOLD (lr_warmup) | m14 → diverge | m14 | ✅ 已做 (Wf-380-A1 SCAFFOLD; M14 LR warmup baseline per Wf-327-F2) |
 | **Wf-388-A1 per-cohort config ablation** ||||
@@ -723,3 +723,108 @@ source env.sh
 # 3. 跑 ablation smoke (200-step)
 # 见 molmetal/scripts/run_ablation_smoke.sh (待写)
 ```
+
+---
+
+## 附录 A. Citation corrections — Wf-A149 (2026-10-31)
+
+*Numbering:* this section is lettered **附录 A**, not §12, because `molmetal/tests/test_wf313e_mechanism_metric_mappings.py` and `molmetal/tests/test_wf320g_mechanism_metric_mappings.py` already expect a “## 12. 完整 regression-debug 表” and a “## 13. Wf-320G …” section in this file (both currently failing on the pre-edit file as well — the §12/§13 blocks were never written here). Taking §12 would have shadowed that slot.
+
+Dated, additive corrections to the citation fields above (AGENTS.md §5.5 rule 6 — the
+superseded wording is quoted verbatim, nothing is deleted or rewritten; no MEASURED
+performance number was changed by this wave). Every replacement value below was verified
+live on **2026-10-31** against Crossref REST / the arXiv API / Wanfang.
+
+### A.1 F-01 — M25 theorem anchor (§1 M25, line 93)
+
+**Superseded wording (verbatim):**
+
+> - **Theorem anchor**: Sun X.-K. & Zheng L.-J. 2026, *Acta Math. Sin.* 53(4): 821-846, arXiv:2510.08423 — cite key `sun2026hilbert`.
+
+**Why it was wrong.** `arXiv:2510.08423` is **“Computational Bell Inequalities”**
+(Merkulov I., Arnon R.) — verified live via the arXiv API on 2026-10-31
+(`http://export.arxiv.org/api/query?id_list=2510.08423`, HTTP 200, title = “Computational Bell
+Inequalities”, authors = Ilya Merkulov / Rotem Arnon). It is **not** a Hilbert-space paper,
+so the arXiv id was attached to the wrong record. The volume/pages pair `53(4): 821-846` is
+**UNVERIFIED** — the journal landing page
+(`actamath.cjoe.ac.cn/Jwk_sxxb_cn/CN/10.12386/A20250022`) is captcha-gated, so no volume,
+issue or page range is asserted here.
+
+**What replaced it.** The real paper exists under a different record: 孙祥凯 (Sun Xiangkai) +
+郑丽娟 (Zheng Lijuan), “Hilbert空间上可分离凸优化的原始-对偶动力学方法”, 《数学学报》(Acta Math.
+Sin., 中文版) 2026 年第 4 期, DOI 10.12386/A20250022, Wanfang article id `sxxb202604007`
+(fetched live 2026-10-31 from
+`https://apps.wanfangdata.com.cn/perios/rss/sxxb/atom.xml`, HTTP 200 — entry id
+`sxxb202604007`, `<title><name>孙祥凯%郑丽娟</title>`, `<published>2026-07-31</published>`).
+The English title and the volume/page numbers remain **UNVERIFIED** and are not asserted.
+
+**Also corrected — the bib key.** `sun2026hilbert` **does not exist** in `paper/refs.bib`
+(`grep -c sun2026hilbert paper/refs.bib` = **0**), so it is a repo-local label, not a
+resolvable BibTeX key. The line now says so explicitly instead of pointing at a key that
+cannot resolve.
+
+**Algorithm anchor.** The iteration actually implemented by `PrimalDualOptimizer.step`
+(one Chambolle-Pock step, `x_{k+1} = prox(x_k − lr∇F)`, `y_{k+1} = y_k + lr_dual(x_{k+1} − x_k)`)
+is Chambolle & Pock: “A First-Order Primal-Dual Algorithm for Convex Problems with
+Applications to Imaging”, *J. Math. Imaging Vision* **40**(1): 120-145, DOI
+**10.1007/s10851-010-0251-1** (Crossref HTTP 200 on 2026-10-31; `issued` 2010-12-21; issue year
+2011). This reference is already used correctly in the same section's mechanism text and in
+`molmetal/molmetal_lam/reward/hilbert_primal_dual.py`'s own docstring.
+
+### A.2 F-04 — `flowmol_unified` scaffold citation (§4 Wf-380 SCAFFOLD legend, line 254) + ablation row (§7, line 639)
+
+**Superseded wording (verbatim):**
+
+> - `flowmol_unified`: FlowMol arXiv:2412.01966 (CC-BY-NC, USER_OK-gated production integration)
+
+and
+
+> | 删 Wf-380-A1 SCAFFOLD (flowmol_unified) | m3 + m11 ↓ | m3, m11 | ⏳ TODO (Wf-380-A1 SCAFFOLD; CC-BY-NC LICENSE-GATED production integration per Wf-336-A1 honest-negative caveat) |
+
+**Why it was wrong.** `arXiv:2412.01966` is **“Implementing Semiclassical Szegedy Walks in
+Classical-Quantum Circuits for Homomorphic Encryption”** (Ortega S. A., Fernández P.,
+Martin-Delgado M. A.; *J. Phys. Complexity* 6, 025010 (2025)) — verified live on 2026-10-31
+via the arXiv API (HTTP 200). It is an unrelated quantum-crypto paper, so the id was attached
+to the wrong record. The title/author list the repo attributed to it (“FlowMol: A Unified Flow
+Matching Model for 3D Molecular Generation”, Qiang et al.) was searched for and **NOT FOUND**
+(arXiv `all:"FlowMol"` returns only 2404.19739 / 2411.16644 / 2508.12629 / 2505.00518; Crossref
+title query = 0 hits). The licence attribution was wrong too: the real Dunn & Koes FlowMol
+papers are **CC BY-SA 4.0**, not CC-BY-NC (licence read live from each arXiv abs page on
+2026-10-31: `creativecommons.org/licenses/by-sa/4.0/`).
+
+**What replaced it.** The scaffold's architecture — a unified continuous atom flow + categorical
+bond flow — corresponds to **arXiv:2404.19739**, “Mixed Continuous and Categorical Flow Matching
+for 3D De Novo Molecule Generation” (Dunn I., Koes D. R.), which the abstract itself names
+FlowMol (code: `https://github.com/dunni3/FlowMol`). Sibling records: arXiv:2411.16644
+(“Exploring Discrete Flow Matching for 3D De Novo Molecule Generation”) and arXiv:2508.12629
+(“FlowMol3: Flow Matching for 3D De Novo Small-Molecule Generation”). The **USER_OK licence gate
+is unchanged** and still enforced in code (`molmetal/adapters/flow_matching_lipman/flowmol_unified.py`);
+only the citation and licence attribution were corrected.
+
+**Out of scope (reported, not edited).** The same wrong id + licence still sit in
+`molmetal/adapters/flow_matching_lipman/flowmol_unified.py` (docstring lines 5/13, and
+`LICENSE_NAME` at line 45) and in `molmetal/molmetal_lam/reward/unified_atom_bond_flow.py` if
+present — those files belong to another owner. The adapter is flagged in §4 of this file only.
+
+### A.3 F-11 — M35 PLL theorem anchor (§5 M35, line 389)
+
+**Superseded wording (verbatim):**
+
+> - **Theorem anchor**: Kim & Jung 2026 (*Adv. Appl. Math.* 174) + Liu & Feng 2026 (PLL).
+
+**What was corrected.** The author surnames and year were already right, but the anchor carried
+**no venue at all**, so the reader had no resolvable record. The verified record was added
+(additive): Liu J. & Feng H. (2026), “Persistent Local Laplacian Prediction of Protein-Ligand
+Binding Affinities”, *J. Chem. Inf. Model.* **66**(18): 11767-11777, issued **2026-09-04**,
+DOI **10.1021/acs.jcim.6c02460**, arXiv:2603.21503 — Crossref HTTP 200 on 2026-10-31
+(`vol 66`, `issue 18`, `page 11767-11777`, `issued 2026-09-04`, authors `Jian Liu` /
+`Hongsong Feng`) and the arXiv API HTTP 200 for 2603.21503 (same title, same authors).
+
+**The defective venue string is NOT in this file.** The refuted form `66(3), 1024-1037` lives in
+`molmetal/molmetal_lam/lam_chem/pll_signature.py:73-75` (out of this wave's file scope — reported,
+not edited) and in `TODO/completed/32_trackB_mlc_pll_wireup_done.md:134`. No such string occurs in
+`TODO/02_metrics/MECHANISM_METRIC_MAPPING.md`, so nothing in this file was refuted on that point.
+
+**Wave bookkeeping.** Wf-A149, 2026-10-31 — 3 findings applied to this file (F-01, F-04 ×2
+sites, F-11), all replacement values live-verified; 0 MEASURED performance numbers changed;
+0 superseded records deleted.

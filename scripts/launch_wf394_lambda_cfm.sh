@@ -38,7 +38,7 @@ set -euo pipefail
 # Locate repo root + the Wf-299 launcher we delegate to.
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
-WF299_LAUNCHER="${PROJECT_ROOT}/molmetal/scripts/launch_wf299_cfm_main.sh"
+WF299_LAUNCHER="${PROJECT_ROOT}/scripts/launch_wf299_cfm_main.sh"
 
 # --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
@@ -177,15 +177,25 @@ fi
 # before any GPU delegation. Even though we delegate to Wf-299, we run the
 # pre-flight here so USER_OK=1 + dry-run still validates the gate.
 PREFLIGHT_OUT="${PROJECT_ROOT}/molmetal/reports/wf394_lambda_cfm/preflight.json"
+PREFLIGHT_LOG="${PREFLIGHT_OUT%.json}.log"
 mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
+# Wf-A269 wave-17 (2026-11-03): the report is written with `--json PATH` (a
+# real JSON document) instead of being captured as a merged stdout+stderr
+# stream, the previous run's report is removed first ("stale is treated as
+# missing"), and the verdict comes from the repo's own FAIL-CLOSED consumer
+# instead of the TIMEOUT-BLIND `grep -q '"fail": 0'`.
+rm -f "${PREFLIGHT_OUT}"
 echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
 PYTHONPATH=/home/hugo/codes/mol-metal "${PY}" \
     "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
-    >"${PREFLIGHT_OUT}" 2>&1 \
-    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
-grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
-    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
-echo "[$(date -Iseconds)] pre-flight PASS"
+    --json "${PREFLIGHT_OUT}" \
+    >"${PREFLIGHT_LOG}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_LOG}"
+pf_verdict="$(PYTHONPATH=/home/hugo/codes/mol-metal "${PY}" \
+    "${PROJECT_ROOT}/molmetal/scripts/wf_launch_gate_verdict.py" \
+    preflight --report "${PREFLIGHT_OUT}" 2>&1)" \
+    || die "pre_flight_check verdict is not PASS — ${pf_verdict} (see ${PREFLIGHT_OUT})"
+echo "[$(date -Iseconds)] pre-flight PASS — ${pf_verdict}"
 
 # Default Lambda × CFM coupling flags when caller did not override via
 # EXTRA_FLAGS. We honour caller-supplied EXTRA_FLAGS first, then prepend

@@ -29,7 +29,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     detect_truncation = None  # type: ignore[assignment]
 
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 WORKDIR = REPO / "molmetal/reports/wf179_bd9_m15_rmsd_p2"
 LIGAND_META = REPO / "molmetal/data/pocket_ref_ligands/ligand_metadata.json"
 

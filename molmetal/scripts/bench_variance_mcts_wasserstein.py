@@ -86,9 +86,9 @@ from typing import Any, Dict, List, Optional, Sequence
 # ModuleNotFoundError "No module named 'molmetal'" at import time and
 # the fail-loud gate never got a chance to run).
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # Atomic write protocol — closes the "half-merged file state" failure mode
 # (concurrent writers racing on the rename) and the "direct overwrite
@@ -1157,9 +1157,11 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--report-path",
         type=str,
-        default=(
-            "/home/hugo/codes/mol-metal/molmetal/reports/"
-            "wf129_p1_variance_wasserstein"
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf129_p1_variance_wasserstein"
         ),
     )
     p.add_argument(

@@ -452,8 +452,8 @@ def cache_csv(smiles: Sequence[str], sources: Sequence[str], path: Path) -> Path
 # novelty triage only; patent freedom-to-operate (FTO) requires a proper
 # prior-art search (SureChEMBL / PatentScope / etc.).
 # ---------------------------------------------------------------------------
-DEFAULT_KNOWN_PT_DRUGS_CSV = Path(
-    "/home/hugo/codes/try_triton_on_rocm/molmetal/data/known_pt_drugs.csv"
+DEFAULT_KNOWN_PT_DRUGS_CSV = (
+    Path(__file__).resolve().parents[3] / "molmetal" / "data" / "known_pt_drugs.csv"
 )
 
 

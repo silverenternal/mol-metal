@@ -84,9 +84,14 @@ for i in 1 2 3 4 5 6; do
             printf '%s\n' "$ERR_LINES" >> "$BUILD_LOG"
         fi
         # Show counts of LaTeX warnings + natbib warnings on this pass.
-        WARN_LATEX="$(grep -acE 'LaTeX Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || echo 0)"
-        WARN_NATBIB="$(grep -acE 'Package natbib Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || echo 0)"
-        WARN_HYPERREF="$(grep -acE 'Package hyperref Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || echo 0)"
+        # NOTE (Wf-A269 wave-10, 2026-11-02): the three counts below used a
+        # `|| echo 0` fallback. `grep -c` already PRINTS "0" *and* exits 1 on
+        # no-match, so the fallback appended a SECOND "0" and the captured
+        # value became the two-line string "0\n0" -- no longer a number.
+        # The fallback is now `|| true`: the count stays a single "0".
+        WARN_LATEX="$(grep -acE 'LaTeX Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || true)"
+        WARN_NATBIB="$(grep -acE 'Package natbib Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || true)"
+        WARN_HYPERREF="$(grep -acE 'Package hyperref Warning:' ".pdflatex_pass${i}.log" 2>/dev/null || true)"
         log "  warnings: LaTeX=${WARN_LATEX} natbib=${WARN_NATBIB} hyperref=${WARN_HYPERREF} (rc=${PD_PASS_RC})"
         if [ ! -s "main.pdf" ]; then
             log "FAIL: pdflatex pass $i produced no main.pdf — aborting"
@@ -157,11 +162,14 @@ if [ -s "main.log" ]; then
     UNRES_LABELS_MULTIPLY_LIST="$(grep -aoE "Label \`[^']+' multiply" main.log 2>/dev/null | sort -u | sed "s/^Label \`//; s/' multiply$//" | paste -sd ', ')"
     UNRES_REFS_DISTINCT="$(grep -aoE "Reference \`[^']+" main.log 2>/dev/null | sort -u | wc -l)"
     UNRES_REFS_LIST="$(grep -aoE "Reference \`[^']+" main.log 2>/dev/null | sort -u | sed "s/^Reference \`//; s/'$//" | paste -sd ', ')"
-    BIBTEX_MISSING="$(grep -c "Warning--I didn't find a database entry" main.blg 2>/dev/null || echo 0)"
+    # Same `|| true` fallback as the pdflatex warning counts above (Wf-A269
+    # wave-10, 2026-11-02): `grep -c` prints "0" and exits 1 on no-match, so
+    # `|| echo 0` produced the two-line value "0\n0" instead of a number.
+    BIBTEX_MISSING="$(grep -c "Warning--I didn't find a database entry" main.blg 2>/dev/null || true)"
     TOTAL_BIBTEX_USED="$(grep -aoE "You've used [0-9]+ entries" main.blg 2>/dev/null | head -1 | awk '{print $3}')"
-    TOTAL_CITES_AUX="$(grep -c '^\\citation{' main.aux 2>/dev/null || echo 0)"
-    TOTAL_BIBCITES_AUX="$(grep -c '^\\bibcite{' main.aux 2>/dev/null || echo 0)"
-    TOTAL_LABELS_AUX="$(grep -c '^\\newlabel{' main.aux 2>/dev/null || echo 0)"
+    TOTAL_CITES_AUX="$(grep -c '^\\citation{' main.aux 2>/dev/null || true)"
+    TOTAL_BIBCITES_AUX="$(grep -c '^\\bibcite{' main.aux 2>/dev/null || true)"
+    TOTAL_LABELS_AUX="$(grep -c '^\\newlabel{' main.aux 2>/dev/null || true)"
 else
     log "  WARN: main.log missing — pdflatex did not produce a log"
     UNRES_CITATIONS_ALL=0; UNRES_CITATIONS_FOOTNOTE=0; UNRES_CITATIONS_BODY=0

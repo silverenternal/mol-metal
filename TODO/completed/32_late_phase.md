@@ -91,8 +91,17 @@ Heuristic mass added at the `_prior` cascade:
 `1 / (1 + ||PLL(state) - PLL(target)||₂)`.  When the branch is
 inactive (default), the search is bit-for-bit identical to the
 pre-KataGo-upgrade behaviour.  Lit anchors: KataGo
-`docs/GraphSearch.md` (FPU); Liu & Feng 2026
+`docs/GraphSearch.md` (FPU); Liu & Feng 2026,
+*J. Chem. Inf. Model.* 66 (18), 11767-11777,
 DOI `10.1021/acs.jcim.6c02460` (PLL formula).
+
+> **⚠️ CITATION RECORD COMPLETED (2026-10-31, Wf-A149).** The PLL lit anchor
+> above previously read "Liu & Feng 2026 / DOI `10.1021/acs.jcim.6c02460` (PLL formula)" — it carried the DOI but no
+> volume / issue / pages.  The Crossref record for that DOI (MEASURED
+> 2026-10-31, HTTP 200) gives **volume 66, issue 18, pages 11767-11777**
+> (online 2026-09-04, print 2026-09-28); the full venue record is now
+> printed inline.  No value in this file was wrong before — the citation
+> was incomplete.
 
 **Test contract:** covered end-to-end in the B5 smoke run below
 (see `summary.json:14,21,24-26`).

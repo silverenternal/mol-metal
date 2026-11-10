@@ -52,7 +52,10 @@ from molmetal_lam.sbdd_env.cite_only_sota_comparator import (  # noqa: E402
 # Fixtures
 # ---------------------------------------------------------------------------
 TEX_PATH = (
-    "/home/hugo/codes/try_triton_on_rocm/molmetal/reports/" "wf_3_citeonly_sota.tex"
+    Path(__file__).resolve().parents[3]
+    / "molmetal"
+    / "reports"
+    / "wf_3_citeonly_sota.tex"
 )
 
 

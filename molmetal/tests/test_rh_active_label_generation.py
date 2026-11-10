@@ -30,14 +30,20 @@ import numpy as np
 import pytest
 
 # Project paths
-SCRIPT_PATH = (
-    "/home/hugo/codes/mol-metal/molmetal/scripts/rh_active_label_generation.py"
-)
+# Repo root derived from this file's own location (molmetal/tests/X.py ->
+# parents[2]) so the tracked-source path resolves on any checkout.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_PATH = REPO_ROOT / "molmetal" / "scripts" / "rh_active_label_generation.py"
 REAL_CSV = (
     "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 )
 SYNTH_JSON = "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p2_rh_oversample/synthetic_rh_cohort.json"
-OUTPUT_DIR = "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort"
+OUTPUT_DIR = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
+)
 OUTPUT_JSON = f"{OUTPUT_DIR}/synthetic_rh_pos_neg.json"
 
 
@@ -48,7 +54,7 @@ OUTPUT_JSON = f"{OUTPUT_DIR}/synthetic_rh_pos_neg.json"
 
 def test_module_imports():
     """Test that rh_active_label_generation module imports cleanly."""
-    sys.path.insert(0, "/home/hugo/codes/mol-metal/molmetal/scripts")
+    sys.path.insert(0, str(REPO_ROOT / "molmetal" / "scripts"))
     try:
         from rh_active_label_generation import (
             main,

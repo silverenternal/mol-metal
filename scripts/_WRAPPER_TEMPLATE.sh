@@ -15,7 +15,10 @@
 #     `molmetal.*` packages; bare `python` without PYTHONPATH fails
 #     with "No module named 'molmetal'")
 #   - pre_flight_check.py gate BEFORE any GPU work (per Wf-415-A3 +
-#     Wf-422-A2 + Wf-427-B1 cascade closures)
+#     Wf-422-A2 + Wf-427-B1 cascade closures).  The gate RUNS on BOTH
+#     paths; only the ABORT is path-conditional: fail-closed on the
+#     launch path, report-only on the --dry-run path, whose plan.json +
+#     DRY_RUN.log RECORD the pre-flight's verdict.
 #
 # To extend this template for a new wrapper:
 #   1. Copy this file to scripts/launch_wf<your_wf>.sh
@@ -27,6 +30,18 @@
 #
 # Owner: Hugo Lee + ultracode agent (Wf-431-A2)
 # Date: 2026-10-02
+# Revised: 2026-11-02 — the pre-flight gate now RUNS on the --dry-run path
+#   and its verdict is RECORDED in DRY_RUN.log + plan.json; the fail-closed
+#   ABORT is kept on the launch path only.  Rationale: a dry run that dies at
+#   the gate can never publish the plan that says "the pre-flight failed",
+#   and that plan is the only artefact an operator can read to learn WHY a
+#   launch would be refused.  The two pre-flight `die` MESSAGES are preserved
+#   byte-identical from the pre-fix template (AGENTS.md §5.5 rule #6), as is
+#   the SECOND die's whole statement; the FIRST die's GUARD moved from the
+#   command's own `||` to an explicit test of the CAPTURED exit status,
+#   because that status must now be RECORDED instead of aborting.
+#   (Wf-A269 wave-10: a check that cannot fail is the defect; the mirror image
+#   is a verdict that can never be read.)
 
 set -euo pipefail
 
@@ -58,18 +73,95 @@ mkdir -p "${OUT_DIR}"
 # shellcheck disable=SC1090
 source "${DRY_RUN_LOG_HELPER}"
 
-# --- Pre-flight gate (per Wf-415-A3 + Wf-427-B1) -----------------------
-echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight check begin"
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch >"${OUT_DIR}/preflight.json" 2>&1 \
-    || die "pre_flight_check FAIL — see ${OUT_DIR}/preflight.json"
-grep -q '"fail": 0' "${OUT_DIR}/preflight.json" \
-    || die "pre_flight_check has FAILs (not 0) — see ${OUT_DIR}/preflight.json"
-
 # --- Main: --dry-run + actual launch ----------------------------------
+# The mode is parsed BEFORE the pre-flight gate on purpose.  The dry run's
+# job is to PRODUCE a plan that REPORTS the pre-flight's verdict — including
+# the verdict "FAIL".  That is only possible if the gate is allowed to RUN and
+# report on the dry-run path, so the mode has to be known before the gate
+# runs.  (Wf-A269 wave-10: a check that cannot fail is the defect; the mirror
+# image is a check whose verdict can never be READ.)
 MODE="actual"
 case "${1:-}" in
     --dry-run)  MODE="dry-run" ;;
 esac
+
+# --- Pre-flight gate (per Wf-415-A3 + Wf-427-B1) -----------------------
+# The gate RUNS on BOTH paths: a dry run that skipped it would publish a plan
+# claiming a verdict nobody measured.  Only the ABORT is conditional —
+# fail-closed on the path that can actually launch a GPU, report-only on the
+# dry-run path.  The two `die` MESSAGES below are byte-identical to the
+# pre-fix template's (AGENTS.md §5.5 rule #6); they are simply reached only
+# on the launch path.
+#
+# Wf-A269 wave-17 (2026-11-03) — FOUR repairs to this block.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+# the pre-fix block captured the pre-flight's CONSOLE STREAM (stdout + stderr
+# merged by `2>&1`) into a file NAMED `preflight.json`, then read the verdict
+# out of it with `grep -q '"fail": 0'`.  Two defects lived in that shape:
+#   (a) the file was not JSON at all — the gate log lines came first and the
+#       payload the tool prints at the END was the last top-level `{...}` in
+#       it (MEASURED on the published report: 190,245 B / 1,826 lines, first
+#       `{` at line 270, `json.loads` => "Expecting value: line 1 column 2");
+#   (b) the `grep` predicate was TIMEOUT-BLIND — it could not see a TIMEOUT
+#       at all, so a report with 1 TIMEOUT and 0 FAILs MATCHED it and the
+#       launch went ahead although the measurement was never obtained
+#       (Wf-A135: a gate that timed out did not obtain its measurement).
+#  (1) `--json PATH` writes a REAL JSON document (the tool writes it itself,
+#      atomically, via AGENTS.md §5.6); the console transcript goes to a
+#      sibling .log, so the report path stays pure JSON.
+#  (2) the verdict comes from the repo's own consumer
+#      (molmetal/scripts/wf_launch_gate_verdict.py), which is FAIL-CLOSED:
+#      no summary / zero gates / a stale stamp / a foreign revision / an
+#      edited payload / a TIMEOUT => FAIL, and an unreadable report => SKIP
+#      (never PASS).
+#  (3) the previous run's report is removed first, so a crashed or killed
+#      pre-flight cannot leave a PASS report behind for the consumer to read
+#      ("stale is treated as missing").
+#  (4) the COUNTS are read from that pure-JSON report, not grepped out of a
+#      transcript; an unreadable report yields "unknown", never 0.
+PREFLIGHT_JSON="${OUT_DIR}/preflight.json"
+PREFLIGHT_LOG="${OUT_DIR}/preflight.log"
+mkdir -p "${OUT_DIR}"
+rm -f "${PREFLIGHT_JSON}"
+echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight check begin"
+PREFLIGHT_RC=0
+PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch --json "${PREFLIGHT_JSON}" >"${PREFLIGHT_LOG}" 2>&1 \
+    || PREFLIGHT_RC=$?
+
+# The gate's own verdict, read from the report the gate just wrote.
+PREFLIGHT_FAIL_COUNT="$(${PY} -c 'import json,sys;d=json.load(open(sys.argv[1],encoding="utf-8"));s=d.get("summary");print(int(s["fail"]) if isinstance(s,dict) and "fail" in s else "unknown")' "${PREFLIGHT_JSON}" 2>/dev/null || echo unknown)"
+PREFLIGHT_FAIL_COUNT_JSON="null"
+if [ "${PREFLIGHT_FAIL_COUNT}" != "unknown" ]; then
+    PREFLIGHT_FAIL_COUNT_JSON="${PREFLIGHT_FAIL_COUNT}"
+fi
+PREFLIGHT_VERDICT="FAIL"
+PREFLIGHT_VERDICT_LINE="the pre-flight report is missing or unreadable: ${PREFLIGHT_JSON}"
+if [ -f "${PREFLIGHT_JSON}" ]; then
+    PREFLIGHT_VERDICT_LINE="$(PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf_launch_gate_verdict.py preflight --report "${PREFLIGHT_JSON}" 2>&1 || true)"
+    PREFLIGHT_VERDICT="${PREFLIGHT_VERDICT_LINE%% *}"
+fi
+echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight verdict=${PREFLIGHT_VERDICT} fail_count=${PREFLIGHT_FAIL_COUNT} rc=${PREFLIGHT_RC}"
+# The reason is printed on its own line, so the two `die` MESSAGES below can
+# stay byte-identical to the pre-fix template's (AGENTS.md §5.5 rule #6)
+# while still telling the operator WHY the gate refused.
+if [ "${PREFLIGHT_VERDICT}" != "PASS" ]; then
+    printf '%s [WARN] pre_flight_check detail: %s\n' \
+        "$(date -Iseconds 2>/dev/null || date)" "${PREFLIGHT_VERDICT_LINE}" >&2
+fi
+
+# Fail-closed ONLY on the path that can actually launch a GPU.  On the
+# dry-run path the verdict is RECORDED (plan.json + DRY_RUN.log) and the dry
+# run continues, so the operator can read a plan that says WHY the launch
+# would be refused.
+if [ "${MODE}" != "dry-run" ]; then
+    [ "${PREFLIGHT_RC}" -eq 0 ] || die "pre_flight_check FAIL — see ${PREFLIGHT_JSON}"
+    [ "${PREFLIGHT_VERDICT}" = "PASS" ] \
+        || die "pre_flight_check has FAILs (not 0) — see ${PREFLIGHT_JSON}"
+elif [ "${PREFLIGHT_VERDICT}" != "PASS" ]; then
+    printf '%s [WARN] pre_flight_check %s (fail_count=%s) — the dry run CONTINUES and records the verdict; the REAL launch path would abort here. See %s\n' \
+        "$(date -Iseconds 2>/dev/null || date)" "${PREFLIGHT_VERDICT}" "${PREFLIGHT_FAIL_COUNT}" "${PREFLIGHT_JSON}" >&2
+fi
 
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} mode=${MODE}"
 
@@ -77,7 +169,9 @@ if [ "${MODE}" = "dry-run" ]; then
     # Plan only — emit DRY_RUN.log + plan.json per Wf-363-A1 schema
     cat >"${OUT_DIR}/DRY_RUN.log" <<EOF
 [DRY-RUN] ${WRAPPER_NAME} @ ${WF_ID}
-[DRY-RUN] pre_flight_check PASS
+[DRY-RUN] pre_flight_check ${PREFLIGHT_VERDICT}
+[DRY-RUN] pre_flight_fail_count=${PREFLIGHT_FAIL_COUNT}
+[DRY-RUN] pre_flight_rc=${PREFLIGHT_RC}
 [DRY-RUN] wrapper_name=${WRAPPER_NAME}
 [DRY-RUN] wf_origin=${WF_ID}
 [DRY-RUN] trainer=${TRAINER}
@@ -94,7 +188,9 @@ EOF
     "trainer": "${TRAINER}",
     "py": "${PY}",
     "out_dir": "${OUT_DIR}",
-    "pre_flight": "PASS",
+    "pre_flight": "${PREFLIGHT_VERDICT}",
+    "pre_flight_fail_count": ${PREFLIGHT_FAIL_COUNT_JSON},
+    "pre_flight_rc": ${PREFLIGHT_RC},
     "args": [],
     "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1"
 }

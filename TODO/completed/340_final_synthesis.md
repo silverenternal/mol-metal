@@ -76,11 +76,30 @@ Per `TODO/completed/340r1_cfm_papers_survey.md` §4 + `TODO/completed/340r2_acce
 | 6 | Pooladian et al. 2023 — Multisample FM (concurrent with Tong) | ICML 2023 | torchcfm (OT-CFM class) | YES | YES (lower NFE) |
 | 7 | Yang et al. 2026 — StableVM (multi-sample variance reduction) | [icml-2026/66609](https://www.icml.cc/virtual/2026/poster/66609) | TBD (proceedings) | YES (2× sampling) | YES |
 | 8 | Yoon & Lee 2025 — Augmented FM via Variance Reduction with Auxiliary Variables | ICLR 2025 | TBD | YES (architectural change) | n/a |
-| 9 | Dunn et al. 2024 — FlowMol (3D de novo molecular FM) | [2412.01966](https://arxiv.org/abs/2412.01966) | [dunni3/FlowMol](https://github.com/dunni3/FlowMol) | YES (unified coord+type+bond flow) | YES (10× inference vs diffusion) |
+| 9 | Dunn et al. 2024 — FlowMol (3D de novo molecular FM) | [2404.19739](https://arxiv.org/abs/2404.19739) | [dunni3/FlowMol](https://github.com/dunni3/FlowMol) | YES (unified coord+type+bond flow) | YES (10× inference vs diffusion) |
 | 10 | Karras et al. 2022 — EDM preconditioning (σ-biasing wrapper) | [2206.00364](https://arxiv.org/abs/2206.00364) | [NVlabs/edm](https://github.com/NVlabs/edm) | YES (2-3× FID convergence) | Marginal |
 | 11 | Song et al. 2023 — Consistency Models (CM) | [2303.01469](https://arxiv.org/abs/2303.01469) | [openai/consistency_models](https://github.com/openai/consistency_models) | NO (inference-only) | YES (1-NFE) |
 | 12 | Frans et al. 2024 — Shortcut Models | [2410.12557](https://arxiv.org/abs/2410.12557) | [kvfrans/shortcut-models](https://github.com/kvfrans/shortcut-models) | NO (inference-only) | YES (1-step) |
 | 13 | Salimans & Ho 2022 — Progressive Distillation | [2202.00512](https://arxiv.org/abs/2202.00512) | [openai/guided-diffusion](https://github.com/openai/guided-diffusion) | NO (increases total wall) | YES (4-step) |
+
+**CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+verbatim: “[2412.01966](https://arxiv.org/abs/2412.01966)”. Verified against
+the primary sources on 2026-10-31: `arXiv:2412.01966` is **not** FlowMol — the
+arXiv abs page returns “Implementing Semiclassical Szegedy Walks in
+Classical-Quantum Circuits for Homomorphic Encryption” (Ortega, S. A.;
+Fernández, P.; Martin-Delgado, M. A.), a quantum-homomorphic-encryption paper,
+and the arXiv API returns no record titled “FlowMol: A Unified Flow Matching
+Model for 3D Molecular Generation” and no record authored by “Qiang, B.; Song,
+Y.; ...; Kingma, D. P.”. The real upstream is Dunn, I.; Koes, D. R. (2024),
+*Mixed Continuous and Categorical Flow Matching for 3D De Novo Molecule
+Generation* (FlowMol), `arXiv:2404.19739` — the identifier this repo’s own
+canonical `unified_atom_bond_flow.py` already cites — with siblings
+`arXiv:2411.16644` (FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3). **LICENCE:
+all three are CC BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+`creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged — CC
+BY-SA 4.0 still carries attribution + share-alike obligations, so USER_OK is
+still required. Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+#6.
 
 ### §2.3 Molecule-specific CFM papers (10 from R3)
 

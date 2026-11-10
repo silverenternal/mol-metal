@@ -1,0 +1,82 @@
+# wfa269_c8_hilbert_astsr_s2.yaml — AGENTS.md §5.11 YAML-only launch
+# config for scripts/launch_wf310c_t179_w2_gpu.sh (Wf-A269 cohort c8_hilbert_astsr).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The launcher used to pass every hyperparameter on the command line:
+#
+#   train_hilbert_astsr_end_to_end.py --dataset platinai --seeds 2 #       --epochs 50 --n-samples 500 --n-folds 5 --wass-weight 0.05 #       --ref-distribution platinai_4cell --per-cell-cap 32 #       --platinai-csv molmetal/data/platinai_4cell.csv #       --output <RUN_ROOT>/seed2
+#
+# AGENTS.md §5.11 (user directive 2026-10-09): a launch wrapper may hand the
+# trainer only --config / --out-dir / --ckpt-dir / --help.  Every knob above
+# now lives in this file, and the wrapper passes `--config` alone.
+#
+# ONE FILE PER SWEEP ITERATION — WHY
+# ---------------------------------
+# The launcher's loop variable is the SEED INDEX (0..4), but the trainer's
+# `--seeds` dest is a COUNT of seeds to run, not an index: the trainer does
+# `for s in range(int(args.seeds))`.  The destination is `type=int`, so it
+# cannot hold a YAML sequence (a list here would be a type mismatch and the
+# loader would keep the argparse default).  The faithful migration therefore
+# needs one static config per loop iteration, each carrying that iteration's
+# `seeds` value.  This file is iteration 2 of 5 (seeds=2).
+#
+# The `seeds` semantics (a count, not an index) are a PRE-EXISTING property
+# of the wrapper's command line, preserved verbatim here — this migration does
+# not change what the launcher runs.  See the migration receipt
+# molmetal/reports/wfa269_yaml_migration/launch_wf310c_t179_w2_gpu.json.
+#
+# Every value below is either (a) a value the old command line passed, or
+# (b) a value the old command line left at the argparse default — written
+# out explicitly so the config documents the whole protocol instead of
+# silently inheriting a default that may move.  Verified dest-by-dest,
+# value AND type, by scripts/_yaml_equivalence_probe.py.
+#
+# Honest framing (per AGENTS.md §5.2 + TODO-179 §6):
+#   * MEASURED baseline: L5 R² = +0.163 (Wf-37 P1 bug fix; NOT algorithmic lift).
+#   * PROJECTED ceiling: 0.40-0.60 from W₂ alone (12-d RDKit signal floor).
+#   * NOT MEASURED: 0.85+ (needs the F5_RDKIT_2D 32-d expansion, TODO-179 §8).
+
+entry:
+  script: molmetal/scripts/train_hilbert_astsr_end_to_end.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_hilbert_astsr_end_to_end.py --config {yaml_path}
+
+# ---- protocol: the sweep coordinate + the run-defining knobs ---------------
+protocol:
+  dataset: platinai
+  # The loop coordinate of this iteration (see the header): the trainer's
+  # `--seeds` is a COUNT of seeds to run (`for s in range(int(args.seeds))`).
+  seeds: 2
+  epochs: 50
+  n_folds: 5
+  lr: 0.05
+  # Wf-246-A (TODO-179) — Wasserstein pIC50 alignment.
+  wass_weight: 0.05
+  ref_distribution: platinai_4cell
+  per_cell_cap: 32
+  # Wf-251-F1 — F5_RDKIT_2D 32-d descriptor set (off: the 12-d legacy path).
+  feature_set: rdkit_12d
+
+# ---- model: Hilbert space + LambdaASTSR population ------------------------
+model:
+  hilbert_dim: 64
+  evo_pop: 32
+  evo_gens: 25
+
+# ---- data: the real-labelled cohorts + the row cap -------------------------
+data:
+  n_samples: 500
+  platinai_csv: molmetal/data/platinai_4cell.csv
+  nci60_csv: molmetal/data/nci60_precious_9cell.csv
+  f5_32d_csv: molmetal/data/platinai_4cell_rdkit_extended_features.csv
+
+# ---- output: where this iteration writes ----------------------------------
+# Repo-relative; the trainer anchors it on the repo root, so it resolves to
+# the same absolute directory the old command line named
+# (${PROJECT_ROOT}/molmetal/reports/wf310c_t179_w2_runs/seed2).
+output:
+  output: molmetal/reports/wf310c_t179_w2_runs/seed2
+
+directives:
+  user_ok_required: true
+  kill_then_adapt: true

@@ -13,7 +13,7 @@ All SOTA values are cited paper means; Lambda values are measured on the stated 
 | CITED | Pocket2Mol (arXiv:2205.07249) | CrossDocked2020, 100 pockets | `-7.07` | 100 |
 | CITED | TargetDiff (arXiv:2303.03543) | CrossDocked2020, 100 pockets | `-8.45` | 100 |
 | CITED | DiffSBDD (arXiv:2210.13695) | CrossDocked2020, 100 pockets | `-7.62` | 100 |
-| CITED | DecompDiff (arXiv:2303.10120) | CrossDocked2020, 100 pockets | `-8.39` | 100 |
+| CITED | DecompDiff (arXiv:2403.07902) | CrossDocked2020, 100 pockets | `-8.39` | 100 |
 | CITED | FLOWR (arXiv:2504.10564) | SPINDR/PLINDER curated set | `-6.93` | 100 |
 | CITED | TransDiffSBDD (arXiv:2025 preprint) | CrossDocked2020 | `-9.37` | 100 |
 | CITED | MolCRAFT (arXiv:2024 preprint) | CrossDocked2020 | `-9.25` | 100 |
@@ -31,7 +31,7 @@ All SOTA values are cited paper means; Lambda values are measured on the stated 
 | CITED | Pocket2Mol (arXiv:2205.07249) | `2.51` | `0.55` | — |
 | CITED | TargetDiff (arXiv:2303.03543) | `2.65` | `0.48` | — |
 | CITED | DiffSBDD (arXiv:2210.13695) | `2.81` | — | — |
-| CITED | DecompDiff (arXiv:2303.10120) | `2.71` | — | — |
+| CITED | DecompDiff (arXiv:2403.07902) | `2.71` | — | — |
 | CITED | FLOWR (arXiv:2504.10564) | `2.86` | — | — |
 | MEASURED | Lambda 1h36 | `1.870` | `0.548` | `1.000` |
 | MEASURED | Lambda 1433B pilot | `9.876` | `0.304` | `1.000` |
@@ -46,7 +46,7 @@ All SOTA values are cited paper means; Lambda values are measured on the stated 
 | CITED | Pocket2Mol (arXiv:2205.07249) | not reported in cited table | paper metric unavailable |
 | CITED | TargetDiff (arXiv:2303.03543) | not reported | paper metric unavailable |
 | CITED | DiffSBDD (arXiv:2210.13695) | not reported | paper metric unavailable |
-| CITED | DecompDiff (arXiv:2303.10120) | not reported | paper metric unavailable |
+| CITED | DecompDiff (arXiv:2403.07902) | not reported | paper metric unavailable |
 | CITED | FLOWR (arXiv:2504.10564) | `94%` PB-valid | PB-valid, not docking success |
 | MEASURED | Lambda (prior click-tile report) | `12/12 = 100%` | pre-pilot 12 click tiles |
 | MEASURED | Lambda round-9 pilot | n/a | PoseBusters not wired in pilot |
@@ -62,7 +62,7 @@ Definition: **Vina < co-crystal ∧ SA < 4 ∧ QED > 0.5**.
 | CITED | Pocket2Mol (arXiv:2205.07249) | `49.8%` |
 | CITED | TargetDiff (arXiv:2303.03543) | `35.1%` relaxed / `10.5%` strict |
 | CITED | DiffSBDD (arXiv:2210.13695) | `24.6%` |
-| CITED | DecompDiff (arXiv:2303.10120) | `39.0%` / `24.5%` |
+| CITED | DecompDiff (arXiv:2403.07902) | `39.0%` / `24.5%` |
 | CITED | FLOWR (arXiv:2504.10564) | `94%` PB-valid only |
 | CITED | TransDiffSBDD (arXiv:2025 preprint) | `83.9%` |
 | CITED | MolCRAFT (arXiv:2024 preprint) | `36.1%` |
@@ -116,3 +116,25 @@ No multi-seed error bar is reported for the pilot.
 - tmQM pretraining reaches R² = `0.986` in the tracked work, but there is no head-to-head Lambda-vs-SOTA evaluation.
 - PoseBusters uses an MMFF94 geometry limitation in the current validation path; PB-valid is not docking success.
 - Sample sizes are small for Lambda (one pocket, 20 pilot candidates, or five per R4-C pocket) versus published 100-pocket aggregates.
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 — DecompDiff arXiv identifier (4 citation sites: §1 Vina, §2 SA/QED,
+  §3 PoseBusters, §4 triple-threshold success).** Superseded: `DecompDiff (arXiv:2303.10120)`.
+  Corrected to: `DecompDiff (arXiv:2403.07902)`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → "DecompDiff: Diffusion Models with
+  Decomposed Priors for Structure-Based Drug Design" (ICML 2023, PMLR 202:11827-11846);
+  the superseded id `2303.10120` is an unrelated ASME Riccati-filter paper.
+  The DiffSBDD rows in this file already carry the correct `arXiv:2210.13695` and were
+  **not** modified. **No performance number was changed** (−8.39 / 2.71 / 39.0 % / 24.5 % and
+  all DiffSBDD / Pocket2Mol / TargetDiff / FLOWR values are untouched).

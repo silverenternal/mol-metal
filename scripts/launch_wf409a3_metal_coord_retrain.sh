@@ -49,9 +49,25 @@
 #   USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh --dry-run
 #   USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh --smoke
 #   USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh \
-#       --metals "Ru Ir Rh" --seeds 0 1 2 --epochs 50
-#   USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh \
-#       --metals "Ru Ir Rh Os Re" --seeds 0 1 2 3 4 --epochs 50 --actual
+#       --config configs/wfa269_c4_dmpnn_metal_coord_wf409a3.yaml
+#     # the cohort lives in the YAML (AGENTS.md §5.11): copy that file, edit
+#     #   data.metals / data.seeds / train.epochs, and select the copy with
+#     #   --config <path> (or the DMPNN_CONFIG env var)
+#
+#   SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh \
+#         --metals "Ru Ir Rh" --seeds 0 1 2 --epochs 50
+#     USER_OK=1 bash scripts/launch_wf409a3_metal_coord_retrain.sh \
+#         --metals "Ru Ir Rh Os Re" --seeds 0 1 2 3 4 --epochs 50 --actual
+#
+#   2026-11-03 (AGENTS.md §5.11 migration): the two examples above are
+#   superseded.  --metals / --seeds / --epochs are HYPERPARAMETERS, so they
+#   live in the YAML the trainer is launched with; the wrapper REFUSES a
+#   cohort that disagrees with that file ("the cohort now lives in the
+#   config, not on the command line") instead of training a subset the
+#   plan.json / DRY_RUN.log it writes does not describe.  The refusal is
+#   loud.  The default cohort (Ru Ir Rh Os Re / 0 1 2 / 50 epochs) is the
+#   one in the YAML and runs unchanged.
 #
 # Wf-424-A2 fix: `--metals` + `--seeds` accept both quoted-string form
 # ("Ru Ir Rh") AND unquoted multi-token form (Ru Ir Rh --seeds 0 1 2);
@@ -72,17 +88,57 @@ set -euo pipefail
 export PYTHONPATH="/home/hugo/codes/mol-metal"
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 
+# Die helper — DEFINED BEFORE ANY CALL (Wf-A269 repair 2, 2026-11-02).
+# Bash executes a script line-by-line, so a function definition that appears
+# LATER in the file is not yet in scope at an earlier call site. The
+# pre-flight gate below calls die() at top level, so this definition MUST
+# precede it — otherwise the call dies with "die: command not found" (rc=127)
+# and the intended FATAL message + rc=1 are both lost.
+die() {
+    printf '%s[FATAL]%s %s\n' \
+        "$(tput bold 2>/dev/null || true)" "$(tput sgr0 2>/dev/null || true)" \
+        "$*" >&2
+    exit 1
+}
+
 # --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) ------------------------------
-PREFLIGHT_OUT="${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/reports/wf_preflight/preflight.json"
+# Wf-A269 wave-16 (2026-11-03) — THREE repairs to this block:
+#
+#  (1) DISTINCT report path.  This wrapper used to write the SAME
+#      molmetal/reports/wf_preflight/preflight.json as
+#      launch_wf380_scaffold_loss.sh and
+#      launch_wf394a1_lambda_cfm_patch.sh, so two concurrent launches
+#      destroyed each other's evidence (last writer wins on a shared file).
+#  (2) `--json PATH` — the pre-flight writes a PURE-JSON report; the console
+#      transcript goes to a sibling .log.  The old `> "${PREFLIGHT_OUT}"
+#      2>&1` merged the gate LOGS (stderr) and the PAYLOAD (stdout) into ONE
+#      file: its first 269 lines were "[pre_flight_check] INFO ..." lines, so
+#      json.load raised "Expecting value: line 1 column 2" — the "JSON
+#      report" was not JSON, and no machine could read the gate verdict.
+#  (3) the verdict comes from the repo's own consumer
+#      (molmetal/scripts/wf_launch_gate_verdict.py), which checks the FAIL
+#      count AND the TIMEOUT count AND the report's freshness.  The old
+#      `grep -q '"fail": 0'` was TIMEOUT-blind: a report with one TIMEOUT
+#      and zero FAILs passed it, although Wf-A135 says a TIMEOUT means the
+#      measurement was NOT obtained.
+PREFLIGHT_OUT="${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/reports/wf_preflight/preflight_wf409a3_metal_coord_retrain.json"
+PREFLIGHT_LOG="${PREFLIGHT_OUT%.json}.log"
 mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
 echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
+# Wf-A269 wave-17 (2026-11-03): rm the PREVIOUS report first.  A crashed
+# or killed pre-flight must not leave the last run's PASS report on disk
+# for the consumer to read — "stale is treated as missing".
+rm -f "${PREFLIGHT_OUT}"
 PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
     "${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
-    >"${PREFLIGHT_OUT}" 2>&1 \
-    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
-grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
-    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
-echo "[$(date -Iseconds)] pre-flight PASS"
+    --json "${PREFLIGHT_OUT}" \
+    >"${PREFLIGHT_LOG}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_LOG}"
+pf_verdict="$(PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    "${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/scripts/wf_launch_gate_verdict.py" \
+    preflight --report "${PREFLIGHT_OUT}" 2>&1)" \
+    || die "pre_flight_check verdict is not PASS — ${pf_verdict} (see ${PREFLIGHT_OUT})"
+echo "[$(date -Iseconds)] pre-flight PASS — ${pf_verdict}"
 
 # Locate repo root + scaffold script + real trainer
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -93,12 +149,25 @@ SCAFFOLD="${PROJECT_ROOT}/molmetal/scripts/wf409a3_metal_coord_retrain_scaffold.
 TRAINER="${PROJECT_ROOT}/molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 # 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
 # The trainer already accepts --config and ends parse_args() in
-# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
-# yaml is the base and the per-call flags below override it.
-# Precedence: explicit CLI flag > YAML > argparse default.
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3965), so the
+# yaml is the base of the run.
 # Absolute: this wrapper has no top-level `cd`, so a relative path would
 # resolve against the caller's cwd.
-DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
+#
+# 2026-11-03 (AGENTS.md §5.11): the config is now DEDICATED to this wrapper
+# (configs/wfa269_c4_dmpnn_metal_coord_wf409a3.yaml — a copy of
+# configs/dmpnn.yaml carrying the cohort / coord-term values this wrapper
+# used to pass on the command line).  configs/dmpnn.yaml is SHARED by 8
+# launchers, so those values cannot be written there without changing the
+# other 7 runs.
+#
+# THE CONFIG IS STATIC: this file is what the trainer is launched with.  The
+# wrapper does NOT derive a per-run copy at launch time, so the values in
+# that file ARE the values the trainer receives (a derived copy would move
+# the cohort back into a shell variable — the knob nobody audits).
+# To run a different cohort: copy the config, edit it, and select the copy
+# with --config <path> (or the DMPNN_CONFIG environment variable).
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/wfa269_c4_dmpnn_metal_coord_wf409a3.yaml}"
 # Wf-432-A2 — Wf-246-C trainer (real D-MPNN trainer with the
 # MetalCoordinationTerm wire-in via --metal-coord-term).  R3_actual
 # invokes the real trainer; R2_smoke still invokes the SCAFFOLD for
@@ -114,14 +183,6 @@ if [ ! -f "${DRY_RUN_LOG_HELPER}" ]; then
 fi
 # shellcheck source=../_dry_run_log_helper.sh
 source "${DRY_RUN_LOG_HELPER}"
-
-# Die helper
-die() {
-    printf '%s[FATAL]%s %s\n' \
-        "$(tput bold 2>/dev/null || true)" "$(tput sgr0 2>/dev/null || true)" \
-        "$*" >&2
-    exit 1
-}
 
 # -----------------------------------------------------------------------------
 # CLI arg parsing
@@ -164,10 +225,19 @@ while [ $# -gt 0 ]; do
             ;;
         --epochs) EPOCHS="$2"; shift 2 ;;
         --out-dir) OUT_DIR="$2"; shift 2 ;;
+        --config)
+            # §5.11: the config selects WHICH run, not WHAT to train.  It is
+            # the only trainer-facing knob this wrapper adds (see
+            # scripts/_yaml_only_gate.py ALLOWED_TRAINER_FLAGS).
+            DMPNN_CONFIG="$2"; shift 2 ;;
         -h|--help)
             printf 'Wf-409-A3 launch wrapper (USER_OK-gated, Wf-424-A2 greedy tokenisation)\n'
-            printf 'Usage: USER_OK=1 %s [--dry-run|--smoke|--actual] [--metals M1 M2 ...] [--seeds 0 1 2 ...] [--epochs 50]\n' "$0"
+            printf 'Usage: USER_OK=1 %s [--dry-run|--smoke|--actual] [--metals M1 M2 ...] [--seeds 0 1 2 ...] [--epochs 50] [--config PATH]\n' "$0"
             printf '  --metals + --seeds accept both quoted ("Ru Ir Rh") and unquoted (Ru Ir Rh) forms.\n'
+            printf '  --config selects the YAML the trainer is launched with (default: %s).\n' "${DMPNN_CONFIG}"
+            printf '  AGENTS.md 5.11: the cohort (--metals/--seeds) and --epochs live in that YAML.\n'
+            printf '    The three options are ASSERTIONS against it — a mismatch REFUSES the run.\n'
+            printf '    To run a different cohort: copy the config, edit it, pass --config <copy>.\n'
             exit 0
             ;;
         *) die "unknown flag: $1" ;;
@@ -184,6 +254,70 @@ if [ "${USER_OK:-0}" != "1" ]; then
     printf '       USER_OK=1 bash %s --smoke      # 5-step CPU SCAFFOLD smoke\n' "$0" >&2
     printf '       USER_OK=1 bash %s --actual     # actual ~5 hr GPU run\n' "$0" >&2
     exit 64
+fi
+
+# -----------------------------------------------------------------------------
+# §5.11 cohort guard (2026-11-03) — the cohort lives in the CONFIG FILE
+# -----------------------------------------------------------------------------
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数"): --metals / --seeds / --epochs are HYPERPARAMETERS,
+# so they live in the YAML the trainer is launched with, not on its command
+# line.  The wrapper still ACCEPTS the three options (the call sites are
+# unchanged), but they are now ASSERTIONS against the config: if they
+# disagree with it, the run would train a different cohort than the
+# plan.json / DRY_RUN.log this wrapper writes describe — a silent lie.
+# So the wrapper REFUSES instead.
+#
+# To run a different cohort: copy the config, edit data.metals / data.seeds /
+# train.epochs, and select the copy with --config <path> (or DMPNN_CONFIG).
+# -----------------------------------------------------------------------------
+# Absolute config path (this wrapper has no top-level `cd`, so a relative
+# path would resolve against the caller's cwd).
+case "${DMPNN_CONFIG}" in
+    /*) ;;
+    *) DMPNN_CONFIG="${PROJECT_ROOT}/${DMPNN_CONFIG}" ;;
+esac
+if ! "${PY}" - "${DMPNN_CONFIG}" "${METALS}" "${SEEDS}" "${EPOCHS}" <<'PYEOF'
+import sys
+
+import yaml
+
+cfg_path, metals, seeds, epochs = sys.argv[1:5]
+try:
+    with open(cfg_path, "r", encoding="utf-8") as fh:
+        cfg = yaml.safe_load(fh) or {}
+except OSError as exc:
+    sys.stderr.write(f"[FATAL] cannot read config {cfg_path}: {exc}\n")
+    raise SystemExit(1)
+data = cfg.get("data") or {}
+train = cfg.get("train") or {}
+cfg_metals = [str(m) for m in (data.get("metals") or [])]
+cfg_seeds = [str(s) for s in (data.get("seeds") or [])]
+cfg_epochs = train.get("epochs")
+want_metals = metals.split()
+want_seeds = seeds.split()
+mismatch = []
+if cfg_metals != want_metals:
+    mismatch.append(
+        "metals cli=[{}] config=[{}]".format(" ".join(want_metals), " ".join(cfg_metals))
+    )
+if cfg_seeds != want_seeds:
+    mismatch.append(
+        "seeds cli=[{}] config=[{}]".format(" ".join(want_seeds), " ".join(cfg_seeds))
+    )
+if str(cfg_epochs) != str(epochs):
+    mismatch.append(f"epochs cli={epochs} config={cfg_epochs}")
+if mismatch:
+    sys.stderr.write(
+        "[FATAL] the cohort now lives in the config, not on the command line "
+        "(AGENTS.md 5.11): " + "; ".join(mismatch) + "\n"
+        f"        edit {cfg_path} (or run with --config <edited copy>) instead of "
+        "--metals/--seeds/--epochs\n"
+    )
+    raise SystemExit(1)
+PYEOF
+then
+    die "cohort in ${DMPNN_CONFIG} does not match --metals/--seeds/--epochs (AGENTS.md §5.11)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -262,6 +396,28 @@ METALS_ARR=(${METALS})
 SEEDS_ARR=(${SEEDS})
 
 # -----------------------------------------------------------------------------
+# §5.11 YAML-only run config (2026-11-03) — the config IS the file
+# -----------------------------------------------------------------------------
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数"): a launch wrapper may hand the trainer only
+# --config / --out-dir / --ckpt-dir / --help.  Every hyperparameter lives in
+# the YAML.
+#
+# The trainer SWEEPS the cohort itself (train_dmpnn_multitask_wasserstein.py
+# :4352 `for metal in args.metals:` / :4356 `for seed in args.seeds:`), so one
+# process runs all 15 (metal, seed) pairs and ONE static config covers the
+# whole sweep: data.metals / data.seeds / train.epochs in
+# ${DMPNN_CONFIG}.  No per-run config is derived here — a derived copy would
+# put the cohort back into a shell variable, which is the knob nobody audits.
+# The cohort guard above makes the wrapper's own --metals / --seeds /
+# --epochs options agree with that file or refuse the run.
+#
+# NOTE: this wrapper never passed --device, so `compute.device` is left at
+# the base config's `null` and the trainer keeps auto-detecting (GPU-first
+# per Wf-130) exactly as it did before the migration.
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Emit plan.json
 # -----------------------------------------------------------------------------
 cat > "${LOG_DIR}/plan.json" <<EOF
@@ -278,6 +434,7 @@ cat > "${LOG_DIR}/plan.json" <<EOF
     "pair_budget_hr": ${PAIR_BUDGET_HR},
     "total_budget_hr": ${TOTAL_BUDGET_HR},
     "scaffold_script": "molmetal/scripts/wf409a3_metal_coord_retrain_scaffold.py",
+    "config": "${DMPNN_CONFIG}",
     "sister_module": "molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py",
     "honest_framing": {
         "metal_coord_sign_fix_id": "Wf-333-V1 line 635",
@@ -335,15 +492,37 @@ case "${MODE}" in
         printf '  epochs: %d × %d (metal, seed) pairs = %d total\n' \
             "${EPOCHS}" "${#PAIRS[@]}" \
             "$((EPOCHS * ${#PAIRS[@]}))"
+        #
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #   PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
+        #   exec "${PY}" "${TRAINER}" \
+        #       --config "${DMPNN_CONFIG}" \
+        #       --metal-coord-term \
+        #       --metal-coord-weight 0.5 \
+        #       --cal-sign-vina-convention \
+        #       --metals "${METALS_ARR[@]}" \
+        #       --seeds "${SEEDS_ARR[@]}" \
+        #       --epochs ${EPOCHS} \
+        #       --out-dir "${LOG_DIR}"
+        #
+        # 2026-11-03 (AGENTS.md §5.11): every flag above except --config and
+        # --out-dir is a HYPERPARAMETER, so it now lives in the YAML — the
+        # STATIC file ${DMPNN_CONFIG}
+        # (configs/wfa269_c4_dmpnn_metal_coord_wf409a3.yaml), which carries
+        # the cohort (data.metals / data.seeds), the epoch count
+        # (train.epochs) and the coord-term switches
+        # (data.metal_coord_term / data.metal_coord_weight /
+        # data.cal_sign_vina_convention).
+        #
+        # VERIFIED (MEASURED 2026-11-03, scripts/_yaml_equivalence_probe.py):
+        # every dest the superseded invocation passed comes back with the
+        # SAME value and the SAME type from --config alone; the full
+        # namespace (argparse defaults + the old configs/dmpnn.yaml + the old
+        # CLI flags) is identical to the new one, dest for dest, except the
+        # `config` path itself.
         PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
         exec "${PY}" "${TRAINER}" \
             --config "${DMPNN_CONFIG}" \
-            --metal-coord-term \
-            --metal-coord-weight 0.5 \
-            --cal-sign-vina-convention \
-            --metals "${METALS_ARR[@]}" \
-            --seeds "${SEEDS_ARR[@]}" \
-            --epochs ${EPOCHS} \
             --out-dir "${LOG_DIR}"
         ;;
 esac

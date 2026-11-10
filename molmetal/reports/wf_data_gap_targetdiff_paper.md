@@ -19,7 +19,7 @@ The user's prompt named "TargetDiff (Jin et al. 2023, ICML, arXiv:2303.14246)". 
 
 `arXiv:2303.14246` is actually **DecompDiff** (Guan, Zhou, Yang, Bao, Peng, Ma, Liu, Wang, Gu — ICML 2023) — a related but distinct paper. We treat it as the natural **backup cite-only baseline** for the gap analysis (Table 2 below), but the primary inventory below is the correctly-cited TargetDiff.
 
-**Decision:** Use TargetDiff (Guan et al. ICLR 2023, arXiv:2303.03543) as primary; cite DecompDiff (ICML 2023) and DiffSBDD (Schneuing et al., Nat Commun 2024, doi:10.1038/s41467-024-49069-0, Zenodo ckpt 8183747) as SOTA baselines in §7.
+**Decision:** Use TargetDiff (Guan et al. ICLR 2023, arXiv:2303.03543) as primary; cite DecompDiff (ICML 2023) and DiffSBDD (Schneuing et al., Nat. Comput. Sci. 2024, doi:10.1038/s43588-024-00737-x, Zenodo ckpt 8183747) as SOTA baselines in §7.
 
 ---
 
@@ -161,7 +161,7 @@ For the gap analysis we will need ≥3 cite-only baselines. Summary:
 |---|---|---|---|---|
 | **TargetDiff** | Guan, Qian, Peng, Su, Peng, Ma | ICLR 2023 | arXiv:2303.03543 | Vina Dock −7.80 / −7.91; High Aff. 58.1 %; QED 0.48; SA 0.58; Div 0.72 |
 | **DecompDiff** | Guan, Zhou, Yang, Bao, Peng, Ma, Liu, Wang, Gu | ICML 2023 | arXiv:2403.07902 | Vina Dock **−8.39** / −8.43; High Aff. **64.4 %**; Success Rate **24.5 %**; QED 0.45; SA 0.61 |
-| **DiffSBDD** | Schneuing et al. | Nat Commun 2024 | doi:10.1038/s41467-024-49069-0 | Vina Dock −7.05 (fullatom cond) / −6.94 (CA cond); QED ~0.47; SA ~0.58 |
+| **DiffSBDD** | Schneuing et al. | Nat. Comput. Sci. 2024 | doi:10.1038/s43588-024-00737-x | Vina Dock −7.05 (fullatom cond) / −6.94 (CA cond); QED ~0.47; SA ~0.58 |
 
 (DecompDiff = the actual `arXiv:2303.14246`? No — DecompDiff = arXiv:2403.07902; arXiv:2303.14246 is a different unrelated paper. Flagged for user clarification in TODO update.)
 
@@ -238,7 +238,7 @@ These are the **gap-closure** tasks. They are listed in priority order; each ite
 ### Priority D — DiffSBDD & DecompDiff integration (cite-only or full re-train)
 
 12. **D1. Update `lambda_vs_sbdd_paper_numbers.md` rows with DecompDiff −8.39 / 64.4 % / 24.5 % numbers** (cite-only, ~30 min).
-13. **D2. DiffSBDD cite-only row**: Vina Dock −7.05 / QED 0.47 / SA 0.58 (fullatom cond), arXiv:2210.13695 / Nat Commun 2024. ~30 min.
+13. **D2. DiffSBDD cite-only row**: Vina Dock −7.05 / QED 0.47 / SA 0.58 (fullatom cond), arXiv:2210.13695 / Nat. Comput. Sci. 2024. ~30 min.
 14. **D3. DiffSBDD + DecompDiff adapter stubs** (mirror `targetdiff_adapter.py` pattern) — useful for paper §2 "Related Work" + future benchmark if/when ckpts become reachable. **~3 h.**
 
 ---
@@ -275,7 +275,72 @@ These are the **gap-closure** tasks. They are listed in priority order; each ite
 - BibTeX (DBLP): https://dblp.org/pid/207/7593.html
 - Secondary review (liner.com): https://liner.com/review/3d-equivariant-diffusion-for-targetaware-molecule-generation-and-affinity-prediction
 - DecompDiff (backup): https://arxiv.org/abs/2403.07902 ; https://github.com/bytedance/DecompDiff
-- DiffSBDD (backup): https://doi.org/10.1038/s41467-024-49069-0 ; https://github.com/arneschneuing/DiffSBDD
+- DiffSBDD (backup): https://doi.org/10.1038/s43588-024-00737-x ; https://github.com/arneschneuing/DiffSBDD
 - Local TargetDiff clone: `/home/hugo/codes/try_triton_on_rocm/molmetal/references/targetdiff/` (commit `142f1eb`, 2023-07-13)
 - Prior provenance doc: `/home/hugo/codes/try_triton_on_rocm/molmetal/reports/provenance_targetdiff.md`
 - Prior gap analysis: `/home/hugo/codes/try_triton_on_rocm/molmetal/reports/sota_alignment_gap_analysis.md`
+
+
+---
+
+## 14. Correction log
+
+### 2026-10-31 — Wf-A149 — DiffSBDD DOI and venue
+
+**Corrected (citation fields only).** The DiffSBDD citations in this document
+carried a **dead DOI** (`10.1038/s41467-024-49069-0`, Nature Communications) together with the
+venue label that goes with it. The superseded wording, quoted verbatim:
+
+- §0 line 22: `**Decision:** Use TargetDiff (Guan et al. ICLR 2023, arXiv:2303.03543) as primary; cite DecompDiff (ICML 2023) and DiffSBDD (Schneuing et al., Nat Commun 2024, doi:10.1038/s41467-024-49069-0, Zenodo ckpt 8183747) as SOTA baselines in §7.`
+- §7 table line 164: `| **DiffSBDD** | Schneuing et al. | Nat Commun 2024 | doi:10.1038/s41467-024-49069-0 | Vina Dock −7.05 (fullatom cond) / −6.94 (CA cond); QED ~0.47; SA ~0.58 |`
+- §10 D2 line 241: `13. **D2. DiffSBDD cite-only row**: Vina Dock −7.05 / QED 0.47 / SA 0.58 (fullatom cond), arXiv:2210.13695 / Nat Commun 2024. ~30 min.`
+- §13 line 278: `- DiffSBDD (backup): https://doi.org/10.1038/s41467-024-49069-0 ; https://github.com/arneschneuing/DiffSBDD`
+
+Corrected to **`doi:10.1038/s43588-024-00737-x`** and **`Nat. Comput. Sci. 2024`**. Verified live on
+2026-10-31 against the Crossref record
+`https://api.crossref.org/works/10.1038/s43588-024-00737-x` (HTTP 200), the resolver
+`https://doi.org/10.1038/s43588-024-00737-x` (HTTP 200, final target
+`nature.com/articles/s43588-024-00737-x`) and the arXiv API record
+`https://export.arxiv.org/api/query?id_list=2210.13695` (HTTP 200):
+
+| Field | Verified value (verbatim from the record) |
+|---|---|
+| Title | "Structure-based drug design with equivariant diffusion models" |
+| Authors | Arne Schneuing; Charles Harris; Yuanqi Du; Kieran Didi; Arian Jamasb; Ilia Igashov; Weitao Du; Carla Gomes; Tom L. Blundell; Pietro Lio; Max Welling; Michael Bronstein; Bruno Correia |
+| Container | Nature Computational Science |
+| Volume / issue / pages | 4 / 12 / 899-909 |
+| Issued | 2024-12-09 |
+| DOI | 10.1038/s43588-024-00737-x |
+
+The superseded DOI `10.1038/s41467-024-49069-0` is **dead** and is **not** a DiffSBDD DOI:
+`https://doi.org/10.1038/s41467-024-49069-0` returns **HTTP 404**,
+`https://api.crossref.org/works/10.1038/s41467-024-49069-0` returns **HTTP 404**, and
+`https://www.nature.com/articles/10.1038/s41467-024-49069-0` returns **HTTP 404**.
+
+**No MEASURED performance number was changed.** The DiffSBDD headline values
+(`Vina Dock −7.05 (fullatom cond) / −6.94 (CA cond); QED ~0.47; SA ~0.58`)
+and the §10 D2 values (`Vina Dock −7.05 / QED 0.47 / SA 0.58`) are
+byte-identical before and after this correction; only the venue and DOI
+citation fields moved.
+
+**Repository consistency.** The corrected DOI string `10.1038/s43588-024-00737-x` is already
+the repo-wide form used at `TODO/01_research/sota_papers_2025_2026.md:337`,
+`TODO/01_research/sota_landscape.md:224` and
+`molmetal/reports/wf134_metric_survey/lit_table_RMSD_Vina_SA_QED.md` (10+
+sites). `Nat. Comput. Sci.` is the repo's dominant short venue form
+(`grep -rn "Nat\. Comput\. Sci\." --include="*.md" . | grep -v "^./.git/" | wc -l`
+→ 48, measured pre-edit).
+
+**Other sites carrying the same dead DOI string — NOT corrected by this wave.**
+`10.1038/s41467-024-49069-0` also occurs at `molmetal/reports/wf_bib_complete.md:95-96` and
+`paper/refs.bib:248-249`. **Both are the `buttenschoen2024posebusters` entry
+(PoseBusters, Nature Communications 15(1):6621), not DiffSBDD** — substituting
+the DiffSBDD DOI there would be a mis-citation. They are left untouched:
+`molmetal/reports/wf_bib_complete.md` is outside this wave's edit scope, and
+`paper/refs.bib` is write-forbidden (AGENTS.md §5.3 / TODO-84). Independently,
+that same dead DOI means the PoseBusters Nature Communications version is
+itself unverifiable: a Crossref title search for "PoseBusters: AI-based
+docking methods fail to generate physically valid poses or generalise to novel
+sequences" returns **only** the Chemical Science record `10.1039/d3sc04185a`
+(Chem. Sci. 15, 3130-3139, 2024) and no Nature Communications record. Flagged
+for a separate finding.

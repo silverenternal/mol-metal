@@ -334,7 +334,7 @@ entry:
   command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   warm_start_checkpoint: "n/a"  # cold-start each seed; --resume-from auto per output.resume_from
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
-  # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth
+  # NOT used by start.sh per ~~AGENTS.md §5.8~~ → AGENTS.md §5.11 (YAML-only launch) + §5.5 filesystem-truth; corrected 2026-11-01
   legacy_inline_command: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --dataset platinai_4cell --metals Pt --seeds 0 1 2 3 4 --epochs 50 --batch-size 128 --lr 2.0e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --cpu-num-workers 8 --device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   # CLOSURE PATH: start.sh forward-looking extension (Wf-449 follow-up)
   # to read entry.command_template + substitute {yaml_path} with absolute

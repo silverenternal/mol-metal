@@ -19,8 +19,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from molmetal.scripts.cfm_cohort_recovery import (  # noqa: E402
+    COHORT_SOURCE_UNATTESTED,
+)
+from molmetal.scripts.cfm_pool_epoch_rule import resolve_population  # noqa: E402
+from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
 ARMS = (
     "control", "count", "per_atom", "features", "count_w1e3", "count_w1e4",
@@ -105,6 +116,44 @@ def _read_knobs(arm: str) -> Optional[Dict[str, Any]]:
     }
 
 
+def _cohort_from_owner(run_dir: Path) -> Dict[str, Any]:
+    """The run's cohort, read through the OWNER -- never from the file itself.
+
+    ``per_epoch_metrics.json`` is written ONCE, at the END of training, to a
+    FIXED path, so two runs launched into the same ``--out-dir`` clobber each
+    other's record and the survivor is whichever finished LAST.  Reading
+    ``n_train`` / ``n_val`` straight out of that file therefore publishes a
+    SIBLING POPULATION's cohort.
+
+    The owner is ``molmetal/scripts/cfm_pool_epoch_rule.py`` (which in turn
+    asks ``molmetal/scripts/cfm_cohort_recovery.py``): it resolves the run of
+    record and attaches the cohort attested for THAT population.  An
+    unattested cohort is published as ``None`` plus the reason -- never as the
+    clobbered file's numbers.
+    """
+    try:
+        population = resolve_population(run_dir, None)
+    except Exception as exc:  # pragma: no cover - the owner must not be fatal
+        return {
+            "n_train": None,
+            "n_val": None,
+            "source": COHORT_SOURCE_UNATTESTED,
+            "reason": (
+                f"the cohort owner raised {type(exc).__name__}: {exc}; no "
+                f"cohort is published for {run_dir}"
+            ),
+        }
+    cohort = population.get("cohort") or {}
+    return {
+        "n_train": cohort.get("n_train"),
+        "n_val": cohort.get("n_val"),
+        "source": cohort.get("source"),
+        "reason": cohort.get("reason"),
+        "unattested": bool(cohort.get("unattested"))
+        or cohort.get("source") == COHORT_SOURCE_UNATTESTED,
+    }
+
+
 def _load_arm(root: Path, arm: str) -> Optional[Dict[str, Any]]:
     path = root / f"wfa107_{arm}" / "per_epoch_metrics.json"
     if not path.exists():
@@ -114,15 +163,25 @@ def _load_arm(root: Path, arm: str) -> Optional[Dict[str, Any]]:
     for rec in doc.get("per_epoch_metrics", []):
         rows.append({k: rec.get(k) for k in _ROW_FIELDS})
     cfg = doc.get("config", {})
+    # The COHORT comes from the owner, not from the (clobberable) file: the
+    # numbers are published only when an artifact on disk ties them to the run
+    # of record.  An unattested cohort is published as null + the reason.
+    cohort = _cohort_from_owner(root / f"wfa107_{arm}")
+    config = {
+        k: cfg.get(k)
+        for k in ("epochs", "batch_size", "n_train", "n_val", "hidden_dim",
+                  "seed", "device")
+    }
+    config["n_train"] = cohort.get("n_train")
+    config["n_val"] = cohort.get("n_val")
+    if cohort.get("unattested"):
+        config["cohort_source"] = cohort.get("source")
+        config["cohort_reason"] = cohort.get("reason")
     return {
         "path": str(path),
         "knobs": _read_knobs(arm),
         "seed": (doc.get("config", {}) or {}).get("seed"),
-        "config": {
-            k: cfg.get(k)
-            for k in ("epochs", "batch_size", "n_train", "n_val", "hidden_dim",
-                      "seed", "device")
-        },
+        "config": config,
         "wall_time_s": doc.get("wall_time_s"),
         "rows": rows,
         "last": rows[-1] if rows else None,
@@ -413,7 +472,7 @@ def main() -> int:
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+    atomic_write_file(out, json.dumps(doc, ensure_ascii=False, indent=1))
     print(f"[wfa107] wrote {out}")
     if missing:
         print(f"[wfa107] missing arms: {missing}")

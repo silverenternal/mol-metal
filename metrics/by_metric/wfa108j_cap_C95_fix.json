@@ -1,0 +1,280 @@
+{
+ "metric": "wfa107h_velocity_capacity",
+ "tag": "MEASURED",
+ "date": "2026-10-22",
+ "what": "Overfit test of the FM velocity field on ONE 8-cloud batch: 500 AdamW steps at lr 1e-3, fixed t.  Compares the reachable loss with the v=0 baseline and with the best radial-only field, which is the form EGNNVelocityField's dominant term can express.",
+ "checkpoint": "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+ "ckpt_epoch": 4,
+ "velocity_head": "vector_channels",
+ "vector_channels": 8,
+ "t_embedding_dim": 32,
+ "prediction_target": "velocity",
+ "metal_frame_channels": false,
+ "radial_centroid_masked": false,
+ "fresh_field": true,
+ "vel_field_params": 529912,
+ "noise_sigma": 2.485,
+ "t": 0.95,
+ "cycle_batches": 25,
+ "t_uniform": true,
+ "eval_seed": 0,
+ "train_rows": [
+  {
+   "step": 40,
+   "train_mse": 14.42519760131836
+  },
+  {
+   "step": 80,
+   "train_mse": 10.314949989318848
+  },
+  {
+   "step": 120,
+   "train_mse": 9.674501419067383
+  },
+  {
+   "step": 160,
+   "train_mse": 10.816041946411133
+  },
+  {
+   "step": 200,
+   "train_mse": 9.815903663635254
+  },
+  {
+   "step": 240,
+   "train_mse": 12.76724624633789
+  },
+  {
+   "step": 280,
+   "train_mse": 9.172245025634766
+  },
+  {
+   "step": 320,
+   "train_mse": 9.16762924194336
+  },
+  {
+   "step": 360,
+   "train_mse": 10.33790397644043
+  },
+  {
+   "step": 400,
+   "train_mse": 9.012090682983398
+  },
+  {
+   "step": 440,
+   "train_mse": 12.277548789978027
+  },
+  {
+   "step": 480,
+   "train_mse": 8.888562202453613
+  }
+ ],
+ "n_clouds": 8,
+ "n_atoms": 405,
+ "steps": 500,
+ "lr": 0.001,
+ "seed": 0,
+ "device": "cpu",
+ "zero_baseline_mse": 11.760530471801758,
+ "radial_ceiling_mse": 6.317902565002441,
+ "vector_channel_norm_gain": "fixed",
+ "velocity_head_init": "lsq",
+ "lsq_init": {
+  "applied": true,
+  "knots": [
+   {
+    "t": 0.02,
+    "mse": 7.437599,
+    "mse_zero": 11.76053,
+    "ratio": 0.604794,
+    "cosine": 0.606285
+   },
+   {
+    "t": 0.14,
+    "mse": 8.053116,
+    "mse_zero": 11.76053,
+    "ratio": 0.561035,
+    "cosine": 0.561464
+   },
+   {
+    "t": 0.26,
+    "mse": 9.323342,
+    "mse_zero": 11.76053,
+    "ratio": 0.455172,
+    "cosine": 0.45523
+   },
+   {
+    "t": 0.38,
+    "mse": 10.463304,
+    "mse_zero": 11.76053,
+    "ratio": 0.33196,
+    "cosine": 0.33212
+   },
+   {
+    "t": 0.5,
+    "mse": 11.120393,
+    "mse_zero": 11.76053,
+    "ratio": 0.217922,
+    "cosine": 0.233847
+   },
+   {
+    "t": 0.62,
+    "mse": 11.538528,
+    "mse_zero": 11.76053,
+    "ratio": 0.131819,
+    "cosine": 0.137511
+   },
+   {
+    "t": 0.74,
+    "mse": 11.199183,
+    "mse_zero": 11.76053,
+    "ratio": 0.21009,
+    "cosine": 0.218643
+   },
+   {
+    "t": 0.86,
+    "mse": 10.48995,
+    "mse_zero": 11.76053,
+    "ratio": 0.326264,
+    "cosine": 0.3287
+   },
+   {
+    "t": 0.98,
+    "mse": 9.732825,
+    "mse_zero": 11.76053,
+    "ratio": 0.412765,
+    "cosine": 0.415237
+   }
+  ],
+  "fit": {
+   "n_knots": 9,
+   "mode": "linear_in_t_embedding",
+   "t_embedding_dim": 32,
+   "fit_residual_rms": 435.85076904296875,
+   "gate_weight_rms": 1062.2171630859375
+  },
+  "post_init": [
+   {
+    "t": 0.05,
+    "ratio": 0.579275,
+    "cosine": 0.594046,
+    "mse": 7.612914,
+    "mse_zero": 11.76053
+   },
+   {
+    "t": 0.5,
+    "ratio": 0.199291,
+    "cosine": 0.215613,
+    "mse": 11.216928,
+    "mse_zero": 11.76053
+   },
+   {
+    "t": 0.95,
+    "ratio": 0.385848,
+    "cosine": 0.385485,
+    "mse": 10.012931,
+    "mse_zero": 11.76053
+   }
+  ],
+  "n_atoms": 405
+ },
+ "trajectory": [
+  {
+   "step": 0,
+   "mse": 10.012930870056152,
+   "mean_v_norm": 2.217895746231079,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.38548535108566284
+  },
+  {
+   "step": 40,
+   "mse": 16.32353973388672,
+   "mean_v_norm": 2.0337722301483154,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": -0.35349807143211365
+  },
+  {
+   "step": 80,
+   "mse": 13.697436332702637,
+   "mean_v_norm": 1.0704760551452637,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": -0.3003562390804291
+  },
+  {
+   "step": 120,
+   "mse": 13.18766975402832,
+   "mean_v_norm": 1.4340859651565552,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": -0.10392030328512192
+  },
+  {
+   "step": 160,
+   "mse": 12.706070899963379,
+   "mean_v_norm": 0.802033007144928,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": -0.17627310752868652
+  },
+  {
+   "step": 200,
+   "mse": 13.162873268127441,
+   "mean_v_norm": 1.0284817218780518,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": -0.1746102124452591
+  },
+  {
+   "step": 240,
+   "mse": 10.558694839477539,
+   "mean_v_norm": 1.230222225189209,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.3343532383441925
+  },
+  {
+   "step": 280,
+   "mse": 11.730955123901367,
+   "mean_v_norm": 0.9711962938308716,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.10085661709308624
+  },
+  {
+   "step": 320,
+   "mse": 11.004487991333008,
+   "mean_v_norm": 1.0245778560638428,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.26246464252471924
+  },
+  {
+   "step": 360,
+   "mse": 10.70862865447998,
+   "mean_v_norm": 1.294043779373169,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.3010377883911133
+  },
+  {
+   "step": 400,
+   "mse": 10.191218376159668,
+   "mean_v_norm": 1.10548996925354,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.39795127511024475
+  },
+  {
+   "step": 440,
+   "mse": 11.37952709197998,
+   "mean_v_norm": 1.5501264333724976,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.20726928114891052
+  },
+  {
+   "step": 480,
+   "mse": 10.619260787963867,
+   "mean_v_norm": 1.7514935731887817,
+   "mean_target_norm": 5.369067192077637,
+   "cosine": 0.32106444239616394
+  }
+ ],
+ "verdict": "CANNOT_FIT",
+ "honest_limits": [
+  "The trajectory is ALWAYS evaluated on the fixed first cohort at t=0.5, whatever the training distribution was, so arms with different --cycle-batches / --t-uniform settings are comparable.",
+  "One batch, one t (0.5).  A field that fits t=0.5 need not fit the whole path; a field that cannot fit t=0.5 cannot fit the path.",
+  "The radial ceiling is computed on the SAME batch, so it is an upper bound on the radial term only — `last_v` (the edge-mean term) can in principle beat it.  A measured MSE at the radial ceiling means the model is using the radial term alone.",
+  "lr 1e-3 is 10x the training lr (1e-4); this is deliberately generous to the field, so a failure is not a learning-rate artefact."
+ ]
+}

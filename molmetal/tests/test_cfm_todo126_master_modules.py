@@ -154,7 +154,7 @@ class TestChempropDriverWiresM1M2:
 
         proc = subprocess.run(
             [
-                "/home/hugo/codes/mol-metal/.venv/bin/python",
+                sys.executable,
                 str(Path(_REPO) / "molmetal/scripts/train_chemprop_v2_v3.py"),
                 "--help",
             ],

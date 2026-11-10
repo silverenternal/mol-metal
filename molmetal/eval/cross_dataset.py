@@ -5,7 +5,8 @@ and apply the EMA snapshot to the FULL CFM velocity field, not just the
 YuelBond bond head.  At default (``use_pocket_encoder=False`` and no EMA
 in the checkpoint) this module is bit-exact identical to the pre-Wf-A36-1
 path for every shipped CFM YAML; see :mod:`molmetal.eval._pocket_encoder`
-for the helper definitions and the §5.11 backward-compat contract.
+for the helper definitions and the ~~§5.11 backward-compat contract~~
+→ AGENTS.md §3.3 audit-ledger; corrected 2026-10-31.
 
 Targets the F weakness from ``docs/CFM_WEAKNESSES_2026_10_13.md``:
 
@@ -68,8 +69,9 @@ from molmetal.eval import ckpt_is_smoke_stub as _ckpt_is_smoke_stub
 
 # Wf-A36-1 (2026-10-14) E1 + E2 — the shared helpers for the eval-side
 # PocketEncoder instantiation (E1) and the full-model EMA round-trip
-# (E2).  See :mod:`molmetal.eval._pocket_encoder` for the §5.11
-# bit-exact default (``use_pocket_encoder=False`` ⇒ no import, no warn,
+# (E2).  See :mod:`molmetal.eval._pocket_encoder` for the
+# ~~§5.11 bit-exact default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+# (``use_pocket_encoder=False`` ⇒ no import, no warn,
 # no behaviour change).
 from molmetal.eval._pocket_encoder import (
     build_pocket_encoder as _build_pocket_encoder,
@@ -182,7 +184,8 @@ def _predict_smiles(
     apply the snapshot to the FULL :class:`CFMJointModel` (not just
     the YuelBond head) so the CFM trajectory / bond head see the
     EMA-smoothed weights.  Both paths are bit-exact no-ops at the
-    §5.11 default (``use_pocket_encoder=False`` and a pre-Wf-A20
+    ~~§5.11 default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+    (``use_pocket_encoder=False`` and a pre-Wf-A20
     checkpoint with no ``ema_state_dict``).
     """
     # Wf-A35-FIXUP-1 (2026-10-14) — accept the full ckpt dict so
@@ -344,7 +347,8 @@ def _predict_smiles(
     # the encoder is currently a structural no-op on this decode path;
     # the helper is wired in so a future pocket-conditioned decode
     # variant can attach it without touching this function.  At the
-    # §5.11 default (``use_pocket_encoder=False``) the helper
+    # ~~§5.11 default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+    # (``use_pocket_encoder=False``) the helper
     # short-circuits before any import and emits no log / warning, so
     # every shipped CFM YAML produces bit-exact identical eval output.
     _pocket_req, _pocket_enc, _pocket_dim = _build_pocket_encoder(
@@ -494,7 +498,8 @@ def run_cross_dataset_validation(
         Wf-A36-1 (2026-10-14) E1 — when ``True``, instantiate the
         eval-side :class:`PocketGenEncoder` so a future
         pocket-conditioned decode variant can attach it.  Default
-        ``False`` keeps the §5.11 bit-exact path: every shipped CFM
+        ``False`` keeps the ~~§5.11 bit-exact path~~ → AGENTS.md §3.3
+        audit-ledger; corrected 2026-10-31: every shipped CFM
         YAML produces identical eval output regardless of this flag.
 
     Returns
@@ -729,7 +734,8 @@ def main() -> int:
         help=(
             "Wf-A36-1 (2026-10-14) E1 — instantiate the eval-side "
             "PocketGenEncoder so a future pocket-conditioned decode "
-            "variant can attach it.  Default off: §5.11 bit-exact."
+            "variant can attach it.  Default off (was: §5.11 bit-exact) "
+            "→ AGENTS.md §3.3 audit-ledger; corrected 2026-10-31."
         ),
     )
     args = parser.parse_args()

@@ -429,7 +429,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--repo-root",
-        default="/home/hugo/codes/mol-metal",
+        default=str(Path(__file__).resolve().parents[2]),
         help="path to mol-metal repo root",
     )
     parser.add_argument(

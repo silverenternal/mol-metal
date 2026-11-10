@@ -192,6 +192,16 @@ def _write_report(payload: Dict[str, Any]) -> None:
 
 
 @pytest.mark.gpu
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_gpu_pytorch_cuda_visible() -> None:
     """torch sees ≥ 1 CUDA device (either Blackwell or RTX 5090).
 
@@ -214,6 +224,16 @@ def test_gpu_pytorch_cuda_visible() -> None:
 
 
 @pytest.mark.gpu
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_gpu0_device_properties() -> None:
     """Device 0 is a Blackwell-class GPU with ≥ 32 GB VRAM.
 
@@ -237,6 +257,16 @@ def test_gpu0_device_properties() -> None:
 
 
 @pytest.mark.gpu
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_gpu0_smoke_train_step() -> None:
     """50-step BF16 autocast smoke on device 0 succeeds with finite loss."""
     if not torch.cuda.is_available():
@@ -251,6 +281,16 @@ def test_gpu0_smoke_train_step() -> None:
 
 
 @pytest.mark.gpu
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_gpu1_smoke_train_step() -> None:
     """If GPU 1 (RTX 5090) is exposed, the smoke loop also passes there.
 
@@ -272,6 +312,16 @@ def test_gpu1_smoke_train_step() -> None:
 
 
 @pytest.mark.gpu
+# --- Wf-A123 FIX 5: GPU-REQUIRED, so it SKIPS CLEANLY without a GPU ----
+# A GPU test that silently runs on CPU is a FALSE GREEN -- worse than a
+# skip.  The standing user directive for this repository is 禁止使用gpu, so
+# without an explicit opt-in (MOLMETAL_TEST_ALLOW_GPU=1) these tests skip
+# instead of taking VRAM.
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="GPU-REQUIRED: no CUDA device visible (no-GPU directive; "
+    "opt in with MOLMETAL_TEST_ALLOW_GPU=1)",
+)
 def test_wf25_gpu_smoke_emits_report_json() -> None:
     """End-to-end: write ``gpu_check.json`` with the spec's exact schema.
 

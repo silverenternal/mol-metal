@@ -70,7 +70,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 TODO_PENDING = ROOT / "TODO" / "pending"
 TODO_COMPLETED = ROOT / "TODO" / "completed"
 INDEX_MD = ROOT / "TODO" / "INDEX.md"

@@ -77,7 +77,7 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = PROJECT_ROOT / "scripts"
 WRAPPER = SCRIPTS / "recover_g6_failed_tuples.sh"
 

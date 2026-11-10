@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -212,7 +213,13 @@ def test_generated_cohort_is_essentially_aromatic_free():
     """
     import csv
 
-    gen = "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"
+    gen = str(
+        Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "reports"
+        / "cfm_fullcorpus_2026_10_10"
+        / "generated_smiles.csv"
+    )
     if not os.path.exists(gen):
         pytest.skip("generated cohort CSV not on disk")
     with open(gen, newline="") as fh:

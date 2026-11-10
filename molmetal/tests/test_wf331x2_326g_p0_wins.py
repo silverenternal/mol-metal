@@ -333,7 +333,9 @@ def test_pre_featurized_cache_runtime_hook() -> None:
     returns graph tuples without re-running RDKit.
     """
     cache = PreFeaturizedCache(
-        pre_featurized_dir="/home/hugo/codes/mol-metal/molmetal/data/pre_featurized",
+        pre_featurized_dir=str(
+            Path(__file__).resolve().parents[2] / "molmetal" / "data" / "pre_featurized"
+        ),
         domain="metal_cytotox",
     )
     cache.load()

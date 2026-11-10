@@ -179,11 +179,19 @@ C. 84+ SMARTS 反应规则列表
 2. **Atz et al. 2024 (TargetDiff)** — 3D Molecular Generation for Structure-Based Drug Design
 3. **Lightvector KataGo** — github.com/lightvector/KataGo + Algorithms.md
 4. **Yu/Yang/Ren/Zhao 2026** — Deflex: dual Deflexpressor/Deflexformer for symbolic regression, *Nat Commun* 17(1), arXiv:2606.07426
-5. **Liu/Feng 2026** — PLL (Persistent Local Laplacian), *J Chem Inf Model*, DOI:10.1021/acs.jcim.6c02460, arXiv:2603.21503
+5. **Liu/Feng 2026** — PLL (Persistent Local Laplacian), *J Chem Inf Model* 66 (18), 11767-11777, DOI:10.1021/acs.jcim.6c02460, arXiv:2603.21503
 6. **Balcells & Skjelstad 2020 (tmQM)** — transition metal quantum mechanics dataset
 7. **Ernst et al. 2024 (RxnFlow)** — flow-matching for synthesis
 8. **Gao et al. 2022 (SyntheMol)** — 13-reaction synthesis library
 9. **Krasnov et al. 2026 (MetalCytoToxDB)** — 26801 metal-cytotoxicity pairs
+
+> **⚠️ CITATION RECORD COMPLETED (2026-10-31, Wf-A149).** The PLL lit anchor
+> above previously read "**Liu/Feng 2026** — PLL (Persistent Local Laplacian), *J Chem Inf Model*, DOI:10.1021/acs.jcim.6c02460, arXiv:2603.21503" — it carried the DOI but no
+> volume / issue / pages.  The Crossref record for that DOI (MEASURED
+> 2026-10-31, HTTP 200) gives **volume 66, issue 18, pages 11767-11777**
+> (online 2026-09-04, print 2026-09-28); the full venue record is now
+> printed inline.  No value in this file was wrong before — the citation
+> was incomplete.
 
 ---
 

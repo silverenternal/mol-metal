@@ -54,8 +54,8 @@ if str(PROJECT_ROOT) not in sys.path:
 # Canonical on-disk artefact paths (Wf-315D ship surface + Wf-319C gate)
 # ---------------------------------------------------------------------------
 
-CANONICAL_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
-ALT_MOLMETAL_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
+CANONICAL_VENV_PYTHON = sys.executable
+ALT_MOLMETAL_VENV_PYTHON = sys.executable
 POCKET_PB311_VENV_PYTHON = (
     "/home/hugo/codes/pocket/.eval_envs/posebusters311/bin/python"
 )

@@ -31,7 +31,7 @@
 | 5 | Wf-353-A1 | Triton mini-batch OT kernel (Khainb 2025) | SCAFFOLD | `--triton-ot` flag (default ON) + `triton_mini_batch_ot()` |
 | 6 | Wf-353-A2 | Shortcut distillation (Frans 2024) | SCAFFOLD | `--shortcut-distill` flag + `shortcut_distillation.py` |
 | 7 | Wf-353-A3 | Consistency regularization (EDM Karras 2022) | SCAFFOLD | `--consistency-weight` flag + `consistency_regularization.py` |
-| 8 | Wf-353-A4 | FlowMol unified atom-bond flow (CC-BY-NC) | SCAFFOLD | `--flowmol-unified` flag + LICENSE GATE |
+| 8 | Wf-353-A4 | FlowMol unified atom-bond flow (CC BY-SA 4.0) | SCAFFOLD | `--flowmol-unified` flag + LICENSE GATE |
 | 9 | Wf-340-A3 | log-normal t-sampling | SCAFFOLD | `--log-normal-t` flag (default ON) |
 | 10 | Wf-340-A3 | linear lr-warmup | SCAFFOLD | `--lr-warmup-steps` flag (default ON) |
 
@@ -192,7 +192,26 @@
 - `molmetal/models/bond_head.py`: replace with FlowMol wrapper
 - `molmetal/scripts/train_cfm_yuelbond_wasserstein.py`: add `--flowmol-unified` flag (default ON post-USER_OK)
 
-**LICENSE GATE**: FlowMol is arXiv:2412.01966 CC-BY-NC. Integration requires USER_OK + license acknowledgment.
+**LICENSE GATE**: FlowMol is arXiv:2404.19739 CC BY-SA 4.0 (Dunn & Koes 2024). Integration requires USER_OK + license acknowledgment.
+
+**CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+verbatim: “FlowMol is arXiv:2412.01966 CC-BY-NC”. Verified against the primary
+sources on 2026-10-31: `arXiv:2412.01966` is **not** FlowMol — the arXiv abs
+page returns “Implementing Semiclassical Szegedy Walks in Classical-Quantum
+Circuits for Homomorphic Encryption” (Ortega, S. A.; Fernández, P.;
+Martin-Delgado, M. A.), a quantum-homomorphic-encryption paper, and the arXiv
+API returns no record titled “FlowMol: A Unified Flow Matching Model for 3D
+Molecular Generation” and no record authored by “Qiang, B.; Song, Y.; ...;
+Kingma, D. P.”. The real upstream is Dunn, I.; Koes, D. R. (2024), *Mixed
+Continuous and Categorical Flow Matching for 3D De Novo Molecule Generation*
+(FlowMol), `arXiv:2404.19739` — the identifier this repo’s own canonical
+`unified_atom_bond_flow.py` already cites — with siblings `arXiv:2411.16644`
+(FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3). **LICENCE: all three are CC
+BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+`creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged — CC
+BY-SA 4.0 still carries attribution + share-alike obligations, so USER_OK is
+still required. Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+#6.
 
 **Test**: 1 NEW test (license-gated; SKIP if no USER_OK)
 
@@ -243,7 +262,7 @@
 7. **§2.3 StableVM** (Hard; 2-3 days)
 8. **§2.4 SO(3)-averaged FM** (Hard; 2-3 days)
 9. **§2.6 Shortcut distillation** (Hard; 2-3 days)
-10. **§2.8 FlowMol unified** (Hard + LICENSE; 3-5 days + USER_OK)
+10. **§2.8 FlowMol unified** (Hard + LICENSE; 3-5 days + USER_OK; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §2.8])
 
 ---
 

@@ -29,11 +29,12 @@ from __future__ import annotations
 
 import math
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-_PROJECT_ROOT = "/home/hugo/codes/mol-metal"
+_PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 

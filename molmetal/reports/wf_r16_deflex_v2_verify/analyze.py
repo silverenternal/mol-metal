@@ -13,7 +13,7 @@ import math
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/try_triton_on_rocm/molmetal")
+REPO = Path(__file__).resolve().parents[3] / "molmetal"
 BASE = REPO / "reports" / "wf_lambda1_wf_r16_deflex_v2_verify" / "baseline" / "report.json"
 DEFL = REPO / "reports" / "wf_lambda1_wf_r16_deflex_v2_verify" / "deflex" / "report.json"
 OUT = REPO / "reports" / "wf_r16_deflex_v2_verify"

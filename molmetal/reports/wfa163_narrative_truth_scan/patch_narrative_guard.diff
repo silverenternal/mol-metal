@@ -1,0 +1,1227 @@
+From: Wf-A163 (narrative-truth scan) <wf-a163@mol-metal.local>
+Subject: [PATCH] repo-wide narrative-truth guard: prose numbers must be backed
+ by the artifact's own machine fields
+
+WHY
+  Wf-A155 found one tool (molmetal/scripts/wf_a155_ligand_connected_rate.py)
+  embedding pool-specific CLAIMS as string literals inside a `tag: MEASURED`
+  artifact.  Wf-A162 repaired that one tool.  This patch generalises the fix:
+
+    * NEW  molmetal/scripts/wfa163_narrative_truth_guard.py
+          a guard any artifact producer can call.  Declared mode (the producer
+          names its narrative paths) is a HARD gate; auto mode is advisory.
+    * NEW  molmetal/tests/test_wfa163_narrative_truth.py
+          15 tests pinning the class, the two modes, the CPU-only contract,
+          and the repaired artifacts.
+    * EDIT molmetal/scripts/promote_metrics.py
+          the single entry point into metrics/by_metric/: run the guard on the
+          payload BEFORE the write and BLOCK the promotion on the two
+          CONTRADICTION classes (pool misattribution, stale cross-reference).
+
+  MEASURED (2026-11-01, Wf-A163): over the 583 JSON artifacts in
+  metrics/by_metric/ + metrics/paper_tables/ the two blocking classes fire
+  0 times, so the gate can be enabled repo-wide without blocking a single
+  existing promotion.  The looser classes fire 19 times (13 artifacts) and
+  stay advisory.
+
+  CPU-only: no torch, no CUDA, no trainer, no decode.
+
+---
+--- /dev/null
++++ b/molmetal/scripts/wfa163_narrative_truth_guard.py
+@@ -0,0 +1,845 @@
++#!/usr/bin/env python
++"""REPO-WIDE GUARD: every number rendered in an artifact's PROSE must be
++backed by a MACHINE field of the SAME artifact.
++
++THE DEFECT CLASS (Wf-A155 -> Wf-A162 -> Wf-A163)
++-------------------------------------------------
++``molmetal/scripts/wf_a155_ligand_connected_rate.py`` embedded seven
++pool-specific claims as string literals inside a ``tag: MEASURED`` artifact.
++For its default pool every literal happened to be true; for any other pool
++the tool emitted FALSE statements (the wrong row count, the wrong
++sub-population count, and the WRONG POOL PATH).  Wf-A162 repaired that one
++tool.  This module is the GENERAL fix: a guard any artifact producer can
++call, which re-derives from the artifact itself the set of numbers the
++artifact's own machine fields can back, and refuses a narrative number that
++has no counterpart.
++
++WHY IT MUST BE THE PRODUCER THAT CALLS IT
++------------------------------------------
++An artifact-level census of the published tree CANNOT see this defect: the
++artifact a reusable tool emits for its default pool is internally
++consistent, so no scanner over the published JSONs can tell that the prose
++was not computed.  The defect lives in the PRODUCER.  Hence this module is
++a library the producers call, not a scanner that runs over the tree.
++
++TWO MODES
++---------
++``declared``  the producer lists the JSON paths that hold narrative prose
++              (the Wf-A162-repaired tool already does this, via its
++              ``NARRATIVE_PATHS`` constant).  Every number in those paths
++              must be backed by a machine field.  This mode is PRECISE and
++              is the one to use as a hard gate.
++``auto``      no declaration: every string in the artifact is examined, and
++              only numbers in a COUNT-CLAIM position (in front of a unit
++              word, in front of a percent sign, on either side of a ratio
++              or an "N of M") are considered.  This mode is much LOOSER --
++              over the 583-artifact published tree it fires 482 times, of
++              which a hand audit found NO contradiction of an artifact's
++              own fields.  Use it as a WARNING, not a gate.
++
++SEVERITIES
++----------
++``contradiction``  the prose names a POOL that the artifact's own
++                   ``source_pool`` does not name, and no other machine field
++                   of the artifact cross-references it.  ALWAYS an error:
++                   an artifact that names the wrong population is wrong.
++``unbacked``       a narrative number that no machine field of the same
++                   artifact backs.  An error in ``declared`` mode, a warning
++                   in ``auto`` mode.
++``count``          a prose population size that contradicts the artifact's
++                   own denominator fields.  Advisory (a cross-artifact
++                   reference looks exactly like this).
++
++CPU-ONLY.  No torch, no CUDA, no decode.
++"""
++
++from __future__ import annotations
++
++import json
++import re
++from pathlib import Path
++from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
++
++__all__ = [
++    "NarrativeTruthError",
++    "narrative_truth_report",
++    "assert_narrative_truth",
++    "find_unbacked_numbers",
++    "find_pool_misattribution",
++    "find_count_contradictions",
++]
++
++
++class NarrativeTruthError(RuntimeError):
++    """Raised when an artifact's prose contradicts its own machine fields."""
++
++
++# --------------------------------------------------------------------------
++# text helpers
++# --------------------------------------------------------------------------
++
++# An integer (possibly comma-grouped).  The left/right guards keep us out of
++# identifiers ("wfa155") and out of a trailing decimal point.
++_INT_RE = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(?![\w])")
++_FLOAT_RE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w])")
++_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
++_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_\-]*\d[A-Za-z0-9_\-]*")
++_SLASH_RE = re.compile(r"[\w.\-]+/[\w.\-]+")
++_POOL_RE = re.compile(r"cfm_[a-z0-9]+_[a-z0-9_]*\d{4}_\d{2}_\d{2}", re.IGNORECASE)
++
++# The UNIT VOCABULARY of a count claim: a number standing immediately in
++# front of one of these words is a claim about a population or a size.
++CLAIM_UNITS = (
++    "rows", "row", "samples", "sample", "molecules", "molecule", "compounds",
++    "compound", "structures", "structure", "entries", "entry", "cases", "case",
++    "seeds", "seed", "folds", "fold", "epochs", "epoch", "runs", "run",
++    "points", "point", "atoms", "atom", "fragments", "fragment", "ligands",
++    "ligand", "poses", "pose", "files", "file", "directories", "directory",
++    "configs", "config", "trials", "trial", "replicates", "replicate",
++    "decodes", "decode", "generators", "generator", "checkpoints", "checkpoint",
++    "examples", "example", "bins", "bin", "buckets", "bucket", "classes",
++    "class", "panels", "panel", "walks", "walk", "iterations", "iteration",
++    "steps", "step", "updates", "update", "participants", "subjects",
++    "patients", "candidates", "hits", "hit", "errors", "error", "warnings",
++    "warning", "tests", "test", "pages", "page", "lines", "line", "words",
++    "word", "tokens", "token", "bytes", "byte", "kb", "mb", "gb", "percent",
++    "percentage", "decoys", "metal", "metals", "elements", "element",
++)
++_UNIT_RE = re.compile(
++    r"(?<![\w/.-])(?:%s)\b" % "|".join(sorted(set(CLAIM_UNITS), key=len, reverse=True)),
++    re.IGNORECASE,
++)
++_RATIO_RE = re.compile(
++    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)\s*/\s*(\d{1,3}(?:,\d{3})+|\d+)(?![\w.])"
++)
++_NOF_RE = re.compile(
++    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)(?![\w.])"
++)
++_ROWCOUNT_RE = re.compile(
++    r"(?P<n>\d{1,3}(?:,\d{3})+|\d+)\s+"
++    r"(?:rows|samples|molecules|compounds|structures|entries)\b",
++    re.IGNORECASE,
++)
++# A SMILES string carries ring-closure digits ("%10", "C145") that are not
++# counts.  A string containing a SMILES ring closure is not prose.
++_SMILES_RING_RE = re.compile(r"%[0-9]{1,2}")
++_POOLOF_RE = re.compile(r"pool of\s+(?P<n>\d{1,3}(?:,\d{3})+|\d+)", re.IGNORECASE)
++_CLAUSE_BREAK_RE = re.compile(r"[.;,)\]}|]|\s--\s|\s-\s")
++
++# "metrics/by_metric/foo.json -> /summary/generation_side/rate" -- the
++# citation form used by the published artifacts to attribute a number to
++# another artifact.  This is the ONE form in which a number quoted from a
++# different artifact can be VERIFIED instead of merely believed.
++_CITE_RE = re.compile(
++    r"(?P<path>(?:[A-Za-z0-9_.\-]+/)+[A-Za-z0-9_.\-]+\.json)"
++    r"\s*(?:->|=>)\s*"
++    r"(?P<jsonpath>/[A-Za-z0-9_.\-/]*)"
++)
++
++SOURCE_POOL_KEYS = (
++    "source_pool", "pool", "pool_path", "csv", "csv_path", "input_csv",
++    "source_csv", "generated_csv",
++)
++
++
++# --------------------------------------------------------------------------
++# flattening
++# --------------------------------------------------------------------------
++
++def flatten(obj: Any, path: Tuple[Any, ...] = ()) -> List[Tuple[Tuple[Any, ...], Any]]:
++    out: List[Tuple[Tuple[Any, ...], Any]] = []
++    if isinstance(obj, dict):
++        for k, v in obj.items():
++            out.extend(flatten(v, path + (k,)))
++    elif isinstance(obj, list):
++        for i, v in enumerate(obj):
++            out.extend(flatten(v, path + (i,)))
++    else:
++        out.append((path, obj))
++    return out
++
++
++def path_str(path: Sequence[Any]) -> str:
++    parts = [f"[{p}]" if isinstance(p, int) else str(p) for p in path]
++    return "/" + "/".join(parts)
++
++
++def resolve(obj: Any, path: Sequence[Any]) -> Any:
++    cur = obj
++    for part in path:
++        cur = cur[int(part)] if isinstance(cur, list) else cur[part]
++    return cur
++
++
++def resolve_paths(obj: Any, paths: Iterable[Sequence[Any]]) -> List[Tuple[Any, ...]]:
++    """Expand a path list (with '*' wildcards) into concrete leaf paths."""
++    out: List[Tuple[Any, ...]] = []
++    for p in paths:
++        if "*" not in p:
++            try:
++                resolve(obj, p)
++            except Exception:
++                continue
++            out.append(tuple(p))
++            continue
++        # wildcard: descend
++        stack: List[Tuple[Any, ...]] = [()]
++        for part in p:
++            nxt: List[Tuple[Any, ...]] = []
++            for cur in stack:
++                try:
++                    val = resolve(obj, cur + (part,))
++                except Exception:
++                    continue
++                if part == "*":
++                    if isinstance(val, dict):
++                        nxt.extend(cur + (k,) for k in val)
++                    elif isinstance(val, list):
++                        nxt.extend(cur + (i,) for i in range(len(val)))
++                else:
++                    nxt.append(cur + (part,))
++            stack = nxt
++        out.extend(stack)
++    return out
++
++
++# --------------------------------------------------------------------------
++# tokenisation
++# --------------------------------------------------------------------------
++
++def _spans(text: str, rx: re.Pattern) -> List[Tuple[int, int]]:
++    return [(m.start(), m.end()) for m in rx.finditer(text)]
++
++
++def _in_spans(a: int, b: int, spans: Sequence[Tuple[int, int]]) -> bool:
++    return any(s <= a and b <= e for s, e in spans)
++
++
++def _slash_is_path(text: str, a: int, b: int) -> bool:
++    for mm in _SLASH_RE.finditer(text):
++        if mm.start() <= a and b <= mm.end():
++            segs = mm.group(0).split("/")
++            if all(any(c.isalpha() for c in s) or "." in s for s in segs):
++                return True
++    return False
++
++
++def int_tokens(text: str) -> List[Dict[str, Any]]:
++    """Integer tokens in `text` that are counts (not dates, not identifiers)."""
++    date_spans = _spans(text, _DATE_RE)
++    ident_spans = _spans(text, _IDENT_RE)
++    out: List[Dict[str, Any]] = []
++    for m in _INT_RE.finditer(text):
++        s, e = m.start(), m.end()
++        if _in_spans(s, e, date_spans) or _in_spans(s, e, ident_spans):
++            continue
++        if _slash_is_path(text, s, e):
++            continue
++        try:
++            val = int(m.group(1).replace(",", ""))
++        except ValueError:
++            continue
++        out.append(
++            {
++                "token": m.group(1),
++                "value": val,
++                "start": s,
++                "end": e,
++                "followed_by_pct": bool(re.match(r"\s*%", text[e:e + 3])),
++            }
++        )
++    return out
++
++
++def float_tokens(text: str) -> List[Dict[str, Any]]:
++    date_spans = _spans(text, _DATE_RE)
++    ident_spans = _spans(text, _IDENT_RE)
++    out: List[Dict[str, Any]] = []
++    for m in _FLOAT_RE.finditer(text):
++        if "." not in m.group(1):
++            continue
++        s, e = m.start(), m.end()
++        if _in_spans(s, e, date_spans) or _in_spans(s, e, ident_spans):
++            continue
++        if _slash_is_path(text, s, e):
++            continue
++        try:
++            val = float(m.group(1))
++        except ValueError:
++            continue
++        out.append({"token": m.group(1), "value": val, "start": s, "end": e})
++    return out
++
++
++def claim_positions(text: str) -> Set[int]:
++    """Offsets of integer tokens that stand in a COUNT-CLAIM position."""
++    pos: Set[int] = set()
++    unit_spans = [(m.start(), m.end()) for m in _UNIT_RE.finditer(text)]
++    for m in _INT_RE.finditer(text):
++        for us, ue in unit_spans:
++            if m.end() <= us and us - m.end() <= 3:
++                pos.add(m.start())
++                break
++    for m in re.finditer(r"%", text):
++        best = None
++        for mm in _INT_RE.finditer(text):
++            if mm.end() <= m.start() and m.start() - mm.end() <= 2:
++                if best is None or mm.end() > best.end():
++                    best = mm
++        if best is not None:
++            pos.add(best.start())
++    for rx in (_RATIO_RE, _NOF_RE):
++        for m in rx.finditer(text):
++            pos.add(m.start(1))
++            pos.add(m.start(2))
++    return pos
++
++
++def _standalone(token: str, text: str) -> bool:
++    pat = re.compile(r"(?<![0-9.,])" + re.escape(token) + r"(?![0-9.,])")
++    return bool(pat.search(text))
++
++
++def _clause_window(text: str, start: int, limit: int = 90) -> str:
++    tail = text[start:start + limit]
++    m = _CLAUSE_BREAK_RE.search(tail)
++    if m:
++        tail = tail[: m.start()]
++    return tail.lower()
++
++
++def _full_clause(text: str, start: int, end: int) -> str:
++    """The whole clause that contains [start, end) -- not a clipped window.
++
++    The clause is what decides whether a count belongs to THIS artifact:
++    a file name, a path, or a threshold word inside the same clause means
++    the number describes another cohort or a protocol rule.
++    """
++    left = 0
++    for m in _CLAUSE_BREAK_RE.finditer(text, 0, start):
++        left = m.end()
++    right = len(text)
++    m = _CLAUSE_BREAK_RE.search(text, end)
++    if m:
++        right = m.start()
++    return text[left:right]
++
++
++# --------------------------------------------------------------------------
++# backing
++# --------------------------------------------------------------------------
++
++def machine_numbers(artifact: Any) -> List[float]:
++    out: List[float] = []
++    for _p, v in flatten(artifact):
++        if isinstance(v, bool):
++            continue
++        if isinstance(v, (int, float)):
++            out.append(float(v))
++    return out
++
++
++def _number_backs(value: float, token_value: int, followed_by_pct: bool) -> bool:
++    if value != value:
++        return False
++    if abs(value - token_value) <= 1e-9:
++        return True
++    if abs(value - token_value) <= 0.5:
++        return True
++    if followed_by_pct and abs(value * 100.0 - token_value) <= 0.5:
++        return True
++    return False
++
++
++def _float_backs(value: float, decimals: int, numbers: Sequence[float]) -> bool:
++    tol = 0.5 * (10.0 ** (-decimals)) if decimals else 0.0
++    for m in numbers:
++        if m != m:
++            continue
++        if abs(m - value) <= tol + 1e-12:
++            return True
++        if abs(m * 100.0 - value) <= tol + 1e-12:
++            return True
++    return False
++
++
++# --------------------------------------------------------------------------
++# the three checks
++# --------------------------------------------------------------------------
++
++def _own_source_pool(artifact: Any) -> List[str]:
++    found: List[str] = []
++    if not isinstance(artifact, dict):
++        return found
++    for k, v in artifact.items():
++        if str(k).lower() not in SOURCE_POOL_KEYS:
++            continue
++        if isinstance(v, str):
++            found.append(v)
++        elif isinstance(v, dict):
++            for _kk, vv in v.items():
++                if isinstance(vv, str):
++                    found.append(vv)
++    return found
++
++
++def _denominators(artifact: Any) -> Dict[str, int]:
++    out: Dict[str, int] = {}
++
++    def rec(o: Any, path: Tuple[Any, ...]) -> None:
++        if isinstance(o, dict):
++            for k, v in o.items():
++                rec(v, path + (k,))
++        elif isinstance(o, list):
++            for i, v in enumerate(o):
++                rec(v, path + (i,))
++        elif isinstance(o, (int, float)) and not isinstance(o, bool):
++            leaf = str(path[-1]).lower() if path else ""
++            if any(
++                k in leaf
++                for k in ("n_rows", "n_samples", "n_total", "n_analyzed",
++                          "n_data_rows", "n_examples", "n_instances",
++                          "n_compounds", "n_molecules", "denominator", "n_pool",
++                          "n_records")
++            ):
++                try:
++                    out[path_str(path)] = int(o)
++                except (TypeError, ValueError, OverflowError):
++                    pass
++
++    rec(artifact, ())
++    return out
++
++
++def find_pool_misattribution(artifact: Any) -> List[Dict[str, Any]]:
++    """Prose that names a POOL the artifact's own source_pool does not name.
++
++    A pool name that another machine field of the SAME artifact
++    cross-references is legitimate (it names another published artifact);
++    the string under test is excluded from that set, so a prose string
++    cannot cross-reference itself.
++    """
++    own: Set[str] = set()
++    for t in _own_source_pool(artifact):
++        for seg in re.split(r"[\\/]", t):
++            own.update(m.group(0) for m in _POOL_RE.finditer(seg))
++        own.update(m.group(0) for m in _POOL_RE.finditer(t))
++    if not own:
++        return []
++    strings = [(p, v) for p, v in flatten(artifact) if isinstance(v, str)]
++    out: List[Dict[str, Any]] = []
++    for p, text in strings:
++        others: Set[str] = set()
++        for _p2, t2 in strings:
++            if t2 == text:
++                continue
++            others.update(m.group(0) for m in _POOL_RE.finditer(t2))
++        for nm in sorted({m.group(0) for m in _POOL_RE.finditer(text)}):
++            if nm in own or nm in others:
++                continue
++            out.append(
++                {
++                    "rule": "pool_misattribution",
++                    "severity": "contradiction",
++                    "path": path_str(p),
++                    "value": nm,
++                    "own_pools": sorted(own),
++                    "excerpt": text[:160],
++                }
++            )
++    return out
++
++
++_THRESHOLD_RE = re.compile(
++    r"\b(?:fewer than|less than|at least|at most|up to|about|around|roughly|"
++    r"approximately|no more than|no fewer than|only)\b|[<>≤≥=]",
++    re.IGNORECASE,
++)
++_OTHER_ARTIFACT_RE = re.compile(
++    r"[\w./\-]+\.(?:json|csv|md|yaml|yml|py)\b|metrics/|molmetal/|\.data/|"
++    r"\b[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\s*\(",
++    re.IGNORECASE,
++)
++_HYPERPARAM_RE = re.compile(
++    r"×|\bbatch\b|\blr\b|\blearning rate\b|\bhidden\b|\bdepth\b|\bepochs?\b|"
++    r"\bseed\b|\bwarmup\b|\bweight decay\b",
++    re.IGNORECASE,
++)
++_RATIO_MEMBER_RE = re.compile(
++    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)\s*/\s*(\d{1,3}(?:,\d{3})+|\d+)"
++    r"(?:\s*/\s*(\d{1,3}(?:,\d{3})+|\d+))?(?![\w.])"
++)
++
++
++def find_count_contradictions(artifact: Any) -> List[Dict[str, Any]]:
++    """Prose population size ("N rows", "pool of N rows") that no integer
++    field of the SAME artifact holds.
++
++    Backing is deliberately BROAD: any int-valued field of the artifact
++    backs the claim.  A claim that survives that test is a number the
++    artifact's own machine record does not contain anywhere.
++    """
++    denominators = _denominators(artifact)
++    denom_values = set(denominators.values())
++    numbers = machine_numbers(artifact)
++    int_values = {int(x) for x in numbers if float(x).is_integer()}
++    out: List[Dict[str, Any]] = []
++    for p, text in flatten(artifact):
++        if not isinstance(text, str):
++            continue
++        if _SMILES_RING_RE.search(text):
++            continue
++        seen: Set[int] = set()
++        survivor_spans = {(t["start"], t["end"]) for t in int_tokens(text)}
++        for m in list(_ROWCOUNT_RE.finditer(text)) + list(_POOLOF_RE.finditer(text)):
++            if not any(s <= m.start("n") and m.end("n") <= e for s, e in survivor_spans):
++                continue  # "Wf-148 entries" -- the number is part of an id
++            raw = m.group("n")
++            try:
++                n = int(raw.replace(",", ""))
++            except ValueError:
++                continue
++            if n in seen:
++                continue  # "pool of 2112 rows" matches both patterns
++            seen.add(n)
++            if n in int_values or n in denom_values:
++                continue
++            if any(_number_backs(x, n, False) for x in numbers):
++                continue
++            clause = _full_clause(text, m.start(), m.end())
++            context = text[max(0, m.start() - 160):m.end() + 80]
++            if _THRESHOLD_RE.search(clause):
++                continue
++            if _HYPERPARAM_RE.search(clause):
++                continue  # a training hyper-parameter, not a population
++            if _OTHER_ARTIFACT_RE.search(context):
++                continue  # names another artifact / dataset: not this one
++            if _RATIO_MEMBER_RE.search(clause):
++                continue  # "84/5/11 rows": the number is a ratio member
++            out.append(
++                {
++                    "rule": "count_contradiction",
++                    "severity": "count",
++                    "path": path_str(p),
++                    "value": n,
++                    "denominators": sorted(denom_values),
++                    "excerpt": text[:160],
++                }
++            )
++    return out
++
++
++def find_unbacked_numbers(
++    artifact: Any, *, narrative_paths: Optional[Sequence[Sequence[Any]]] = None
++) -> List[Dict[str, Any]]:
++    """Narrative numbers with no machine counterpart in the same artifact."""
++    leaves = flatten(artifact)
++    strings = [(p, v) for p, v in leaves if isinstance(v, str)]
++    numbers = machine_numbers(artifact)
++    keys = [str(k) for k, _v in leaves if isinstance(k, str)]
++    keys += [str(k) for k in _all_keys(artifact)]
++    declared: Optional[Set[Tuple[Any, ...]]] = None
++    if narrative_paths is not None:
++        declared = set(resolve_paths(artifact, narrative_paths))
++
++    out: List[Dict[str, Any]] = []
++    for p, text in strings:
++        if declared is not None and p not in declared:
++            continue
++        if _SMILES_RING_RE.search(text):
++            continue  # a SMILES sample, not prose
++        claims = claim_positions(text)
++        other_strings = [t for _p2, t in strings if t != text]
++        for tok in int_tokens(text):
++            if declared is None and tok["start"] not in claims:
++                continue  # auto mode: only count-claim positions
++            backed = any(
++                _number_backs(x, tok["value"], tok["followed_by_pct"])
++                for x in numbers
++            )
++            if not backed:
++                backed = any(_standalone(tok["token"], k) for k in keys)
++            if not backed:
++                backed = any(_standalone(tok["token"], t) for t in other_strings)
++            if backed:
++                continue
++            out.append(
++                {
++                    "rule": "unbacked_number",
++                    "severity": "unbacked",
++                    "path": path_str(p),
++                    "value": tok["value"],
++                    "token": tok["token"],
++                    "excerpt": text[:160],
++                }
++            )
++        for tok in float_tokens(text):
++            if not re.match(r"\s*%", text[tok["end"]:tok["end"] + 3]):
++                continue
++            decimals = len(tok["token"].split(".")[1]) if "." in tok["token"] else 0
++            if _float_backs(tok["value"], decimals, numbers):
++                continue
++            if any(tok["token"] in t for t in other_strings):
++                continue
++            out.append(
++                {
++                    "rule": "unbacked_percent",
++                    "severity": "unbacked",
++                    "path": path_str(p),
++                    "value": tok["value"],
++                    "token": tok["token"],
++                    "excerpt": text[:160],
++                }
++            )
++    return out
++
++
++def _all_keys(obj: Any) -> List[str]:
++    keys: List[str] = []
++
++    def rec(o: Any) -> None:
++        if isinstance(o, dict):
++            for k, v in o.items():
++                keys.append(str(k))
++                rec(v)
++        elif isinstance(o, list):
++            for v in o:
++                rec(v)
++
++    rec(obj)
++    return keys
++
++
++# --------------------------------------------------------------------------
++# cross-attribute citations: "file.json -> /jsonpath"
++# --------------------------------------------------------------------------
++
++_REPO_ROOT = Path(__file__).resolve().parents[2]
++_CITED_CACHE: Dict[str, Any] = {}
++
++
++def _load_cited(rel_path: str) -> Optional[Any]:
++    if rel_path in _CITED_CACHE:
++        return _CITED_CACHE[rel_path]
++    obj: Optional[Any] = None
++    try:
++        p = _REPO_ROOT / rel_path
++        if p.is_file():
++            obj = json.loads(p.read_text(encoding="utf-8"))
++    except Exception:
++        obj = None
++    _CITED_CACHE[rel_path] = obj
++    return obj
++
++
++def _jsonpath_get(obj: Any, jsonpath: str) -> Any:
++    cur = obj
++    for seg in jsonpath.strip("/").split("/"):
++        if not seg:
++            continue
++        if isinstance(cur, dict):
++            if seg not in cur:
++                raise KeyError(seg)
++            cur = cur[seg]
++        elif isinstance(cur, list):
++            cur = cur[int(seg)]
++        else:
++            raise KeyError(seg)
++    return cur
++
++
++def _sentence_window(text: str, start: int, limit: int = 320) -> str:
++    tail = text[start:start + limit]
++    m = re.search(r"\.\s", tail)
++    if m:
++        tail = tail[: m.start() + 1]
++    return tail
++
++
++def _consistent_with(cited: float, token: str, value: float, followed_by_pct: bool) -> bool:
++    dec = len(token.split(".")[1]) if "." in token else 0
++    tol = 0.5 * (10.0 ** (-dec)) if dec else 0.0
++    if abs(cited - value) <= tol + 1e-12:
++        return True
++    if abs(cited * 100.0 - value) <= tol + 1e-12:
++        return True
++    if abs(cited / 100.0 - value) <= tol + 1e-12:
++        return True
++    if followed_by_pct and abs(cited * 100.0 - value) <= 0.005 + 1e-12:
++        return True
++    return False
++
++
++def _cited_numbers(cited: Any) -> List[Tuple[str, float]]:
++    """The numeric leaves a citation may legitimately quote.
++
++    A cited jsonpath often resolves to a summary object
++    (``{"n": 9, "median": 0.085, ...}``); the artifacts quote the MEDIAN of
++    it.  Any numeric leaf of the cited value is a legitimate quote.
++    """
++    out: List[Tuple[str, float]] = []
++    if isinstance(cited, bool):
++        return out
++    if isinstance(cited, (int, float)):
++        return [("value", float(cited))]
++    if isinstance(cited, dict):
++        for k, v in cited.items():
++            if isinstance(v, bool):
++                continue
++            if isinstance(v, (int, float)):
++                out.append((str(k), float(v)))
++            elif isinstance(v, dict):
++                out.extend((f"{k}.{kk}", float(vv)) for kk, vv in v.items()
++                           if isinstance(vv, (int, float)) and not isinstance(vv, bool))
++        return out
++    if isinstance(cited, list):
++        for i, v in enumerate(cited):
++            if isinstance(v, (int, float)) and not isinstance(v, bool):
++                out.append((str(i), float(v)))
++    return out
++
++
++def find_stale_cross_references(artifact: Any) -> List[Dict[str, Any]]:
++    """Prose that quotes a number attributed to ANOTHER artifact via
++    ``file.json -> /jsonpath``, where the quoted number no longer matches
++    the value the cited artifact actually holds.
++
++    This is the only rule in the module that can verify a number that
++    legitimately lives in a different artifact -- which is why the Wf-A155
++    class ("the 8.51 % headline") is checkable at all.
++    """
++    out: List[Dict[str, Any]] = []
++    for p, text in flatten(artifact):
++        if not isinstance(text, str):
++            continue
++        for m in _CITE_RE.finditer(text):
++            rel = m.group("path")
++            jsonpath = m.group("jsonpath")
++            cited_obj = _load_cited(rel)
++            if cited_obj is None:
++                out.append(
++                    {
++                        "rule": "unresolvable_citation",
++                        "severity": "advisory",
++                        "path": path_str(p),
++                        "value": f"{rel} -> {jsonpath}",
++                        "excerpt": text[:160],
++                    }
++                )
++                continue
++            try:
++                cited = _jsonpath_get(cited_obj, jsonpath)
++            except Exception:
++                out.append(
++                    {
++                        "rule": "unresolvable_citation",
++                        "severity": "advisory",
++                        "path": path_str(p),
++                        "value": f"{rel} -> {jsonpath}",
++                        "excerpt": text[:160],
++                    }
++                )
++                continue
++            if isinstance(cited, bool) or not isinstance(cited, (int, float, dict, list)):
++                continue
++            cited_numbers = _cited_numbers(cited)
++            if not cited_numbers:
++                continue
++            window = _sentence_window(text, m.end())
++            quoted = [
++                t
++                for t in int_tokens(window) + float_tokens(window)
++                if t.get("followed_by_pct")
++                or ("." in t["token"] and t["value"] != int(t["value"]))
++                or t["start"] <= 12
++            ]
++            if not quoted:
++                continue
++            if any(
++                _consistent_with(cf, t["token"], t["value"], t.get("followed_by_pct", False))
++                for _lbl, cf in cited_numbers
++                for t in quoted
++            ):
++                continue
++            out.append(
++                {
++                    "rule": "stale_cross_reference",
++                    "severity": "contradiction",
++                    "path": path_str(p),
++                    "value": f"{rel} -> {jsonpath}",
++                    "cited_value": {lbl: cf for lbl, cf in cited_numbers},
++                    "quoted": [t["token"] for t in quoted],
++                    "excerpt": text[:200],
++                }
++            )
++    return out
++
++
++# --------------------------------------------------------------------------
++# public API
++# --------------------------------------------------------------------------
++
++def narrative_truth_report(
++    artifact: Any,
++    *,
++    narrative_paths: Optional[Sequence[Sequence[Any]]] = None,
++) -> Dict[str, Any]:
++    """Full report on one artifact.  Never raises for a bad artifact."""
++    unbacked = find_unbacked_numbers(artifact, narrative_paths=narrative_paths)
++    pool = find_pool_misattribution(artifact)
++    counts = find_count_contradictions(artifact)
++    stale = find_stale_cross_references(artifact)
++    errors = (
++        pool
++        + [f for f in unbacked if f["rule"] == "unbacked_number"]
++        + [f for f in stale if f["severity"] == "contradiction"]
++    )
++    return {
++        "mode": "declared" if narrative_paths is not None else "auto",
++        "narrative_paths": [list(map(str, p)) for p in (narrative_paths or [])],
++        "n_unbacked": len(unbacked),
++        "n_pool_misattribution": len(pool),
++        "n_count_contradiction": len(counts),
++        "n_stale_cross_reference": len([f for f in stale if f["severity"] == "contradiction"]),
++        "n_unresolvable_citation": len([f for f in stale if f["severity"] == "advisory"]),
++        "n_errors": len(errors),
++        "unbacked": unbacked,
++        "pool_misattribution": pool,
++        "count_contradiction": counts,
++        "stale_cross_reference": stale,
++        "pass": not errors,
++    }
++
++
++def assert_narrative_truth(
++    artifact: Any,
++    *,
++    narrative_paths: Optional[Sequence[Sequence[Any]]] = None,
++    artifact_name: str = "<artifact>",
++    strict: Optional[bool] = None,
++) -> Dict[str, Any]:
++    """Guard a producer's artifact.  Raises NarrativeTruthError on failure.
++
++    ``strict`` defaults to True in ``declared`` mode (the producer named its
++    narrative paths, so an unbacked number there is a defect) and to False
++    in ``auto`` mode (the auto rule fires on cross-artifact references too,
++    so it is a warning there -- see the module docstring).
++    """
++    report = narrative_truth_report(artifact, narrative_paths=narrative_paths)
++    if strict is None:
++        strict = narrative_paths is not None
++    failures: List[Dict[str, Any]] = []
++    failures.extend(report["pool_misattribution"])
++    failures.extend([f for f in report["stale_cross_reference"] if f["severity"] == "contradiction"])
++    if strict:
++        failures.extend(report["unbacked"])
++    if failures:
++        lines = [
++            f"{f['severity']} at {f['path']}: {f.get('token', f.get('value'))}"
++            for f in failures[:20]
++        ]
++        raise NarrativeTruthError(
++            f"{artifact_name}: {len(failures)} narrative-truth failure(s)\n  "
++            + "\n  ".join(lines)
++        )
++    return report
+--- /dev/null
++++ b/molmetal/tests/test_wfa163_narrative_truth.py
+@@ -0,0 +1,297 @@
++#!/usr/bin/env python
++"""Wf-A163 -- narrative-truth guard tests.
++
++Pins the defect class found in Wf-A155 (and generalised by Wf-A163): a
++``tag: MEASURED`` artifact whose PROSE states numbers that the artifact's own
++machine fields do not (and cannot) back.
++
++The canonical fixture is the PRE-REPAIR shape of
++``wf_a155_ligand_connected_rate.py``: the prose carries the wrong row count,
++the wrong sub-population count, and the WRONG POOL PATH, while the machine
++fields carry the right ones.
++
++CPU-ONLY.  No torch, no CUDA, no decode, no trainer.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(REPO_ROOT / "molmetal" / "scripts"))
++
++import wfa163_narrative_truth_guard as guard  # noqa: E402
++
++
++# --------------------------------------------------------------------------
++# fixtures
++# --------------------------------------------------------------------------
++
++def _repaired_c7() -> dict:
++    """The REPAIRED c7 shape: prose computed from the machine fields."""
++    return {
++        "source_pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
++        "denominators": {
++            "n_rows_in_csv": 12669,
++            "n_unparseable": 1,
++            "n_analyzed": 12668,
++            "n_metal_alone_in_own_fragment": 3056,
++            "n_with_free_halide_counterion": 1903,
++        },
++        "metal_inclusive": {"single_fragment_rate": 0.08509630565203663},
++        "purpose": (
++            "This artifact is ONE pool of 12668 rows from ONE post-hoc decode "
++            "(molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv)."
++        ),
++        "caveats": [
++            "The 1903 rows with a free halide counterion are counted separately.",
++        ],
++    }
++
++
++def _pre_repair_c8() -> dict:
++    """The PRE-REPAIR shape: prose literals carried over from another pool."""
++    return {
++        "source_pool": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
++        "denominators": {
++            "n_rows_in_csv": 2112,
++            "n_unparseable": 0,
++            "n_analyzed": 2112,
++            "n_metal_alone_in_own_fragment": 60,
++        },
++        "purpose": (
++            "This artifact is never a restatement of the 8.51 % headline; it "
++            "is ONE pool of 2112 rows from ONE post-hoc decode "
++            "(cfm_c8_fullgen_2026_10_24/generated_smiles.csv)."
++        ),
++        "caveats": [
++            "The 60 rows with a free halide counterion are counted separately.",
++        ],
++    }
++
++
++# --------------------------------------------------------------------------
++# the defect class
++# --------------------------------------------------------------------------
++
++def test_repaired_artifact_passes_declared_mode():
++    art = _repaired_c7()
++    report = guard.narrative_truth_report(
++        art, narrative_paths=[("purpose",), ("caveats", "*")]
++    )
++    assert report["pass"], report
++    assert report["n_errors"] == 0
++
++
++def test_pre_repair_artifact_fails_declared_mode():
++    """The prose names a POOL the artifact's own source_pool does not name."""
++    art = _pre_repair_c8()
++    # Force the c8 pool to be the artifact's own pool for this fixture so the
++    # failure is about the ROW COUNT, not the pool path.
++    art["source_pool"] = "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv"
++    art["purpose"] = (
++        "This artifact is never a restatement of the 8.51 % headline; it is "
++        "ONE pool of 9999 rows from ONE post-hoc decode."
++    )
++    report = guard.narrative_truth_report(
++        art, narrative_paths=[("purpose",), ("caveats", "*")]
++    )
++    assert not report["pass"], report
++    assert report["n_unbacked"] >= 1, report
++
++
++def test_pool_misattribution_is_detected():
++    """Prose naming a pool the artifact's own source_pool does not name."""
++    art = _repaired_c7()
++    art["purpose"] = (
++        "Sourced from cfm_c8_fullgen_2026_10_24/generated_smiles.csv, "
++        "ONE pool of 12668 rows."
++    )
++    found = guard.find_pool_misattribution(art)
++    assert found, "expected a pool-misattribution finding"
++    assert found[0]["severity"] == "contradiction"
++
++
++def test_pool_misattribution_allows_cross_referenced_pool():
++    """A pool named by ANOTHER machine field is a legitimate cross-reference."""
++    art = _repaired_c7()
++    art["related_artifacts"] = ["cfm_c8_fullgen_2026_10_24/generated_smiles.csv"]
++    art["purpose"] = (
++        "Cross-checked against cfm_c8_fullgen_2026_10_24/generated_smiles.csv; "
++        "ONE pool of 12668 rows here."
++    )
++    found = guard.find_pool_misattribution(art)
++    assert not found, found
++
++
++def test_count_contradiction_detected():
++    art = _repaired_c7()
++    art["caveats"] = ["The 7777 rows with a free halide counterion are counted separately."]
++    found = guard.find_count_contradictions(art)
++    assert found, "expected a count contradiction"
++    assert found[0]["value"] == 7777
++
++
++def test_assert_raises_on_declared_unbacked_number():
++    art = _repaired_c7()
++    art["purpose"] = "ONE pool of 424242 rows from ONE post-hoc decode."
++    with pytest.raises(guard.NarrativeTruthError):
++        guard.assert_narrative_truth(
++            art, narrative_paths=[("purpose",)], artifact_name="fixture"
++        )
++
++
++def test_assert_passes_on_repaired_artifact():
++    art = _repaired_c7()
++    report = guard.assert_narrative_truth(
++        art, narrative_paths=[("purpose",), ("caveats", "*")], artifact_name="fixture"
++    )
++    assert report["pass"]
++
++
++# --------------------------------------------------------------------------
++# the guard must not fire on ordinary, non-narrative content
++# --------------------------------------------------------------------------
++
++def test_auto_mode_does_not_fire_on_non_claim_numbers():
++    """A version string / TODO id / date is not a count claim."""
++    art = {
++        "source_pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
++        "date": "2026-11-01",
++        "notes": "See TODO-140 and TODO-141; generated by script v2.",
++        "denominators": {"n_analyzed": 12668},
++        "purpose": "ONE pool of 12668 rows.",
++    }
++    report = guard.narrative_truth_report(art)
++    assert report["n_unbacked"] == 0, report
++
++
++def test_auto_mode_is_advisory_not_a_gate():
++    """Auto mode's unbacked findings must NOT raise by default."""
++    art = {
++        "source_pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
++        "denominators": {"n_analyzed": 12668},
++        "purpose": "The 4242 rows were kept.",
++    }
++    report = guard.assert_narrative_truth(art, artifact_name="fixture")
++    assert report["n_unbacked"] >= 1
++    assert report["pass"] is False
++    # default strict=False in auto mode -> no raise
++    with pytest.raises(guard.NarrativeTruthError):
++        guard.assert_narrative_truth(art, artifact_name="fixture", strict=True)
++
++
++# --------------------------------------------------------------------------
++# cross-attribute citations: the one rule that can VERIFY a quoted number
++# --------------------------------------------------------------------------
++
++_CITED = "metrics/by_metric/cfm_fragmentation_audit.json"
++_CITED_PATH = "/summary/generation_side/single_molecule_rate_end_to_end"
++
++
++def _cited_value() -> float:
++    p = REPO_ROOT / _CITED
++    if not p.exists():
++        pytest.skip("cited artifact not on disk")
++    obj = json.loads(p.read_text(encoding="utf-8"))
++    cur = obj
++    for seg in _CITED_PATH.strip("/").split("/"):
++        cur = cur[seg]
++    if isinstance(cur, dict):
++        return float(cur["median"])
++    return float(cur)
++
++
++def test_consistent_cross_reference_passes():
++    v = _cited_value()
++    art = {
++        "note": (
++            f"NOT a restatement of {_CITED} -> {_CITED_PATH} "
++            f"(median {v})."
++        )
++    }
++    found = [f for f in guard.find_stale_cross_references(art) if f["severity"] == "contradiction"]
++    assert not found, found
++
++
++def test_stale_cross_reference_is_detected():
++    """A quoted value that no longer matches the cited artifact."""
++    v = _cited_value()
++    stale = round(v * 100.0 + 3.0, 2)  # a wrong percent rendering
++    art = {
++        "note": (
++            f"NOT a restatement of {_CITED} -> {_CITED_PATH} "
++            f"(median {stale} %)."
++        )
++    }
++    found = [f for f in guard.find_stale_cross_references(art) if f["severity"] == "contradiction"]
++    assert found, "expected a stale cross-reference finding"
++    assert found[0]["rule"] == "stale_cross_reference"
++
++
++# --------------------------------------------------------------------------
++# the Wf-A163 counterfactual: the class, demonstrated
++# --------------------------------------------------------------------------
++
++def test_counterfactual_pre_repair_c7_is_flagged_if_present():
++    p = (
++        REPO_ROOT
++        / "molmetal"
++        / "reports"
++        / "wfa163_narrative_truth_scan"
++        / "counterfactual_pre_repair_c7.json"
++    )
++    if not p.exists():
++        pytest.skip("counterfactual not on disk")
++    art = json.loads(p.read_text(encoding="utf-8"))
++    report = guard.narrative_truth_report(art)
++    assert report["n_pool_misattribution"] >= 1, report
++    assert report["n_count_contradiction"] >= 1, report
++
++
++# --------------------------------------------------------------------------
++# the guard must not fire on the REPAIRED a155 tool's own output
++# --------------------------------------------------------------------------
++
++def test_repaired_a155_tool_artifact_passes_if_present():
++    """If the repaired a155 artifact is on disk, it must pass."""
++    p = REPO_ROOT / "metrics" / "by_metric" / "wfa155_ligand_connected_rate.json"
++    if not p.exists():
++        pytest.skip("published a155 artifact not on disk")
++    art = json.loads(p.read_text(encoding="utf-8"))
++    report = guard.narrative_truth_report(art)
++    assert report["n_pool_misattribution"] == 0, report["pool_misattribution"]
++    assert report["n_count_contradiction"] == 0, report["count_contradiction"]
++
++
++# --------------------------------------------------------------------------
++# the guard module itself must stay importable and CPU-only
++# --------------------------------------------------------------------------
++
++def test_guard_module_has_no_gpu_dependency():
++    src = (REPO_ROOT / "molmetal" / "scripts" / "wfa163_narrative_truth_guard.py").read_text(
++        encoding="utf-8"
++    )
++    for banned in ("import torch", "torch.cuda", "cuda"):
++        assert banned not in src, banned
++
++
++def test_guard_import_is_side_effect_free():
++    env = dict(os.environ, CUDA_VISIBLE_DEVICES="")
++    code = (
++        "import sys; sys.path.insert(0, %r);"
++        "import wfa163_narrative_truth_guard as g;"
++        "print(g.narrative_truth_report({'a': 1})['pass'])"
++        % str(REPO_ROOT / "molmetal" / "scripts")
++    )
++    out = subprocess.run(
++        [sys.executable, "-c", code], capture_output=True, text=True, env=env, cwd=str(REPO_ROOT)
++    )
++    assert out.returncode == 0, out.stderr
++    assert out.stdout.strip() == "True", out.stdout
+--- a/molmetal/scripts/promote_metrics.py
++++ b/molmetal/scripts/promote_metrics.py
+@@ -65,6 +65,17 @@
+ from pathlib import Path
+ from typing import Any, Callable, Dict, List, Optional, Tuple
+ 
++# Wf-A163: the narrative-truth guard (CPU-only, no torch / no CUDA).
++# A promoted artifact's PROSE must be backed by its own machine fields.
++# The import is defensive: a missing guard must never block a promotion.
++_GUARD_DIR = Path(__file__).resolve().parent
++if str(_GUARD_DIR) not in sys.path:
++    sys.path.insert(0, str(_GUARD_DIR))
++try:  # pragma: no cover - exercised by the import itself
++    from wfa163_narrative_truth_guard import narrative_truth_report
++except Exception:  # noqa: BLE001
++    narrative_truth_report = None
++
+ REPO_ROOT = Path(__file__).resolve().parents[2]
+ REPORTS_DIR = REPO_ROOT / "molmetal" / "reports"
+ BY_METRIC_DIR = REPO_ROOT / "metrics" / "by_metric"
+@@ -970,6 +981,29 @@
+             "missing_sources": missing_sources,
+         }
+ 
++    # Wf-A163 narrative-truth gate.  A PROMOTED artifact must not name a
++    # pool its own fields do not name, and must not quote a number from
++    # another artifact that no longer matches it.  Only those two
++    # CONTRADICTION classes block the write; the looser rules are
++    # advisory (the guard measured 0 of them across the 583 artifacts
++    # already in metrics/by_metric/ and metrics/paper_tables/).
++    if status == "PROMOTED" and metric_payload and narrative_truth_report is not None:
++        _nt = narrative_truth_report(metric_payload)
++        _blocking = list(_nt["pool_misattribution"]) + [
++            f for f in _nt["stale_cross_reference"] if f.get("severity") == "contradiction"
++        ]
++        if _blocking:
++            return {
++                "target": promoter.target_relpath,
++                "status": "BLOCKED_NARRATIVE_TRUTH",
++                "error": "; ".join(
++                    f"{f.get('rule')} at {f.get('path')}: {f.get('value')}"
++                    for f in _blocking[:10]
++                ),
++                "source_audits": source_audits,
++                "existing_target_audit": existing,
++            }
++
+     # Write the file unless we're skipping or dry-running
+     if status == "PROMOTED" and not dry_run:
+         target.parent.mkdir(parents=True, exist_ok=True)

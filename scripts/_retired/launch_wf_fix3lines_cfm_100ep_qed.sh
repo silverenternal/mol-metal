@@ -31,7 +31,8 @@ mkdir -p "$OUT_DIR" "$(dirname "$LOG")"
 # BLK-I1: redirect the entire .sh stdout/stderr to LOG; trainer detached
 exec >"$LOG" 2>&1
 
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 

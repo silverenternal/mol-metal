@@ -1,0 +1,158 @@
+# Wf-A169 — stale gate-count pin re-sync (patch only; NOT applied to the
+# working tree by Wf-A169 — the main thread owns these shared files).
+#
+# Target: the CURRENT live counts, MEASURED by live import on 2026-11-01:
+#   len(build_gates('all'))    == 129
+#   len(build_gates('launch')) == 131
+#   len(build_gates('frontier')) == 25
+#   len(build_gates('chemprop_v2_v3')) == 18
+#   len(build_gates('cfm')) == 8
+#
+# These stale pins are a defect in their own right — they have been RED
+# since before 2026-11-01 and they fail for a reason unrelated to the
+# code they claim to guard.  They are repaired INDEPENDENTLY of whether
+# the 24 unregistered Wf-432-A1 gates are ever wired in (that would move
+# the count to 153 and require a SECOND re-sync).
+#
+# Files NOT in this patch (each for a MEASURED reason):
+#   * molmetal/tests/test_wf350c1_gpu_env_probe.py — re-synced to 129
+#     CONCURRENTLY by Wf-A170 on 2026-11-01 12:24; its hunk would no
+#     longer apply and the site is no longer stale.
+#   * molmetal/tests/test_wfa159_timeout_verdict_census.py — its two
+#     count pins are CURRENT (129 / 131); its failure was a stale
+#     sha256 in a census ARTEFACT, not a count pin.
+#
+# Apply with:  git apply -p1 molmetal/reports/wfa169_dead_gate_repair/patch_resync_stale_pins.diff
+--- a/molmetal/tests/test_wfa127_residue_closure.py
++++ b/molmetal/tests/test_wfa127_residue_closure.py
+@@ -146,13 +146,21 @@
+ 
+ 
+ def test_the_gate_counts_are_what_this_wave_measured() -> None:
+-    """(§6.236) The live counts this wave recorded (MEASURED 2026-10-31)."""
++    """(§6.236) The live counts this wave recorded (MEASURED 2026-10-31).
++
++    Re-synced 2026-11-01 (Wf-A169): the superseded pins were 127 (``all``)
++    and 129 (``launch``); the live counts are 129 and 131.  127 was
++    Wf-A154's target, but Wf-A154 re-synced only ``test_wf415a3`` and
++    missed this file, so the pin has been RED since then.  MEASURED by
++    live import: ``len(build_gates("all")) == 129``,
++    ``len(build_gates("launch")) == 131``.
++    """
+     from molmetal.scripts.pre_flight_check import EXPECTED_GATE_COUNTS, build_gates
+ 
+-    assert len(build_gates("all")) == 127, len(build_gates("all"))
+-    assert len(build_gates("launch")) == 129, len(build_gates("launch"))
+-    assert EXPECTED_GATE_COUNTS["all"] == 127
+-    assert EXPECTED_GATE_COUNTS["launch"] == 129
++    assert len(build_gates("all")) == 129, len(build_gates("all"))
++    assert len(build_gates("launch")) == 131, len(build_gates("launch"))
++    assert EXPECTED_GATE_COUNTS["all"] == 129
++    assert EXPECTED_GATE_COUNTS["launch"] == 131
+ 
+ 
+ # ---------------------------------------------------------------------------
+--- a/molmetal/tests/test_wfa128_preflight_classification.py
++++ b/molmetal/tests/test_wfa128_preflight_classification.py
+@@ -478,11 +478,17 @@
+ 
+ 
+ def test_the_registered_gate_count_did_not_change() -> None:
+-    """Wf-A128 changes CLASSIFICATION and PATHS — never the registry."""
+-    assert len(P.build_gates("all")) == 127, len(P.build_gates("all"))
+-    assert len(P.build_gates("launch")) == 129, len(P.build_gates("launch"))
+-    assert P.EXPECTED_GATE_COUNTS["all"] == 127
+-    assert P.EXPECTED_GATE_COUNTS["launch"] == 129
++    """Wf-A128 changes CLASSIFICATION and PATHS — never the registry.
++
++    Re-synced 2026-11-01 (Wf-A169): the superseded pins were 127 (``all``)
++    and 129 (``launch``); the live counts are 129 and 131.  Wf-A154
++    re-synced only ``test_wf415a3`` and missed this file.  MEASURED by
++    live import.
++    """
++    assert len(P.build_gates("all")) == 129, len(P.build_gates("all"))
++    assert len(P.build_gates("launch")) == 131, len(P.build_gates("launch"))
++    assert P.EXPECTED_GATE_COUNTS["all"] == 129
++    assert P.EXPECTED_GATE_COUNTS["launch"] == 131
+ 
+ 
+ def test_the_four_repaired_gates_are_still_registered() -> None:
+--- a/molmetal/tests/test_wf433a1_gate_v2_wire.py
++++ b/molmetal/tests/test_wf433a1_gate_v2_wire.py
+@@ -105,8 +105,12 @@
+ 
+ def test_wf432a1_expected_gate_count_const_127():
+     """§3.4 — EXPECTED_GATE_COUNTS["all"] = 95 + 32 = 127 after wire-in."""
+-    assert _pfc.EXPECTED_GATE_COUNTS["all"] == 127, (
+-        f"EXPECTED_GATE_COUNTS['all'] must be 127 (= 95 + 32); got "
++    # Re-synced 2026-11-01 (Wf-A169): the superseded pin was 127 (= 95 + 32).
++    # Wf-A154 added two further gates (``p3_ssot_path_reference_check`` and
++    # ``p3_ssot_census_claim_check``) and re-synced only ``test_wf415a3``,
++    # so this pin was left RED.  Live count MEASURED by live import.
++    assert _pfc.EXPECTED_GATE_COUNTS["all"] == 129, (
++        f"EXPECTED_GATE_COUNTS['all'] must be 129 (= 95 + 32 + 2 Wf-A154); got "
+         f"{_pfc.EXPECTED_GATE_COUNTS['all']}. Per Wf-345-B3 the runtime "
+         f"len(build_gates('all')) is the authoritative source; this "
+         f"constant is for backward-compat only."
+@@ -117,8 +121,9 @@
+     """§3.4 — build_gates('all') unique names count = 127 (auto-recompute)."""
+     runners = _pfc.build_gates("all")
+     names = [r[0] for r in runners]
+-    assert len(set(names)) == 127, (
+-        f"Unique gate names in build_gates('all') must be 127; got "
++    # Re-synced 2026-11-01 (Wf-A169): the superseded pin was 127.
++    assert len(set(names)) == 129, (
++        f"Unique gate names in build_gates('all') must be 129; got "
+         f"{len(set(names))}. Wf-345-B3 runtime auto-recompute drift."
+     )
+ 
+@@ -135,9 +140,13 @@
+ 
+ def test_wf432a1_frontier_pipeline_subset_unchanged():
+     """§3.4 — frontier / chemprop_v2_v3 / cfm pipeline counts unchanged."""
++    # Re-synced 2026-11-01 (Wf-A169): the superseded pins were 14
++    # (chemprop_v2_v3) and 6 (cfm).  The code constant was moved to 18 and
++    # 8 on 2026-10-03 (Wf-A12 FIX / HOLE-1), so these two pins have been
++    # RED since then.  "frontier" was already 25 and is unchanged.
+     assert len(_pfc.build_gates("frontier")) == 25
+-    assert len(_pfc.build_gates("chemprop_v2_v3")) == 14
+-    assert len(_pfc.build_gates("cfm")) == 6
++    assert len(_pfc.build_gates("chemprop_v2_v3")) == 18
++    assert len(_pfc.build_gates("cfm")) == 8
+ 
+ 
+ def test_wf432a1_all_32_new_gate_functions_callable():
+@@ -362,7 +371,12 @@
+     """
+     # Pre-Wf-432-A1 gate count was 95 per EXPECTED_GATE_COUNTS comment.
+     # Verify the NEW count = 127 (delta = 32 NEW additive).
+-    assert _pfc.EXPECTED_GATE_COUNTS["all"] - 32 == 95
++    # Re-synced 2026-11-01 (Wf-A169): the delta 32 -> 34.  The superseded
++    # delta was 32 (exactly the number of gates Wf-432-A1 added).  Two
++    # further gates were added later (Wf-A154), so the live count is
++    # 95 + 32 + 2 = 129 and the "the pre-existing 95 gates remain intact"
++    # invariant needs the delta 34.
++    assert _pfc.EXPECTED_GATE_COUNTS["all"] - 34 == 95
+ 
+ 
+ def test_wf432a1_pre_flight_runs_clean():
+--- a/molmetal/tests/test_wf323f_m4_sa_qed_subcriterion.py
++++ b/molmetal/tests/test_wf323f_m4_sa_qed_subcriterion.py
+@@ -259,10 +259,14 @@
+     """
+     text = PRE_FLIGHT_SCRIPT.read_text()
+     # Read the EXPECTED_GATE_COUNTS dict via simple text match.
+-    assert '"all": 57' in text, "EXPECTED_GATE_COUNTS['all'] should be 57 (was 56)"
++    # Re-synced 2026-11-01 (Wf-A169): the superseded pins were 57 ("all")
++    # and 24 ("frontier"); the live counts are 129 and 25.  The docstring
++    # above keeps the original Wf-323F rendering verbatim (AGENTS.md §5.5
++    # rule 6); this comment is the dated correction.
++    assert '"all": 129' in text, "EXPECTED_GATE_COUNTS['all'] should be 129 (was 57)"
+     assert (
+-        '"frontier": 24' in text
+-    ), "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)"
++        '"frontier": 25' in text
++    ), "EXPECTED_GATE_COUNTS['frontier'] should be 25 (was 24)"
+ 
+ 
+ # ---------------------------------------------------------------------------

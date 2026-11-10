@@ -174,3 +174,110 @@ def test_connected_rate_agrees_with_the_trainer_column_on_generation_pools():
     rows = [_row(0, "c1ccccc1", 1), _row(0, "C.C", 2), _row(0, "C1CC1", 1)]
     out = _epoch_summary(rows)
     assert out["connected_rate"] == out["single_fragment_rate"] == round(2 / 3, 4)
+
+
+# ---------------------------------------------------------------------------
+# Wf-A121 / I3 (R4) -- the bond-head trajectory must SAY what it covers
+# ---------------------------------------------------------------------------
+
+
+def _write_events(run, train_epochs, done_ts=None, n_epochs_run=None):
+    """Write an append-only event stream: one train_epoch row per epoch."""
+    rows = []
+    for epoch in train_epochs:
+        rows.append({
+            "event": "train_epoch",
+            "epoch": epoch,
+            "ts": 1000.0 + epoch,
+        })
+    if done_ts is not None:
+        rows.append({
+            "event": "done",
+            "ts": done_ts,
+            "n_epochs_run": n_epochs_run if n_epochs_run is not None else len(train_epochs),
+            "best_epoch": max(train_epochs),
+        })
+    with (run / "events.jsonl").open("w") as handle:
+        for row in rows:
+            handle.write(json.dumps(row) + "\n")
+
+
+def _pool_csv(run, epochs=(0,)):
+    with (run / "generated_smiles.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["epoch", "smiles", "n_frags_raw", "largest_frag_frac"]
+        )
+        writer.writeheader()
+        for epoch in epochs:
+            writer.writerow(_row(epoch, "c1ccccc1"))
+
+
+def test_the_trajectory_meta_says_what_the_trajectory_covers(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    _pool_csv(run, epochs=(4, 5))
+    (run / "per_epoch_metrics.json").write_text(
+        json.dumps(
+            {
+                "per_epoch_metrics": [
+                    {"epoch": 4, "bond_f1": 0.1, "bond_n_scored": 192},
+                    {"epoch": 5, "bond_f1": 0.2, "bond_n_scored": 192},
+                ]
+            }
+        )
+    )
+    out_path = tmp_path / "out.json"
+    assert main(["--run", str(run), "--out", str(out_path)]) == 0
+    payload = json.loads(out_path.read_text())
+    meta = payload["bond_head_trajectory_meta"]
+    # the list itself is untouched
+    assert [r["epoch"] for r in payload["bond_head_trajectory"]] == [4, 5]
+    assert meta["epochs_covered"] == [4, 5]
+    assert meta["n_epochs"] == 2
+    assert meta["first_epoch"] == 4
+    assert meta["last_epoch"] == 5
+    # the file the trajectory was read from is named
+    assert meta["source"].endswith("per_epoch_metrics.json")
+    # no events stream -> no verdict is invented
+    assert meta["source_verdict"] is None
+    assert "does not carry this run" in meta["verdict_note"]
+
+
+def test_a_resumed_run_is_labelled_as_resumed(tmp_path):
+    # epochs 0..3 are a killed pre-resume attempt; the run of record ran
+    # epochs 4..7 (the `done` event says so).
+    run = tmp_path / "run"
+    run.mkdir()
+    _pool_csv(run, epochs=(4, 5, 6, 7))
+    (run / "per_epoch_metrics.json").write_text(
+        json.dumps(
+            {
+                "per_epoch_metrics": [
+                    {"epoch": e, "bond_f1": 0.1, "bond_n_scored": 192}
+                    for e in (4, 5, 6, 7)
+                ]
+            }
+        )
+    )
+    _write_events(run, range(0, 8), done_ts=1100.0, n_epochs_run=4)
+    out_path = tmp_path / "out.json"
+    assert main(["--run", str(run), "--out", str(out_path)]) == 0
+    meta = json.loads(out_path.read_text())["bond_head_trajectory_meta"]
+    assert meta["epochs_covered"] == [4, 5, 6, 7]
+    assert meta["run_of_record_epochs"] == [4, 5, 6, 7]
+    assert meta["resume_note"] == (
+        "the trajectory starts at epoch 4 because the run RESUMED: epochs "
+        "0..3 belong to a killed pre-resume attempt in the same directory"
+    )
+    assert meta["done_event_n_epochs_run"] == 4
+
+
+def test_a_trajectory_without_a_metrics_file_publishes_no_meta(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    _pool_csv(run, epochs=(0,))
+    out_path = tmp_path / "out.json"
+    assert main(["--run", str(run), "--out", str(out_path)]) == 0
+    payload = json.loads(out_path.read_text())
+    assert payload["bond_head_trajectory"] is None
+    assert payload["bond_head_trajectory_meta"] is None

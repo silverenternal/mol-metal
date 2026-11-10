@@ -27,7 +27,7 @@ import pytest
 
 
 # Repo root resolved via Path; tests use absolute path to avoid cwd-dependence.
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 CHECKLIST_PATH = REPO_ROOT / "docs" / "USER_OK_FINAL_CHECKLIST.md"
 
 # Seven required sections per Wf-368-B1 brief §1-§7.

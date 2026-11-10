@@ -31,6 +31,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
+
 METRICS_DIR = REPO_ROOT / "metrics" / "by_metric"
 DEFAULT_OUT = REPO_ROOT / "metrics" / "paper_tables"
 
@@ -500,9 +505,14 @@ def table_generation() -> Table:
         )
     t.rows.append(
         Row(
-            "SA<=4.5 yield (STR-6, 2,396 unguided molecules)",
+            # The panel of record's OWN rate.  Every other row of this table
+            # is over the same 66-molecule panel, so the SA row must be too:
+            # the mixed-cohort rate (2,396 molecules from three training
+            # cohorts of two orders of magnitude) is not this panel's rate,
+            # and the label names the cohort it is about.
+            "SA<=4.5 yield (panel of record, 66 survivors)",
             [
-                P("cfm_sa_guided.json", "/combined/rate_sa_le_gate", "f4"),
+                P("cfm_sa_guided.json", "/by_pool/panel_of_record/rate_sa_le_gate", "f4"),
                 NONE(),
                 NONE(),
             ],
@@ -787,8 +797,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         total_absent += len(absent)
         md_path = args.out_dir / f"{table.ident}.md"
         csv_path = args.out_dir / f"{table.ident}.csv"
-        md_path.write_text(md)
-        csv_path.write_text(csv_text)
+        atomic_write_file(md_path, md)
+        atomic_write_file(csv_path, csv_text)
         manifest["tables"].append(
             {
                 "id": table.ident,
@@ -822,7 +832,9 @@ def main(argv: Iterable[str] | None = None) -> int:
             k: v for k, v in manifest.items() if k != "generated_utc"
         }:
             manifest["generated_utc"] = old.get("generated_utc", now)
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+    atomic_write_file(
+        manifest_path, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+    )
     print(
         f"[paper_metric_tables] wrote {len(manifest['tables'])} tables to "
         f"{_display_path(args.out_dir)} (missing cells: {total_missing})"

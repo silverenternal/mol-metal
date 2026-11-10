@@ -3,7 +3,9 @@
 Per Wf-A13 (2026-10-13) — this package replaces inline loss-term blocks in
 ``molmetal/scripts/train_cfm_yuelbond_wasserstein.py`` (the CFM trainer) with
 configurable loss classes. The original behavior is bit-exact for every class
-whose weight defaults to 0.0 (cf. AGENTS.md §5.11 backward-compat rule).
+whose weight defaults to 0.0 (cf. AGENTS.md §3.3 audit-ledger — bit-exact-
+default-pass-through; ~~AGENTS.md §5.11 backward-compat rule~~ was the
+superseded pointer, corrected 2026-10-31).
 
 Layout rationale
 -----------------

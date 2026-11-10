@@ -38,6 +38,16 @@ import sys
 from pathlib import Path
 
 import pytest
+import os
+# --- Wf-A123 FIX 5: THE NO-GPU CONTRACT (see molmetal/tests/conftest.py) ---
+# This module SELF-SELECTS the device: it resolves "cuda" whenever the host
+# has one.  The standing user directive for this repository is 禁止使用gpu and
+# a test run must not silently take VRAM, so the device list is blanked here
+# -- at MODULE level, before ``import torch`` -- unless the caller opted in
+# explicitly with MOLMETAL_TEST_ALLOW_GPU=1.
+if os.environ.get("MOLMETAL_TEST_ALLOW_GPU") != "1":
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+
 import torch
 
 # Make sure the project root is on sys.path so the ``triton_kernels``

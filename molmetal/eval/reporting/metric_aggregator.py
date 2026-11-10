@@ -11,11 +11,17 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, List
 
 
 class MetricAggregator:
-    def __init__(self, metrics_dir: str = "/home/hugo/codes/mol-metal/metrics/by_metric") -> None:
+    def __init__(
+        self,
+        metrics_dir: str = str(
+            Path(__file__).resolve().parents[3] / "metrics" / "by_metric"
+        ),
+    ) -> None:
         self.metrics_dir = metrics_dir
 
     def aggregate(self, metric_ids: List[str]) -> Dict[str, Dict]:

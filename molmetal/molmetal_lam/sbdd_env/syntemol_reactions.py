@@ -102,9 +102,11 @@ def _resolve_synthemol_path() -> Path:
     )
     candidates = (
         repo_local,
-        Path(
-            "/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol"
-        ),
+        Path(__file__).resolve().parents[3]
+        / "molmetal"
+        / "references"
+        / "SyntheMol"
+        / "synthemol",
     )
     for candidate in candidates:
         if (candidate / "utils.py").is_file():

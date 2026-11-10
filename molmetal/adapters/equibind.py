@@ -1,4 +1,4 @@
-"""EquiBind adapter — SE(3)-equivariant docking (Stärk et al., NeurIPS 2022).
+"""EquiBind adapter — SE(3)-equivariant docking (Stärk et al., ICML 2022).
 
 This is a Phase-1 **skeleton** adapter.  It satisfies the
 :class:`DockingEngine` port from ``molmetal.ports`` so that the rest of the
@@ -57,7 +57,22 @@ References
 ----------
 Stärk, H., Ganea, O.-E., Pattanaik, L., Barzilay, R., Jaakkola, T. (2022).
 "EquiBind: Geometric Deep Learning for Drug Binding Structure
-Prediction." NeurIPS 2022.  https://arxiv.org/abs/2202.05146
+Prediction." ICML 2022.  https://arxiv.org/abs/2202.05146
+
+Correction (Wf-A149, 2026-10-31): the venue string in this reference
+read "NeurIPS 2022" before this date.  That wording is superseded and
+is retained above only as the quoted historical record; the live
+citation now reads "ICML 2022".  Verified live on 2026-10-31 against
+the arXiv record for 2202.05146 (HTTP 200), whose journal-ref field
+reads verbatim "39th International Conference on Machine Learning
+(ICML 2022)" and whose Comments field reads verbatim "39th
+International Conference on Machine Learning (ICML 2022). Also
+accepted at ICLR 2022 GTRL and at ICLR 2022 MLDD as spotlight"
+(https://arxiv.org/abs/2202.05146).  The same superseded venue wording
+also appeared in this module's header line, in the class docstring,
+and in the ``paper`` field of :meth:`EquiBindAdapter.get_metadata`;
+all four occurrences were corrected to "ICML 2022" in this wave.
+No measured performance number was changed.
 """
 
 from __future__ import annotations
@@ -78,7 +93,7 @@ __all__ = ["EquiBindAdapter"]
 # EquiBindAdapter
 # ---------------------------------------------------------------------------
 class EquiBindAdapter(DockingEngine):
-    """Adapter wrapping EquiBind (Stärk et al., NeurIPS 2022).
+    """Adapter wrapping EquiBind (Stärk et al., ICML 2022).
 
     Parameters
     ----------
@@ -276,7 +291,7 @@ class EquiBindAdapter(DockingEngine):
                 else None
             ),
             "device": self._device,
-            "paper": "Stärk et al., NeurIPS 2022 (EquiBind)",
+            "paper": "Stärk et al., ICML 2022 (EquiBind)",
             "arxiv": "2202.05146",
             "description": (
                 "EquiBindAdapter wraps Stärk et al.'s SE(3)-equivariant "

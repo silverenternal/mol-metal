@@ -1,0 +1,27 @@
+{
+  "created_at_utc": "2026-11-10T15:59:13.333707+00:00",
+  "status": "completed",
+  "disk_free_before": 599091515392,
+  "items": [
+    {
+      "path": "molmetal/data/pre_featurized/all_pretrain.pt",
+      "logical_bytes": 45331375803,
+      "allocated_bytes_estimate": 45331378176,
+      "removed": true
+    },
+    {
+      "path": "molmetal/data/pre_featurized/drugood.pt",
+      "logical_bytes": 39959200757,
+      "allocated_bytes_estimate": 39959203840,
+      "removed": true
+    },
+    {
+      "path": ".venv.bak.rocm7.2_1790978356",
+      "logical_bytes": 20959605545,
+      "allocated_bytes_estimate": 21099638784,
+      "removed": true
+    }
+  ],
+  "impact": "Cached D-MPNN pretraining requires regeneration using molmetal/scripts/pre_featurize_dmpnn.py; old ROCm environment backup removed. Current .venv and input datasets retained.",
+  "disk_free_after": 597561491456
+}

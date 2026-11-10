@@ -66,7 +66,7 @@ import re
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 
 # TODO-220 paths
 TODO_220_DRIVER = ROOT / "TODO/completed/220_wf219_temporal_split_nci60_driver.md"

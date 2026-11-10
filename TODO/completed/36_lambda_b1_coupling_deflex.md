@@ -207,8 +207,17 @@ Per `TODO/02_metrics/METRICS_TARGETS.md` §3 ("100-pocket × 3-seed CrossDocked1
 - Schmidt & Lipson 2009, *Science* 324(5923), pp. 81-85 — evolutionary symbolic-regression template.
 - Barendregt 1984, *The Lambda Calculus — Its Syntax and Semantics*, North-Holland — LamVar / LamAbs / LamApp.
 - McAllester 1999, *PAC-Bayes* — F5 baseline.
-- Liu & Feng 2026, DOI: 10.1021/acs.jcim.6c02460 — PLL 2026 fingerprint.
+- Liu & Feng 2026, *J. Chem. Inf. Model.* 66 (18), 11767-11777,
+  DOI: 10.1021/acs.jcim.6c02460 — PLL 2026 fingerprint.
 - Silver 2016 / KataGo — FPU + virtual loss + Dirichlet root noise.
+
+> **⚠️ CITATION RECORD COMPLETED (2026-10-31, Wf-A149).** The PLL lit anchor
+> above previously read "Liu & Feng 2026, DOI: 10.1021/acs.jcim.6c02460 — PLL 2026 fingerprint." — it carried the DOI but no
+> volume / issue / pages.  The Crossref record for that DOI (MEASURED
+> 2026-10-31, HTTP 200) gives **volume 66, issue 18, pages 11767-11777**
+> (online 2026-09-04, print 2026-09-28); the full venue record is now
+> printed inline.  No value in this file was wrong before — the citation
+> was incomplete.
 
 ---
 

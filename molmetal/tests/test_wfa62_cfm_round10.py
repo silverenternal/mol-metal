@@ -28,6 +28,7 @@ file:line on disk as of commit 1.
 from __future__ import annotations
 
 import warnings
+from pathlib import Path
 
 import pytest
 import torch
@@ -35,25 +36,32 @@ import torch
 torch.manual_seed(0)
 
 
+# Repo-relative path anchors: these tests read source files that are TRACKED
+# in this repository, so the location must be derived from this file's own
+# location rather than hard-coded to one checkout path.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 FML_INIT = (
-    "/home/hugo/codes/mol-metal/molmetal/adapters/flow_matching_lipman/__init__.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "__init__.py"
 )
-LOSS_INIT = "/home/hugo/codes/mol-metal/flow_matching/loss.py"
+LOSS_INIT = REPO_ROOT / "flow_matching" / "loss.py"
 REF_LOADER = (
-    "/home/hugo/codes/mol-metal/"
-    "molmetal/adapters/flow_matching_lipman/_reference_loader.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "_reference_loader.py"
 )
 REF_UTILS = (
-    "/home/hugo/codes/mol-metal/"
-    "molmetal/adapters/flow_matching_lipman/_reference/utils/__init__.py"
+    REPO_ROOT
+    / "molmetal"
+    / "adapters"
+    / "flow_matching_lipman"
+    / "_reference"
+    / "utils"
+    / "__init__.py"
 )
 LOGN = (
-    "/home/hugo/codes/mol-metal/"
-    "molmetal/adapters/flow_matching_lipman/log_normal_t.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "log_normal_t.py"
 )
 
 
-def _read(p: str) -> str:
+def _read(p: Path) -> str:
     with open(p) as f:
         return f.read()
 

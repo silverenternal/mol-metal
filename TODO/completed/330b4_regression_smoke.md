@@ -9,14 +9,48 @@ the in-flight G6 (TODO-182) pipeline.
 
 ---
 
+## §0 Wf-A124 CORRECTION (2026-10-31) — READ BEFORE §2 / §3.3 / §3.4 / §4 / §6
+
+**CPU-only. 0 GPU.**  This closeout was written on 2026-09-29 from a live
+`master.log` snapshot.  The G6 tree was subsequently committed to git, and the
+**operational logs this file cites are not among the surviving artifacts**:
+MEASURED 2026-10-31,
+`git ls-tree -r HEAD --name-only -- results/wf124_p3_per_innovation_ablation_g6/ | grep -c run.log`
+→ **0** — there is **no `run.log` at any path in the G6 tree in git HEAD**, and
+**no `Ir` run exists at all** (the tree holds only `Ru` + `Rh`).
+
+The claims listed below are therefore **corrected**.  The original values remain
+visible throughout this file, each labelled *previously claimed (unsourced)*,
+per AGENTS.md §5.5 rule #6 (historical closeout trail preserved; corrections
+ADDITIVE + DATED).  Catalog entries: `docs/HONEST_NEGATIVE_CATALOG.md`
+**§6.216**..**§6.222**.
+
+| # | Previously claimed (unsourced) | MEASURED 2026-10-31 (git HEAD) |
+|---|---|---|
+| 1 | `no_multi_task/Ru/seed=0` test_auc = **0.7888** (previously claimed — unsourced) | **0.7688537839247517** → `0.7689` — `no_multi_task/Ru/seed0/ru/per_seed_metrics.json::per_seed[0].test_auc` |
+| 2 | `no_multi_task/Ru/seed=1` test_auc = **0.7888** (previously claimed — unsourced) | **0.7851497511470598** → `0.7851` — `no_multi_task/Ru/seed1/ru/per_seed_metrics.json::per_seed[0].test_auc` |
+| 3 | the metric lives at `training_summary.json:31` | line 31 of that file is `"ckpt_paths": [` — the AUC lives at `per_metal.Ru.test_auc_mean` |
+| 4 | `no_multi_task/Ru/seed2` = **ALL_SEEDS_FAILED** (CUDAGraphs) | `per_seed[0].status` = **"OK"**, test_auc **0.7849333043836351** → `0.7849` |
+| 5 | `no_multi_task/Ir/seed0` = **ALL_SEEDS_FAILED** | **no such run exists** — the G6 tree in HEAD contains only `Ru` and `Rh` |
+| 6 | wall **89.7 min** / **84.3 min** | `elapsed_seconds_total` = **23.77195167541504 s** (0.40 min) / **433.46252274513245 s** (7.22 min) — both Ru-only |
+| 7 | "+0.0275 above the Wf-124 P3 baseline 0.7613" | **WITHDRAWN** — 0.7888 was never a measured value.  The measured seed-0 value is **+0.0076** over 0.7613 |
+| 8 | Ru seed0/seed1 ran on a **pre-Wf-328 trainer**; seed2 on a **post-Wf-328 trainer** (tf32+bf16+torch.compile) | **REFUTED on all three named fields for all 24 committed runs**: `bf16.apply` = **true**, `tf32.enabled` = **false**, `torch_compile_enabled` = **false** (also `torch_compile_cuda_graphs_disabled` = true, `torch_compile_mode` = "max-autotune-no-cudagraphs", `w2_gradient_mode` = "sliced", `dmpnn_backend` = "pyg") — all 8 fingerprint fields are PRESENT, so inferring the trainer version from *absent* fields is invalid.  **There is no PRE/POST trainer split in this tree** |
+| 9 | "3 more configs × 5 metals × 3 seeds … PENDING (45 tuples)" | all **4** cohorts × 2 metals × 3 seeds = **24** runs exist in git HEAD |
+
+**0.7613 is KEPT and re-labelled**: it is MEASURED at
+`results/wf124_p3_remaining_metals_g4/training_summary.json::ru_auc_baseline_wf124_p3_seed0`
+(= 0.7613).  Only the *lift* built on the unsourced 0.7888 is withdrawn.
+
+---
+
 ## §1 Headline verdict
 
 | Question | Answer |
 |---|---|
 | Is the launch script `scripts/launch_wf124_p3_g6.sh` correct on disk? | **YES** (--cpu-num-workers 8, all 4 ablation flags wired; see §3) |
 | Does the Wf-328-W2 unit test still pass? | **YES (10/10 PASS)** |
-| Is the in-flight G6 process using the on-disk launch script args? | **NO — STALE** (started 09:57:39, pre-Wf-328-W2 fix at 12:21:00) |
-| Did Wf-328 wire-ups break the trainer? | **NO, but introduced a new CUDAGraphs regression** (see §4) |
+| Is the in-flight G6 process using the on-disk launch script args? | **NO — STALE** (started 09:57:39, pre-Wf-328-W2 fix at 12:21:00) — *not verifiable from the surviving artifacts (2026-10-31; no `run.log` in git HEAD), see §0* |
+| Did Wf-328 wire-ups break the trainer? | **NO, but introduced a new CUDAGraphs regression** (see §4) — *the regression claim is REFUTED 2026-10-31, see §0* |
 | Pre-flight v3 62/62 PASS gate? | Confirmed at Wf-330-C timestamp; re-running for fresh check (see §5) |
 
 **Net verdict: NO REGRESSION at the launch script / unit-test / pre-flight
@@ -26,6 +60,12 @@ disk and verified. **BUT** the in-flight G6 bash process (PID started
 no `--no-dann`), and the Wf-328-W1 torch.compile change introduced a
 CUDAGraphs dynamic-shape regression that failed **Ru seed=2** and **Ir
 seed=0** in the no_multi_task config.
+→ **REFUTED 2026-10-31 (Wf-A124, catalog §6.222):** the committed artifacts
+record `no_multi_task/Ru/seed2` with status **"OK"** (test_auc
+0.7849333043836351) and **no Ir run at all** (the G6 tree holds only `Ru` +
+`Rh`); the failure rested on a `run.log` that is **not in git HEAD**.  The
+stale-args observation is likewise unverifiable from the surviving artifacts
+(no `run.log` in HEAD).  See §0.
 
 This is a **WIRE-UP-DRIFT, not a Wf-328 regression.** The fix is on disk,
 the unit test passes, the pre-flight is green. The in-flight process just
@@ -40,49 +80,78 @@ needs to be re-launched with the corrected script.
 
 | Tuple | Started | Ended | Status | test_auc | Wall |
 |---|---|---|---:|---:|---:|
-| no_multi_task/Ru/seed=0 | 09:57:39 | 11:27:26 | OK | 0.7888 | 89.7 min |
-| no_multi_task/Ru/seed=1 | 11:27:26 | 12:51:49 | OK | 0.7888 | 84.3 min |
-| no_multi_task/Ru/seed=2 | 12:51:49 | 13:06:21 | **ALL_SEEDS_FAILED** | nan (CUDAGraphs) | 14.4 min |
-| no_multi_task/Ir/seed=0 | 13:06:21 | 13:15:22 | **ALL_SEEDS_FAILED** | nan (CUDAGraphs) | 9.0 min |
+| no_multi_task/Ru/seed=0 | 09:57:39 | 11:27:26 | OK | **0.7689** — MEASURED 2026-10-31 [previously claimed (unsourced): 0.7888] | 89.7 min (previously claimed) — MEASURED `elapsed_seconds_total` = **23.77 s** (0.40 min) |
+| no_multi_task/Ru/seed=1 | 11:27:26 | 12:51:49 | OK | **0.7851** — MEASURED 2026-10-31 [previously claimed (unsourced): 0.7888] | 84.3 min (previously claimed) — MEASURED `elapsed_seconds_total` = **433.46 s** (7.22 min) |
+| no_multi_task/Ru/seed=2 | 12:51:49 | 13:06:21 | **ALL_SEEDS_FAILED** → **OK** (corrected 2026-10-31) | nan (CUDAGraphs) → **0.7849** — MEASURED (`per_seed[0].status` = "OK", test_auc 0.7849333043836351) | 14.4 min (previously claimed) — MEASURED `elapsed_seconds_total` = **464.17 s** (7.74 min) |
+| no_multi_task/Ir/seed=0 | 13:06:21 | 13:15:22 | **ALL_SEEDS_FAILED** → **NO SUCH RUN** (corrected 2026-10-31 — the G6 tree in git HEAD contains no Ir run) | nan (CUDAGraphs) → n/a | 9.0 min (previously claimed) — unverifiable |
 | no_multi_task/Ir/seed=1 | 13:15:22 | in flight | in flight | tbd | ≥ 8 min |
 | no_multi_task/Ir/seed=2 | not yet started | n/a | PENDING | n/a | n/a |
-| 3 more configs (no_wass, no_kendall, no_dann) × 5 metals × 3 seeds | not yet started | n/a | PENDING (45 tuples) | n/a | n/a |
+| 3 more configs (no_wass, no_kendall, no_dann) × 5 metals × 3 seeds | not yet started | n/a | PENDING (45 tuples) → **all 24 G6 runs exist in git HEAD** (4 cohorts × {Ru, Rh} × 3 seeds) | n/a | n/a |
 
 **Tuple outcomes so far: 2 OK + 2 CUDAGraphs-FAIL + 1 in-flight + 55 PENDING.**
+→ **Corrected 2026-10-31 (MEASURED):** of the tuples this snapshot listed, **3
+are committed OK** in git HEAD (Ru seed0 / seed1 / seed2; test_auc 0.7689 /
+0.7851 / 0.7849); the **2 claimed CUDAGraphs failures do not appear in the
+artifacts** (Ru seed2 records status "OK"; the Ir run does not exist at all);
+and the "55 PENDING" figure is void — the tree holds **24** completed runs in
+git HEAD.  The 2026-09-29 in-flight counts above are the **previously claimed
+(unsourced)** view of a `master.log` that is **not in git HEAD** (the only
+`master.log` on disk is the gitignored Wf-337-G1 recovery log, mtime
+2026-10-27 02:03:33).
 
 Source paths:
-- `results/wf124_p3_per_innovation_ablation_g6/master.log` (15 lines)
-- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/training_summary.json` (test_auc=0.7888)
-- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed1/training_summary.json` (test_auc=0.7888)
-- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed2/training_summary.json` (status=ALL_SEEDS_FAILED)
-- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ir/seed0/training_summary.json` (status=ALL_SEEDS_FAILED)
+- `results/wf124_p3_per_innovation_ablation_g6/master.log` (15 lines) — **not in git HEAD**; the only `master.log` on disk is the gitignored Wf-337-G1 recovery log (mtime 2026-10-27 02:03:33)
+- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/training_summary.json` (test_auc = **0.7688537839247517**, field `per_metal.Ru.test_auc_mean`; previously claimed (unsourced): 0.7888)
+- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed1/training_summary.json` (test_auc = **0.7851497511470598**; previously claimed (unsourced): 0.7888)
+- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed2/training_summary.json` (status = **"OK"**, test_auc 0.7849333043836351; previously claimed (unsourced): status=ALL_SEEDS_FAILED)
+- `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ir/seed0/training_summary.json` (**path does not exist** — no Ir run in the G6 tree; previously claimed (unsourced): status=ALL_SEEDS_FAILED)
 
-### §2.1 Baseline comparison (per task brief)
+### §2.1 Baseline comparison — **CORRECTED 2026-10-31 (Wf-A124)**
 
-- Ru seed=0 baseline = **0.7613** (Wf-124 P3 multi-task D-MPNN from commit
-  `1a8eebd7fa` "Wf-124 P3: Ru seed=0 first complete result — test_auc=0.7613").
-- Ru seed=0 G6 no_multi_task = **0.7888** (+0.0275 lift vs baseline — the
-  no_multi_task ablation removes the multi-task lift, but here the
-  Ru-only single-task variant outperforms the prior multi-task Ru seed=0
-  by a small margin. **This is MEASURED, not PROJECTED**, and per
-  party-twenty-spirit §3.5 must be tagged as: ablation=no_multi_task
-  variant outperforms baseline, but with only 1 seed the spread is
-  unfiltered; per-seed std = 0 because n_seeds=1).
+- Ru seed=0 baseline = **0.7613** — **MEASURED and KEPT**; source:
+  `results/wf124_p3_remaining_metals_g4/training_summary.json::ru_auc_baseline_wf124_p3_seed0`
+  (= 0.7613; also `training_summary_v2.json`).  Historical attribution: Wf-124
+  P3 multi-task D-MPNN, commit `1a8eebd7fa` "Wf-124 P3: Ru seed=0 first complete
+  result — test_auc=0.7613".
+- Ru seed=0 G6 no_multi_task = **0.7689** — **MEASURED**
+  (`no_multi_task/Ru/seed0/ru/per_seed_metrics.json::per_seed[0].test_auc` =
+  **0.7688537839247517**; the same value sits at
+  `no_multi_task/Ru/seed0/training_summary.json::per_metal.Ru.test_auc_mean`).
+  Against the 0.7613 baseline that is **+0.0076**, **not** +0.0275: the +0.0275
+  figure was built on the unsourced 0.7888 and is **withdrawn**.
+  [previously claimed (unsourced): 0.7888 / "+0.0275 lift"]
+  Against the **G5 all-ON sibling baseline** for the *same metal and seed*
+  (`results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics.json` =
+  **0.7724998506098228**) the paired delta is **−0.003646** — i.e. on this seed
+  the G6 `no_multi_task` arm is *below* the all-ON baseline, not +0.0275 above.
 
-- Ru seed=1 baseline (task brief) = 0.7888.
-- Ru seed=1 G6 no_multi_task = **0.7888** (= baseline). Same point.
+- Ru seed=1 baseline = **0.7896** — **MEASURED**
+  (`results/wf124_p3_50epoch_full_sweep_g5/Ru/seed1/ru/per_seed_metrics.json::per_seed[0].test_auc`
+  = 0.7896453815181774).  [previously claimed (unsourced): 0.7888, attributed to
+  the task brief rather than to any artifact]
+- Ru seed=1 G6 no_multi_task = **0.7851** — **MEASURED** (0.7851497511470598);
+  paired vs the G5 seed-1 baseline = **−0.004496**.
+  [previously claimed (unsourced): 0.7888 "= baseline"]
 
-- Ru seed=1 G6 = **0.7888** vs Wf-124 P3 seed=0 baseline 0.7613 → +0.0275.
-- Ru seed=2 G6 = **nan** (CUDAGraphs RuntimeError).
-- Ir seed=0 G6 = **nan** (CUDAGraphs RuntimeError).
-- Ir seed=1 G6 = in flight.
+- Ru seed=1 G6 = **0.7851** vs the Wf-124 P3 seed-0 baseline 0.7613 → **+0.0238**.
+  [previously claimed (unsourced): 0.7888 → +0.0275]
+- Ru seed=2 G6 = **0.7849**, status **"OK"** — **MEASURED** (0.7849333043836351;
+  `torch_compile_cuda_graphs_disabled` = true).
+  [previously claimed (unsourced): nan (CUDAGraphs RuntimeError)]
+- Ir seed=0 G6 = **no such run** — the G6 tree in git HEAD contains only `Ru`
+  and `Rh`; the cited `no_multi_task/Ir/seed0/training_summary.json` does not
+  exist.  [previously claimed (unsourced): nan (CUDAGraphs RuntimeError)]
+- Ir seed=1 G6 = in flight (2026-09-29 snapshot); no Ir run survives in git HEAD.
 
-**Honest framing:** The Ru/seed=0 G6 result is MEASURED at 0.7888, which
-is +0.0275 above the Wf-124 P3 baseline (0.7613, MEASURED). This is a
-single-seed observation in the no_multi_task ablation variant, not the
-main multi-task recipe. The Wf-124 P3 multi-task recipe (which is what
-G6 is ablating against) has not been re-measured in this run; the
-comparison is across-run, not within-run.
+**Honest framing:** The Ru/seed=0 G6 `no_multi_task` result is MEASURED at
+**0.7689**, which is **+0.0076** above the Wf-124 P3 baseline (0.7613, MEASURED)
+and **−0.0036** below the G5 all-ON baseline for the same metal + seed.  This is
+a single-seed observation in the `no_multi_task` ablation variant, not the main
+multi-task recipe, and the G6 tree carries **no lever flag** for 3 of its 4
+cohorts (`use_dann` / `use_kendall` / multi-task fields are absent from all 24
+`training_summary.json`), so *which* lever was removed is unverifiable from the
+artifacts.  The comparison against 0.7613 is **across-run**, not within-run.
+Catalog: `docs/HONEST_NEGATIVE_CATALOG.md` §6.218 / §6.220 / §6.222.
 
 ---
 
@@ -160,6 +229,15 @@ script now sets `--cpu-num-workers 8`. This is the wire-up drift — the
 launch script on disk is correct, but the bash process started before the
 fix cannot pick up the new flag without restart.
 
+> **Wf-A124 correction (2026-10-31).**  The quoted `run.log` does **not** exist:
+> MEASURED `git ls-tree -r HEAD --name-only -- results/wf124_p3_per_innovation_ablation_g6/ | grep -c run.log`
+> → **0**.  The stale-args observation is therefore **not verifiable from the
+> surviving artifacts** — it rests on a `run.log` that was never committed (the
+> operational logs under this tree are gitignored: `.gitignore:33`
+> `**/*.log`).  The launch-script half of the diagnosis still stands on its
+> own, because it is a file read (`scripts/launch_wf124_p3_g6.sh:53`), not a log
+> read.
+
 ### §3.4 Ru seed=0 + seed=1: pre-fix trainer
 
 ```
@@ -170,16 +248,40 @@ results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/run.log:L3:
 (no tf32 / bf16 / torch_compile fields → pre-Wf-328-W1/W3/W4 trainer code)
 ```
 
-Ru seed=0 (started 09:57:39) and Ru seed=1 (started 11:27:26) ran with the
-**pre-Wf-328 trainer code** — no torch.compile, no BF16, no TF32, no
-wf328w6 log. Both completed successfully (test_auc=0.7888 each). The
-results are **MEASURED on the pre-Wf-328 trainer baseline** and should
-not be compared directly to post-Wf-328 results without an explicit
-baseline tag.
+> **Wf-A124 correction (2026-10-31) — the PRE/POST trainer split is REFUTED.**
+> The quoted `run.log` does **not** exist in git HEAD (**0** `run.log` paths
+> under the G6 tree), and the inference drawn from it is **invalid**: the
+> committed `training_summary.json` files carry **all 8** trainer-fingerprint
+> fields, for **all 24** runs.  MEASURED
+> `no_multi_task/Ru/seed0/training_summary.json`:
+> `bf16` = {"requested": true, "apply": **true**, "device": "cuda:0",
+> "is_cuda": true}; `tf32` = {"enabled": **false**,
+> "current_allow_tf32_matmul": false, "current_allow_tf32_cudnn": false,
+> "matmul_precision": "highest"}; `torch_compile_enabled` = **false**;
+> `torch_compile_cuda_graphs_disabled` = **true**;
+> `torch_compile_mode` = "max-autotune-no-cudagraphs";
+> `w2_gradient_mode` = "sliced"; `dmpnn_backend` = "pyg".
+> So **BF16 WAS applied** (the "pre-Wf-328, no bf16" claim is wrong), **TF32 was
+> DISABLED** (the "post-Wf-328, tf32=True" claim is wrong), and **torch.compile
+> was OFF** (the "post-Wf-328, torch_compile=True" claim is wrong).  **There is
+> no PRE/POST trainer split in this tree** — all 24 runs carry the same
+> fingerprint and all 24 record status "OK".  (The G5 baseline tree, by
+> contrast, records **no** fingerprint fields at all — 17 summary keys vs G6's
+> 25 — so a G6-vs-G5 comparison mixes a trainer-version difference with the
+> lever difference; see `docs/HONEST_NEGATIVE_CATALOG.md` §6.219.)
 
-Ru seed=2 (started 12:51:49) ran with the **post-Wf-328 trainer code**
-(tf32=True bf16_requested=True torch_compile=True torch_compile_mode=reduce-overhead
-+ the wf328w6 log). It FAILED due to CUDAGraphs dynamic-shape overwrite.
+Ru seed=0 (started 09:57:39) and Ru seed=1 (started 11:27:26) both completed
+with status **"OK"** — MEASURED test_auc **0.7688537839247517** (seed0) and
+**0.7851497511470598** (seed1).
+[previously claimed (unsourced): test_auc 0.7888 each]
+
+Ru seed=2 (started 12:51:49) is likewise **status "OK"**, MEASURED test_auc
+**0.7849333043836351**, `torch_compile_cuda_graphs_disabled` = true.  It did
+**not** fail.
+[previously claimed (unsourced): post-Wf-328 trainer with
+tf32=True bf16_requested=True torch_compile=True
+torch_compile_mode=reduce-overhead, FAILED due to CUDAGraphs dynamic-shape
+overwrite]
 
 ### §3.5 Forward-looking recommendation
 
@@ -202,7 +304,18 @@ default).
 
 ## §4 CUDAGraphs runtime regression (NEW finding)
 
-### §4.1 Symptom (MEASURED)
+> **Wf-A124 correction (2026-10-31).**  The stack trace below is quoted from a
+> `run.log` that **does not exist** in git HEAD (**0** `run.log` paths under the
+> G6 tree) and from the 2026-09-29 master.log snapshot, which was never
+> committed.  MEASURED 2026-10-31: `no_multi_task/Ru/seed2` records
+> `per_seed[0].status` = **"OK"**, test_auc **0.7849333043836351**, and
+> `torch_compile_cuda_graphs_disabled` = **true**; the cited
+> `no_multi_task/Ir/seed0/...` path **does not exist** (no Ir run in the tree).
+> The `torch.compile(mode="reduce-overhead")` analysis in §4.2 is
+> **forward-looking code reasoning, not a measured failure** — it stands as a
+> hypothesis only.  Catalog: `docs/HONEST_NEGATIVE_CATALOG.md` §6.222.
+
+### §4.1 Symptom (as reported 2026-09-29 — MEASURED status REFUTED 2026-10-31)
 
 ```
 Ru seed=2 (12:51:49 - 13:06:21, 14.4 min):
@@ -297,14 +410,13 @@ Wf-330-B4 is a CPU-only check that touched no Python source files.
 | G6 launch script on disk has `--cpu-num-workers 8` | **MEASURED** | `scripts/launch_wf124_p3_g6.sh:53` |
 | G6 launch script on disk has `--no-kendall` / `--no-dann` flags | **MEASURED** | `scripts/launch_wf124_p3_g6.sh:73-74` |
 | Wf-328-W2 unit test 10/10 PASS | **MEASURED** | `molmetal/tests/test_wf328w2_launcher_num_workers.py` re-run 2026-09-29 13:23 |
-| G6 in-flight uses stale `--cpu-num-workers 0` | **MEASURED** | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed2/run.log:6` |
-| Ru seed=0 G6 no_multi_task test_auc = 0.7888 | **MEASURED** | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/training_summary.json:31` |
-| Ru seed=1 G6 no_multi_task test_auc = 0.7888 | **MEASURED** | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed1/training_summary.json:31` |
-| Ru seed=2 G6 FAILED with CUDAGraphs RuntimeError | **MEASURED** | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed2/run.log:67` |
-| Ir seed=0 G6 FAILED with CUDAGraphs RuntimeError | **MEASURED** | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ir/seed0/run.log:51` |
-| Ru seed=2 + Ir seed=0 trained on POST-Wf-328 trainer (tf32+bf16+torch.compile) | **MEASURED** | log L3 (vs Ru seed=0/1 log L3 which lacks those fields) |
-| Ru seed=0 + seed=1 trained on PRE-Wf-328 trainer (no tf32/bf16/torch.compile) | **MEASURED** | log L3 |
-| Ru seed=0 G6 (0.7888) is +0.0275 above Wf-124 P3 baseline (0.7613) | **MEASURED, single-seed, cross-run comparison** | Wf-124 P3 commit + G6 summary JSON |
+| G6 in-flight uses stale `--cpu-num-workers 0` | **PREVIOUSLY CLAIMED (UNSOURCED) — not verifiable 2026-10-31** | cited `.../no_multi_task/Ru/seed2/run.log:6`; MEASURED **0** `run.log` paths in git HEAD |
+| Ru seed=0 G6 no_multi_task test_auc = **0.7689** (0.7688537839247517) | **MEASURED** (2026-10-31) | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/ru/per_seed_metrics.json::per_seed[0].test_auc` (= `.../seed0/training_summary.json::per_metal.Ru.test_auc_mean`); previously claimed (unsourced) 0.7888 at `training_summary.json:31`, where line 31 is `"ckpt_paths": [` |
+| Ru seed=1 G6 no_multi_task test_auc = **0.7851** (0.7851497511470598) | **MEASURED** (2026-10-31) | `results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed1/ru/per_seed_metrics.json::per_seed[0].test_auc`; previously claimed (unsourced) 0.7888 at `training_summary.json:31` |
+| Ru seed=2 G6 status = **"OK"**, test_auc **0.7849333043836351** (0.7849) | **MEASURED** (2026-10-31) | `.../no_multi_task/Ru/seed2/ru/per_seed_metrics.json::per_seed[0]`; the "FAILED with CUDAGraphs RuntimeError" claim is REFUTED — the cited `run.log:67` does not exist |
+| Ir seed=0 G6 — **no such run** | **REFUTED** (2026-10-31) | the G6 tree in git HEAD contains only `Ru` and `Rh`; `.../no_multi_task/Ir/seed0/run.log:51` does not exist |
+| All 24 committed runs carry the **same** trainer fingerprint (`bf16.apply` true, `tf32.enabled` false, `torch_compile_enabled` false, `torch_compile_cuda_graphs_disabled` true, `torch_compile_mode` "max-autotune-no-cudagraphs", `w2_gradient_mode` "sliced", `dmpnn_backend` "pyg") | **MEASURED** (2026-10-31) | `.../<arm>/<metal>/seed<N>/training_summary.json` — there is **no PRE/POST-Wf-328 trainer split**; the "seed0/1 pre-fix, seed2 post-fix" claim is REFUTED |
+| Ru seed=0 G6 (**0.7689**) is **+0.0076** above the Wf-124 P3 baseline (**0.7613**) | **MEASURED, single-seed, cross-run comparison** (2026-10-31) | `results/wf124_p3_remaining_metals_g4/training_summary.json::ru_auc_baseline_wf124_p3_seed0` (0.7613) + `.../no_multi_task/Ru/seed0/ru/per_seed_metrics.json`; the previously claimed (unsourced) "+0.0275" is WITHDRAWN — 0.7888 is not a measured value |
 | G6 in-flight process needs restart to pick up --cpu-num-workers 8 + --no-kendall/--no-dann flags | **PROJECTED** (bash does not re-read modified files; standard bash semantics) | bash POSIX behavior |
 | `max-autotune-no-cudagraphs` mode fixes the CUDAGraphs regression | **PROJECTED** (PyTorch docs say it disables CUDA Graphs; not yet bench-tested on D-MPNN encoder) | PyTorch docs + Wf-326C RT |
 | The Wf-328-W1 + Wf-328-W8 interaction (reduce-overhead + Inductor CUDA Graphs) is the regression root-cause | **PLAUSIBLE** (root-cause analysis; needs code change to verify) | §4 |
@@ -324,7 +436,7 @@ Wf-330-B4 is a CPU-only check that touched no Python source files.
 - `TODO/completed/330f_wf329_closeouts.md` — Wf-329 closeouts
 - `molmetal/tests/test_wf328w2_launcher_num_workers.py` — 10-test regression gate
 - `molmetal/scripts/launch_wf124_p3_g6.sh` — TODO-182 G6 launcher
-- `results/wf124_p3_per_innovation_ablation_g6/master.log` — G6 in-flight log
+- `results/wf124_p3_per_innovation_ablation_g6/master.log` — G6 in-flight log (**not in git HEAD**; the only `master.log` on disk is the gitignored Wf-337-G1 recovery log, mtime 2026-10-27 02:03:33)
 
 ---
 

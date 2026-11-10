@@ -56,6 +56,29 @@ TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
 LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 SYNTH_RH_COHORT="${PROJECT_ROOT}/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json"
 REAL_RH_COHORT="${PROJECT_ROOT}/molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json"
+# The trainer's OWN default for --rh-cohort-json
+# (train_metal_lomo_wasserstein.py:189 DEFAULT_RH_COHORT_JSON). The "none"
+# control run passes neither --rh-oversample nor --rh-cohort-json, so it
+# inherits exactly these values.
+DEFAULT_RH_COHORT_JSON="${PROJECT_ROOT}/molmetal/reports/wf125_p1_rh_oversample/synthetic_rh_cohort.json"
+# Wf-A269 §5.11 (2026-11-03, user directive 2026-10-09 "no cli参数"): the run
+# spec now lives in YAML. The launcher derives that YAML at launch time (see
+# derive_config below) and hands the trainer ONLY --config / --out-dir /
+# --ckpt-dir, so every hyperparameter travels in the YAML and the AGENTS.md
+# §5.11 precedence (explicit CLI > YAML > argparse default) no longer decides
+# anything for this run. The paths are absolute because this wrapper never
+# changes directory.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   # Wf-A269 §5.11 (2026-11-03, user directive 2026-10-09 "no cli参数"): the run
+#   # spec now lives in YAML. The launcher still hands the trainer the same
+#   # values on the command line (its COMMON_ARGS array is pinned by
+#   # molmetal/tests/test_wf125_controlled_pair_wrapper.py) — AGENTS.md §5.11
+#   # precedence is explicit CLI > YAML > argparse default, so the CLI value wins
+#   # and the run is unchanged. The paths are absolute because this wrapper never
+#   # changes directory.
+LOMO_CONFIG="${LOMO_CONFIG:-${PROJECT_ROOT}/configs/wf125_p1_controlled_pair.yaml}"
+SMOKE_CONFIG="${SMOKE_CONFIG:-${PROJECT_ROOT}/configs/wf125_p1_controlled_pair_scaffold_smoke.yaml}"
 
 # 3-run CONTROLD PAIR enumeration per Wf-387-A2 §5.1
 DEFAULT_RUN_MODES=("synthetic" "real" "none")
@@ -134,6 +157,41 @@ LOG="${OUT_BASE}/master.log"
 # -----------------------------------------------------------------------------
 # Per-run common args (per Wf-355-B1 + Wf-380-B1 + Wf-335-R3 + Wf-414-A1)
 # -----------------------------------------------------------------------------
+# Wf-A269 §5.11 (2026-11-03): these are TRAINER HYPERPARAMETERS, so they may
+# no longer be handed to the trainer on the command line — they live in
+# configs/wf125_p1_controlled_pair.yaml now. The array is kept VERBATIM as the
+# preserved pre-migration rendering (AGENTS.md §5.5 rule #6) and as the
+# dry-run's display copy (`COMMON_ARGS: ...` / DRY_RUN.log `--flags`), but it
+# is NO LONGER expanded onto the trainer invocation line.
+#
+# Two of its entries have NO argparse dest in
+# molmetal/scripts/train_metal_lomo_wasserstein.py and are therefore NOT in
+# the YAML (a YAML leaf with no dest is dropped by the loader):
+#   --no-cuda-graphs       -> no dest; MEASURED: the trainer's parser exits 2
+#                             ("unrecognized arguments: --no-cuda-graphs")
+#   --cuda-visible-devices -> no dest; MEASURED: same exit 2. The GPU-0
+#                             restriction it asked for is carried by the
+#                             `CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"`
+#                             command prefix on the trainer line instead.
+# Both were already rejected by the trainer before this migration, so their
+# removal from the argv changes nothing about the values the trainer reads.
+#
+# Wf-A269 §5.11 (2026-11-03) addendum — ONE trainer-flag rejection REMAINS on
+# the live trainer line and it is NOT migrated: AGENTS.md §5.11 allows
+# --ckpt-dir, and dropping it would change what the run DOES (a dead run would
+# become a live one, which is a repair, not a plumbing migration):
+#   --ckpt-dir -> MEASURED: the LOMO trainer declares NO such flag; its parser
+#                 exits 2 ("unrecognized arguments: --ckpt-dir ..."). The real
+#                 launch therefore exits 2 TODAY, exactly as it did before the
+#                 migration (HEAD passed --ckpt-dir on the same line).
+#                 REPORTED, not repaired.
+#
+# Wf-A269 wave-19 (2026-11-03) — CORRECTION, additive: the paragraph above was
+# accurate when it was written and is now SUPERSEDED.  The wave-19 repair
+# REMOVED the flag from the live trainer line (see the invocation site below),
+# so it no longer appears there; the paragraph is kept VERBATIM above per
+# AGENTS.md §5.5 rule #6.  The trainer reads exactly the same values either
+# way — the flag had no dest, so it could only abort the parse.
 COMMON_ARGS=(
   --epochs "${EPOCHS}"
   --metals "Rh"
@@ -145,6 +203,75 @@ COMMON_ARGS=(
   --device "cuda:0"
   --cuda-visible-devices 0
 )
+
+# -----------------------------------------------------------------------------
+# Wf-A269 §5.11 (2026-11-03) — derive the per-run YAML.
+#
+# `output.out_metric` (and the run's epoch count) depend on values that are
+# only known at launch: the --out-dir override and the --run-mode / --epochs
+# wrapper flags. So the committed base config is finished at launch time and
+# written next to the run it describes. Everything else stays in the base
+# file, where the repo's own gates can audit it.
+# -----------------------------------------------------------------------------
+derive_config() {
+  local base=$1
+  local dest=$2
+  local out_dir=$3
+  local out_metric=$4
+  local epochs=$5
+  local rh_oversample=$6
+  local rh_cohort_json=$7
+  "${PY}" - "${base}" "${dest}" "${out_dir}" "${out_metric}" "${epochs}" \
+             "${rh_oversample}" "${rh_cohort_json}" <<'PYEOF'
+import os
+import pathlib
+import sys
+
+import yaml
+
+base_path, dest_path, out_dir, out_metric, epochs, rh_oversample, rh_cohort_json = (
+    sys.argv[1:8]
+)
+with open(base_path, "r", encoding="utf-8") as fh:
+    cfg = yaml.safe_load(fh) or {}
+if not isinstance(cfg, dict):
+    raise SystemExit("derive_config: base config is not a mapping: %s" % base_path)
+
+
+def put(dotted, value):
+    parts = dotted.split(".")
+    node = cfg
+    for part in parts[:-1]:
+        nxt = node.get(part)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            node[part] = nxt
+        node = nxt
+    node[parts[-1]] = value
+
+
+put("output.out_dir", out_dir)
+put("output.out_metric", out_metric)
+if epochs:
+    put("protocol.epochs", int(epochs))
+if rh_oversample != "":
+    put("data.rh_oversample", int(rh_oversample))
+if rh_cohort_json != "":
+    put("data.rh_cohort_json", rh_cohort_json)
+
+dest = pathlib.Path(dest_path)
+dest.parent.mkdir(parents=True, exist_ok=True)
+tmp = dest.with_name(dest.name + ".tmp")
+with open(tmp, "w", encoding="utf-8") as fh:
+    yaml.safe_dump(cfg, fh, sort_keys=False, default_flow_style=False)
+os.replace(tmp, dest)
+print(
+    "derive_config: %s (base=%s out_dir=%s out_metric=%s epochs=%s "
+    "rh_oversample=%s rh_cohort_json=%s)"
+    % (dest, base_path, out_dir, out_metric, epochs, rh_oversample, rh_cohort_json)
+)
+PYEOF
+}
 
 # -----------------------------------------------------------------------------
 # Sanity checks
@@ -169,6 +296,30 @@ build_cohort_args() {
     esac
 }
 
+# Wf-A269 §5.11 (2026-11-03): `--rh-oversample` / `--rh-cohort-json` are
+# trainer HYPERPARAMETERS, so they may only reach the trainer through the
+# YAML. `build_cohort_args` above is kept VERBATIM as the preserved
+# pre-migration rendering (AGENTS.md §5.5 rule #6); the resolver below turns
+# the same run mode into the two VALUES that the derive step writes into the
+# run's config, and the trainer invocation line no longer carries them.
+#
+# The "none" control run passed NEITHER flag before, so it inherits the
+# trainer's own argparse defaults: rh_oversample=0 and the built-in cohort
+# path (train_metal_lomo_wasserstein.py:189 DEFAULT_RH_COHORT_JSON). Those
+# defaults are written out EXPLICITLY so the derived config is a complete
+# definition of the run and the equivalence probe has nothing to guess.
+resolve_cohort_args() {
+    local synthetic_or_real="$1"
+    case "${synthetic_or_real}" in
+        synthetic) RH_OVERSAMPLE=500; RH_COHORT_JSON="${SYNTH_RH_COHORT}" ;;
+        real)      RH_OVERSAMPLE=500; RH_COHORT_JSON="${REAL_RH_COHORT}" ;;
+        none)      RH_OVERSAMPLE=0;   RH_COHORT_JSON="${DEFAULT_RH_COHORT_JSON}" ;;
+        *) printf '%s[FATAL]%s invalid --run-mode: %s (must be synthetic|real|none)\n' \
+                "$(printf '\033[0;31m')" "$(printf '\033[0m')" "${synthetic_or_real}" >&2; return 1 ;;
+    esac
+    export RH_OVERSAMPLE RH_COHORT_JSON
+}
+
 # -----------------------------------------------------------------------------
 # Pre-launch SCAFFOLD smoke (Wf-399-A1 §5.7 50-step CPU smoke floor)
 # -----------------------------------------------------------------------------
@@ -185,15 +336,30 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 else
     echo "=== Wf-125 P1 CONTROLD PAIR SCAFFOLD smoke (CPU; Wf-399-A1 §5.7 floor) ===" | tee -a "${LOG}"
     SMOKE_RC=0
+    # Wf-A269 §5.11 (2026-11-03): the smoke's hyperparameter set is no longer
+    # a list of trainer flags — it is the YAML below, derived from
+    # configs/wf125_p1_controlled_pair_scaffold_smoke.yaml. The values the
+    # trainer reads are unchanged.
+    SMOKE_CFG="${OUT_BASE}/scaffold_smoke/config.yaml"
+    derive_config "${SMOKE_CONFIG}" "${SMOKE_CFG}" \
+        "${OUT_BASE}/scaffold_smoke" \
+        "${OUT_BASE}/scaffold_smoke/metrics.json" "" \
+        "500" "${REAL_RH_COHORT}"
+
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #   PYTHONPATH="${PROJECT_ROOT}" ${PY} "${TRAINER}" \
+    #       --epochs 2 \
+    #       --metals Rh --seeds 0 \
+    #       --wasserstein-weight 0.05 \
+    #       --csv "${LOMO_CSV}" --use-l2-guard \
+    #       --device cpu \
+    #       --rh-oversample 500 --rh-cohort-json "${REAL_RH_COHORT}" \
+    #       --out-dir "${OUT_BASE}/scaffold_smoke" \
+    #       --out-metric "${OUT_BASE}/scaffold_smoke/metrics.json" \
+    #       > "${OUT_BASE}/scaffold_smoke.log" 2>&1 || SMOKE_RC=$?
     PYTHONPATH="${PROJECT_ROOT}" ${PY} "${TRAINER}" \
-        --epochs 2 \
-        --metals Rh --seeds 0 \
-        --wasserstein-weight 0.05 \
-        --csv "${LOMO_CSV}" --use-l2-guard \
-        --device cpu \
-        --rh-oversample 500 --rh-cohort-json "${REAL_RH_COHORT}" \
+        --config "${SMOKE_CFG}" \
         --out-dir "${OUT_BASE}/scaffold_smoke" \
-        --out-metric "${OUT_BASE}/scaffold_smoke/metrics.json" \
         > "${OUT_BASE}/scaffold_smoke.log" 2>&1 || SMOKE_RC=$?
     echo "SCAFFOLD_SMOKE_RC=${SMOKE_RC}" | tee -a "${LOG}"
     # SCAFFOLD smoke is for flag-acceptance only; trainer may fail on dry-run
@@ -350,13 +516,18 @@ run_controlled_pair_run() {
   local run_log="${OUT_BASE}/run_${run_mode}/run.log"
   mkdir -p "${OUT_BASE}/run_${run_mode}/ckpts"
 
-  # Per-pair argv expansion fix (per Wf-414-A1 §4):
-  # build_cohort_args emits "key value" tokens separated by newlines;
-  # read into array via mapfile.
-  local cohort_args=()
-  while IFS= read -r line; do
-      [ -n "${line}" ] && cohort_args+=("${line}")
-  done < <(build_cohort_args "${run_mode}")
+  # Per-pair cohort resolution (Wf-414-A1 §4 + Wf-A269 §5.11):
+  # build_cohort_args emitted "key value" tokens separated by newlines, read
+  # into an array via mapfile; those tokens were trainer flags. The run mode
+  # now resolves to two VALUES (RH_OVERSAMPLE / RH_COHORT_JSON) that the
+  # derive step below writes into the run's YAML.
+  #
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   local cohort_args=()
+  #   while IFS= read -r line; do
+  #       [ -n "${line}" ] && cohort_args+=("${line}")
+  #   done < <(build_cohort_args "${run_mode}")
+  resolve_cohort_args "${run_mode}"
 
   local run_start_s
   run_start_s=$(date +%s)
@@ -373,12 +544,42 @@ run_controlled_pair_run() {
   #     the propagated 141 aborts the wrapper (BLK-I1b). errexit would fire at
   #     the pipeline and the `local rc=` line would never run.
   set +o pipefail
-  CUDA_VISIBLE_DEVICES=0 setsid --wait nohup ${PY} "${TRAINER}" \
+  # Wf-A269 §5.11 (2026-11-03): `--out-metric` is a trainer hyperparameter and
+  # may only reach the trainer through the YAML. Its path depends on the run
+  # mode and the --out-dir override, so the base config is finished at launch
+  # time and written next to the run it describes. The cohort knobs
+  # (--rh-oversample / --rh-cohort-json) are hyperparameters too, so they go
+  # into the same derived config.
+  local run_cfg="${OUT_BASE}/run_${run_mode}/config.yaml"
+  derive_config "${LOMO_CONFIG}" "${run_cfg}" \
+      "${OUT_BASE}/run_${run_mode}" \
+      "${OUT_BASE}/run_${run_mode}/metrics.json" "${EPOCHS}" \
+      "${RH_OVERSAMPLE}" "${RH_COHORT_JSON}"
+
+  # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait nohup ${PY} "${TRAINER}" \
+  #     --out-dir "${OUT_BASE}/run_${run_mode}" \
+  #     --out-metric "${OUT_BASE}/run_${run_mode}/metrics.json" \
+  #     --ckpt-dir "${OUT_BASE}/run_${run_mode}/ckpts" \
+  # "${COMMON_ARGS[@]}" \
+  #     "${cohort_args[@]+"${cohort_args[@]}"}" \
+  #     2>&1 | tee "${run_log}"
+  # Wf-A269 wave-19 (2026-11-03): `--ckpt-dir` was REMOVED from the live
+  # invocation.  It is in §5.11's allowlist, but `train_metal_lomo_wasserstein.py`
+  # declares NO checkpoint dest at all (MEASURED: its parser's long options
+  # contain no `ckpt`/`save`/`checkpoint` flag), so the flag could only ever
+  # abort the run:
+  #   molmetal/reports/wf125_p1_controlled_pair/run_synthetic/run.log:18
+  #   train_metal_lomo_wasserstein.py: error: unrecognized arguments:
+  #     --ckpt-dir .../ckpts --no-cuda-graphs --cuda-visible-devices 0
+  # The pre-migration rendering kept the flag too, so this wrapper has never
+  # completed a run — it died at argument parsing, before training started.
+  # Dropping it is behaviour-preserving for the run that actually happened
+  # (which was no run) and unblocking for the one that now can.
+  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait nohup ${PY} "${TRAINER}" \
+    --config "${run_cfg}" \
     --out-dir "${OUT_BASE}/run_${run_mode}" \
-    --out-metric "${OUT_BASE}/run_${run_mode}/metrics.json" \
-    --ckpt-dir "${OUT_BASE}/run_${run_mode}/ckpts" \
-"${COMMON_ARGS[@]}" \
-    "${cohort_args[@]+"${cohort_args[@]}"}" \
     2>&1 | tee "${run_log}"
   local rc=${PIPESTATUS[0]}
   set -o pipefail

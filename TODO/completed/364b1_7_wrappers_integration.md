@@ -78,6 +78,25 @@ $ PYTHONPATH=/home/hugo/codes/mol-metal \
 **Per-wrapper integration verdict: 7/7 PASS** (with 2 honest-negative gaps
 explicitly documented in §3).
 
+
+> **CORRECTION (2026-11-02, the main thread, Wf-A269 wave-12) — "PASS (rc=0)" IN THE `dry-run OK` COLUMN IS A PLAN-EMISSION FACT, NOT A LAUNCHABILITY VERDICT; ONE OF THE SEVEN WRAPPERS' PLAN SAYS `BLOCKED_CAPABILITY`.**
+>
+> **SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:**
+>     | `launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` | PASS | PASS (strict) | PASS (rc=0) | PASS (sources helper) |
+>
+>     **Per-wrapper integration verdict: 7/7 PASS** (with 2 honest-negative gaps
+explicitly documented in §3).
+>
+> **MEASURED 2026-11-02 (CPU-only, `--dry-run` only, zero GPU).** The `rc=0` is real — the dry run exits 0 and emits a plan. But `rc=0` answers *"did the wrapper produce a plan?"*, not *"can this wrapper launch?"*.
+>
+> * `scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` writes `molmetal/reports/wf355a3_r20_p5_tmqm_plat/plan.json`. MEASURED after the Wf-A269 wave-12 repair: `status = BLOCKED_CAPABILITY`, `capability = BLOCKED`; the plan's `honest_framing.MEASURED_today` states that the trainer `train_dmpnn_multitask_wasserstein.py` does not declare **12 of 20** of the launcher's argv flags — cross-checked against `argv_capability.txt`'s own line `FAIL — 12 of 20 flag(s) are not declared` and its **12** `MISSING ` rows.
+> * PRE-REPAIR, the same file's `status` field was **hardcoded**: old line 735 read `printf '  "status": "%s"
+' "$( [ "${DRY_RUN}" = "1" ] && echo PLAN_ONLY || echo READY_TO_RUN )"` — the dry-run plan said `PLAN_ONLY` and the **real** launch plan said `READY_TO_RUN`, both **independent of the capability gate**.
+>
+> **⇒ THE TEST THIS FILE RAN DID NOT AND COULD NOT TEST LAUNCHABILITY.** §1.1 records `test_per_wrapper_dry_run_with_user_ok_works` as *"With USER_OK + `--dry-run` → exit 0 (CPU-only)"* — that assertion is correct **for what it claims**, and the record's evidence is not contradicted by this correction. What it does NOT establish is launchability, because the verdict is in the plan's `status` field, which the test never read. **⇒ THE "7/7 PASS" VERDICT IS AN INTEGRATION VERDICT (bash syntax, gate enforcement, plan emission), NOT A LAUNCHABILITY VERDICT** — the two are different questions and the verdict line above does not distinguish them.
+>
+> **⇒ THE USER_OK COLUMN OF THIS FILE IS CORRECT AND SURVIVES.** §0 already lists rows 3 and 4 as `USER_OK=1` — MEASURED: `launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh:182` and `launch_wf131_p3_deferred_runs.sh:132` both gate on `${USER_OK:-0} != "1"`, so `USER_OK=YES` is REFUSED with exit 64 and `USER_OK=1` is accepted. This record and `TODO/completed/365b2_7_wrappers_final.md` §1 both contradict `TODO/completed/357a6_gpu_readiness_audit.md` §3.2, which claims all five accept `USER_OK=YES`; see that file's dated correction for the full matrix.
+
 ---
 
 ## §3 Honest-negative catalog (preserved per AGENTS.md §5.2)

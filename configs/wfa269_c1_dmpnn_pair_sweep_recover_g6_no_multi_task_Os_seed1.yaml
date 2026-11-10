@@ -1,0 +1,110 @@
+# configs/wfa269_c1_dmpnn_pair_sweep_recover_g6_no_multi_task_Os_seed1.yaml — AGENTS.md §5.11
+# launch config for scripts/recover_g6_failed_tuples.sh — tuple metal=Os seed=1, arm=no_multi_task.
+#
+# WHY ONE STATIC FILE PER TUPLE: the trainer sweeps `args.metals` x
+# `args.seeds` INTERNALLY (train_dmpnn_multitask_wasserstein.py:4352
+# `for metal in args.metals:` / :4356 `for seed in args.seeds:`) while this
+# launcher starts ONE trainer PROCESS per (metal, seed) tuple, each with
+# its own --out-dir.  §5.11 allows the launcher to pass only --config /
+# --out-dir / --ckpt-dir / --help, and this wave's contract forbids
+# generating a YAML at launch time — so the tuple coordinates are pinned
+# in a STATIC file, one per tuple.  One config for the whole grid would
+# train every pair inside every process; a launch-time-written config
+# would put the cohort back into a shell variable.
+#
+# VALUES: every leaf below is the EFFECTIVE pre-migration value —
+# configs/dmpnn.yaml overridden by the launcher's own command line
+# (explicit CLI flag > YAML > argparse default, AGENTS.md §5.11).
+# Generated + verified dest-by-dest by
+# molmetal/reports/wfa269_yaml_migration/wfa269_c1_generate_configs.py
+# (MEASURED 2026-11-03); nothing here is hand-typed.
+#
+# PRE-MIGRATION ARGV (molmetal/reports/wfa269_yaml_migration/recover_g6_failed_tuples.before.sh):
+#   --config configs/dmpnn.yaml --metals Os --seeds 1 --data-csv /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv --out-dir results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Os/seed1 --ckpt-dir results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Os/seed1/ckpts --single-task --epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --w2-gradient-mode sliced --n-mc 256 --use-l2-guard --device cuda:0 --cuda-visible-devices 0 --cpu-num-workers 8 --data-csv /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+#
+# SECTION SCHEMA: only protocol | model | flow | data | compute | eval |
+# output | train carry leaves; a leaf under any other top-level section
+# is SILENTLY IGNORED by molmetal/scripts/wfA2_config_loader.py.
+# DEST-NAME TRAPS: `data.csv` resolves to the dest `data_csv` (the flat
+# two-component leaf wins) — the `csv` dest needs the TOP-LEVEL `csv:`
+# key.  `--use-kendall`/`--no-kendall` share dest `kendall`;
+# `--use-dann`/`--no-dann` share dest `dann`; there is no `no_l2_guard`
+# dest; `--cuda-visible-devices` declares no type=, so it is the STRING
+# "0" (quoted on purpose).
+# LIST dests (`metals`, `seeds`) MUST be YAML sequences — a bare string
+# would match zero rows and yield test_auc = nan on every seed
+# (AGENTS.md §5.11, MEASURED 2026-10-09).
+
+model:
+  hidden: 300
+  depth: 3
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  pic50_ridge_readout: false
+
+train:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  lr_scheduler: none
+  lr_min_lr: 1e-06
+  lr_warmup_epochs: 5
+  alpha: 0.5
+  single_task: true
+  kendall: true
+  dann: true
+  ablation_config: mtl_baseline
+
+data:
+  csv: "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+  metals:
+    - Os
+  seeds:
+    - 1
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  active_pic50_threshold: 6.0
+
+eval:
+  wasserstein_weight: 0.05
+  use_wasserstein_2: false
+  use_wasserstein_w1: true
+  w2_gradient_mode: sliced
+  use_triton_wasserstein_sliced: false
+  use_ot_cfm: false
+  triton_ot: false
+  use_l2_guard: true
+  n_mc: 256
+
+compute:
+  device: "cuda:0"
+  tf32: false
+  torch_compile: false
+  cpu_num_workers: 8
+  pin_memory: true
+  cuda_visible_devices: "0"
+
+protocol:
+  seeds:
+    - 1
+
+output:
+  out_dir: results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Os/seed1
+  ckpt_dir: results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Os/seed1/ckpts
+  resume_from: auto
+  checkpoint_interval: 50
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: "48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)"
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}"

@@ -333,14 +333,24 @@ def main() -> int:
         "--ckpt-dir",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf202_dgllifesci_erm_drugood"
+            str(
+                Path(__file__).resolve().parents[2]
+                / "molmetal"
+                / "checkpoints"
+                / "wf202_dgllifesci_erm_drugood"
+            )
         ),
     )
     parser.add_argument(
         "--json-dir",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/reports/wf202_dgllifesci_erm_drugood"
+            str(
+                Path(__file__).resolve().parents[2]
+                / "molmetal"
+                / "reports"
+                / "wf202_dgllifesci_erm_drugood"
+            )
         ),
     )
     args = parser.parse_args()

@@ -214,9 +214,45 @@ def _score(
 # G4 — Test is added to molmetal/tests/  (this file is in molmetal/tests/).
 # ---------------------------------------------------------------------------
 def test_module_importable():
-    """This test's existence + importable assertion covers G1 + G4."""
-    # If pytest is running us, we're importable.
-    assert True, "molmetal/tests/test_drugood_chemprop_integration.py is importable"
+    """This test's existence + importable assertion covers G1 + G4.
+
+    Wf-A269 wave-10, finding C5-4: the body used to be a bare
+    ``assert True`` — a constant assertion certifies nothing, and
+    ``python -O`` strips it, so the test "passed" without ever checking
+    the surface it was written to cover.  The assertion now checks the
+    imported surface this integration test drives.
+    """
+    import molmetal.tests.test_drugood_chemprop_integration as mod
+
+    assert mod is not None, (
+        "molmetal/tests/test_drugood_chemprop_integration.py must be "
+        "importable under its package path"
+    )
+
+    # The helpers this module's integration contract is written against must
+    # exist and be callable.
+    for helper in (
+        "_seed_everything",
+        "_canon_smiles",
+        "_load_drugood_subset",
+        "_build_molgraphs",
+        "_make_batch",
+        "_score",
+    ):
+        assert callable(getattr(mod, helper, None)), (
+            f"{helper} is missing or not callable — the integration helpers "
+            f"this module's contract depends on must exist"
+        )
+
+    # The imported surface the pipeline drives must be present and callable.
+    from molmetal.data.drugood_loader import load_drugood
+    from molmetal.models.chemprop_v2_mt_model import ChempropV2MTModel
+
+    assert callable(load_drugood), "load_drugood must be callable"
+    assert callable(ChempropV2MTModel), "ChempropV2MTModel must be callable"
+
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    # assert True, "molmetal/tests/test_drugood_chemprop_integration.py is importable"
 
 
 # ---------------------------------------------------------------------------

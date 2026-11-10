@@ -1,0 +1,53 @@
+# configs/wf125_p1_controlled_pair_scaffold_smoke.yaml — the pre-launch
+# SCAFFOLD smoke spec of scripts/launch_wf125_p1_controlled_pair.sh.
+#
+# Created 2026-11-03 by the AGENTS.md §5.11 migration (user directive
+# 2026-10-09, "以后要求能且只能用yaml配置启动训练和推理，no cli参数"). The
+# smoke used to carry its whole hyperparameter set as literal trainer flags
+# on the invocation line; every one of them now lives here.
+#
+# The smoke is the AGENTS.md §5.7 floor: it proves the flag surface is
+# accepted and the trainer initialises, on CPU, before the GPU run.
+#
+# The values are the ones the launcher used to pass, VERBATIM:
+#   --epochs 2 --metals Rh --seeds 0 --wasserstein-weight 0.05
+#   --csv <LOMO_CSV> --use-l2-guard --device cpu
+#   --rh-oversample 500 --rh-cohort-json <REAL_RH_COHORT>
+#   --out-metric <OUT_BASE>/scaffold_smoke/metrics.json
+#
+# The launcher rewrites `output.out_metric` at launch time (the path depends
+# on the --out-dir override); the value below is the default-path instance.
+#
+# DEST-NAME NOTES: see configs/wf125_p1_controlled_pair.yaml (lists must be
+# YAML lists, `--use-l2-guard` must be an unquoted boolean, `--out-metric`
+# must always be set or the trainer exits non-zero).
+protocol:
+  epochs: 2
+  seeds:
+    - 0
+
+data:
+  metals:
+    - Rh
+  rh_oversample: 500
+  rh_cohort_json: /home/hugo/codes/mol-metal/molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json
+
+eval:
+  wasserstein_weight: 0.05
+  use_l2_guard: true
+
+compute:
+  device: cpu
+
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+output:
+  # The launcher rewrites `output.out_dir` at launch time as well (the path
+  # depends on the --out-dir override); the value below is the default-path
+  # instance and matches the `--out-dir` the wrapper passes.
+  out_dir: /home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_controlled_pair/scaffold_smoke
+  out_metric: /home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_controlled_pair/scaffold_smoke/metrics.json
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}

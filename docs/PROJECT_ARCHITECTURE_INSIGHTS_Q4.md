@@ -31,7 +31,7 @@
                                ↓ per-atom vel + atom_logits
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 3: Bond decoder (joint-trained head, WF-2 A5)          │
-│   - YuelBondDecoderHead (Wang+Dokholyan 2025,                 │
+│   - YuelBondDecoderHead (Wang+Dokholyan 2026,                 │
 │     line 482 + 130-145) — recovers bond graph from noisy     │
 │     coords; 5-class output {NONE, SINGLE, DOUBLE, TRIPLE,    │
 │     AROMATIC}                                                  │
@@ -175,14 +175,32 @@ loss = MSE(v_θ(x_t, t), target_dx_t)  +  α · CE(atom_logits)  +  β · CE(bon
 - **Code location:** `flow_matching_lipman/__init__.py:969-1075` (PocketEncoder) +
   `flow_matching_lipman/__init__.py:1488-1512` (cross-attention)
 
-### 18: Bond-order head (YuelBond decoder, Wang+Dokholyan 2025)
+### 18: Bond-order head (YuelBond decoder, Wang+Dokholyan 2026)
 - **Standard Lipman 2023:** atom coords only; no explicit bond prediction.
 - **Our addition:** YuelBondDecoderHead recovers 5-class bond types {NONE, SINGLE, DOUBLE, TRIPLE, AROMATIC}
   from noisy atom positions; joint-trained end-to-end with the velocity field
   (line 2184-2249 — `joint_train=True` default per WF-CFM-Frontier-Research Phase 2 Fix #1)
-- **Lit anchor:** Wang, S., Dokholyan, P. (2025). *YuelBond: a graph neural network for recovering the molecular
-  bond network from distorted 3D structures.* bioRxiv 10.1101/2025.05.06.652517
+- **Lit anchor:** Wang, J.; Dokholyan, N. V. (2026). *Multimodal Bond Reconstruction toward Generative Molecular
+  Design.* J. Chem. Inf. Model. 66(2), 1003-1012. DOI 10.1021/acs.jcim.5c03052 (preprint: bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11). F1 = 92.7 % on the CDG set (worst case, σ = 0.2 Å); F1 = 98.4 % on
+  standard 3-D structures. *(Citation corrected 2026-10-31, Wf-A143 — the title printed here matched neither the
+  preprint nor the published paper, and the author initials were wrong; see `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)*
 - **Code location:** `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` (YuelBondBondDecoder)
+
+> **⚠️ CORRECTED (2026-10-31, Wf-A148).** This file contradicted itself about the year of the
+> YuelBond paper: two lines said **2025** while the two citation records in this same file
+> (§18 "Lit anchor" above and §5 "Key paper-to-code anchors" below) already said **2026**.
+> The PUBLISHED record is 2026 — *Multimodal Bond Reconstruction toward Generative Molecular
+> Design*, J. Chem. Inf. Model. **66**(2), 1003-1012, doi:10.1021/acs.jcim.5c03052 — while
+> **2025** is the PREPRINT year (bioRxiv 10.1101/2025.05.06.652517, posted 2025-05-11). The two
+> superseded lines read, verbatim:
+>
+> - `│   - YuelBondDecoderHead (Wang+Dokholyan 2025,                 │`  (§1 ASCII diagram, Layer 3)
+> - `### 18: Bond-order head (YuelBond decoder, Wang+Dokholyan 2025)`  (§18 heading)
+>
+> Both now read **2026**. The edit is character-count preserving (`2025` → `2026`), so the
+> diagram's box drawing keeps its original column width; no number, code anchor, or citation
+> payload in this file was changed.
 
 ### 19: CFG-based atom-type sampling + Cartesian-style additive bias
 - **Standard Lipman 2023:** no atom-type prediction.
@@ -259,7 +277,7 @@ All blocked on USER_OK=1 grant per AGENTS.md §5.1.
 | Innovation | Lit anchor | Code anchor | Wave |
 |---|---|---|---|
 | Lipman 2023 CFM base | Lipman et al. 2023, ICLR 2023, arXiv:2210.02747 | `flow_matching_lipman/__init__.py:1-31` (header) + line 1754-1757 | R17 |
-| YuelBond decoder | Wang & Dokholyan 2025, bioRxiv 10.1101/2025.05.06.652517 | `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` + line 130-145 | Wf-124 P1 |
+| YuelBond decoder | Wang & Dokholyan 2026, J. Chem. Inf. Model. 66(2) 1003-1012, doi:10.1021/acs.jcim.5c03052 (preprint bioRxiv 10.1101/2025.05.06.652517) | `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` + line 130-145 | Wf-124 P1 |
 | Wasserstein gradient flow | Kolouri et al. 2016, arXiv:1603.08127 | `molmetal/molmetal_lam/reward/wasserstein_loss.py` + `train_cfm_yuelbond_wasserstein.py:820-863` | Wf-123 P1 |
 | Catherine closure | mol-metal-internal: `molmetal/math_skills/catherine_properties.py` | `train_cfm_yuelbond_wasserstein.py:866-880` | Wf-123 P2 |
 | EGNN equivariant | EGNN paper (Satorras et al. 2021, ICML 2021) | `models/velocity_net.py::EGNNLayer` (shared with `flow_matching_lipman`) | R17 |

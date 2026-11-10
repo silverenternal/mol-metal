@@ -1,0 +1,223 @@
+{
+  "metric": "cfm_c9_head_ab_capacity",
+  "tag": "MEASURED",
+  "date": "2026-10-30",
+  "wave": "Wf-A114",
+  "purpose": "Paired CPU capacity A/B for the c9 coordinate-head combination (configs/c9_cfm_transport_fixed.yaml), measured in-session so the config header cites numbers from this session and not only from the catalog. Same cohort, same seeds, same steps, both arms fresh.",
+  "protocol": {
+    "script": "molmetal/scripts/wfa107h_velocity_capacity.py",
+    "device": "cpu",
+    "gpu_used": false,
+    "steps": 500,
+    "lr": 0.001,
+    "seed": 0,
+    "eval_seed": 999,
+    "cycle_batches": 25,
+    "t_uniform": true,
+    "t_eval": 0.5,
+    "checkpoint": "molmetal/reports/cfm_c8_fullgen_2026_10_24/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+    "checkpoint_epoch": 2,
+    "cohort_csv": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+    "n_clouds": 8,
+    "n_atoms": 464,
+    "fm_noise_sigma": 2.485,
+    "note": "The trajectory is always read on the fixed held-out cohort at t=0.5, so both arms are comparable. 'gap_closed' is the only quantity comparable across cohorts with different v=0 baselines."
+  },
+  "arms": {
+    "A_radial_c8_head": {
+      "velocity_head": "radial",
+      "vector_channels": 0,
+      "t_embedding_dim": 0,
+      "velocity_head_init": "zero",
+      "vector_channel_norm_gain": "learnable",
+      "metal_frame_channels": false,
+      "radial_centroid_masked": false,
+      "fresh_field": true,
+      "vel_field_params": 518276,
+      "zero_baseline_mse": 14.377950668334961,
+      "radial_ceiling_mse": 9.734530448913574,
+      "step0": {
+        "mse": 14.374055862426758,
+        "mean_v_norm": 0.026909396052360535,
+        "cosine": 0.029887273907661438
+      },
+      "final": {
+        "step": 480,
+        "mse": 13.995441436767578,
+        "mean_v_norm": 0.6298840641975403,
+        "cosine": 0.1685085892677307
+      },
+      "gap_closed": 0.026603877033031947,
+      "mean_target_norm": 6.028980731964111,
+      "verdict": "CANNOT_FIT",
+      "lsq_init": null
+    },
+    "B_c9_combination": {
+      "velocity_head": "vector_channels",
+      "vector_channels": 8,
+      "t_embedding_dim": 32,
+      "velocity_head_init": "lsq",
+      "vector_channel_norm_gain": "fixed",
+      "metal_frame_channels": false,
+      "radial_centroid_masked": false,
+      "fresh_field": true,
+      "vel_field_params": 529912,
+      "zero_baseline_mse": 14.377950668334961,
+      "radial_ceiling_mse": 9.734530448913574,
+      "step0": {
+        "mse": 14.418989181518555,
+        "mean_v_norm": 0.4473283588886261,
+        "cosine": 0.04405742883682251
+      },
+      "final": {
+        "step": 480,
+        "mse": 13.85153579711914,
+        "mean_v_norm": 0.7988280653953552,
+        "cosine": 0.19569902122020721
+      },
+      "gap_closed": 0.03661264969945691,
+      "mean_target_norm": 6.028980731964111,
+      "verdict": "CANNOT_FIT",
+      "lsq_init": {
+        "applied": true,
+        "knots": [
+          {
+            "t": 0.02,
+            "mse": 9.6412,
+            "mse_zero": 14.377951,
+            "ratio": 0.570944,
+            "cosine": 0.573981,
+            "ridge_relative": 1e-06,
+            "gcv": 29.947365
+          },
+          {
+            "t": 0.14,
+            "mse": 10.934733,
+            "mse_zero": 14.377951,
+            "ratio": 0.489118,
+            "cosine": 0.489366,
+            "ridge_relative": 1e-06,
+            "gcv": 33.965321
+          },
+          {
+            "t": 0.26,
+            "mse": 12.444021,
+            "mse_zero": 14.377951,
+            "ratio": 0.366419,
+            "cosine": 0.366752,
+            "ridge_relative": 1e-06,
+            "gcv": 38.653451
+          },
+          {
+            "t": 0.38,
+            "mse": 13.786451,
+            "mse_zero": 14.377951,
+            "ratio": 0.148628,
+            "cosine": 0.212711,
+            "ridge_relative": 3.0,
+            "gcv": 41.718219
+          },
+          {
+            "t": 0.5,
+            "mse": 14.37442,
+            "mse_zero": 14.377951,
+            "ratio": 0.005054,
+            "cosine": 0.026815,
+            "ridge_relative": 30.0,
+            "gcv": 43.17127
+          },
+          {
+            "t": 0.62,
+            "mse": 13.329533,
+            "mse_zero": 14.377951,
+            "ratio": 0.265973,
+            "cosine": 0.270065,
+            "ridge_relative": 1e-06,
+            "gcv": 41.404012
+          },
+          {
+            "t": 0.74,
+            "mse": 12.315828,
+            "mse_zero": 14.377951,
+            "ratio": 0.374682,
+            "cosine": 0.378733,
+            "ridge_relative": 1e-06,
+            "gcv": 38.255258
+          },
+          {
+            "t": 0.86,
+            "mse": 11.445184,
+            "mse_zero": 14.377951,
+            "ratio": 0.450367,
+            "cosine": 0.45164,
+            "ridge_relative": 1e-06,
+            "gcv": 35.550875
+          },
+          {
+            "t": 0.98,
+            "mse": 11.119678,
+            "mse_zero": 14.377951,
+            "ratio": 0.473472,
+            "cosine": 0.476049,
+            "ridge_relative": 1e-06,
+            "gcv": 34.539793
+          }
+        ],
+        "fit": {
+          "n_knots": 9,
+          "mode": "linear_in_t_embedding",
+          "t_embedding_dim": 32,
+          "fit_residual_rms": 301.7875061035156,
+          "gate_weight_rms": 963.3693237304688
+        },
+        "post_init": [
+          {
+            "t": 0.05,
+            "ratio": 0.535347,
+            "cosine": 0.545125,
+            "mse": 10.106757,
+            "mse_zero": 14.377951
+          },
+          {
+            "t": 0.5,
+            "ratio": 0.113305,
+            "cosine": 0.044057,
+            "mse": 14.418989,
+            "mse_zero": 14.377951
+          },
+          {
+            "t": 0.95,
+            "ratio": 0.458254,
+            "cosine": 0.482562,
+            "mse": 11.038312,
+            "mse_zero": 14.377951
+          }
+        ],
+        "n_atoms": 464
+      }
+    }
+  },
+  "comparison": {
+    "gap_closed_A": 0.026603877033031947,
+    "gap_closed_B": 0.03661264969945691,
+    "final_mse_A": 13.995441436767578,
+    "final_mse_B": 13.85153579711914,
+    "cosine_A": 0.1685085892677307,
+    "cosine_B": 0.19569902122020721,
+    "mean_v_norm_A": 0.6298840641975403,
+    "mean_v_norm_B": 0.7988280653953552,
+    "mean_target_norm": 6.028980731964111,
+    "both_arms_can_not_fit": true
+  },
+  "verdict": "DIRECTION, NOT EFFECT SIZE. Both arms are CANNOT_FIT at 500 CPU steps on 8 clouds; the c9 combination closes more of the gap (0.0366 vs 0.0266) and emits a larger |v| (0.799 vs 0.630 against a target of 6.029) with a better cosine (0.196 vs 0.169), but neither head fits. This arm does NOT establish that the head swap fixes fragmentation; that number does not exist because c9 has not been run.",
+  "honest_limits": [
+    "One seed, one 8-cloud cohort, 500 CPU steps, lr 1e-3 (10x the production lr) \u2014 deliberately generous to the field, so a failure here is not a learning-rate artefact.",
+    "Both arms are --fresh: the checkpoint weights are NOT loaded, so this measures the head's reachable loss, not the c8 checkpoint's.",
+    "The cohort here is the MetalCytoToxDB 5-metal csv (zero baseline 14.378), NOT the tmQM held-out cohort of \u00a76.187 (zero baseline 9.008). Only gap_closed is comparable across the two, and the c9 arms here sit BELOW the published \u00a76.187 curve at every budget.",
+    "gpu_used = False: this was produced under a standing 'no GPU experiments' directive."
+  ],
+  "sources": [
+    "/tmp/molaudit/cap_c9ab_radial.json (arm A, verbatim)",
+    "/tmp/molaudit/cap_c9ab_c9combo.json (arm B, verbatim)"
+  ]
+}

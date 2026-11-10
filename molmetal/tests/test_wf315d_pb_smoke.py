@@ -31,7 +31,7 @@ WF179_DIR = ROOT / "molmetal" / "reports" / "wf179_bd9_m15_rmsd_p2"
 METRICS_DIR = ROOT / "metrics" / "by_metric"
 
 # The venv where the 1h36 PB smoke actually ran
-VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PYTHON = sys.executable
 
 # 1h36 docked poses + receptor (cached in Wf-246D)
 POSE_DIR_1H36 = WF179_DIR / "1h36"

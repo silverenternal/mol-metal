@@ -34,6 +34,7 @@ import importlib
 import subprocess
 import sys
 import types
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -118,7 +119,7 @@ def _ensure_proof_search_loaded() -> None:
 # Constants
 # ---------------------------------------------------------------------------
 
-REPO_ROOT = "/home/hugo/codes/mol-metal"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _mk_search(**kwargs: Any) -> Any:

@@ -33,7 +33,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "wf343c1_pre_retrain_check.py"
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 # Match the v1 doc schema fields we expect on every report.
 REQUIRED_TOP_KEYS = {
@@ -224,7 +224,7 @@ def test_gate_count_consistency() -> None:
         [
             VENV_PY,
             "-c",
-            "import sys; sys.path.insert(0, '/home/hugo/codes/mol-metal');"
+            f"import sys; sys.path.insert(0, {str(REPO_ROOT)!r});"
             "from molmetal.scripts.wf343c1_pre_retrain_check import "
             "EXPECTED_GATE_COUNTS; "
             "import json; print(json.dumps(EXPECTED_GATE_COUNTS))",

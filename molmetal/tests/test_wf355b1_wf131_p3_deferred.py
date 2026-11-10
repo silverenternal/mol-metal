@@ -29,7 +29,7 @@ import subprocess
 from pathlib import Path
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf131_p3_deferred_runs.sh"
 TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_lomo_wasserstein.py"
 

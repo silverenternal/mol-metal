@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf310b_g6_final.sh"
 MANIFEST = ROOT / "molmetal/reports/wf310b_g6_manifest/60_tuples.json"
 G6_YAML = ROOT / "configs/wf124_p3_per_innovation_ablation_g6.yaml"
@@ -62,6 +62,53 @@ def _read_manifest() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Needle helpers — the wrapper's REAL syntax
+# ---------------------------------------------------------------------------
+# MEASURED scripts/launch_wf310b_g6_final.sh (2026-11-02):
+#   line 148: if [ "${USER_OK:-0}" != "1" ]; then
+#   line 184: ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch
+# The pre-Wf-A269 test searched for `if [[ -z "${USER_OK:-}" ]]` and
+# `pre_flight_check.py --pipeline all`.  NEITHER string occurs in the
+# wrapper, so `body.find()` returned -1 for BOTH needles: the "not found"
+# asserts could never hold and the ordering assert compared two -1 values
+# (a comparison that is trivially true and therefore meaningless).
+# The needles below are regexes anchored on the wrapper's own spelling, so
+# they survive a `[[ ]]` -> `[ ]` or `all` -> `launch` change.
+
+_USER_OK_GATE_RE = re.compile(r'\$\{USER_OK:-[^}]*\}"?\s*!=\s*"1"')
+_PRE_FLIGHT_RE = re.compile(r"pre_flight_check\.py\s+--pipeline\s+(?:all|launch)")
+_BUDGET_RE = re.compile(r"wave_budget_tracker\.py")
+_PER_WAVE_RE = re.compile(r"per_wave_checklist\.py\s+--wave")
+
+
+def _need_index(body: str, pattern: re.Pattern, label: str) -> int:
+    """Index of the first match of `pattern` inside `body`.
+
+    Raises AssertionError when the needle is ABSENT, so a missing stage can
+    never be silently compared against another index (the -1 defect above).
+    """
+    match = pattern.search(body)
+    assert match is not None, f"{label} not found in wrapper body"
+    return match.start()
+
+
+def _user_ok_gate_index(body: str) -> int:
+    return _need_index(body, _USER_OK_GATE_RE, "USER_OK gate block")
+
+
+def _pre_flight_index(body: str) -> int:
+    return _need_index(body, _PRE_FLIGHT_RE, "pre_flight_check.py --pipeline invocation")
+
+
+def _budget_index(body: str) -> int:
+    return _need_index(body, _BUDGET_RE, "wave_budget_tracker.py invocation")
+
+
+def _per_wave_index(body: str) -> int:
+    return _need_index(body, _PER_WAVE_RE, "per_wave_checklist.py --wave invocation")
+
+
+# ---------------------------------------------------------------------------
 # Test 1: USER_OK gate blocks real launch
 # ---------------------------------------------------------------------------
 
@@ -74,10 +121,8 @@ def test_user_ok_gate_blocks():
     assert "USER_OK" in src, "USER_OK gate text missing from wrapper"
     assert "kill_then_adapt" in src, "kill_then_adapt reference missing"
     # Gate is checked BEFORE any pre_flight / wave_budget / GPU work
-    gate_idx = body.find('if [[ -z "${USER_OK:-}" ]]')
-    pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
-    assert gate_idx > 0, "USER_OK gate if-block not found in body"
-    assert pre_flight_idx > 0, "pre_flight_check invocation not found in body"
+    gate_idx = _user_ok_gate_index(body)
+    pre_flight_idx = _pre_flight_index(body)
     assert gate_idx < pre_flight_idx, (
         f"USER_OK gate (idx {gate_idx}) must appear BEFORE pre_flight "
         f"(idx {pre_flight_idx})"
@@ -138,16 +183,20 @@ def test_user_ok_unblocks():
 
 
 def test_pre_flight_called_first():
-    """pre_flight_check must be invoked before wave_budget_tracker
-    and per_wave_checklist (kill_then_adapt ordering invariant)."""
+    """The four launch stages must appear in the order
+    gate < pre-flight < wave_budget < per-wave (kill_then_adapt ordering
+    invariant: nothing is launched before the operator said OK, and the
+    pre-flight verdict must land before the wave budget is spent)."""
     src = _read_wrapper()
     body = src[_body_start(src) :]
-    pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
-    budget_idx = body.find("wave_budget_tracker.py")
-    per_wave_idx = body.find("per_wave_checklist.py --wave")
-    assert pre_flight_idx > 0, "pre_flight_check --pipeline all not invoked"
-    assert budget_idx > 0, "wave_budget_tracker not invoked"
-    assert per_wave_idx > 0, "per_wave_checklist not invoked"
+    gate_idx = _user_ok_gate_index(body)
+    pre_flight_idx = _pre_flight_index(body)
+    budget_idx = _budget_index(body)
+    per_wave_idx = _per_wave_index(body)
+    assert gate_idx < pre_flight_idx, (
+        f"USER_OK gate (idx {gate_idx}) must precede pre_flight "
+        f"(idx {pre_flight_idx})"
+    )
     assert pre_flight_idx < budget_idx, "pre_flight must precede wave_budget"
     assert (
         budget_idx < per_wave_idx

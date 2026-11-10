@@ -17,7 +17,7 @@
     "model": "4-cell-line multi-task D-MPNN (from-scratch, CPU-friendly)",
     "training_data": "/home/hugo/codes/mol-metal/molmetal/tests/fixtures/wf58_dmpnn_top20/platinai_4cell_min.csv",
     "top20_source": "/home/hugo/codes/mol-metal/molmetal/tests/fixtures/wf58_dmpnn_top20/top20_min.csv",
-    "timestamp": "2026-10-16T08:32:06",
+    "timestamp": "2026-10-31T03:30:35",
     "framing": "honest-negative: synthetic IC50 labels + cross-metal transfer for non-Pt candidates"
   },
   "compounds": [

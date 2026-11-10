@@ -499,7 +499,7 @@ def test_cli_flags_present() -> None:
 
     result = subprocess.run(
         [
-            "/home/hugo/codes/mol-metal/.venv/bin/python",
+            sys.executable,
             str(_REPO_ROOT / "molmetal/scripts/train_hilbert_astsr_end_to_end.py"),
             "--help",
         ],

@@ -48,8 +48,12 @@ import pytest
 # ---------------------------------------------------------------------------
 
 
-DASHBOARD_PATH = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf313g_downstream_lift_dashboard/dashboard.json"
+DASHBOARD_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf313g_downstream_lift_dashboard"
+    / "dashboard.json"
 )
 
 EXPECTED_TODOS: tuple = (

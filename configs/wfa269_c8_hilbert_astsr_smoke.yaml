@@ -1,0 +1,62 @@
+# wfa269_c8_hilbert_astsr_smoke.yaml — AGENTS.md §5.7 CPU smoke config for the
+# `--config` wire-in into molmetal/scripts/train_hilbert_astsr_end_to_end.py
+# (Wf-A269 cohort c8_hilbert_astsr).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# AGENTS.md §5.7: "Every NEW flag wire-in must run a CPU 50-step smoke that
+# verifies: (1) parse_args accepts the flag; (2) trainer imports +
+# initialises; (3) decode_ratio > 0; (4) loss[0] > loss[49]."
+#
+# Checks (3) and (4) are CFM-specific and have NO counterpart in this trainer:
+# it is a pure-NumPy Hilbert primal-dual + LambdaASTSR solver with no
+# diffusion decoder (no decode_ratio) and no step-wise loss trace (it reports
+# a per-seed, per-fold R² aggregate, not a per-step loss).  The smoke below
+# therefore runs the CONFIG path and the equivalent COMMAND-LINE path on the
+# same real PlatinAI data and compares the two r2_bench.json artefacts
+# field-by-field — a stronger check than a loss trace, because it compares the
+# values the trainer actually TRAINED with, not a proxy.
+#
+# The trainer has no --device flag (no torch import), so "CPU" is the only
+# mode it has; CUDA_VISIBLE_DEVICES="" is set by the caller anyway.
+#
+# The output directory is a /tmp scratch path on purpose: this is a smoke
+# artefact, not a published measurement, and it must not add untracked files
+# to the repo.
+
+entry:
+  script: molmetal/scripts/train_hilbert_astsr_end_to_end.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_hilbert_astsr_end_to_end.py --config {yaml_path}
+
+# ---- protocol: a deliberately SHORT run (1 seed x 2 folds x 2 PD iters) ----
+protocol:
+  dataset: platinai
+  seeds: 1
+  epochs: 2
+  n_folds: 2
+  lr: 0.05
+  # Wf-246-A (TODO-179) — the W₂ path is exercised too (wass_weight > 0).
+  wass_weight: 0.05
+  ref_distribution: platinai_4cell
+  per_cell_cap: 32
+  feature_set: rdkit_12d
+
+# ---- model: reduced population/generations so the smoke stays short --------
+model:
+  hilbert_dim: 64
+  evo_pop: 8
+  evo_gens: 3
+
+# ---- data: the REAL PlatinAI 4-cell cohort (the smoke does not fake data) --
+data:
+  n_samples: 500
+  platinai_csv: molmetal/data/platinai_4cell.csv
+  nci60_csv: molmetal/data/nci60_precious_9cell.csv
+  f5_32d_csv: molmetal/data/platinai_4cell_rdkit_extended_features.csv
+
+output:
+  output: /tmp/wfa269_c8_hilbert_astsr_smoke/config_run
+
+directives:
+  user_ok_required: false
+  smoke: true

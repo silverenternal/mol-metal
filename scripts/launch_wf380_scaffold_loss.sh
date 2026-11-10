@@ -55,17 +55,57 @@ set -euo pipefail
 export PYTHONPATH="/home/hugo/codes/mol-metal"
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 
+# Die helper — DEFINED BEFORE ANY CALL (Wf-A269 repair 2, 2026-11-02).
+# This wrapper had NO die() definition anywhere on disk (MEASURED 2026-11-02:
+# `grep -n 'die()' scripts/launch_wf380_scaffold_loss.sh` returned nothing), so
+# the pre-flight gate's `|| die "..."` fell through to "die: command not found"
+# (rc=127) and the intended FATAL message + rc=1 were both lost. Bash executes
+# a script line-by-line, so the definition MUST precede its first call.
+die() {
+    printf '%s[FATAL]%s %s\n' \
+        "$(printf '\033[0;31m')" "$(printf '\033[0m')" \
+        "$*" >&2
+    exit 1
+}
+
 # --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) ------------------------------
-PREFLIGHT_OUT="${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/reports/wf_preflight/preflight.json"
+# Wf-A269 wave-16 (2026-11-03) — THREE repairs to this block:
+#
+#  (1) DISTINCT report path.  This wrapper used to write the SAME
+#      molmetal/reports/wf_preflight/preflight.json as
+#      launch_wf394a1_lambda_cfm_patch.sh and
+#      launch_wf409a3_metal_coord_retrain.sh, so two concurrent launches
+#      destroyed each other's evidence (last writer wins on a shared file).
+#  (2) `--json PATH` — the pre-flight writes a PURE-JSON report; the console
+#      transcript goes to a sibling .log.  The old `> "${PREFLIGHT_OUT}"
+#      2>&1` merged the gate LOGS (stderr) and the PAYLOAD (stdout) into ONE
+#      file: its first 269 lines were "[pre_flight_check] INFO ..." lines, so
+#      json.load raised "Expecting value: line 1 column 2" — the "JSON
+#      report" was not JSON, and no machine could read the gate verdict.
+#  (3) the verdict comes from the repo's own consumer
+#      (molmetal/scripts/wf_launch_gate_verdict.py), which checks the FAIL
+#      count AND the TIMEOUT count AND the report's freshness.  The old
+#      `grep -q '"fail": 0'` was TIMEOUT-blind: a report with one TIMEOUT
+#      and zero FAILs passed it, although Wf-A135 says a TIMEOUT means the
+#      measurement was NOT obtained.
+PREFLIGHT_OUT="${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/reports/wf_preflight/preflight_wf380_scaffold_loss.json"
+PREFLIGHT_LOG="${PREFLIGHT_OUT%.json}.log"
 mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
 echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
+# Wf-A269 wave-17 (2026-11-03): rm the PREVIOUS report first.  A crashed
+# or killed pre-flight must not leave the last run's PASS report on disk
+# for the consumer to read — "stale is treated as missing".
+rm -f "${PREFLIGHT_OUT}"
 PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
     "${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
-    >"${PREFLIGHT_OUT}" 2>&1 \
-    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
-grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
-    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
-echo "[$(date -Iseconds)] pre-flight PASS"
+    --json "${PREFLIGHT_OUT}" \
+    >"${PREFLIGHT_LOG}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_LOG}"
+pf_verdict="$(PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    "${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/scripts/wf_launch_gate_verdict.py" \
+    preflight --report "${PREFLIGHT_OUT}" 2>&1)" \
+    || die "pre_flight_check verdict is not PASS — ${pf_verdict} (see ${PREFLIGHT_OUT})"
+echo "[$(date -Iseconds)] pre-flight PASS — ${pf_verdict}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${REPO_ROOT}"
@@ -79,7 +119,7 @@ DRY_RUN_LOG_HELPER="${REPO_ROOT}/scripts/_dry_run_log_helper.sh"
 source "${DRY_RUN_LOG_HELPER}"
 
 # Canonical Wf-299 launcher (SCAFFOLD-flag retrain surface per Wf-424-A7 §9).
-WF299_LAUNCHER="${REPO_ROOT}/molmetal/scripts/launch_wf299_cfm_main.sh"
+WF299_LAUNCHER="${REPO_ROOT}/scripts/launch_wf299_cfm_main.sh"
 [ -x "${WF299_LAUNCHER}" ] \
     || { printf '[FATAL] Wf-299 launcher missing or non-executable: %s\n' "${WF299_LAUNCHER}" >&2; exit 1; }
 

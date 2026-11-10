@@ -67,7 +67,7 @@
     },
     "Pt": {
       "n_clouds": 102,
-      "valence_cap": 4,
+      "valence_cap": 6,
       "valence_cap_before_t72": 6,
       "degree_hist": {
         "3": 1,
@@ -76,13 +76,13 @@
         "6": 17
       },
       "degree_mean": 4.343,
-      "n_clouds_over_effective_cap": 19,
-      "frac_clouds_over_effective_cap": 0.1863,
+      "n_clouds_over_effective_cap": 0,
+      "frac_clouds_over_effective_cap": 0.0,
       "n_clouds_over_cap_before_t72": 19,
       "metal_bonds_unrepresentable_before_t72": 36,
       "metal_bonds_total": 443,
-      "metal_bonds_unrepresentable": 36,
-      "frac_metal_bonds_unrepresentable": 0.0813,
+      "metal_bonds_unrepresentable": 0,
+      "frac_metal_bonds_unrepresentable": 0.0,
       "n_metal_carbon_bonds_hist": {
         "0": 51,
         "1": 16,
@@ -195,131 +195,22 @@
       "frac_clouds_pi_bound": 0.5345
     }
   },
-  "examples": [
-    {
-      "cloud": 84,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 89,
-      "metal": "Pt",
-      "degree": 5,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 1
-    },
-    {
-      "cloud": 94,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 99,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 104,
-      "metal": "Pt",
-      "degree": 5,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 1
-    },
-    {
-      "cloud": 120,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 129,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 134,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 136,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 137,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 141,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    },
-    {
-      "cloud": 142,
-      "metal": "Pt",
-      "degree": 6,
-      "valence_cap": 4,
-      "geometry_max_bonds": 4,
-      "effective_cap": 4,
-      "lost": 2
-    }
-  ],
+  "examples": [],
   "geom_vs_valence": {
     "Ir:geom<val": 63,
     "Os:geom<val": 16,
-    "Pt:val<=geom": 102,
+    "Pt:geom<val": 102,
     "Re:geom<val": 50,
     "Rh:geom<val": 53,
     "Ru:geom<val": 116
   },
   "pooled": {
     "n_clouds": 400,
-    "n_clouds_over_effective_cap": 19,
-    "frac_clouds_over_effective_cap": 0.0475,
+    "n_clouds_over_effective_cap": 0,
+    "frac_clouds_over_effective_cap": 0.0,
     "metal_bonds_total": 2323,
-    "metal_bonds_unrepresentable": 36,
-    "frac_metal_bonds_unrepresentable": 0.0155,
+    "metal_bonds_unrepresentable": 0,
+    "frac_metal_bonds_unrepresentable": 0.0,
     "n_clouds_over_cap_before_t72": 119,
     "frac_clouds_over_cap_before_t72": 0.2975,
     "metal_bonds_unrepresentable_before_t72": 230,

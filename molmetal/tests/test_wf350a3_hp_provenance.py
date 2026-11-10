@@ -73,7 +73,7 @@ from typing import Any, Dict, List
 import pytest
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MOLMETAL_ROOT = REPO_ROOT / "molmetal"
 CONFIGS_DIR = REPO_ROOT / "configs"
 SCRIPTS_DIR = MOLMETAL_ROOT / "scripts"

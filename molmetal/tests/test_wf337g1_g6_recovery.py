@@ -66,7 +66,7 @@ from typing import Dict
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 
@@ -75,7 +75,7 @@ G6_LAUNCH_SCRIPT = SCRIPTS / "launch_wf124_p3_g6.sh"
 TRAINER_PATH = TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"
 G6_RESULTS_DIR = ROOT / "results" / "wf124_p3_per_innovation_ablation_g6"
 MANIFEST_PATH = G6_RESULTS_DIR / "recovery_manifest.tsv"
-DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+DEFAULT_VENV = Path(sys.executable)  # Wf-A269-K: host-bound literal -> portable runtime
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -350,7 +350,7 @@ def test_backward_compat_with_dry_run():
         cwd=str(ROOT),
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin"},
+        env={"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin"},
         timeout=60,
     )
     assert refused.returncode != 0, (

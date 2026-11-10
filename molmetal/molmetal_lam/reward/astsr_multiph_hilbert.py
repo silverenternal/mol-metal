@@ -32,14 +32,52 @@ separate regressors cannot.
 
 Lit anchors
 -----------
-* Sun & Zheng 2026 (arXiv:2510.08423) — Hilbert-space PD rate
-  ``||x_k - x*||²_ℋ ≤ C / k``.
+* Chambolle & Pock 2011 — A first-order primal-dual algorithm for
+  convex problems with applications to imaging.  *J. Math. Imaging
+  Vision* 40(1): 120-145 (issued 2010-12-21), DOI
+  10.1007/s10851-010-0251-1 — the primal-dual splitting actually
+  implemented by the Hilbert optimiser
+  (``molmetal/molmetal_lam/reward/hilbert_primal_dual.py``): one step is
+  ``x_{k+1} = prox_primal(x_k - lr_primal * ∇F(x_k))`` followed by
+  ``y_{k+1} = y_k + lr_dual * (x_{k+1} - x_k)``.
+* Sun & Zheng 2026 — 孙祥凯 (Sun Xiangkai) & 郑丽娟 (Zheng Lijuan),
+  "Hilbert空间上可分离凸优化的原始-对偶动力学方法",
+  《数学学报(中文版)》 2026年04期, DOI 10.12386/A20250022 — the
+  Hilbert-space primal-dual-dynamics source of the O(1/k)-style rate;
+  volume / issue / pages UNVERIFIED (the journal landing page at
+  actamath.cjoe.ac.cn is captcha-gated).  Verified same-author English
+  record: Sun, Zheng & Teo, arXiv:2408.06884, *J. Optim. Theory Appl.*
+  207(1): 12 (2025), DOI 10.1007/s10957-025-02766-6.  Hilbert-space PD
+  rate ``||x_k - x*||²_ℋ ≤ C / k`` (theorem number UNVERIFIED).
 * Yu / Yang / Ren / Zhao 2026 (arXiv:2606.07426) — Deflexpressor
   lambda-AST symbolic regression.
 * Kim & Jung 2026 (Adv. Appl. Math. 174:103023) — multi-parameter
   persistent homology.
-* Liu & Feng 2026 (J. Chem. Inf. Model. 66:1024-1037) — normalised
-  graph Laplacian spectrum (PLL).
+* Liu & Feng 2026 (J. Chem. Inf. Model. 2026, 66(18): 11767-11777,
+  DOI 10.1021/acs.jcim.6c02460; arXiv:2603.21503) — normalised graph
+  Laplacian spectrum (PLL).
+
+.. NOTE-Wf-A149 (2026-10-31, citation-truth wave).  Superseded wording
+   is retained verbatim below as a historical record — never delete a
+   superseded record (AGENTS.md §5.5 rule 6):
+
+       * Sun & Zheng 2026 (arXiv:2510.08423) — Hilbert-space PD rate
+         ``||x_k - x*||²_ℋ ≤ C / k``.
+       * Liu & Feng 2026 (J. Chem. Inf. Model. 66:1024-1037) — normalised
+         graph Laplacian spectrum (PLL).
+
+   arXiv:2510.08423 resolves to "Computational Bell Inequalities"
+   (Merkulov & Arnon, quant-ph, v2 2025-10-10) — NOT a Hilbert-space
+   primal-dual paper; the Sun & Zheng paper itself IS real (see the
+   corrected bullet above).  The PLL page range is REFUTED: Crossref
+   for DOI 10.1021/acs.jcim.6c02460 returns *J. Chem. Inf. Model.*
+   66(18): 11767-11777 (issued 2026-09-04), authors Jian Liu &
+   Hongsong Feng; the arXiv preprint arXiv:2603.21503 ("Persistent
+   local Laplacian prediction of protein-ligand binding affinities")
+   carries no journal-ref.  The Liu & Feng paper itself is real — only
+   the volume/issue/page string was wrong.  The Douglas-Rachford
+   substitute proposed for the Hilbert anchor was checked and is
+   NOT-FOUND (DOI 10.1137/110822976 → HTTP 404), so it is NOT used.
 
 Mathematical correctness — multi-PH (Wf-236 audit)
 --------------------------------------------------

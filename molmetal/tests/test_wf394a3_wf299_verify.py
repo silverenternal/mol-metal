@@ -25,15 +25,22 @@ import sys
 from pathlib import Path
 
 
+# Repo root — derived from this file's own location (molmetal/tests/X.py).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 # Add scripts dir to path so we can import the gate module.
-SCRIPTS_DIR = Path("/home/hugo/codes/mol-metal/molmetal/scripts")
+SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import wf394a3_wf299_pre_launch_verify as gate  # noqa: E402
 
-LAUNCHER_PATH = Path(
-    "/home/hugo/codes/mol-metal/molmetal/scripts/launch_wf299_cfm_main.sh"
-)
+# The TRACKED Wf-299 launcher lives in the repo-root scripts/ dir (added
+# 2026-10-02, commit bc29aa90); the legacy molmetal/scripts/ location it
+# replaced is gone from disk and from git history.  The gate module's own
+# canonical-path constant still points at that legacy location, so redirect
+# it here (path-only fix — the assertions below are unchanged).
+LAUNCHER_PATH = REPO_ROOT / "scripts" / "launch_wf299_cfm_main.sh"
+gate.LAUNCHER = LAUNCHER_PATH
 
 
 # --- Test 1: USER_OK gate ----------------------------------------------------
@@ -63,9 +70,7 @@ def test_user_ok_gate():
     )
 
     # Persist for downstream consumers.
-    out_dir = Path(
-        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
-    )
+    out_dir = REPO_ROOT / "molmetal" / "reports" / "wf394a3_wf299_pre_launch"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_user_ok_gate.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -114,9 +119,7 @@ def test_3_wave_split():
     )
 
     # Persist for downstream consumers.
-    out_dir = Path(
-        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
-    )
+    out_dir = REPO_ROOT / "molmetal" / "reports" / "wf394a3_wf299_pre_launch"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_3_wave_split.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -158,9 +161,7 @@ def test_w388_flags():
         assert flag in src, f"Wf-388 flag {flag} missing from launcher source"
 
     # Persist for downstream consumers.
-    out_dir = Path(
-        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
-    )
+    out_dir = REPO_ROOT / "molmetal" / "reports" / "wf394a3_wf299_pre_launch"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_w388_flags.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -169,7 +170,33 @@ def test_w388_flags():
 
 # --- Optional: end-to-end main() smoke ---------------------------------------
 def test_main_entrypoint_runs():
-    """End-to-end main() smoke: returns 0 or 1 + emits result.json."""
+    """End-to-end main() smoke: returns 0 or 1, never crashes, emits result.json.
+
+    Wf-A269 wave-1 item C — two holes are closed here:
+
+    1. **A crash used to be indistinguishable from a legitimate FAIL.**
+       ``main()`` returns 0 on PASS and 1 on FAIL, but an UNHANDLED
+       exception also exits 1.  The old assertion
+       ``proc.returncode in (0, 1)`` therefore passed for a crashed
+       subprocess.  The contract the docstring claims ("never crash") was
+       not the contract the assertion tested.  The fix asserts the absence
+       of a Python traceback in stderr, which is what actually separates
+       the two outcomes.
+
+    2. **A STALE result.json used to satisfy the existence check.**
+       The artifact lives at a fixed path in the repo, so a file left by
+       any earlier run made ``result_json.exists()`` true even when
+       ``main()`` wrote nothing at all.  The fix records the pre-run
+       mtime and requires the file to be NEWER, so the assertion can only
+       be satisfied by THIS run's output.
+    """
+    result_json = (
+        REPO_ROOT / "molmetal" / "reports" / "wf394a3_wf299_pre_launch" / "result.json"
+    )
+    # Pre-run stamp of the artifact (ns since the epoch).  A missing file
+    # is stamped 0 so "the file did not exist before" is also covered.
+    pre_mtime_ns = result_json.stat().st_mtime_ns if result_json.exists() else 0
+
     proc = subprocess.run(
         [sys.executable, str(SCRIPTS_DIR / "wf394a3_wf299_pre_launch_verify.py")],
         capture_output=True,
@@ -177,15 +204,23 @@ def test_main_entrypoint_runs():
         timeout=30,
     )
     # main() returns 0 on PASS, 1 on FAIL — both are valid outcomes.
-    # The contract is: never crash, always emit result.json.
     assert proc.returncode in (0, 1), (
         f"main() returned unexpected exit code {proc.returncode}: "
         f"stdout={proc.stdout!r}, stderr={proc.stderr!r}"
     )
-    result_json = Path(
-        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch/result.json"
+    # ... but a crash ALSO exits 1.  The contract is "never crash", so the
+    # traceback is what must be absent.
+    assert "Traceback (most recent call last)" not in proc.stderr, (
+        f"main() CRASHED (unhandled exception) — exit code {proc.returncode} "
+        f"alone cannot tell a crash from a legitimate FAIL: "
+        f"stderr={proc.stderr!r}"
     )
     assert result_json.exists(), "result.json not emitted by main()"
+    assert result_json.stat().st_mtime_ns > pre_mtime_ns, (
+        "result.json was NOT (re)written by this run — the file on disk is a "
+        f"stale leftover (mtime_ns={result_json.stat().st_mtime_ns}, "
+        f"pre-run={pre_mtime_ns})"
+    )
     payload = json.loads(result_json.read_text(encoding="utf-8"))
     assert "verdict" in payload
     assert "checks" in payload

@@ -268,7 +268,7 @@ def test_ood_filter_cli_flag_exists_in_train_script(ood_module):
 
     proc = subprocess.run(
         [
-            "/home/hugo/codes/mol-metal/.venv/bin/python",
+            sys.executable,
             str(
                 Path(_REPO)
                 / "molmetal"

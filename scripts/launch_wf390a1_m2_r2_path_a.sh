@@ -87,7 +87,18 @@ TRAINER="${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py"
 # Precedence: explicit CLI flag > YAML > argparse default.
 # Absolute: this wrapper has no top-level `cd`, so a relative path would
 # resolve against the caller's cwd.
-DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
+#
+# §5.11 (2026-11-03): the default config is now THIS wrapper's own file
+# rather than the shared `configs/dmpnn.yaml` (8 launchers share that one, so
+# a value written there for this wrapper would change the other 7). The
+# shared file is still what the OTHER 7 wrappers use.
+#
+# The three hyperparameters the wrapper used to pass on the command line
+# (--metals / --seeds / --csv) live in that config now. The sweep is 12
+# (metal, seed) pairs and the trainer loops over --metals/--seeds internally
+# (train_dmpnn_multitask_wasserstein.py:4352 / :4356), so the wrapper derives
+# ONE config per pair from it; the derivation is in run_pair() below.
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/launch_wf390a1_m2_r2_path_a.yaml}"
 # Wf-261 strict scaffold split (0 leak) + v4 cohort
 DATA_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
@@ -178,6 +189,34 @@ LOG="${OUT_BASE}/master.log"
 # -----------------------------------------------------------------------------
 # Common args (per Wf-380-B1 + Wf-388-A1 + Wf-405-A2 + Wf-328 series)
 # -----------------------------------------------------------------------------
+# §5.11 (2026-11-03) — THIS ARRAY IS NO LONGER PASSED TO THE TRAINER.
+# It used to be spliced into the trainer invocation as "${COMMON_ARGS[@]}";
+# the trainer is now invoked with --config / --out-dir / --ckpt-dir ALONE,
+# and every value below is carried by ${DMPNN_CONFIG}
+# (configs/launch_wf390a1_m2_r2_path_a.yaml).  The array is RETAINED as the
+# dry-run RECORD of the protocol (the DRY_RUN.log `flags:` field and the
+# master.log echo) and because
+# molmetal/tests/test_wf414a1_m2r2_launcher.py asserts its presence and its
+# contents — the authoritative copy of these values is the YAML, and the two
+# are verified equal dest-by-dest by scripts/_yaml_equivalence_probe.py
+# (MEASURED 2026-11-03: 0 dests differ, value AND type, for the
+# (Ru,0) / (Ir,1) / (Re,2) pairs).
+#   --epochs 50                  -> train.epochs
+#   --batch-size 256             -> train.batch_size
+#   --hidden 300                 -> model.hidden
+#   --depth 3                    -> model.depth
+#   --lr 1e-3                    -> train.lr
+#   --alpha 0.5                  -> train.alpha
+#   --wasserstein-weight 0.05    -> eval.wasserstein_weight
+#   --use-l2-guard               -> eval.use_l2_guard: true
+#   --ablation-config mtl_baseline -> model.ablation_config
+#   --w2-gradient-mode sort      -> eval.w2_gradient_mode
+#   --n-mc 256                   -> eval.n_mc
+#   --device "cuda:0"            -> compute.device
+#   --cuda-visible-devices 0     -> cuda_visible_devices: "0"
+#   --cpu-num-workers 8          -> compute.cpu_num_workers
+#   --data-csv "${DATA_CSV}"     -> data.csv
+#   --per-cohort-features        -> train.per_cohort_features: true
 # Per TODO-181 §3 + Wf-260 G6 timing: --epochs 50 --batch-size 256 --hidden 300
 #   --depth 3 + --use-l2-guard + --ablation-config mtl_baseline
 # Per Wf-328-W5: --w2-gradient-mode sort (REPLACES legacy sliced mode)
@@ -205,11 +244,24 @@ COMMON_ARGS=(
 
 # --chemprop-v3-cache: per Wf-392-A2, this flag exists on train_chemprop_v2_v3.py
 # but NOT on train_dmpnn_multitask_wasserstein.py. The task brief listed it for
-# the D-MPNN trainer; we honor the brief LITERALLY by appending it conditionally
+# the D-MPNN trainer; we honor the brief LITERALLY by enabling it conditionally
 # on the trainer script path. If a future user retargets this wrapper to chemprop
 # v3 (e.g. Path B per Wf-390-A1 §0), the flag will pass through cleanly.
+#
+# §5.11 (2026-11-03): it can no longer be a COMMAND-LINE flag — a launcher may
+# hand the trainer only --config / --out-dir / --ckpt-dir / --help. It is a
+# CONFIG key now: the per-pair derivation writes `eval.chemprop_v3_cache:
+# true` into the derived YAML, and ONLY when this wrapper is retargeted to
+# the chemprop trainer. On the D-MPNN trainer (the one this wrapper uses) the
+# key is never written, so the config carries no dead key.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   if [[ "${TRAINER}" == *"chemprop_v2_v3"* ]]; then
+#       COMMON_ARGS+=( --chemprop-v3-cache )
+#   fi
+CHEMPROP_V3_CACHE=0
 if [[ "${TRAINER}" == *"chemprop_v2_v3"* ]]; then
-    COMMON_ARGS+=( --chemprop-v3-cache )
+    CHEMPROP_V3_CACHE=1
 fi
 
 # -----------------------------------------------------------------------------
@@ -240,6 +292,10 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     echo "GPU: cuda:0 (RTX PRO 6000 Blackwell sm_120)" | tee -a "${LOG}"
     echo "PAIRS (${#PAIR_OVERRIDE[@]}): ${PAIR_OVERRIDE[*]}" | tee -a "${LOG}"
     echo "COMMON_ARGS: ${COMMON_ARGS[*]}" | tee -a "${LOG}"
+    # §5.11 (2026-11-03): the three per-pair trainer flags that used to be
+    # typed on the command line now travel in a derived yaml.
+    echo "CONFIG: ${DMPNN_CONFIG}" | tee -a "${LOG}"
+    echo "PER-PAIR YAML: data.metals=[<metal>] data.seeds=[<seed>] csv=${DATA_CSV} (derived per pair)" | tee -a "${LOG}"
     echo "" | tee -a "${LOG}"
 
     # CSV sanity check
@@ -391,14 +447,71 @@ run_pair() {
   #     the propagated 141 aborts the sweep (BLK-I1b) — before the budget line
   #     and before the next pair.
   set +o pipefail
-  CUDA_VISIBLE_DEVICES=0 setsid --wait nohup ${PY} "${TRAINER}" \
-    --config "${DMPNN_CONFIG}" \
-    --metals "${metal}" \
-    --seeds "${seed}" \
-    --csv "${DATA_CSV}" \
+  # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+  #
+  # §5.11 (2026-11-03) — per-pair YAML derivation.
+  # The trainer loops over args.metals / args.seeds internally
+  # (train_dmpnn_multitask_wasserstein.py:4352 / :4356), so the CLI used to
+  # carry a SINGLE-element list per invocation to keep 12 separate
+  # processes. The derived config carries the same single-element lists, so
+  # the run is unchanged: same 12 processes, same cohorts, same out-dirs.
+  # The derived file also carries `--csv`'s value, because that flag is gone
+  # from the command line and an explicit CLI flag used to beat any config.
+  PAIR_CONFIG="${OUT_BASE}/_derived_configs/${metal}/seed${seed}.yaml"
+  mkdir -p "$(dirname "${PAIR_CONFIG}")"
+  ${PY} - "${DMPNN_CONFIG}" "${PAIR_CONFIG}" "${metal}" "${seed}" "${DATA_CSV}" "${OUT_BASE}/${metal}/seed${seed}" "${OUT_BASE}/${metal}/seed${seed}/ckpts" <<'PYEOF' || { echo "FAIL: per-pair config derivation failed for ${metal} seed=${seed}"; return 1; }
+import sys
+
+import yaml
+
+base, out, metal, seed, data_csv, pair_out_dir, pair_ckpt_dir = sys.argv[1:8]
+with open(base, encoding="utf-8") as fh:
+    cfg = yaml.safe_load(fh)
+data = cfg.setdefault("data", {})
+data["metals"] = [metal]
+data["seeds"] = [int(seed)]
+# `protocol.seeds` maps to the SAME dest (`seeds`) as `data.seeds`, and the
+# loader is LAST-KEY-WINS among YAML keys for one dest, so it has to move
+# with it or the sweep would silently run every seed of the list.
+cfg.setdefault("protocol", {})["seeds"] = [int(seed)]
+# TOP-LEVEL `csv:` — the `csv` dest. `data.csv` resolves to `data_csv`
+# (the flat form wins in `_candidate_dests`), so only a root-level key can
+# reach `csv`. This is the value the `--csv` flag used to carry.
+cfg["csv"] = data_csv
+# `output.out_dir` / `output.ckpt_dir` / `output.base_dir` — the pair's own
+# paths. `--out-dir` / `--ckpt-dir` are still typed on the trainer command
+# line (AGENTS.md §5.11 allows exactly those two plus --config/--help), so
+# the CLI wins at runtime; writing them here keeps the derived file a
+# self-describing record of where THIS pair wrote. `base_dir` has no dest in
+# this trainer (it is start.sh's OUT_DIR env) — it is carried for the same
+# reason the base config carries it.
+output = cfg.setdefault("output", {})
+output["out_dir"] = pair_out_dir
+output["ckpt_dir"] = pair_ckpt_dir
+output["base_dir"] = pair_out_dir
+with open(out, "w", encoding="utf-8") as fh:
+    fh.write("# DERIVED per-pair config for scripts/launch_wf390a1_m2_r2_path_a.sh\n")
+    fh.write("# base: %s\n" % base)
+    fh.write("# pair: metal=%s seed=%s\n" % (metal, seed))
+    fh.write("# data.metals / data.seeds / protocol.seeds / csv carry the SAME\n")
+    fh.write("# values the CLI flags used to pass. Nothing else was changed.\n")
+    yaml.safe_dump(cfg, fh, sort_keys=False, default_flow_style=False)
+PYEOF
+  CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait nohup ${PY} "${TRAINER}" \
+    --config "${PAIR_CONFIG}" \
     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
-"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+    2>&1 | tee "${pair_log}"
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   [the pre-§5.11 trainer invocation, one per (metal, seed) pair]
+  #   CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait nohup ${PY} "${TRAINER}" \
+  #     --config "${DMPNN_CONFIG}" \
+  #     --metals "${metal}" \
+  #     --seeds "${seed}" \
+  #     --csv "${DATA_CSV}" \
+  #     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
+  #     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
+  #   "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
   set -o pipefail
 

@@ -38,7 +38,7 @@ from pathlib import Path
 import torch
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "wf341c2_edm_precond.py"
 PYTHON = sys.executable  # use the current Python (pytest venv)
 
@@ -196,7 +196,14 @@ def test_integration_with_trainer_cli():
     end-to-end.
     """
     assert SCRIPT.exists(), f"script not found: {SCRIPT}"
-    env = {"PYTHONPATH": str(REPO_ROOT)}
+    # Wf-A269 wave-5 (2026-11-02) — the CUDA_VISIBLE_DEVICES key was repeated
+    # three times on this line.  Python keeps the LAST binding, so the value was
+    # never wrong — but a repeated dict key is a silent-edit hazard (a later
+    # edit that changes one copy and not the others looks like a change and is
+    # not).  Reduced to a single key.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #   env = {"CUDA_VISIBLE_DEVICES": "", "CUDA_VISIBLE_DEVICES": "", "CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT)}
+    env = {"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT)}
     # Default args: both flags OFF.
     result = subprocess.run(
         [PYTHON, str(SCRIPT), "--batch-size", "8", "--n-atoms", "4", "--n-steps", "3"],

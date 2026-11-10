@@ -29,6 +29,26 @@ Usage::
     .venv/bin/python -u molmetal/scripts/promote_metrics.py --dry-run
     .venv/bin/python -u molmetal/scripts/promote_metrics.py --force
 
+Write-target redirection (Wf-A123)::
+
+    .venv/bin/python -u molmetal/scripts/promote_metrics.py \\
+        --target-root /tmp/somewhere --log-path /tmp/somewhere/promotion_log.json
+
+``--target-root`` moves only the WRITE side (the ``metrics/by_metric/``
+targets) into another tree; ``--log-path`` moves the promotion log.  The
+SOURCES are always read from the real repository, because the promoted
+content must be derived from the real on-disk evidence.
+
+Why the flags are NOT an AGENTS.md §5.11 violation: §5.11 constrains
+TRAINING and INFERENCE launchers — every *hyperparameter* must come from
+a YAML config, because a knob set on a command line is a knob nobody
+audits.  ``promote_metrics.py`` is a metric-promotion utility: it trains
+nothing, infers nothing, and has no hyperparameter to move into a YAML.
+Its CLI already exists (``--dry-run`` / ``--force``); ``--target-root``
+/ ``--log-path`` join that surface.  They exist for a different reason
+than §5.11's concern: without them a *test* of this script has to write
+into the real published tree, which is what Wf-A123 stopped.
+
 Pytest (Wf-87 P2 close-out)::
 
     pytest molmetal/tests/test_promote_metrics.py -v
@@ -45,12 +65,30 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+# Wf-A163: the narrative-truth guard (CPU-only, no torch / no CUDA).
+# A promoted artifact's PROSE must be backed by its own machine fields.
+# The import is defensive: a missing guard must never block a promotion.
+_GUARD_DIR = Path(__file__).resolve().parent
+if str(_GUARD_DIR) not in sys.path:
+    sys.path.insert(0, str(_GUARD_DIR))
+try:  # pragma: no cover - exercised by the import itself
+    from wfa163_narrative_truth_guard import narrative_truth_report
+except Exception:  # noqa: BLE001
+    narrative_truth_report = None
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "molmetal" / "reports"
 BY_METRIC_DIR = REPO_ROOT / "metrics" / "by_metric"
 OUT_DIR = REPO_ROOT / "molmetal" / "reports" / "wf87_p2_promotion"
 OUT_LOG = OUT_DIR / "promotion_log.json"
 TIMESTAMP = _dt.date.today().isoformat()
+
+# Wf-A123 — the WRITE side of this script is redirectable: ``promote_one``
+# / ``run_all`` accept a ``target_root`` and ``write_log`` accepts a
+# ``log_path``.  ``None`` means "the real repository", which is the
+# historical (and default) behaviour.  The SOURCES are always read from
+# ``REPO_ROOT`` so the promoted payload is derived from real on-disk
+# evidence, never from a redirected tree.
 
 
 # ---------------------------------------------------------------------------
@@ -881,10 +919,19 @@ def _existing_target_audit(target: Path) -> Dict[str, Any]:
 
 
 def promote_one(
-    promoter: Promoter, dry_run: bool = False, force: bool = False
+    promoter: Promoter,
+    dry_run: bool = False,
+    force: bool = False,
+    target_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Run one promotion; return a status row for the log."""
-    target = REPO_ROOT / promoter.target_relpath
+    """Run one promotion; return a status row for the log.
+
+    ``target_root`` redirects ONLY the write side (Wf-A123).  When it is
+    ``None`` the target is resolved under ``REPO_ROOT`` exactly as
+    before.  Sources are always read from ``REPO_ROOT``.
+    """
+    write_root = Path(target_root) if target_root is not None else REPO_ROOT
+    target = write_root / promoter.target_relpath
     src_paths = promoter.source_paths()
 
     # Audit all source files
@@ -934,6 +981,29 @@ def promote_one(
             "missing_sources": missing_sources,
         }
 
+    # Wf-A163 narrative-truth gate.  A PROMOTED artifact must not name a
+    # pool its own fields do not name, and must not quote a number from
+    # another artifact that no longer matches it.  Only those two
+    # CONTRADICTION classes block the write; the looser rules are
+    # advisory (the guard measured 0 of them across the 583 artifacts
+    # already in metrics/by_metric/ and metrics/paper_tables/).
+    if status == "PROMOTED" and metric_payload and narrative_truth_report is not None:
+        _nt = narrative_truth_report(metric_payload)
+        _blocking = list(_nt["pool_misattribution"]) + [
+            f for f in _nt["stale_cross_reference"] if f.get("severity") == "contradiction"
+        ]
+        if _blocking:
+            return {
+                "target": promoter.target_relpath,
+                "status": "BLOCKED_NARRATIVE_TRUTH",
+                "error": "; ".join(
+                    f"{f.get('rule')} at {f.get('path')}: {f.get('value')}"
+                    for f in _blocking[:10]
+                ),
+                "source_audits": source_audits,
+                "existing_target_audit": existing,
+            }
+
     # Write the file unless we're skipping or dry-running
     if status == "PROMOTED" and not dry_run:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -962,7 +1032,11 @@ def promote_one(
     }
 
 
-def run_all(dry_run: bool = False, force: bool = False) -> Dict[str, Any]:
+def run_all(
+    dry_run: bool = False,
+    force: bool = False,
+    target_root: Optional[Path] = None,
+) -> Dict[str, Any]:
     rows: List[Dict[str, Any]] = []
     promoted_count = 0
     skipped_count = 0
@@ -970,7 +1044,9 @@ def run_all(dry_run: bool = False, force: bool = False) -> Dict[str, Any]:
     new_files: List[str] = []
     collisions: List[Dict[str, Any]] = []
     for promoter in PROMOTIONS:
-        row = promote_one(promoter, dry_run=dry_run, force=force)
+        row = promote_one(
+            promoter, dry_run=dry_run, force=force, target_root=target_root
+        )
         rows.append(row)
         status = row["status"]
         if status == "PROMOTED":
@@ -1013,12 +1089,18 @@ def run_all(dry_run: bool = False, force: bool = False) -> Dict[str, Any]:
     return log
 
 
-def write_log(log: Dict[str, Any]) -> Path:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    OUT_LOG.write_text(
+def write_log(log: Dict[str, Any], log_path: Optional[Path] = None) -> Path:
+    """Write the promotion log.
+
+    ``log_path`` redirects the log (Wf-A123).  ``None`` keeps the
+    historical behaviour: ``OUT_LOG`` inside ``OUT_DIR``.
+    """
+    path = Path(log_path) if log_path is not None else OUT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
         json.dumps(log, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    return OUT_LOG
+    return path
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -1038,10 +1120,31 @@ def main(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Overwrite existing central metric files (use with care).",
     )
+    parser.add_argument(
+        "--target-root",
+        default=None,
+        help=(
+            "Redirect the WRITE side into this root (targets are written "
+            "to <target-root>/metrics/by_metric/<name>.json).  Sources "
+            "are still read from the real repository.  Default: the real "
+            "repository (historical behaviour)."
+        ),
+    )
+    parser.add_argument(
+        "--log-path",
+        default=None,
+        help=(
+            "Write the promotion log to this path instead of "
+            "molmetal/reports/wf87_p2_promotion/promotion_log.json."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    log = run_all(dry_run=args.dry_run, force=args.force)
-    out_path = write_log(log)
+    target_root = Path(args.target_root) if args.target_root else None
+    log_path = Path(args.log_path) if args.log_path else None
+
+    log = run_all(dry_run=args.dry_run, force=args.force, target_root=target_root)
+    out_path = write_log(log, log_path=log_path)
 
     # Friendly summary
     print(f"Wf-87 P2 promotion log → {out_path}")

@@ -47,7 +47,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 METRIC_JSON = REPO / "metrics/by_metric/docked_pose_rmsd.json"
 SUMMARY_JSON = REPO / "molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json"
 REPORT_DIR = REPO / "molmetal/reports/wf246b_m15_redesign"

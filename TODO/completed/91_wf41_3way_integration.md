@@ -118,7 +118,13 @@ for the expensive RDKit ``EmbedMolecule`` step (~70 ms / molecule).
   lambda-AST symbolic regression.
 * Kim & Jung 2026 (Adv. Appl. Math. 174:103023) — multi-parameter
   persistent homology.
-* Liu & Feng 2026 (J. Chem. Inf. Model. 66:1024-1037) — normalised
-  graph Laplacian spectrum (PLL).
-* Sun & Zheng 2026 (arXiv:2510.08423) — Hilbert-space primal-dual
+* Liu, J. & Feng, H. (2026) "Persistent Local Laplacian Prediction of Protein–Ligand Binding Affinities", *J. Chem. Inf. Model.* **66(18): 11767-11777**, DOI `10.1021/acs.jcim.6c02460` — normalised
+  graph Laplacian spectrum (PLL). Preprint: arXiv:2603.21503 (Liu Jian / Feng Hongsong; the
+  arXiv record carries no journal-ref field).
+* Sun, X. & Zheng, L. (2026) "Hilbert空间上可分离凸优化的原始-对偶动力学方法", *数学学报(中文版)* (*Acta Math. Sin.*, Chinese edition) **69(4): 515** (start page; end page UNVERIFIED), DOI `10.12386/A20250022` — Hilbert-space primal-dual
   rate ``||x_k - x*||²_ℋ ≤ C / k``.
+
+> **[Wf-A149 citation correction — 2026-10-31.]** Two entries in the list above were corrected; the superseded wording is preserved verbatim here per AGENTS.md §5.5 rule 6 (this is a completed-wave document). Evidence, all fetched 2026-10-31:
+> - PLL entry as originally written: "* Liu & Feng 2026 (J. Chem. Inf. Model. 66:1024-1037) — normalised graph Laplacian spectrum (PLL)." The **issue and page range are REFUTED**. Crossref (`api.crossref.org/works/10.1021/acs.jcim.6c02460`, HTTP 200) gives container *Journal of Chemical Information and Modeling*, volume **66**, issue **18**, pages **11767-11777**, issued 2026-09-04, authors Jian Liu & Hongsong Feng, title "Persistent Local Laplacian Prediction of Protein–Ligand Binding Affinities". The preprint arXiv:2603.21503 (HTTP 200) is by the same two authors but carries no journal-ref. The volume **66** and the year **2026** in the original entry were already correct.
+> - Hilbert entry as originally written: "* Sun & Zheng 2026 (arXiv:2510.08423) — Hilbert-space primal-dual rate ``||x_k - x*||²_ℋ ≤ C / k``." The **arXiv id is REFUTED**: `arXiv:2510.08423` resolves to *"Computational Bell Inequalities"* (Merkulov & Arnon, quant-ph) — not a Hilbert-space paper. The correct record is Sun, X. & Zheng, L. (2026) "Hilbert空间上可分离凸优化的原始-对偶动力学方法", *数学学报(中文版)* (*Acta Math. Sin.*, Chinese edition) **69(4): 515** (start page; end page UNVERIFIED), DOI `10.12386/A20250022`; no arXiv preprint of that title exists. The `||x_k - x*||²_ℋ ≤ C / k` bound is this repo's own O(1/k) claim: the paper's abstract establishes convergence-rate results for the primal-dual gap, the objective residual and the feasibility-violation measure, but the specific `C / k` form was not verified against the (paywalled) full text.
+> - Full correction note for the Hilbert record: `TODO/completed/62_hilbert_score_repellent.md` §4.

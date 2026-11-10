@@ -17,8 +17,8 @@ Numbers in this table are taken **only** from the four provenance audits cited a
 |-------------|-----:|-------:|----------------------:|------:|------:|--------------------|-------------:|-------------|
 | Pocket2Mol  | 2022 |    100 |                −7.07  | 2.51  | 0.55  | 49.8%              | 50 (beam)    | 2205.07249  |
 | TargetDiff  | 2023 |    100 |                −8.45  | 2.65  | 0.48  | 35.1% (relaxed) / 10.5% (strict) | 100 000 | 2303.03543  |
-| DiffSBDD    | 2023 |    100 |                −7.62  | 2.81  | —     | 24.6%              | —            | 2210.13695  |
-| DecompDiff  | 2024 |    100 |                −8.39  | 2.71  | —     | 39.0% (some tables: 24.5%) | —    | 2303.10120  |
+| DiffSBDD    | 2024 |    100 |                −7.62  | 2.81  | —     | 24.6%              | —            | 2210.13695  |
+| DecompDiff  | 2023 |    100 |                −8.39  | 2.71  | —     | 39.0% (some tables: 24.5%) | —    | 2403.07902  |
 | FLOWR       | 2025 |    100 |                −6.93  | 2.86  | —     | **94% PB-valid** (not docking success) | 20–100 flow steps | 2504.10564 |
 
 *Note*: FLOWR's Vina mean −6.93 is reported on the SPINDR-derived curated test set (225 targets × 100 ligands, PLINDER-derived); its CrossDocked100 number is −6.29±1.56. PB-valid 0.88–0.95 is **not** a docking-success rate.
@@ -29,8 +29,8 @@ Numbers in this table are taken **only** from the four provenance audits cited a
 |-----------------|-----:|-------:|-------------------------------|----------:|-------------|
 | EquiBind        | 2022 |    363 | median L-RMSD 4.3 Å; <2 Å 25.1% | 1 (no sampling) | 2202.05146  |
 | EquiBind+Q+SMINA| 2022 |    363 | median L-RMSD ≈ 1.9 Å          | 1         | 2202.05146  |
-| TankBind        | 2022 |    363 | <5 Å 48.8% (+22% vs EquiBind)  | —         | 2204.11878  |
-| DiffDock-Pocket (DiffDock-L) | 2024 | 363 | RMSD<2 Å top-1 = **43.0%** (PDBBind); 50% PoseBusters; 22.6% DockGen-full | 10 × 20 = 200 | 2403.05784 |
+| TankBind        | 2022 |    363 | <5 Å 48.8% (+22% vs EquiBind)  | —         | — (no arXiv preprint)  |
+| DiffDock-Pocket (DiffDock-L) | 2024 | 363 | RMSD<2 Å top-1 = **43.0%** (PDBBind); 50% PoseBusters; 22.6% DockGen-full | 10 × 20 = 200 | 2402.18396 |
 | FlowDock        | 2025 |    308 | RMSD<2 Å top-1 = **51%** (PoseBusters apo); Pearson 0.705 affinity | 40 ODE | 2412.10966  |
 
 ### Group C — Our 1h36-only single-pocket (Lambda)
@@ -125,8 +125,8 @@ This section tracks the **seven protocol-mismatch flags** carried from round-5/6
 
 - Pocket2Mol Vina −7.07, success 24.4% (Peng 2022, CrossDocked100)
 - TargetDiff Vina −8.45, success 10.5% (Guan 2023, CrossDocked100)
-- DiffSBDD Vina −7.62, success 24.6% (Schneuing 2023, CrossDocked100)
-- DecompDiff Vina −8.39, success 24.5% (Guan 2024, CrossDocked100)
+- DiffSBDD Vina −7.62, success 24.6% (Schneuing 2024, CrossDocked100)
+- DecompDiff Vina −8.39, success 24.5% (Guan 2023, CrossDocked100)
 - FLOWR Vina −6.93, 94% PB-valid (Cremer 2025, SPINDR / CrossDocked100)
 - MolCRAFT Vina −9.25, success 36.1%
 - AlphaDrug Vina −9.77 (success rate not reported)
@@ -159,17 +159,17 @@ Drawn from `round9_qvina_parity.md` §5 and `round9_data_audit.md` (b):
 |--:|-------------------------------------------------------------|-----:|-----------------|-------------|--------------------------------------|----------------------|
 | 1 | Peng et al., Pocket2Mol                                      | 2022 | ICML            | 2205.07249  | 10.48550/arXiv.2205.07249            | peng2022pocket2mol   |
 | 2 | Guan et al., TargetDiff                                     | 2023 | ICLR            | 2303.03543  | 10.48550/arXiv.2303.03543            | guan2023targetdiff   |
-| 3 | Schneuing et al., DiffSBDD                                  | 2023 | ICML            | 2210.13695  | 10.48550/arXiv.2210.13695            | schneuing2023diffsbdd|
-| 4 | Guan et al., DecompDiff                                     | 2024 | ICLR            | 2303.10120  | 10.48550/arXiv.2303.10120            | guan2024decompdiff   |
+| 3 | Schneuing et al., DiffSBDD                                  | 2024 | Nat Comput Sci  | 2210.13695  | 10.48550/arXiv.2210.13695            | schneuing2023diffsbdd|
+| 4 | Guan et al., DecompDiff                                     | 2023 | ICML            | 2403.07902  | 10.48550/arXiv.2403.07902            | guan2024decompdiff   |
 | 5 | Stärk et al., EquiBind                                      | 2022 | ICML            | 2202.05146  | 10.48550/arXiv.2202.05146            | stark2022equibind    |
-| 6 | Lu et al., TankBind                                         | 2022 | NeurIPS          | 2204.11878  | 10.1101/2022.06.06.495043 (bioRxiv) | lu2022tankbind       |
-| 7 | Corso et al., DiffDock-L / "Deep Confident Steps"            | 2024 | ICLR            | 2403.05784  | 10.48550/arXiv.2403.05784            | corso2024diffdockl   |
+| 6 | Lu et al., TankBind                                         | 2022 | NeurIPS          | — (no arXiv preprint)  | 10.1101/2022.06.06.495043 (bioRxiv) | lu2022tankbind       |
+| 7 | Corso et al., DiffDock-L / "Deep Confident Steps"            | 2024 | ICLR            | 2402.18396  | 10.48550/arXiv.2402.18396            | corso2024diffdockl   |
 | 8 | Cremer et al., FLOWR                                        | 2025 | Nat Comput Sci  | 2504.10564  | 10.48550/arXiv.2504.10564            | cremer2025flowr      |
 | 9 | Cremer et al., FlowDock (companion)                         | 2025 | Oxford Bioinf ISMB | 2412.10966 | 10.48550/arXiv.2412.10966            | cremer2025flowdock   |
 
 **Note on FLOWR arXiv ID**: the prior provenance audit reports `2404.02819` does **not** resolve to FLOWR; that ID is closest to PILOT (Chem Sci 2024, 2405.14925). FLOWR's true preprint is **2504.10564** (Nat Comput Sci 2026, v3 April 2025). The 94% PB-valid + −6.93 Vina numbers are reported on the SPINDR test set, not on CrossDocked100.
 
-**Note on DiffDock arXiv ID**: arXiv 2403.05784 is the prior submission of "Deep Confident Steps to New Pockets" (ICLR 2024 final). The original DiffDock (ICML 2022, 38.2% RMSD<2 Å on PDBbind 363, 40 samples × 20 steps) is arXiv 2210.01776.
+**Note on DiffDock arXiv ID** (corrected 2026-10-31, Wf-A149): arXiv 2403.05784 does **not** resolve to DiffDock-L — it is "Kiri-Spoon: A Soft Shape-Changing Utensil for Robot-Assisted Feeding" (Keely, Nemlekar, Losey). "Deep Confident Steps to New Pockets" (DiffDock-L, ICLR 2024) is arXiv **2402.18396**. The original DiffDock ("Diffusion Steps, Twists, and Turns for Molecular Docking", Corso et al.) is arXiv **2210.01776** and was published at **ICLR 2023**, not ICML 2022; the 38.2% RMSD<2 Å on PDBbind 363 and the 40 samples × 20 steps budget are unchanged.
 
 ## §4 - Empirical Lambda Numbers (Round-9 Pilot)
 
@@ -223,8 +223,8 @@ Method | Vina (kcal/mol) | SA | QED | Success | Source
 ---|---:|---:|---:|---:|---
 Pocket2Mol | -7.07 | 2.51 | 0.55 | 49.8% | ICML 2022
 TargetDiff | -8.45 | 2.65 | 0.48 | 10.5% (strict) / 35.1% (relaxed) | ICLR 2023
-DiffSBDD | -7.62 | 2.81 | - | 24.6% | ICML 2023
-DecompDiff | -8.39 | 2.71 | - | 24.5-39.0% | ICLR 2024
+DiffSBDD | -7.62 | 2.81 | - | 24.6% | Nat Comput Sci 2024
+DecompDiff | -8.39 | 2.71 | - | 24.5-39.0% | ICML 2023
 FLOWR | -6.93 | 2.86 | - | 94% PB-valid (not docking success) | Nat Comput Sci 2025
 MolCRAFT | -9.25 | - | - | 36.1% | -
 AlphaDrug | -9.77 | - | - | not reported | -
@@ -325,3 +325,66 @@ These caveats follow the survey's honest-caveats discussion in §7. They are par
 Despite incommensurability, Mol-Metal's framework demonstrates the **FIRST MLC pipeline that respects 9-layer MLC semantics with metal-geometry priors**. The metric gap is a known limitation, not a methodological flaw. Round-12/13 will report **BOTH** general triple-threshold (for SOTA comparability) **AND** metal-anticancer adjusted threshold (for real-world applicability).
 
 *End of master table. Cross-references into the 5 Lambda-line docs are appended below.*
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 — DecompDiff identifier + venue (§1 Group A table, §2 cited list, §4 citation
+  table, §6 cite-only table).** Superseded: `2303.10120`, `2024`, `ICLR`, `ICLR 2024`,
+  `10.48550/arXiv.2303.10120`, `(Guan 2024, CrossDocked100)`.
+  Corrected to: `2403.07902`, `2023`, `ICML`, `ICML 2023`,
+  `10.48550/arXiv.2403.07902`, `(Guan 2023, CrossDocked100)`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → DecompDiff (Guan et al.), ICML 2023
+  (PMLR 202:11827-11846); superseded id `2303.10120` = unrelated ASME Riccati-filter paper.
+  The bibtex key `guan2024decompdiff` is **kept unchanged** — it is referenced by
+  `paper/main.aux` / `paper/main.bbl` and `paper/*` is read-only (AGENTS.md §5.3, TODO-84).
+  The DOI `10.48550/arXiv.2403.07902` was checked against DataCite (HTTP 200).
+- **F-12 (adjacent) — DiffSBDD venue + year.** Superseded: `2023` in §1, `ICML` in §4,
+  `ICML 2023` in §6, `(Schneuing 2023, CrossDocked100)`.
+  Corrected to: `2024`, `Nat Comput Sci`, `Nat Comput Sci 2024`, `(Schneuing 2024, …)`.
+  Verified 2026-10-31: Crossref `10.1038/s43588-024-00737-x` → *Nature Computational Science*
+  4(12):899-909 (issued 2024-12-09); arXiv `2210.13695` has no venue comment and is absent
+  from PMLR v202 / v235. First author **Arne Schneuing** (arXiv API). The bibtex key
+  `schneuing2023diffsbdd` is **kept unchanged** (referenced by
+  `paper/section_02_related_work.tex:59`). The dead DOI `10.1038/s41467-024-49069-0` lives
+  only in another agent's files and is reported, not edited.
+- **TankBind arXiv identifier.** Superseded: `2204.11878` (in §1 Group B and §4 citation
+  table). Corrected to: `— (no arXiv preprint)`.
+  Verified 2026-10-31: arXiv API `id_list=2204.11878` resolves to "Comeback Kid: Resilience
+  for Mixed-Critical Wireless Network Resource Management" (Reifert et al.) — an unrelated
+  IEEE paper. arXiv title searches (`ti:"TankBind"`, `ti:"Drug-Protein Binding Structure
+  Prediction"`, `abs:"TankBind"`) return **no** TankBind preprint; the NeurIPS 2022
+  proceedings entry ("TANKBind: Trigonometry-Aware Neural NetworKs for Drug-Protein Binding
+  Structure Prediction", Lu, Wu, Zhang, Rao, Li, Zheng) carries no arXiv link, and the
+  authors' own repository (`luwei0917/TankBind`) publishes a bibtex entry with **no** arXiv
+  id. The bioRxiv DOI `10.1101/2022.06.06.495043` and the NeurIPS 2022 venue are correct and
+  unchanged. **No arXiv id was guessed.**
+- **DiffDock-L arXiv identifier.** Superseded: `2403.05784` (in §1 Group B and §4 citation
+  table). Corrected to: `2402.18396`.
+  Verified 2026-10-31: arXiv API `id_list=2403.05784` → "Kiri-Spoon: A Soft Shape-Changing
+  Utensil for Robot-Assisted Feeding" (Keely, Nemlekar, Losey) — an unrelated robotics
+  paper; `id_list=2402.18396` → "Deep Confident Steps to New Pockets: Strategies for
+  Docking Generalization" (Corso, Deng, Fry, Polizzi, Barzilay, Jaakkola), journal_ref
+  "International Conference on Learning Representations 2024".
+- **DiffDock arXiv-ID note.** Superseded wording, quoted verbatim:
+  `**Note on DiffDock arXiv ID**: arXiv 2403.05784 is the prior submission of "Deep Confident
+  Steps to New Pockets" (ICLR 2024 final). The original DiffDock (ICML 2022, 38.2% RMSD<2 Å on
+  PDBbind 363, 40 samples × 20 steps) is arXiv 2210.01776.`
+  Corrected to: arXiv `2403.05784` does **not** resolve to DiffDock-L (it is the Kiri-Spoon
+  robot-utensil paper); "Deep Confident Steps to New Pockets" (DiffDock-L, ICLR 2024) is
+  arXiv `2402.18396`; the original DiffDock is arXiv `2210.01776` and was published at
+  **ICLR 2023**, not ICML 2022 (arXiv API comment: "International Conference on Learning
+  Representations (ICLR 2023)"). The quoted 38.2 % RMSD<2 Å / 40 samples × 20 steps are
+  performance values and are **unchanged**.
+- **No performance number was changed by this wave** (−7.62, −8.39, 2.71, 2.81, 24.6 %,
+  24.5 %, 39.0 %, 49.8 %, 43.0 %, 51 %, 25.1 %, 48.8 % and every Lambda MEASURED cell are
+  byte-identical to the pre-wave file).

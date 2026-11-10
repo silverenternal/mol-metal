@@ -1,0 +1,333 @@
+--- a/molmetal/scripts/wfa165_gpu_lock_guard.py
++++ b/molmetal/scripts/wfa165_gpu_lock_guard.py
+@@ -369,6 +369,260 @@
+ 
+ 
+ # --------------------------------------------------------------------------
++# Command-prefix census (Wf-A167 extension)
++# --------------------------------------------------------------------------
++#
++# The M1 / M2 rules above are anchored at the START of a physical line.  That
++# anchor is what makes them cheap and precise, but it has two consequences:
++#
++#   (a) A command-prefix assignment that is not the first word of the line is
++#       invisible to them, even when it is a REAL command prefix:
++#
++#           foo && CUDA_VISIBLE_DEVICES=0 bar      # a real command prefix
++#           ( CUDA_VISIBLE_DEVICES=0 bar )          # a real command prefix
++#
++#   (b) They cannot tell a command prefix apart from an ARGUMENT:
++#
++#           setsid nohup CUDA_VISIBLE_DEVICES=0 cmd
++#
++#       Here bash does NOT set an environment variable: `CUDA_VISIBLE_DEVICES=0`
++#       is an argv element of `setsid`, which hands it to `nohup`, which then
++#       tries to exec a program literally named "CUDA_VISIBLE_DEVICES=0" and
++#       fails ("nohup: failed to run command 'CUDA_VISIBLE_DEVICES=0'").  That
++#       is a malformed command, not an ambient-mask defeat -- a different
++#       defect class that a lock guard must not silently count as a defeat.
++#
++# This census is a separate, position-aware view of the same class.  It is
++# deliberately NOT promoted into `findings`: adding records to `findings`
++# would change the M1 / M2 semantics and the report's own vacuity invariant.
++# It therefore carries its own denominator instead of borrowing the repo-wide
++# one.
++#
++# The VALUE verdict is delegated to the existing `_classify_shell_value`, so
++# the classification semantics are shared with M1 / M2 rather than duplicated.
++
++_ASSIGNMENT_WORD_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
++_CMD_ASSIGN_RE = re.compile(r"^CUDA_VISIBLE_DEVICES\s*=\s*(?P<rest>.*)$")
++_SHELL_SEGMENT_SEPARATORS = ("&&", "||", ";", "|", "&")
++_EXPORT_BUILTINS = ("export", "local", "readonly", "typeset", "declare")
++
++
++def _shell_segments(text: str) -> List[str]:
++    """Split a shell fragment at top-level ``;`` / ``&&`` / ``||`` / ``|`` / ``&``.
++
++    Quoting is honoured: a separator inside '' or "" does not split, and a
++    backslash escapes the next character.
++    """
++    segments: List[str] = []
++    cur: List[str] = []
++    i = 0
++    n = len(text)
++    in_quote = ""
++    while i < n:
++        ch = text[i]
++        if in_quote:
++            cur.append(ch)
++            i += 1
++            if ch == in_quote:
++                in_quote = ""
++            continue
++        if ch in "\'\"":
++            in_quote = ch
++            cur.append(ch)
++            i += 1
++            continue
++        if ch == "\\" and i + 1 < n:
++            cur.append(ch)
++            cur.append(text[i + 1])
++            i += 2
++            continue
++        if ch == "#" and not "".join(cur).strip():
++            break  # comment to end of line
++        matched = None
++        for sep in _SHELL_SEGMENT_SEPARATORS:
++            if text.startswith(sep, i):
++                matched = sep
++                break
++        if matched:
++            segments.append("".join(cur))
++            cur = []
++            i += len(matched)
++            continue
++        cur.append(ch)
++        i += 1
++    segments.append("".join(cur))
++    return segments
++
++
++def _normalise_assignment_words(words: Sequence[str]) -> List[str]:
++    """Join a ``NAME = value`` triple into a single ``NAME=value`` word."""
++    out: List[str] = []
++    i = 0
++    n = len(words)
++    while i < n:
++        word = words[i]
++        if (
++            word == CVD
++            and i + 2 < n
++            and words[i + 1] == "="
++            and not words[i + 2].startswith("=")
++        ):
++            out.append(CVD + "=" + words[i + 2])
++            i += 3
++            continue
++        out.append(word)
++        i += 1
++    return out
++
++
++def scan_command_prefix_census(text: str) -> List[Dict[str, Any]]:
++    """Position-aware census of ``CUDA_VISIBLE_DEVICES=`` sites in one file.
++
++    Every assignment site is recorded with the position it occupies inside its
++    simple command:
++
++    ``command_prefix``   the assignment precedes the command word, so bash
++                         puts it into the command's environment -- this is the
++                         form that defeats an ambient empty mask
++    ``export``           ``export`` / ``local`` / ``declare`` / ``readonly`` /
++                         ``typeset`` took the assignment as an argument
++    ``env_prefix``       ``env`` took the assignment as an argument and will
++                         export it
++    ``arg_position``     the assignment FOLLOWS the command word, so bash
++                         passes it as an argv element -- it is not an
++                         environment assignment at all
++    ``plain_assignment`` a bare assignment statement with no command
++    """
++    sites: List[Dict[str, Any]] = []
++    for lineno, raw_line in enumerate(text.splitlines(), start=1):
++        for segment in _shell_segments(raw_line):
++            stripped = _strip_shell_keywords(segment)
++            words = _normalise_assignment_words(_shell_words(stripped))
++            if not words:
++                continue
++            cmd_index = len(words)
++            for index, word in enumerate(words):
++                if not _ASSIGNMENT_WORD_RE.match(word):
++                    cmd_index = index
++                    break
++            command_word = words[cmd_index] if cmd_index < len(words) else None
++            for index, word in enumerate(words):
++                match = _CMD_ASSIGN_RE.match(word)
++                if not match:
++                    continue
++                if cmd_index >= len(words):
++                    position = "plain_assignment"
++                elif index < cmd_index:
++                    position = "command_prefix"
++                elif command_word in _EXPORT_BUILTINS:
++                    position = "export"
++                elif command_word == "env":
++                    position = "env_prefix"
++                else:
++                    position = "arg_position"
++                value = match.group("rest")
++                verdict = _classify_shell_value(value)
++                env_position = position in (
++                    "command_prefix",
++                    "env_prefix",
++                    "export",
++                    "plain_assignment",
++                )
++                if not env_position:
++                    # The assignment is an argv element of the command word, so
++                    # it never reaches the child's environment: it cannot defeat
++                    # an ambient mask.  The command is malformed instead.
++                    effect = "not_an_env_assignment"
++                    defeats = "no"
++                else:
++                    effect = verdict["effect"]
++                    defeats = verdict["defeats_ambient_empty_mask"]
++                sites.append(
++                    {
++                        "position": position,
++                        "class": (
++                            "shell_prefix_assignment"
++                            if position in ("command_prefix", "env_prefix")
++                            else "shell_export"
++                            if position == "export"
++                            else "shell_arg_assignment"
++                        ),
++                        "line": lineno,
++                        "source": raw_line.strip(),
++                        "value": value,
++                        "value_kind": verdict["value_kind"],
++                        "effect": effect,
++                        "value_effect": verdict["effect"],
++                        "defeats_ambient_empty_mask": defeats,
++                        "mechanism": verdict["mechanism"],
++                        "matched_rules": verdict["matched_rules"],
++                    }
++                )
++    return sites
++
++
++def build_command_prefix_census(
++    per_file: Dict[str, List[Dict[str, Any]]],
++    sh_files_enumerated: int,
++    sh_files_read: int,
++    sh_files_unreadable: int,
++) -> Dict[str, Any]:
++    """Aggregate the per-file command-prefix censuses into one report section.
++
++    The DENOMINATOR here is the command-prefix class' OWN denominator (tracked
++    ``*.sh`` files enumerated / read / unreadable), not the repo-wide one.
++    """
++    sites: List[Dict[str, Any]] = []
++    for rel in sorted(per_file):
++        for rec in per_file[rel]:
++            item = dict(rec)
++            item["file"] = rel
++            sites.append(item)
++    by_position: Dict[str, int] = {}
++    by_effect: Dict[str, int] = {}
++    by_class: Dict[str, int] = {}
++    for rec in sites:
++        by_position[rec["position"]] = by_position.get(rec["position"], 0) + 1
++        by_effect[rec["effect"]] = by_effect.get(rec["effect"], 0) + 1
++        by_class[rec["class"]] = by_class.get(rec["class"], 0) + 1
++    return {
++        "note": (
++            "Position-aware census of CUDA_VISIBLE_DEVICES= assignment sites. "
++            "It is a CENSUS, not a findings list: promoting it into `findings` "
++            "would change the M1/M2 semantics and the report's vacuity "
++            "invariant.  The value verdict is delegated to "
++            "_classify_shell_value, so the classification semantics are shared "
++            "with M1/M2."
++        ),
++        "denominator": {
++            "sh_files_enumerated": sh_files_enumerated,
++            "sh_files_read": sh_files_read,
++            "sh_files_unreadable": sh_files_unreadable,
++            "note": (
++                "tracked *.sh files returned by `git ls-files -z -- *.sh`; "
++                "sh_files_read = files actually decoded and scanned.  "
++                "No os.walk was used anywhere."
++            ),
++        },
++        "sites_total": len(sites),
++        "by_position": dict(sorted(by_position.items())),
++        "by_class": dict(sorted(by_class.items())),
++        "by_effect": dict(sorted(by_effect.items())),
++        "command_prefix_sites": by_position.get("command_prefix", 0),
++        "defeats_ambient_empty_mask": sum(
++            1 for r in sites if r.get("defeats_ambient_empty_mask") == "yes"
++        ),
++        "arg_position_sites": by_position.get("arg_position", 0),
++        "counts_match_lists": (
++            sum(by_position.values()) == len(sites)
++            and sum(by_class.values()) == len(sites)
++            and sum(by_effect.values()) == len(sites)
++        ),
++        "sites": sites,
++    }
++
++
++# --------------------------------------------------------------------------
+ # Python detection (AST)
+ # --------------------------------------------------------------------------
+ 
+@@ -1095,6 +1349,9 @@
+     files_lossy: List[str] = []
+     parse_failures: List[str] = []
+     unresolved_sites: List[Dict[str, Any]] = []
++    command_prefix_per_file: Dict[str, List[Dict[str, Any]]] = {}
++    sh_files_read = 0
++    sh_files_unreadable = 0
+     by_ext = {"py": 0, "sh": 0}
+     unresolved_sites_by_file: Dict[str, List[Dict[str, Any]]] = {}
+     by_top: Dict[str, int] = {}
+@@ -1109,12 +1366,18 @@
+             text, lossy = _decode(full)
+         except OSError as exc:
+             files_unreadable.append(f"{rel}: {exc}")
++            if rel.endswith(".sh"):
++                sh_files_unreadable += 1
+             continue
+         files_read += 1
+         if lossy:
+             files_lossy.append(rel)
+         if rel.endswith(".sh"):
+             found = scan_shell_text(text)
++            sh_files_read += 1
++            census_rows = scan_command_prefix_census(text)
++            if census_rows:
++                command_prefix_per_file[rel] = census_rows
+             new_unresolved: List[Dict[str, Any]] = []
+         else:
+             before = len(unresolved_sites)
+@@ -1191,6 +1454,12 @@
+             }
+             for m in MECHANISM_ORDER
+         },
++        "command_prefix_census": build_command_prefix_census(
++            command_prefix_per_file,
++            sh_files_enumerated=by_ext["sh"],
++            sh_files_read=sh_files_read,
++            sh_files_unreadable=sh_files_unreadable,
++        ),
+         "unresolved_env_sites": len(unresolved_sites),
+         "unresolved_env_sites_by_file": {
+             k: len(v) for k, v in sorted(unresolved_sites_by_file.items())
+@@ -1303,6 +1572,27 @@
+         "               defeat an ambient CUDA_VISIBLE_DEVICES=\"\" mask : "
+         "{n}".format(n=report["findings_defeat_ambient_empty_mask"])
+     )
++    cpc = report.get("command_prefix_census")
++    if cpc:
++        cden = cpc["denominator"]
++        out.append(
++            "cmd-prefix   : {n} assignment site(s) over {sh} tracked *.sh "
++            "({rd} read, {un} unreadable); by position {bp}".format(
++                n=cpc["sites_total"], sh=cden["sh_files_enumerated"],
++                rd=cden["sh_files_read"], un=cden["sh_files_unreadable"],
++                bp=", ".join(
++                    "%s=%d" % (k, v) for k, v in cpc["by_position"].items()
++                ),
++            )
++        )
++        out.append(
++            "               defeat an ambient CUDA_VISIBLE_DEVICES=\"\" mask : "
++            "{n}  (arg-position, i.e. an argv element, not an env assignment: "
++            "{a})".format(
++                n=cpc["defeats_ambient_empty_mask"],
++                a=cpc["arg_position_sites"],
++            )
++        )
+     out.append("")
+     printed = 0
+     for m in MECHANISM_ORDER:

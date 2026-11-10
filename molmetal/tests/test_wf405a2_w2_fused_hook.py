@@ -18,6 +18,7 @@ assertions below fail.
 """
 import os
 import sys
+from pathlib import Path
 
 
 def _clear_w2_env():
@@ -29,7 +30,7 @@ def test_wasserstein_loss_unchanged_on_cpu():
     """CPU path must NOT call ``fused_wasserstein_sliced``; the existing
     ``_sliced_w2`` output must be the same regardless of the env-var
     gate value (since on CPU ``x.is_cuda`` is False)."""
-    repo = "/home/hugo/codes/mol-metal"
+    repo = str(Path(__file__).resolve().parents[2])
     sys.path.insert(0, repo)
 
     _clear_w2_env()
@@ -74,7 +75,7 @@ def test_fused_kernel_is_reachable_on_cuda_via_env():
     ``fused_wasserstein_sliced`` to a sentinel that records the call,
     set the env gate, and pass a tensor flagged as ``is_cuda=True``.
     """
-    repo = "/home/hugo/codes/mol-metal"
+    repo = str(Path(__file__).resolve().parents[2])
     sys.path.insert(0, repo)
 
     _clear_w2_env()

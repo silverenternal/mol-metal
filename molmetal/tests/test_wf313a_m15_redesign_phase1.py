@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = PROJECT_ROOT / "molmetal" / "data" / "pocket_ref_ligands"
 SOURCE_METADATA = SOURCE_DIR / "ligand_metadata.json"
 TARGET_DIR = PROJECT_ROOT / "molmetal" / "data" / "m15_redesign_ref"

@@ -145,6 +145,163 @@ DEFAULT_OUT_DIR = _REPO_ROOT / "metrics" / "by_metric"
 DEFAULT_METRICS_PATH = DEFAULT_OUT_DIR / "wf32_pb_valid.json"
 DEFAULT_SUMMARY_PATH = DEFAULT_OUT_DIR / "wf32_pb_valid_summary.json"
 
+# The DECLARATION OF RECORD for this sweep's scale.  It is NOT re-derived
+# here: re-deriving it would re-create the very drift this path exists to
+# prevent (a bench that declares its own target can always match itself).
+# Wf-A127 (2026-10-31) — see catalog §6.239.
+SPEC_TARGET_OF_RECORD_PATH = _REPO_ROOT / "molmetal" / "reports" / "wf32_m8_summary.json"
+
+
+def _write_json_atomic(path: Path, payload: Dict[str, object]) -> None:
+    """Write ``payload`` as JSON via the atomic-write protocol (AGENTS.md §5.6).
+
+    Wf-A127 (2026-10-31).  The bench used to call ``Path.write_text`` for
+    both artifacts: a crash mid-write left a truncated JSON file that the
+    registry would then treat as a changed source, and the ``sha`` recorded
+    for the row would describe a half-written file.  ``atomic_write_file``
+    writes to a temp file in the same directory and ``os.replace``s it, so
+    the target is never observed half-written.
+    """
+    from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+    atomic_write_file(path, json.dumps(payload, indent=2) + "\n")
+
+
+def load_spec_target_of_record() -> Optional[Dict[str, object]]:
+    """Return the declared sweep scale, copied VERBATIM from the record.
+
+    Returns ``None`` when the declaration of record is absent or carries no
+    ``spec_target`` — the caller then writes an explicit "declaration
+    missing" block rather than a silent omission (an artifact that does not
+    say what it was aiming at cannot be audited).
+    """
+    try:
+        payload = json.loads(SPEC_TARGET_OF_RECORD_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    spec = payload.get("spec_target") if isinstance(payload, dict) else None
+    return dict(spec) if isinstance(spec, dict) else None
+
+
+def build_honesty_blocks(
+    *,
+    n_evaluations: int,
+    n_target_evaluations: int,
+    per_evaluation: Sequence[Dict[str, object]],
+    spec_target: Optional[Dict[str, object]],
+) -> Dict[str, object]:
+    """The self-describing honesty blocks this artifact must always carry.
+
+    Wf-A127 (2026-10-31).  Before this, the honesty blocks existed ONLY in
+    the committed JSON — they were hand-written into
+    ``metrics/by_metric/wf32_pb_valid.json`` by a wave, while the generator
+    that rewrites that file wrote NEITHER of them.  The next regeneration
+    therefore dropped the artifact's own honesty, silently, and the registry
+    row went stale with the gap invisible.  The blocks are now COMPUTED from
+    the run's own counts, so they cannot drift from what was measured.
+
+    * ``spec_target`` — the declared scale, copied verbatim from
+      :data:`SPEC_TARGET_OF_RECORD_PATH`.
+    * ``wf432a1_pb_validity_deferred_block`` — what this file ACTUALLY
+      measured, derived from ``per_evaluation``.
+    """
+    n_skipped = sum(
+        1 for e in per_evaluation if str(e.get("status", "")).lower() == "skipped"
+    )
+    n_measured = int(n_evaluations) - n_skipped
+    spec_cells = 0
+    if spec_target is not None:
+        try:
+            spec_cells = int(spec_target.get("n_cells", 0))
+        except (TypeError, ValueError):
+            spec_cells = 0
+
+    if spec_target is None:
+        spec_block: Dict[str, object] = {
+            "n_cells": None,
+            "status": "DECLARATION OF RECORD MISSING",
+            "declaration_of_record_path": str(SPEC_TARGET_OF_RECORD_PATH),
+            "honest_framing": (
+                f"The declaration of record ({SPEC_TARGET_OF_RECORD_PATH}) is "
+                f"MISSING or carries no spec_target, so this artifact cannot "
+                f"state what scale it was aiming at. It ran "
+                f"{n_evaluations} evaluation(s) of a target of "
+                f"{n_target_evaluations} cell(s). Do not cite this artifact "
+                f"as a PoseBusters validity result."
+            ),
+        }
+    else:
+        spec_block = dict(spec_target)
+
+    notes = sorted(
+        {
+            str(e.get("note", "")).strip()
+            for e in per_evaluation
+            if str(e.get("status", "")).lower() == "skipped" and e.get("note")
+        }
+    )
+    note_clause = f" (per_evaluation note: '{notes[0]}')" if notes else ""
+
+    if n_measured == 0 and n_evaluations > 0:
+        honest_framing = (
+            f"THIS ARTIFACT evaluated {n_evaluations} cell(s) out of the "
+            f"{spec_cells}-cell sweep declared in spec_target (copied "
+            f"verbatim from {SPEC_TARGET_OF_RECORD_PATH.name}), and ALL "
+            f"{n_evaluations} evaluation(s) were SKIPPED{note_clause}, so "
+            f"PoseBusters validity was NOT MEASURED (pb_valid=null, "
+            f"n_checks=0, pass_rate=0.0). The {spec_cells}-cell sweep was "
+            f"NEVER RUN — this file is the {n_evaluations}-cell smoke only. "
+            f"Any SOTA-gate claim about a multi-pocket set belongs to "
+            f"Wf-341-T1 §3 and is NOT reproduced here; do not cite this "
+            f"artifact as a PoseBusters validity result."
+        )
+        status = (
+            "DEFERRED HONEST-NEGATIVE — PoseBusters validity SKIPPED "
+            "graceful preserved as honest-negative on validity NOT on "
+            "accuracy"
+        )
+    elif n_measured == 0:
+        honest_framing = (
+            "THIS ARTIFACT ran ZERO evaluations, so PoseBusters validity was "
+            "NOT MEASURED. Do not cite this artifact as a PoseBusters "
+            "validity result."
+        )
+        status = "DEFERRED HONEST-NEGATIVE — zero evaluations were run"
+    else:
+        honest_framing = (
+            f"THIS ARTIFACT evaluated {n_evaluations} cell(s) "
+            f"({n_measured} measured, {n_skipped} skipped) against the "
+            f"{spec_cells}-cell sweep declared in spec_target; "
+            f"{max(spec_cells - n_evaluations, 0)} cell(s) of the declared "
+            f"sweep were NOT run. The coverage is PARTIAL — read the "
+            f"per_evaluation statuses before quoting a pass rate."
+        )
+        status = f"PARTIAL — {n_measured} measured / {n_skipped} skipped"
+
+    deferred_block: Dict[str, object] = {
+        "task_id": "A2_fix_step3_cat_b",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "reason": (
+            "PoseBusters validity was not measured for every declared cell; "
+            "the shortfall is recorded here rather than averaged away."
+        ),
+        "closure_path": (
+            "Wf-433+ USER_OK-gated follow-up with explicit meeko + autobabel "
+            "pip install + Wf-433-A2 PoseBusters PbValid run on the "
+            "5-pocket organic-cofactor set"
+        ),
+        "honest_framing": honest_framing,
+        "n_evaluations": int(n_evaluations),
+        "n_measured": n_measured,
+        "n_skipped": n_skipped,
+        "n_spec_cells": spec_cells,
+    }
+    return {
+        "spec_target": spec_block,
+        "wf432a1_pb_validity_deferred_block": deferred_block,
+    }
+
 # Pocket staging directory (shared with Wf-30 / Wf-31 — DO NOT mutate).
 WF30_POCKET_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 
@@ -871,7 +1028,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "aggregate": {f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()},
         "overall_pb_pass_rate": _to_jsonable(overall),
     }
-    args.metrics_path.write_text(json.dumps(metrics_payload, indent=2) + "\n")
+    # Wf-A127 (2026-10-31): the honesty blocks are COMPUTED here, not
+    # hand-written into the JSON afterwards.  Before this, the artifact's
+    # own honesty lived only in the committed file and every regeneration
+    # silently dropped it (catalog §6.239).
+    metrics_payload.update(
+        build_honesty_blocks(
+            n_evaluations=len(results),
+            n_target_evaluations=n_total_cells,
+            per_evaluation=list(metrics_payload["per_evaluation"]),
+            spec_target=load_spec_target_of_record(),
+        )
+    )
+    _write_json_atomic(args.metrics_path, metrics_payload)
     log.info("wrote %s", args.metrics_path)
 
     summary_payload = {
@@ -891,7 +1060,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "aggregate": {f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()},
         "date_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
-    args.summary_path.write_text(json.dumps(summary_payload, indent=2) + "\n")
+    _write_json_atomic(args.summary_path, summary_payload)
     log.info("wrote %s", args.summary_path)
 
     # Headline log

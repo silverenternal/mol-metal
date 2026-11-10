@@ -1,0 +1,59 @@
+SUMMARY: {
+  "pass": 118,
+  "fail": 0,
+  "skip": 11,
+  "warn": 0,
+  "timeout": 0,
+  "total": 129,
+  "total_wall_sec": 81.603
+}
+
+PIPELINE: all
+TIMESTAMP: 2026-11-01T02:35:40+0000
+
+CONTEXT (MEASURED 2026-11-01, Wf-A162):
+  This run was executed UNDER THE STANDING CPU LOCK
+  (CUDA_VISIBLE_DEVICES="") while the Wf-A163 ultracode wave was
+  running concurrently -- i.e. this is the CONTENDED measurement,
+  not a quiet-host measurement.
+  GPU watchdog evidence: the mol-metal GPU watchdog's output file
+  (mtime 2026-10-31 17:52) was NOT written during this run and
+  'nvidia-smi --query-compute-apps' lists NO mol-metal process =>
+  ZERO GPU allocation during 129 gates.  That is the empirical
+  confirmation of the Wf-A162 repair to pre_flight_check.py's
+  _smoke_device(): the visibility probe no longer creates a CUDA
+  context under the lock (the 2026-10-31 run allocated 550 MiB).
+  CPU-only throughout; 0 CUDA calls; 0 training; 0 sampling.
+
+FAILS: 0
+
+SKIPS (11): each is HONEST-NEGATIVE BY-DESIGN (AGENTS.md §5.1/§5.2):
+  - p3_pb_packages_available_or_documented
+  - p3_pb_packages_status_present
+  - p3_m8_full_pass_rate_documented
+  - p3_wf343c4_wave_budget_remaining_nonneg
+  - p3_wf_r43_m16_pt_ckpt_gap
+  - p3_wf_r43_m1_paper_cohort
+  - p3_wf_r43_m2_cohort_independence
+  - p3_wf_r43_m7_subpocket_uniform
+  - p3_wf_r43_m19_lomo_headline
+  - p1_gpu_env_probe
+  - data_2_1_6_bindingdb_external_honest_negative
+
+SUPERSEDES (PRESERVED VERBATIM, AGENTS.md §5.5 rule #6):
+  molmetal/reports/wf415a3_preflight_freshrun.txt
+  (161 bytes, mtime 2026-09-30 18:38, 112 PASS / 2 FAIL / 3 SKIP /
+  117 TOTAL) -- the HISTORICAL Wf-415-A3 rendering.  It is left
+  byte-identical on disk; this file is the 2026-11-01 correction.
+
+LINEAGE (MEASURED, --pipeline all --strict):
+  2026-10-31 (Wf-A127): 113 PASS / 4 FAIL / 10 SKIP / 0 WARN / 127 TOTAL
+  2026-11-01 01:16 (Wf-A154): 101 PASS / 3 FAIL / 11 SKIP / 0 WARN / 14 TIMEOUT / 129 TOTAL, wall 686.63 s
+  2026-11-01 01:28 (Wf-A157): 118 PASS / 0 FAIL / 11 SKIP / 0 WARN / 0 TIMEOUT / 129 TOTAL, wall 280.78 s
+  2026-11-01 02:35 (Wf-A162, CPU LOCK, CONTENDED):
+    118 PASS / 0 FAIL / 11 SKIP / 0 WARN / 0 TIMEOUT / 129 TOTAL, wall 81.603 s
+
+  The wall time fell from 280.78 s to 81.603 s because the
+  CPU lock short-circuits the GPU probe (no CUDA context, no GPU
+  smoke spawns).  The PASS/FAIL/SKIP counts are IDENTICAL to the
+  Wf-A157 measurement: 118 / 0 / 11.

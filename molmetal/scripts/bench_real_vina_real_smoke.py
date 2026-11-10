@@ -17,7 +17,12 @@ from rdkit.Chem import AllChem
 from meeko import MoleculePreparation, PDBQTWriterLegacy
 from vina import Vina
 
-REPORTS_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf_real_vina_smoke")
+REPORTS_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf_real_vina_smoke"
+)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Pockets from Wf-30 prep (10/10 READY)
@@ -110,8 +115,13 @@ def main() -> int:
     all_scores = []
 
     for pocket_id in POCKETS:
-        receptor_pdbqt = Path(
-            f"/home/hugo/codes/mol-metal/molmetal/reports/wf30_pocket_prep/{pocket_id}/receptor.pdbqt"
+        receptor_pdbqt = (
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf30_pocket_prep"
+            / pocket_id
+            / "receptor.pdbqt"
         )
         if not receptor_pdbqt.exists():
             print(f"SKIP {pocket_id}: receptor not found")

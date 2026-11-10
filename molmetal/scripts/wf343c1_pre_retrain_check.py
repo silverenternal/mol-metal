@@ -49,9 +49,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -179,6 +181,39 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
+def _as_text(v: object) -> str:
+    """Coerce a subprocess output slot to ``str``.
+
+    ``subprocess.TimeoutExpired.stdout`` / ``.stderr`` are **BYTES** whenever
+    the child produced output before the timeout — even when the call passed
+    ``text=True``, because CPython raises the exception from inside
+    ``communicate()``, BEFORE the decode step that a successful call
+    performs.
+
+    Two consequences, both MEASURED on 2026-11-01 (Wf-A154):
+
+    1. ``(exc.stderr or "") + f"..."`` raises ``TypeError: can't concat str
+       to bytes`` FROM INSIDE the timeout handler, so the real condition
+       (the probe timed out) was hidden behind a type error.
+    2. Worse, the BYTES leaked into the memoised probe cache
+       (``_HELP_PROBE_CACHE``), so one slow probe turned into N INSTANT
+       failures in later gates: six pre-flight gates reported "wf343c1
+       runner raised: TypeError: can't concat str to bytes", four of them
+       in 0.00 s because they were served the poisoned cache entry.
+
+    This is the SAME rule as ``pre_flight_check._run``, where the fix was
+    applied on 2026-10-04 and never ported to this forked copy.  Wf-A154
+    (2026-11-01) ports it, and makes this module the single implementation
+    (``pre_flight_check`` now calls ``_wf343c1._as_text``) so the two copies
+    cannot drift apart a second time.
+    """
+    if v is None:
+        return ""
+    if isinstance(v, bytes):
+        return v.decode("utf-8", errors="replace")
+    return str(v)
+
+
 def _run(
     cmd: List[str],
     *,
@@ -197,10 +232,13 @@ def _run(
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired as exc:
+        # 2026-10-04 (ported to this module 2026-11-01, Wf-A154): the
+        # TimeoutExpired output slots are BYTES even under text=True — see
+        # ``_as_text`` above for the full story.
         return (
             124,
-            exc.stdout or "",
-            (exc.stderr or "") + (f"\n[TIMEOUT after {timeout}s]"),
+            _as_text(exc.stdout),
+            _as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]",
         )
     except FileNotFoundError as exc:
         return 127, "", f"[exec error: {exc}]"
@@ -310,6 +348,72 @@ def gate_regex(
 _HELP_PROBE_CACHE: Dict[tuple, Tuple[int, str, str]] = {}
 
 
+#: Wf-A157 (2026-11-01) — the `--help` probe budget.
+#:
+#: MEASURED 2026-11-01 on this host: ``python train_chemprop_v2_v3.py --help``
+#: takes **14.84 s** when the machine is quiet (rc=0, 12 108 B of help
+#: output, all ten probed flag tokens present).
+#:
+#: The old budget was a hard-coded 30 s at every call site — roughly twice
+#: the quiet-host cost.  The pre-flight runs its gates CONCURRENTLY
+#: (``ThreadPoolExecutor``, default ``--jobs 8``, see
+#: ``pre_flight_check.py``), so the twelve gates that probe the SAME script
+#: all spawned their own subprocess simultaneously; eight concurrent
+#: torch+chemprop imports pushed every probe past 30 s.  Twelve
+#: determinate questions ("is flag X declared?") were therefore answered
+#: TIMEOUT instead of PASS — MEASURED 2026-11-01: 12 TIMEOUT gates, and
+#: the pre-flight PASS count fell to 101, below the 107 floor pinned by
+#: ``test_wf415a3_preflight_fail_audit.py``.
+#:
+#: The budget is now ONE env-overridable number, defaulting to 180 s —
+#: ~12x the MEASURED quiet-host cost.  It costs nothing on a quiet host
+#: (a probe that finishes in 15 s still finishes in 15 s); it buys a
+#: determinate answer on a loaded one.
+HELP_PROBE_TIMEOUT_SEC_DEFAULT = 180.0
+HELP_PROBE_TIMEOUT_ENV = "MOLMETAL_HELP_PROBE_TIMEOUT_SEC"
+
+
+def help_probe_timeout() -> float:
+    """Return the `--help` probe budget in seconds (env-overridable).
+
+    Wf-A157 (2026-11-01).  A malformed or non-positive env value falls back
+    to the default rather than aborting the pre-flight — the budget is a
+    knob, never a reason to fail a run.
+    """
+    raw = os.environ.get(HELP_PROBE_TIMEOUT_ENV)
+    if raw is None or str(raw).strip() == "":
+        return HELP_PROBE_TIMEOUT_SEC_DEFAULT
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return HELP_PROBE_TIMEOUT_SEC_DEFAULT
+    return val if val > 0 else HELP_PROBE_TIMEOUT_SEC_DEFAULT
+
+
+#: Wf-A157 (2026-11-01) — per-key locks for the `--help` probe.
+#:
+#: The cache is a plain dict read with get-then-set.  Under the pre-flight's
+#: concurrent gate runner EVERY caller missed the cache and spawned its own
+#: subprocess, so the memoisation bought nothing under the default
+#: ``--jobs 8`` — and the concurrent imports were themselves what pushed the
+#: probes over their budget (a self-inflicted contention loop).  One lock
+#: per cache key restores the invariant the cache was introduced for:
+#: twelve gates cannot disagree about one script, and the script is probed
+#: once.
+_HELP_PROBE_LOCKS: Dict[tuple, threading.Lock] = {}
+_HELP_PROBE_LOCKS_GUARD = threading.Lock()
+
+
+def help_probe_lock(cache_key: tuple) -> threading.Lock:
+    """Return the lock guarding one `--help` cache key (Wf-A157)."""
+    with _HELP_PROBE_LOCKS_GUARD:
+        lk = _HELP_PROBE_LOCKS.get(cache_key)
+        if lk is None:
+            lk = threading.Lock()
+            _HELP_PROBE_LOCKS[cache_key] = lk
+        return lk
+
+
 def gate_help(
     name: str,
     priority: str,
@@ -319,14 +423,21 @@ def gate_help(
     *,
     py: str = VENV_PY,
     extra_args: Optional[List[str]] = None,
-    timeout: float = 30.0,
+    timeout: Optional[float] = None,
 ) -> GateResult:
     """PASS if every space-separated token in ``pattern`` appears in --help output.
 
     Multi-token patterns (e.g. ``"--no-multi-task --no-wass"``) are split
     on whitespace and require ALL tokens to appear (anywhere) in the
     joined stdout+stderr of ``{py} {script} {extra_args} --help``.
+
+    ``timeout`` defaults to :func:`help_probe_timeout` (Wf-A157, 2026-11-01)
+    instead of a hard-coded 30 s: see the note on that constant for the
+    MEASURED 14.84 s quiet-host cost and the concurrent-gate contention that
+    made 30 s marginal.
     """
+    if timeout is None:
+        timeout = help_probe_timeout()
     t0 = time.perf_counter()
     # 2026-10-04 — CACHE the --help probe per (interpreter, script, extra_args).
     # All six callers here probe the same CHEMPROP_V3_DRIVER, and pre-flight
@@ -337,18 +448,51 @@ def gate_help(
     # 180 s `--all` suite.  The gate treats the output as a constant, so
     # memoising it is behaviour-preserving — same command, same parsing, the
     # second and later calls for one key served from memory.
+    #
+    # Wf-A157 (2026-11-01) — the cache alone is NOT enough under the
+    # pre-flight's concurrent gate runner: get-then-set on a plain dict let
+    # every caller miss, so all twelve probes ran at once and their
+    # concurrent torch imports pushed them over their budget.  One lock per
+    # cache key makes the probe happen exactly once; the other eleven wait
+    # for it and are served the same answer (0.00 s of extra work, and the
+    # "twelve gates cannot disagree about one script" invariant holds).
     cache_key = (str(py), str(script), tuple(extra_args or ()))
-    hit = _HELP_PROBE_CACHE.get(cache_key)
-    if hit is None:
-        args = [py, str(script)] + (extra_args or []) + ["--help"]
-        rc, out, err = _run(args, timeout=timeout)
-        _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
-    else:
-        rc, out, err = hit
+    with help_probe_lock(cache_key):
+        hit = _HELP_PROBE_CACHE.get(cache_key)
+        if hit is None:
+            args = [py, str(script)] + (extra_args or []) + ["--help"]
+            rc, out, err = _run(args, timeout=timeout)
+            _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
+        else:
+            rc, out, err = hit
     elapsed = time.perf_counter() - t0
+    # Wf-A154 (2026-11-01) — coerce the cache slot to text ON THE WAY OUT,
+    # not only on the way in.  A cache entry written by the pre-fix `_run`
+    # can hold BYTES, and `bytes + "\n"` raises TypeError — which is how
+    # six pre-flight gates failed with "wf343c1 runner raised: TypeError:
+    # can't concat str to bytes" on 2026-11-01 (four of them in 0.00 s,
+    # served straight from the poisoned cache).
+    out = _as_text(out)
+    err = _as_text(err)
     blob = out + "\n" + err
     tokens = pattern.split()
     missing = [tok for tok in tokens if tok not in blob]
+    # Wf-A154 (2026-11-01) — a TIMEOUT is NOT a verdict that the flag is
+    # missing.  rc=124 means the probe never finished, so the flag's
+    # presence was NOT DETERMINED.  Reporting that as "missing token(s)" is
+    # a false defect claim (AGENTS.md §5.2 honest framing): the honest
+    # verdict is its own status.
+    if rc == 124:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "TIMEOUT",
+            f"the --help probe TIMED OUT after {timeout}s — the presence of "
+            f"the {len(tokens)} token(s) of '{pattern}' was NOT determined "
+            f"(this is NOT a verdict that the flag is missing)",
+            elapsed,
+        )
     if not missing:
         return GateResult(
             name,
@@ -615,7 +759,7 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 CHEMPROP_V3_DRIVER,
                 "--no-multi-task --no-wass --no-kendall --no-dann",
                 extra_args=[],
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
         # §1.1.8 — EnhancedMetalHead + metal-attention flags (Wf-248-D).
@@ -628,7 +772,7 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 CHEMPROP_V3_DRIVER,
                 "--enhanced-head --metal-attention",
                 extra_args=[],
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
         # §1.1.9 — click-aug opt-in flag (Wf-252-Apply F1).
@@ -652,7 +796,7 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 CHEMPROP_V3_DRIVER,
                 "--use-master-wass --use-master-cath",
                 extra_args=[],
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
     ]
@@ -675,7 +819,7 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--no-multi-task --no-wass --no-kendall --no-dann",
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
         # §1.3.2 — --single-metal flag (per-metal single-task).
@@ -687,7 +831,7 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--single-metal",
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
         # §1.3.3 — --n-seeds-min validation (must be present in help).
@@ -699,7 +843,7 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
                 "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--n-seeds-min",
-                timeout=30.0,
+                timeout=help_probe_timeout(),
             ),
         ),
     ]
@@ -1011,6 +1155,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     n_pass = sum(1 for r in results if r.status == "PASS")
     n_fail = sum(1 for r in results if r.status == "FAIL")
     n_skip = sum(1 for r in results if r.status == "SKIP")
+    # Wf-A154 (2026-11-01) — TIMEOUT is a first-class status here too, for
+    # the same reason the pre-flight counts it (Wf-A135): the measurement
+    # was NOT obtained, so the gate is neither PASS nor FAIL, but it MUST
+    # be counted or `pass + fail + skip` is LESS than `total` — an
+    # internally inconsistent summary (the Wf-A125 G11a defect class).
+    n_timeout = sum(1 for r in results if r.status == "TIMEOUT")
 
     report = {
         "timestamp": _now_iso(),
@@ -1020,6 +1170,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "pass": n_pass,
             "fail": n_fail,
             "skip": n_skip,
+            "timeout": n_timeout,
             "total": len(results),
             "total_wall_sec": round(total_wall, 4),
         },

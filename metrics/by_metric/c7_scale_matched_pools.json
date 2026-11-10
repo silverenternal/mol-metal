@@ -4,26 +4,32 @@
     "generation": {
       "by_tier": {
         "full_corpus": {
+          "molecule_weighted_mean_qed": 0.1201,
+          "molecule_weighted_mean_sa": 6.9754,
           "n_joint_gate": 0,
-          "n_pools": 1,
-          "n_sa_le_gate": 36,
-          "n_scored": 12668,
-          "pool_mean_qed": 0.1238,
-          "pool_mean_sa": 6.9905,
+          "n_pools": 3,
+          "n_sa_le_gate": 60,
+          "n_scored": 14846,
+          "pool_mean_qed": 0.1056,
+          "pool_mean_sa": 6.7781,
+          "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
           "rate_joint_gate": 0.0,
-          "rate_sa_le_gate": 0.0028,
+          "rate_sa_le_gate": 0.004,
           "wilson_ci95": [
-            0.0021,
-            0.0039
+            0.0031,
+            0.0052
           ]
         },
         "mid": {
+          "molecule_weighted_mean_qed": 0.2445,
+          "molecule_weighted_mean_sa": 5.6503,
           "n_joint_gate": 0,
           "n_pools": 1,
           "n_sa_le_gate": 1,
           "n_scored": 12,
           "pool_mean_qed": 0.2445,
           "pool_mean_sa": 5.6503,
+          "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
           "rate_joint_gate": 0.0,
           "rate_sa_le_gate": 0.0833,
           "wilson_ci95": [
@@ -32,12 +38,15 @@
           ]
         },
         "small": {
+          "molecule_weighted_mean_qed": 0.1991,
+          "molecule_weighted_mean_sa": 7.5106,
           "n_joint_gate": 0,
           "n_pools": 2,
           "n_sa_le_gate": 16,
           "n_scored": 2330,
           "pool_mean_qed": 0.1991,
           "pool_mean_sa": 7.5109,
+          "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
           "rate_joint_gate": 0.0,
           "rate_sa_le_gate": 0.0069,
           "wilson_ci95": [
@@ -46,9 +55,9 @@
           ]
         }
       },
-      "gen_validity_mean": 0.347,
-      "n_pools": 4,
-      "n_scored": 15010,
+      "gen_validity_mean": 0.4523,
+      "n_pools": 6,
+      "n_scored": 17188,
       "tiers_missing": [],
       "tiers_present": [
         "full_corpus",
@@ -59,109 +68,221 @@
     "reconstruction": {
       "by_tier": {
         "full_corpus": {
+          "molecule_weighted_mean_qed": 0.2154,
+          "molecule_weighted_mean_sa": 5.0327,
           "n_joint_gate": 0,
           "n_pools": 2,
           "n_sa_le_gate": 28,
           "n_scored": 83,
           "pool_mean_qed": 0.2158,
           "pool_mean_sa": 5.0327,
+          "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
           "rate_joint_gate": 0.0,
           "rate_sa_le_gate": 0.3373,
           "wilson_ci95": [
             0.2448,
             0.4442
           ]
-        },
-        "small": {
-          "n_joint_gate": 0,
-          "n_pools": 1,
-          "n_sa_le_gate": 0,
-          "n_scored": 66,
-          "pool_mean_qed": 0.0944,
-          "pool_mean_sa": 6.4423,
-          "rate_joint_gate": 0.0,
-          "rate_sa_le_gate": 0.0,
-          "wilson_ci95": [
-            0.0,
-            0.055
-          ]
         }
       },
-      "gen_validity_mean": 0.3581,
-      "n_pools": 3,
-      "n_scored": 149,
+      "gen_validity_mean": 0.3053,
+      "n_pools": 2,
+      "n_scored": 83,
       "tiers_missing": [
-        "mid"
+        "mid",
+        "small"
       ],
       "tiers_present": [
-        "full_corpus",
-        "small"
+        "full_corpus"
       ]
     }
   },
   "by_tier": {
-    "full_corpus": {
-      "comparable": false,
-      "n_joint_gate": 0,
-      "n_pools": 3,
-      "n_sa_le_gate": 64,
-      "n_scored": 12751,
-      "pipeline_mix": {
-        "generation": 12668,
-        "reconstruction": 83
+    "generation": {
+      "full_corpus": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.1201,
+        "molecule_weighted_mean_sa": 6.9754,
+        "n_joint_gate": 0,
+        "n_pools": 3,
+        "n_sa_le_gate": 60,
+        "n_scored": 14846,
+        "pipeline_mix": {
+          "generation": 14846
+        },
+        "pool_mean_qed": 0.1056,
+        "pool_mean_sa": 6.7781,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.004,
+        "wilson_ci95": [
+          0.0031,
+          0.0052
+        ]
       },
-      "pool_mean_qed": 0.1852,
-      "pool_mean_sa": 5.6853,
-      "rate_joint_gate": 0.0,
-      "rate_sa_le_gate": 0.005,
-      "wilson_ci95": [
-        0.0039,
-        0.0064
-      ]
+      "mid": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.2445,
+        "molecule_weighted_mean_sa": 5.6503,
+        "n_joint_gate": 0,
+        "n_pools": 1,
+        "n_sa_le_gate": 1,
+        "n_scored": 12,
+        "pipeline_mix": {
+          "generation": 12
+        },
+        "pool_mean_qed": 0.2445,
+        "pool_mean_sa": 5.6503,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.0833,
+        "wilson_ci95": [
+          0.0149,
+          0.3539
+        ]
+      },
+      "small": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.1991,
+        "molecule_weighted_mean_sa": 7.5106,
+        "n_joint_gate": 0,
+        "n_pools": 2,
+        "n_sa_le_gate": 16,
+        "n_scored": 2330,
+        "pipeline_mix": {
+          "generation": 2330
+        },
+        "pool_mean_qed": 0.1991,
+        "pool_mean_sa": 7.5109,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.0069,
+        "wilson_ci95": [
+          0.0042,
+          0.0111
+        ]
+      }
     },
-    "mid": {
-      "comparable": true,
-      "n_joint_gate": 0,
-      "n_pools": 1,
-      "n_sa_le_gate": 1,
-      "n_scored": 12,
-      "pipeline_mix": {
-        "generation": 12
+    "reconstruction": {
+      "full_corpus": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.2154,
+        "molecule_weighted_mean_sa": 5.0327,
+        "n_joint_gate": 0,
+        "n_pools": 2,
+        "n_sa_le_gate": 28,
+        "n_scored": 83,
+        "pipeline_mix": {
+          "reconstruction": 83
+        },
+        "pool_mean_qed": 0.2158,
+        "pool_mean_sa": 5.0327,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.3373,
+        "wilson_ci95": [
+          0.2448,
+          0.4442
+        ]
+      }
+    }
+  },
+  "by_tier_by_kind": {
+    "generation": {
+      "full_corpus": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.1201,
+        "molecule_weighted_mean_sa": 6.9754,
+        "n_joint_gate": 0,
+        "n_pools": 3,
+        "n_sa_le_gate": 60,
+        "n_scored": 14846,
+        "pipeline_mix": {
+          "generation": 14846
+        },
+        "pool_mean_qed": 0.1056,
+        "pool_mean_sa": 6.7781,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.004,
+        "wilson_ci95": [
+          0.0031,
+          0.0052
+        ]
       },
-      "pool_mean_qed": 0.2445,
-      "pool_mean_sa": 5.6503,
-      "rate_joint_gate": 0.0,
-      "rate_sa_le_gate": 0.0833,
-      "wilson_ci95": [
-        0.0149,
-        0.3539
-      ]
+      "mid": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.2445,
+        "molecule_weighted_mean_sa": 5.6503,
+        "n_joint_gate": 0,
+        "n_pools": 1,
+        "n_sa_le_gate": 1,
+        "n_scored": 12,
+        "pipeline_mix": {
+          "generation": 12
+        },
+        "pool_mean_qed": 0.2445,
+        "pool_mean_sa": 5.6503,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.0833,
+        "wilson_ci95": [
+          0.0149,
+          0.3539
+        ]
+      },
+      "small": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.1991,
+        "molecule_weighted_mean_sa": 7.5106,
+        "n_joint_gate": 0,
+        "n_pools": 2,
+        "n_sa_le_gate": 16,
+        "n_scored": 2330,
+        "pipeline_mix": {
+          "generation": 2330
+        },
+        "pool_mean_qed": 0.1991,
+        "pool_mean_sa": 7.5109,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.0069,
+        "wilson_ci95": [
+          0.0042,
+          0.0111
+        ]
+      }
     },
-    "small": {
-      "comparable": false,
-      "n_joint_gate": 0,
-      "n_pools": 3,
-      "n_sa_le_gate": 16,
-      "n_scored": 2396,
-      "pipeline_mix": {
-        "generation": 2330,
-        "reconstruction": 66
-      },
-      "pool_mean_qed": 0.1642,
-      "pool_mean_sa": 7.1547,
-      "rate_joint_gate": 0.0,
-      "rate_sa_le_gate": 0.0067,
-      "wilson_ci95": [
-        0.0041,
-        0.0108
-      ]
+    "reconstruction": {
+      "full_corpus": {
+        "comparable": true,
+        "molecule_weighted_mean_qed": 0.2154,
+        "molecule_weighted_mean_sa": 5.0327,
+        "n_joint_gate": 0,
+        "n_pools": 2,
+        "n_sa_le_gate": 28,
+        "n_scored": 83,
+        "pipeline_mix": {
+          "reconstruction": 83
+        },
+        "pool_mean_qed": 0.2158,
+        "pool_mean_sa": 5.0327,
+        "pool_mean_sa_weighting": "pool_mean_sa / pool_mean_qed are the UNWEIGHTED mean over the tier's pools; n_scored is a SUM over molecules — read molecule_weighted_mean_* for the molecule-level mean",
+        "rate_joint_gate": 0.0,
+        "rate_sa_le_gate": 0.3373,
+        "wilson_ci95": [
+          0.2448,
+          0.4442
+        ]
+      }
     }
   },
   "design": {
     "comparable_across_tiers_only_within_a_pipeline": true,
     "full_corpus_n_train": 26715,
     "novelty_gate": 0.9,
-    "pipeline_rule": "header contains 'metal_z' -> reconstruction; 'n_frags_raw' -> generation",
+    "pipeline_rule": "read from the CSV HEADER (and, for a 'metal_z' pool, the CONTENT of its first data row), not the run name: an explicit 'pool_kind' column is authoritative; 'n_frags_raw' in the header is the trainer's free-generation path; a 'metal_z' header is decided by its content (sanitized == 1 and metal_z non-empty -> reconstruction; sanitized == 0 and metal_z empty -> generation); both markers, a missing row or disagreeing signals -> unknown",
+    "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
     "sa_gate": 4.5,
     "small_train_cutoff": 1024,
     "thresholds": [
@@ -182,7 +303,7 @@
       "same_content_as": "cfm_c7_fullgen_2026_10_20"
     }
   ],
-  "generated_utc": "2026-10-20T21:14:08+00:00",
+  "generated_utc": "2026-10-30T18:45:28+00:00",
   "pools": [
     {
       "bond_exact_type_rate": 0.0,
@@ -387,6 +508,7 @@
           ]
         }
       },
+      "cohort_source": "census:per_epoch_metrics.json:config",
       "epochs_configured": 18,
       "gate_smiles": [
         "CCCC(CC)(CC(C(C)C)C(C)(O)O)C1(C(C)(CC(C)CC)C2CC(C)C23C(C)(OC(C)(CO)CC(C)C)C(C)([CH]([Ru][Cl])C(C)C)C3(C)C(CC)(P(C)C)C(O)(NC)P(CO)C(C)(C)C)OO1.N",
@@ -431,6 +553,7 @@
         "n": 704,
         "value": 1.0
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 17 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.8587,
         "n": 10190,
@@ -458,8 +581,12 @@
       "n_scored": 12668,
       "n_train": 26715,
       "n_unscored": 1,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
       "pipeline": "generation",
+      "pool_epoch": 17,
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.1238,
       "sa_counts_at_or_below": {
         "4.0": 16,
@@ -473,6 +600,127 @@
       "sa_median": 6.691,
       "sa_min": 2.0155,
       "sha256": "2d7b7c442915a9e5de0e67618031f350ee039670243f3e5fc1e500193fec7384",
+      "tier": "full_corpus",
+      "train_fraction_of_corpus": 1.0
+    },
+    {
+      "bond_exact_type_rate": null,
+      "bond_type_macro_f1": null,
+      "by_epoch": {
+        "0": {
+          "n": 704,
+          "n_joint": 0,
+          "n_sa_le_gate": 7,
+          "rate_sa_le_gate": 0.0099,
+          "sa_mean": 7.0126,
+          "wilson_ci95": [
+            0.0048,
+            0.0204
+          ]
+        },
+        "1": {
+          "n": 704,
+          "n_joint": 0,
+          "n_sa_le_gate": 10,
+          "rate_sa_le_gate": 0.0142,
+          "sa_mean": 6.8807,
+          "wilson_ci95": [
+            0.0077,
+            0.0259
+          ]
+        },
+        "2": {
+          "n": 704,
+          "n_joint": 0,
+          "n_sa_le_gate": 7,
+          "rate_sa_le_gate": 0.0099,
+          "sa_mean": 6.8116,
+          "wilson_ci95": [
+            0.0048,
+            0.0204
+          ]
+        }
+      },
+      "cohort_source": "cohort_recovery:run_log:ts_matched",
+      "epochs_configured": 18,
+      "gate_smiles": [
+        "CCC(CC([CH2][Rh]1([CH3])([F])[O][C]1(O)F)C(C)C)C(C(C)C)(C(CC)C1C(C)C1CSC1C2C1C21C(COC)P1CC)C1(COC[SiH3])OC1PCCF",
+        "CCCC(C(C)CC)C(OC(C(C)CC)[CH]1[CH2][Ir]1([CH3])([CH3])[CH3])C1(C(C2CC2C(CC)C(C)(CC)C2NC2C(C)N)C(C(CC)C(C)C)C(C)(CC(N)CC)NC)OC12OC2OCN",
+        "C.C.CCCC1(C(C)C(C)CC(NN(C)C)C(CCC)(C2(CC)CC2C(C)[CH2][Rh])C23C4C(C(C(C)C(CC)C(C)C(CC)CC)C(C(Cl)CC5CC5CC)C5CC5C)C2C43)CC1",
+        "C.CCCCCCC(C)C(C)C([CH]1[CH]2[P](C(C(O)OC)C(CCOC)C(C)CC)[Ir]123([CH](C)C)[CH]1C(C)[CH]13)P1OOC2C(=C1C(C(C)COC)C1CC1C)C(C)(CC)C2C(C)CC1OC1O",
+        "C.C.CCCC(C(C)CC)C(C(C(Cl)PCC)C(CN(C)CC)[CH]1C(C)[CH]2[C]34[CH]5[CH]6[P]3[Ru]16254)C(C)C(C(C)CC)(C(CCCP(C)C)C(C)C)C1C(C(C)CC)C1C1CC1",
+        "C.C.CC.CCC.CCCCN(COC)C1P2C3C2C12C3(C(C)C(C)P(C)CC)C21C2C(C3COC3)C2[C]1(CCl)[Ru]1([CH2]CCC)=[CH]N[CH2]1.Cl",
+        "C.CCCCCN(CC)C1(COC)C2(C(C)COC)C34C5(C(C)CC([O][Re]([CH3])[CH2][AsH]CCC)C(C)O)C13C254.O",
+        "CCC[CH]1[CH2][Os]1([CH3])([CH2]C(C)C12C(C34C(C)P(C(C)Cl)C35C(C(C)(Cl)C3C(C)C3(C)CCC)C45C3(CC)CC3)C1(C)C2(CC)CC(C)CO)[P](CC)CC",
+        "C.C.CCC(C)CC(CC)CC1(C2C(CC(C)CC)C2SC(N)CC)CC2(CC(C)CN(C)C)CC2(C)[C]23[P](SCCC(C)C)[Os]24([CH3])([CH2][C]4(C)C2C(C)C2CC)[P]13",
+        "C.C.C.CCCCC[N]1[CH2][Ir]1([CH2]C(C)C)([CH2]C1(C(C)(CC2C3(C)OC23CC)C2C3(C)C4CC423)C(CC)C1(C)CCC)([N](C)C)[N](C(C)C)C(C)(C(C)CC(O)ONC)C(N)OC",
+        "C.C.CCCC(C(C)Cl)C12[P]3[C]1([Si]21NC1(CN)C(C)(CC)CC)[Ru]31([CH3])([CH2]O)[CH]2OC2(C)[C]1(C)C(C)C(C)C(C)Cl",
+        "CCCOCN(CC)C[O][Pt]([CH2]C)([CH2]C)[C](C)(C)C(C)(C)O",
+        "CCOPC1([C](C)(CC)[Ru]2345[P]6N(C78C(C)CC(CCO)C7(C)N8C(C)(CC)C(C)(C)CC)[C]2(CC)[C]32C(C)(CC)C2(C)[C]4(CC)[C]65C)CO1",
+        "C.C.CCN(C)C(N[C]12[CH]3[C]14[C]15[CH](C6C(C)C6C)[Ru]3241[C]5(SC(C)C)C1(C)C(N)C12C(C)C2C1CC1)C1C2CC21.CP",
+        "CCCCN(C)C1CC1(CC)N1C(C)(CN(CC)CN)[C]12[C]1(C(CC)CCC)[C]3(CC(C)(N=NC)N(C)C)[N](C(CC)(C4C(CCC)C4C4CC4C)N4C5NC54)[Pt]312",
+        "CCC(C)CCCC(C)C(Cl)CCN(C)CC.C[C]1([Ru])CS1",
+        "CCC(C)C[CH]1[P]2[CH](C34C(CC)C35C36C(CC)C3(CNC(Cl)CC(C)(C)C(C)(CC)C(C)C)C465)[Ru]12([CH2]PC)([CH](C)NC)[N](C)CC",
+        "C.CCCC(C)(C1(C)OC12C13C4[As](C)C41C23C(C)(C)C)[C]1(CC(C)(C)OC)[CH](OCC)[Re]12([CH3])([CH3])[O][N]2OCC",
+        "CCCCCCCCCP1CCC(C)(C(CCCC)CC(CC(C)CCC)C(C)I)[C]23C4(CC(C)C(C)CC)[C]56[CH2][Ru]527([P](C[C]72CC2C)C1(C)CC)[C]463",
+        "CCCCCNN(C)C(C)CC(C)CC(C(C)CCC(C)(C)Cl)[C](C(C)CC(C)C)(C(CCCC)C(C)C)[Ru]12([CH2]CC)([CH2]CCCl)[C]3(CC)C[C]14C(CC)(COCC)[C]342",
+        "C.CCCC(C)(S)CC(CC12C(C(C)C)C1(C)C2(C)CC1[CH]([Re][CH](C)CC)P1CC(C)CC)C1C2P1CSC21PS1",
+        "CCCC1CC1(C)[SiH](C)[Ru]12([NH]C)([NH]C(C)(CC(C)C)CC(C)CC(C)(CC3(C(N)CNC)C(B4CP4C)N3C(C)C)C(C)(C)C)[CH2][C]13N1C[C]132",
+        "C.CCC.CCCCC(C)[CH]1[CH](CC2(Cl)C(C)P2C)[Ru]123([C](C)(CCl)C(CCC)OC)[P]1C(C(N)CC(C)CC)(C(C)(CC)CC)C14C1(C(C)CCC)[C]2(C)[C]143",
+        "CCC(O)C(C)C.CCOCCCC[CH2][Pt]([CH2]C)([CH2]O)[NH]C"
+      ],
+      "gen_validity": {
+        "epoch": 2,
+        "n": 704,
+        "value": 1.0
+      },
+      "gen_validity_source": "fallback:un_segmented_event_stream: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 2 of the resolved population",
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.8643,
+        "n": 2112,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.0018
+        ]
+      },
+      "label": "cfm_c8_fullgen_2026_10_24",
+      "last_epoch": {
+        "epoch": 2,
+        "n": 704,
+        "n_joint": 0,
+        "n_sa_le_gate": 7,
+        "rate_sa_le_gate": 0.0099,
+        "sa_mean": 6.8116,
+        "wilson_ci95": [
+          0.0048,
+          0.0204
+        ]
+      },
+      "n_rows": 2112,
+      "n_scored": 2112,
+      "n_train": 26715,
+      "n_unscored": 0,
+      "n_val": 192,
+      "path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+      "pipeline": "generation",
+      "pool_epoch": 2,
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "population_source": "fallback:un_segmented_event_stream",
+      "qed_mean": 0.0987,
+      "sa_counts_at_or_below": {
+        "4.0": 12,
+        "4.5": 24,
+        "5.0": 43,
+        "5.5": 126,
+        "6.0": 350
+      },
+      "sa_max": 9.8522,
+      "sa_mean": 6.9016,
+      "sa_median": 6.9169,
+      "sa_min": 1.0,
+      "sha256": "4b3f7687b1ad3a9af71525b815922a34b0ccb2b4edc87a041871900837bb5e46",
       "tier": "full_corpus",
       "train_fraction_of_corpus": 1.0
     },
@@ -811,6 +1059,7 @@
           ]
         }
       },
+      "cohort_source": "census:run_log:ts_matched",
       "epochs_configured": 30,
       "gate_smiles": [
         "CCCC(C)(C)N(CC)C(=[C]=[Ru](=[C](C)CN)=[C](C(C)C)C(C)(C)C)CC",
@@ -826,6 +1075,7 @@
         "n": 48,
         "value": 0.08333333333333333
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 29 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.8677,
         "n": 953,
@@ -853,8 +1103,12 @@
       "n_scored": 1175,
       "n_train": 256,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
       "pipeline": "generation",
+      "pool_epoch": 29,
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.1981,
       "sa_counts_at_or_below": {
         "4.0": 6,
@@ -1206,6 +1460,7 @@
           ]
         }
       },
+      "cohort_source": "census:run_log:ts_matched",
       "epochs_configured": 30,
       "gate_smiles": [
         "CCCC(C)(C)N(CC)C(=[C]=[Ru](=[C](C)CN)=[C](C(C)C)C(C)(C)C)CC",
@@ -1223,6 +1478,7 @@
         "n": 48,
         "value": 0.2916666666666667
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 29 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.8643,
         "n": 949,
@@ -1250,8 +1506,12 @@
       "n_scored": 1155,
       "n_train": 256,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
       "pipeline": "generation",
+      "pool_epoch": 29,
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.2001,
       "sa_counts_at_or_below": {
         "4.0": 5,
@@ -1284,13 +1544,21 @@
           ]
         }
       },
+      "cohort_source": "census:run_log:ts_matched",
       "epochs_configured": 1,
       "gate_smiles": [],
       "gen_validity": {
-        "epoch": 0,
-        "n": 128,
-        "value": 0.9140625
+        "epoch": 10,
+        "n": 768,
+        "value": 0.3255208333333333
       },
+      "gen_validity_pool": {
+        "n": 66,
+        "n_attempted": 192,
+        "source": "metrics/by_metric/cfm_free_generation_panel_seed0.json -> generation.n_valid (66) / generation.n_attempted (192); the panel also records generation.gen_validity = 0.344 for the same draw",
+        "value": 0.34375
+      },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 10 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": null,
         "n": 66,
@@ -1316,10 +1584,14 @@
       },
       "n_rows": 66,
       "n_scored": 66,
-      "n_train": 64,
+      "n_train": 26715,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
-      "pipeline": "reconstruction",
+      "pipeline": "generation",
+      "pool_epoch": 10,
+      "pool_kind_reason": "content: sanitized == 0 and metal_z is empty -> era B, the ODE sampler's free generation",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.0944,
       "sa_counts_at_or_below": {
         "4.0": 0,
@@ -1333,8 +1605,8 @@
       "sa_median": 6.424,
       "sa_min": 4.751,
       "sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef",
-      "tier": "small",
-      "train_fraction_of_corpus": 0.0024
+      "tier": "full_corpus",
+      "train_fraction_of_corpus": 1.0
     },
     {
       "bond_exact_type_rate": 0.2708333333333333,
@@ -1352,6 +1624,7 @@
           ]
         }
       },
+      "cohort_source": "census:per_epoch_metrics.json:config",
       "epochs_configured": 50,
       "gate_smiles": [
         "C1=CC=CC=[N][Ir]([c]2ccccc2)([c]2ccccc2)([P](c2ccccc2)c2ccccc2)([P](c2ccccc2)c2ccccc2)[N]=CC=CC=C1",
@@ -1372,10 +1645,11 @@
         "Cc1cccc([N](c2ccccc2)[Ru]([OH])([CH]=O)([c]2cccc(-c3ccccc3)c2N)([As](c2ccccc2)c2ccccc2)[As](c2ccccc2)c2ccccc2)c1.c1ccccc1"
       ],
       "gen_validity": {
-        "epoch": 8,
+        "epoch": 5,
         "n": 768,
-        "value": 0.07421875
+        "value": 0.234375
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 5 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6987,
         "n": 43,
@@ -1403,8 +1677,12 @@
       "n_scored": 43,
       "n_train": 26715,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv",
       "pipeline": "reconstruction",
+      "pool_epoch": 5,
+      "pool_kind_reason": "content: sanitized == 1 and metal_z = '77' (non-empty) -> era A, the bond head applied to a REAL tmQM geometry",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.2042,
       "sa_counts_at_or_below": {
         "4.0": 8,
@@ -1437,6 +1715,7 @@
           ]
         }
       },
+      "cohort_source": "census:per_epoch_metrics.json:config",
       "epochs_configured": 50,
       "gate_smiles": [
         "C1=CC=[N][Ir][N]=CC=CC(c2ccccc2P(c2ccccc2)c2ccccc2)=CC=C1.c1ccc(P(c2ccccc2)c2ccccc2)cc1",
@@ -1453,10 +1732,11 @@
         "c1ccc(-c2ccccc2-c2ccccc2[P](c2ccccc2)[Ir]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)cc1"
       ],
       "gen_validity": {
-        "epoch": 11,
+        "epoch": 8,
         "n": 768,
-        "value": 0.0859375
+        "value": 0.3763020833333333
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 8 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6977,
         "n": 40,
@@ -1484,8 +1764,12 @@
       "n_scored": 40,
       "n_train": 26715,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv",
       "pipeline": "reconstruction",
+      "pool_epoch": 8,
+      "pool_kind_reason": "content: sanitized == 1 and metal_z = '77' (non-empty) -> era A, the bond head applied to a REAL tmQM geometry",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.2275,
       "sa_counts_at_or_below": {
         "4.0": 4,
@@ -1529,6 +1813,7 @@
           ]
         }
       },
+      "cohort_source": "census:run_log:ts_matched",
       "epochs_configured": 2,
       "gate_smiles": [
         "C.C.C.Cc1ccnc(C)c1.ClC1C=C1.N.[CH]1=[CH][Ru]1"
@@ -1538,6 +1823,7 @@
         "n": 768,
         "value": 0.013020833333333334
       },
+      "gen_validity_source": "census:run_of_record_segment_index: the aggregate gen_validity row (the one carrying gen_validity_n) at epoch 1 of the resolved population",
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6486,
         "n": 12,
@@ -1565,8 +1851,12 @@
       "n_scored": 12,
       "n_train": 2048,
       "n_unscored": 0,
+      "n_val": 192,
       "path": "molmetal/reports/cfm_ode_link_probe/generated_smiles.csv",
       "pipeline": "generation",
+      "pool_epoch": 1,
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "population_source": "census:run_of_record_segment_index",
       "qed_mean": 0.2445,
       "sa_counts_at_or_below": {
         "4.0": 1,
@@ -1586,35 +1876,42 @@
   ],
   "provenance": {
     "census": "metrics/by_metric/cfm_run_census.json",
-    "git_commit": "78fad531b3a9acb4e8e93557a3522832d39c81a7",
+    "git_commit": "1b9470a0e2129e3c4d982da4453e034a6cc12e24",
     "scoring": "reuses cfm_sa_yield_audit.pool_report (SA + QED, unscored counted)",
     "script": "molmetal/scripts/c7_scale_matched_pools.py",
-    "v1_1_correction": "v1.0 aggregated by tier alone. The full_corpus cell is entirely bond-head reconstruction (wf_cfm_decode_dump_smiles.py) and the small cell is 98.8% free generation, so v1.0's 'training scale' reading compared two pipelines.",
+    "v1_1_correction": "v1.0 aggregated by tier alone. The full_corpus cell and the small cell came from two different pipelines -- a bond-head reconstruction of REAL tmQM geometries versus free generation -- so v1.0's 'training scale' reading compared two pipelines.",
     "v1_2_correction": "pools are deduplicated on file content (sha256), because two directories holding the same molecules were counted twice and doubled the full-corpus tier.",
-    "v1_3_correction": "sha256 alone stopped working once the full run resumed to 18 epochs: the 4-epoch partial is then a strict prefix, not a copy. A pool whose (epoch, smiles) rows are a subset of a kept pool's is now dropped as a prefix."
+    "v1_3_correction": "sha256 alone stopped working once the full run resumed to 18 epochs: the 4-epoch partial is then a strict prefix, not a copy. A pool whose (epoch, smiles) rows are a subset of a kept pool's is now dropped as a prefix.",
+    "v1_4_pool_kind": "the pool-kind rule has ONE owner: molmetal/scripts/cfm_pool_kind.py.  The mixed by_tier cell is replaced by the kind-separated by_tier_by_kind view; by_tier itself is only replaced under CFM_POOL_KIND_STRICT=1.",
+    "v1_5_pool_kind": "the pool kind is decided by CONTENT, not by the header.  MEASURED: cfm_fullcorpus_2026_10_10 has sanitized == 0 on 66/66 rows and an empty metal_z on 66/66 -> FREE GENERATION (the ODE path); cfm_fullcorpus_b64_2026_10_11 (40 rows) and cfm_objective_terms_2026_10_11 (43 rows) have sanitized == 1 and a populated metal_z on every row -> RECONSTRUCTION.  A pool whose signals disagree is UNKNOWN and is never pooled into a kind.",
+    "v1_6_cohort_owner": "the cohort (n_train / n_val) has ONE owner: the census's own ts-attested resolution (run.n_train / run.n_val with its cohort_source), with molmetal/scripts/cfm_cohort_recovery.py::recover_cohort as the fallback.  The run's own per_epoch_metrics.json is written ONCE at the END of training to a FIXED path, so a later run launched into the same --out-dir overwrites it; that clobbered file can no longer win.  MEASURED: cfm_fullcorpus_2026_10_10's file reads n_train=64 / n_val=32 (a 1-epoch CPU smoke) while the run of record's cohort is 26715/192 (census, run_log:ts_matched).",
+    "v1_6_epoch_aligned_gen_validity": "the gen_validity published on a pool row is the resolved POPULATION's value AT THE POOL'S OWN LAST EPOCH -- the epoch whose molecules the pool contains -- taken from the AGGREGATE row (the one carrying gen_validity_n), never from the per-seed rows and never from another epoch.  The SA / QED on the same row describe that epoch, so a validity from another epoch describes a different model.  The population is the RUN OF RECORD, segmented by the census's own _event_segments / _population_decision; a run the census does not carry falls back to the segment that CONTAINS the pool's epoch.  MEASURED: cfm_fullcorpus_2026_10_10's pool is epoch 10 and its run of record's epoch-10 aggregate is 0.3255208333333333 (n=768); the value the old 'last logged row' rule published was the epoch-0 row of a LATER 1-epoch CPU smoke that wrote into the same directory (0.9140625, n=128).",
+    "v1_6_pool_own_draw": "the pool's OWN draw (how many of its attempts yielded a molecule) is published SEPARATELY, in gen_validity_pool, with its own source string, so it can never be read as the run of record's gen_validity.  MEASURED: cfm_fullcorpus_2026_10_10 holds the 66 survivors of 192 attempts (66/192 = 0.34375); the free-generation panel records the same draw and rounds it to 0.344."
   },
   "selection_gap": {
-    "note": "cfm_sa_guided.json scored 2,396 molecules from three runs with n_train 64/256/256 and did not score the two full-corpus pools.",
+    "note": "cfm_sa_guided.json scores the generator's pools (2,396 molecules from three runs with n_train 26715/256/256) and, separately, the two full-corpus RECONSTRUCTION pools in their own block -- the two are never pooled into one rate.",
     "pools_omitted_there": [
       "cfm_c7_fullgen_2026_10_20",
-      "cfm_objective_terms_2026_10_11",
-      "cfm_fullcorpus_b64_2026_10_11",
+      "cfm_c8_fullgen_2026_10_24",
       "cfm_ode_link_probe"
     ],
-    "pools_scored_here": 7,
+    "pools_scored_here": 8,
     "pools_used_by_cfm_sa_guided": [
       "cfm_fullcorpus_2026_10_10",
+      "cfm_fullcorpus_b64_2026_10_11",
+      "cfm_objective_terms_2026_10_11",
       "cfm_pcgrad_off_2026_10_15",
       "cfm_pcgrad_on_2026_10_14"
     ]
   },
+  "strict_pool_kind": true,
   "verdict": {
     "full_corpus_generation_pool_exists": true,
-    "generation_molecules": 15010,
-    "generation_pools": 4,
+    "generation_molecules": 17188,
+    "generation_pools": 6,
     "generation_tiers_missing": [],
-    "reading": "Only pools from the same pipeline are comparable: a bond-head reconstruction of a real tmQM geometry inherits real chemistry, so its SA score is not generator quality. A full-corpus free-generation pool exists (12668 molecules, SA<=4.5 = 0.0028 [0.0021, 0.0039]). The small tier (n_train < 1024) scores 0.0069 [0.0042, 0.0111], so scaling to the full corpus is not better on this gate. gen_validity is the one metric both scales compute through the same path, and it does not improve with scale on the runs that have it.",
-    "reconstruction_molecules": 149
+    "reading": "Only pools from the same pipeline are comparable: a bond-head reconstruction of a real tmQM geometry inherits real chemistry, so its SA score is not generator quality. A full-corpus free-generation pool exists (14846 molecules, SA<=4.5 = 0.0040 [0.0031, 0.0052]). The small tier (n_train < 1024) scores 0.0069 [0.0042, 0.0111], so scaling to the full corpus is not better on this gate. gen_validity is the one metric both scales compute through the same path, and it does not improve with scale on the runs that have it.",
+    "reconstruction_molecules": 83
   },
-  "version": "1.3"
+  "version": "1.6"
 }

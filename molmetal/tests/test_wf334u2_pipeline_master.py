@@ -32,7 +32,7 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -234,9 +234,7 @@ def test_wf333_vina_wrapper_has_status_command():
     """Wf-333 Vina 4-step wrapper must support --status (USER_OK-exempt)
     for read-only state queries per Wf-334-U2 honest framing.
     """
-    wrapper = (
-        PROJECT_ROOT / "molmetal" / "scripts" / "launch_wf333_vina_4step_gpu_bench.sh"
-    )
+    wrapper = PROJECT_ROOT / "scripts" / "launch_wf333_vina_4step_gpu_bench.sh"
     assert wrapper.exists(), f"Wf-333 wrapper missing: {wrapper}"
 
     text = wrapper.read_text()

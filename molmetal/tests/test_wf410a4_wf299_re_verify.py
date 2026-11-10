@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 # Make /home/hugo/codes/mol-metal importable so we can find the script
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "molmetal/scripts"))
 
 # Re-import the verifier (avoids the Wf-410-A4 script's main() side-effects)

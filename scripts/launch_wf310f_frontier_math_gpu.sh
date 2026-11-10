@@ -39,19 +39,42 @@
 #
 # Pre-launch checks (BLOCKER before any wave)
 # -------------------------------------------
-#   1. pre_flight_check.py --pipeline launch (target 36/36 PASS).
-#   2. Wave-specific budget tracker call.
-#   3. Wave-specific per-wave checklist call.
+#   1. pre_flight_check.py --pipeline all --json <this wrapper's own report>;
+#      the verdict is read by molmetal/scripts/wf_launch_gate_verdict.py
+#      (a TIMEOUT counts as FAIL per Wf-A135).  Wf-A269 wave-11 (2026-11-02):
+#      the old "target 36/36 PASS" literal was a STALE target — the `all`
+#      pipeline carries 129 gates (AGENTS.md §1 rule #4) — and the verdict
+#      was re-derived by grepping the report instead of being read.
+#   2. Wave-specific budget tracker call.   (Wf-A269 wave-11: the header
+#      PROMISED this and NO code called it — a declared-but-dead gate.)
+#   3. Wave-specific per-wave checklist call. (Wf-A269 wave-11: same — the
+#      header promised it, no code called it, and no
+#      wave_<x>_subchecklist.json was ever written.)
 #
 # Per-wave OK gate (USER_OK)
 # --------------------------
 #   - Wall-time < 2 hr/wave.
 #   - All P0 BLOCKER + P1 VERIFY gates still PASS (re-run pre_flight).
 #   - Per-wave sub-checklist emit + JSON written under
-#     molmetal/reports/wf310f_frontier_math_gpu/wave_<x>_subchecklist.json.
+#     molmetal/reports/wf310f_frontier_math_gpu/wave_<x>_subchecklist.json
+#     (x = a|b|c, lower case, matching the wave_<x>/ output dirs).
 #
 # Usage
 # -----
+#   bash scripts/launch_wf310f_frontier_math_gpu.sh --wave A
+#   bash scripts/launch_wf310f_frontier_math_gpu.sh --wave all
+#   bash scripts/launch_wf310f_frontier_math_gpu.sh --dry-run
+#
+# Wf-A269 wave-19 (2026-11-04): the USAGE block above named a path this
+# launcher NEVER occupied -- `molmetal/scripts/launch_wf310f_frontier_math_gpu.sh`
+# does not exist (MEASURED: 0 matches under molmetal/scripts/; the launcher is
+# tracked at scripts/launch_wf310f_frontier_math_gpu.sh and at no other
+# location).  The block was NEVER re-worded: `git log --all -S 'bash
+# scripts/launch_wf310f'` returns NOTHING, so the original rendering is the
+# dead one and it was a LIVE defect, not a superseded rendering.  Every other
+# live wrapper words it `bash scripts/launch_*.sh`.
+# The superseded rendering is preserved VERBATIM per AGENTS.md §5.5 rule #6:
+#
 #   bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --wave A
 #   bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --wave all
 #   bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --dry-run
@@ -75,6 +98,10 @@ SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf310f_frontier_math_gpu"
 PRE_FLIGHT="${SCRIPTS_DIR}/pre_flight_check.py"
 ABORT_RECOVERY="${SCRIPTS_DIR}/abort_recovery.py"
+# Wf-A269 wave-11 (2026-11-02): the two per-wave gates the header PROMISED
+# but no code called.  Both are now invoked (see wave_gate()).
+BUDGET_TRACKER="${SCRIPTS_DIR}/wave_budget_tracker.py"
+PER_WAVE_CHECKLIST="${SCRIPTS_DIR}/per_wave_checklist.py"
 
 # Trainers — Day 3-4 + Day 5-6 wire-in points (per Wf-310F §1).
 CFM_TRAINER="${SCRIPTS_DIR}/train_cfm_yuelbond_wasserstein.py"
@@ -97,6 +124,15 @@ WAVE_A_GPU="cuda:0"      # PRO 6000 Blackwell
 WAVE_B_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 WAVE_C_GPU="cuda:0"      # PRO 6000 Blackwell (joint sweep)
 
+# kill_then_adapt session cap (per this file's header, line ~35: "Each wave
+# MUST finish < 2 hr (per-wave OK gate)"; the constants block above repeats
+# "kill_then_adapt < 2 hr/wave hard cap").
+# Wf-A269 wave-11 (2026-11-02): the budget gate measures each wave against
+# THIS cap, not against the wave's own WAVE_*_BUDGET_HR constant, so it is
+# NOT a tautology and can actually FAIL — wave C's own 2.5 h constant does
+# not fit a 2 h cap, and the gate now says so out loud instead of hiding it.
+KILL_THEN_ADAPT_CAP_HR=2.0
+
 # Color codes (only when stdout is a tty).
 if [ -t 1 ]; then
     C_RED=$'\033[0;31m'; C_GRN=$'\033[0;32m'; C_YEL=$'\033[0;33m'; C_RST=$'\033[0m'
@@ -108,6 +144,38 @@ log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "${REPORTS_DIR}/lau
 die() { printf '%s[FATAL]%s %s\n' "${C_RED}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
 ok()  { printf '%s[OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 warn(){ printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+
+# Wf-A269 wave-11 (2026-11-02): the ONE place that knows how to read a
+# launcher's pre-launch gate REPORT (pre-flight / per-wave checklist / wave
+# budget tracker) and turn it into an honest PASS / FAIL / SKIP verdict.
+# MEASURED evidence: molmetal/scripts/wf_launch_gate_verdict.py:1-241 —
+#   sub-commands `preflight` | `checklist` | `budget`; exit 0=PASS, 1=FAIL,
+#   2=SKIP (a missing/unreadable report is SKIP, never PASS);
+#   `preflight` = PASS iff summary.fail==0 AND summary.timeout==0 (a TIMEOUT
+#   is a FAIL per Wf-A135); `checklist` = PASS iff no `error`,
+#   preflight_fail_count==0 and every P0 blocker gate reads PASS;
+#   `budget` = PASS iff remaining_hr>=0 and the wave is not in deferred_waves.
+# Mirrors scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh:96-100 exactly.
+GATE_VERDICT_CHECKER="${SCRIPTS_DIR}/wf_launch_gate_verdict.py"
+[ -f "${GATE_VERDICT_CHECKER}" ] || die "launch-gate verdict checker missing: ${GATE_VERDICT_CHECKER}"
+
+# run_gate_check / gate_detail — the shared verdict reader.  Mirrors
+# scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh:153-169 verbatim in shape.
+# The wrapper NEVER re-implements report parsing and NEVER greps a tool's
+# stdout for a verdict token: it asks the shared consumer, which reads the
+# REPORT the tool wrote.
+run_gate_check() {
+    local kind="$1" report="$2" wave="${3:-}" rc=0 out=""
+    if [ -n "${wave}" ]; then
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" \
+            --wave "${wave}" 2>&1)" || rc=$?
+    else
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" 2>&1)" || rc=$?
+    fi
+    printf '%s\n' "${out}" > "${REPORTS_DIR}/gate_${kind}.verdict.txt"
+    case "${rc}" in 0) printf 'PASS' ;; 1) printf 'FAIL' ;; *) printf 'SKIP' ;; esac
+}
+gate_detail() { head -1 "${REPORTS_DIR}/gate_$1.verdict.txt" 2>/dev/null || printf ''; }
 
 # USER_OK gate helper — blocks between waves.
 user_ok_gate() {
@@ -185,18 +253,122 @@ EOF
 pre_flight_gate() {
     log "pre_flight_check.py --pipeline launch  (TODO-207 v2 §1 + §3 + §4)"
     if [ "${DRY_RUN}" -eq 1 ]; then
-        warn "DRY-RUN: skipping pre_flight_check.py GPU/live gates"
+        warn "DRY-RUN: skipping pre_flight_check.py GPU/live gates (verdict UNVERIFIED, not PASS)"
         return 0
     fi
-    if ! PYTHONPATH="${PROJECT_ROOT}" "${PY}" "${PRE_FLIGHT}" --pipeline all --json "${REPORTS_DIR}/pre_flight.json" \
-            > "${REPORTS_DIR}/pre_flight.stdout" 2>&1; then
-        die "pre_flight_check FAIL — see ${REPORTS_DIR}/pre_flight.json"
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: the verdict was re-derived by
+    # grepping the report, which cannot see a TIMEOUT, and the tool's stdout
+    # was captured into a file whose name does not say "log".
+    # MEASURED evidence:
+    #   * molmetal/scripts/pre_flight_check.py:17360-17366 — `--json` takes a
+    #     PATH (`type=Path, nargs="?"`); the report is written only
+    #     `if args.json is not None` (:17734-17736).  The old call DID pass a
+    #     path, so the artefact was valid JSON — this half was LIVE.
+    #   * :17743-17751 — a TIMEOUT is a FAIL under --strict (Wf-A135); the
+    #     old grep counted only '"status": "FAIL"' and would have said PASS
+    #     on a report full of TIMEOUTs.
+    #   * molmetal/scripts/wf_launch_gate_verdict.py:96-114 — the shared
+    #     consumer's `preflight` verdict is PASS iff fail==0 AND timeout==0.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     if ! PYTHONPATH="${PROJECT_ROOT}" "${PY}" "${PRE_FLIGHT}" --pipeline all --json "${REPORTS_DIR}/pre_flight.json" \
+    #             > "${REPORTS_DIR}/pre_flight.stdout" 2>&1; then
+    #         die "pre_flight_check FAIL — see ${REPORTS_DIR}/pre_flight.json"
+    #     fi
+    #     local n_pass n_fail
+    #     n_pass=$(grep -c '"status": "PASS"'   "${REPORTS_DIR}/pre_flight.json" || true)
+    #     n_fail=$(grep -c '"status": "FAIL"'   "${REPORTS_DIR}/pre_flight.json" || true)
+    #     ok "pre_flight ${n_pass} PASS / ${n_fail} FAIL"
+    #     [ "${n_fail}" -eq 0 ] || die "pre_flight FAIL count > 0 — BLOCKER (per TODO-207 v2 §1)"
+    #
+    # REPAIRED: the tool's stdout goes to a .log file (never into the .json
+    # path) and the verdict comes from the shared consumer, so a TIMEOUT is
+    # a FAIL and a missing/unreadable report is a SKIP (never a PASS).
+    # The gate stays HARD: a non-PASS verdict refuses the launch.
+    # Wf-A269 wave-17 (2026-11-03): rm the PREVIOUS report first.  A crashed
+    # or killed pre-flight must not leave the last run's PASS report on disk
+    # for the consumer to read — "stale is treated as missing".
+    rm -f "${REPORTS_DIR}/pre_flight.json"
+    "${PY}" "${PRE_FLIGHT}" --pipeline all --json "${REPORTS_DIR}/pre_flight.json" \
+        > "${REPORTS_DIR}/pre_flight.stdout.log" 2>&1 || true
+    local pf_verdict pf_detail
+    pf_verdict="$(run_gate_check preflight "${REPORTS_DIR}/pre_flight.json")"
+    pf_detail="$(gate_detail preflight)"
+    if [ "${pf_verdict}" != "PASS" ]; then
+        warn "pre_flight_check ${pf_verdict} (${pf_detail})"
+        die "pre_flight_check ${pf_verdict} — refusing to launch (report: ${REPORTS_DIR}/pre_flight.json)"
     fi
-    local n_pass n_fail
-    n_pass=$(grep -c '"status": "PASS"'   "${REPORTS_DIR}/pre_flight.json" || true)
-    n_fail=$(grep -c '"status": "FAIL"'   "${REPORTS_DIR}/pre_flight.json" || true)
-    ok "pre_flight ${n_pass} PASS / ${n_fail} FAIL"
-    [ "${n_fail}" -eq 0 ] || die "pre_flight FAIL count > 0 — BLOCKER (per TODO-207 v2 §1)"
+    ok "pre_flight ${pf_detail}"
+}
+
+# -----------------------------------------------------------------------------
+# Per-wave pre-launch gates #2 + #3 (Wf-A269 wave-11, 2026-11-02)
+#   wave_gate <label> <budget_hr> <wave_dir> <config-or-empty>
+#     #2 wave_budget_tracker.py   — ADVISORY (AGENTS.md §4: "gate: PLANNED only")
+#     #3 per_wave_checklist.py    — HARD (the header calls it a BLOCKER)
+# -----------------------------------------------------------------------------
+wave_gate() {
+    local wave_label="$1" budget_hr="$2" wave_dir="$3" config="$4"
+    local wave_name="wave_${wave_label,,}"
+    log "==== Wave ${wave_label} pre-launch gates (budget tracker + per-wave checklist) ===="
+
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        warn "DRY-RUN: wave ${wave_label} budget + checklist gates SKIPPED — verdict UNVERIFIED, not PASS"
+        return 0
+    fi
+
+    # ---- gate #2: wave-specific budget tracker (advisory) --------------------
+    # Wf-A269 wave-11: MEASURED evidence —
+    #   * molmetal/scripts/wave_budget_tracker.py:1422 — main() returns 0 on
+    #     EVERY path, so its exit code can never carry a verdict; the verdict
+    #     lives ONLY in the report it writes (:1370-1399: remaining_hr,
+    #     deferred_waves, honest_framing at the top level).
+    #   * molmetal/scripts/wf_launch_gate_verdict.py:151-173 — `budget` is
+    #     PASS iff remaining_hr >= 0 and the wave is not in deferred_waves.
+    #   * The wave is named "wave_<label>" (no "cfm"), so the tracker's
+    #     cfm-without-yuelbond deferral rule
+    #     (wave_budget_tracker.py:865-871) does not fire.
+    local bt_rc=0 bg_verdict bg_detail
+    "${PY}" "${BUDGET_TRACKER}" \
+        --budget-hr "${KILL_THEN_ADAPT_CAP_HR}" \
+        --waves "${wave_name}:${budget_hr}" \
+        --report-json "${wave_dir}/budget_report.json" \
+        > "${wave_dir}/budget.log" 2>&1 || bt_rc=$?
+    bg_verdict="$(run_gate_check budget "${wave_dir}/budget_report.json" "${wave_name}")"
+    bg_detail="$(gate_detail budget)"
+    printf '%s %s\n' "${bg_verdict}" "${bg_detail}" > "${wave_dir}/budget.verdict.txt"
+    if [ "${bg_verdict}" = "PASS" ]; then
+        ok "wave ${wave_label} budget ${bg_verdict} (${bg_detail})"
+    else
+        warn "wave ${wave_label} budget ${bg_verdict} (${bg_detail}) — advisory only (rc=${bt_rc}; see ${wave_dir}/budget.log)"
+    fi
+
+    # ---- gate #3: wave-specific per-wave checklist (hard) -------------------
+    # Wf-A269 wave-11: this is the gate the header promised and no code ever
+    # called; no wave_<x>_subchecklist.json was ever written.  It now runs
+    # against THIS launch's own pre-flight report (never the frozen
+    # molmetal/reports/wf259_run/pre_flight.json default at
+    # molmetal/scripts/per_wave_checklist.py:86) and its verdict is read by
+    # the shared consumer, which understands this exact report schema
+    # (preflight_fail_count / p0_blocker_gates / error).
+    local cl_rc=0 cl_verdict cl_detail
+    local cl_args=(--wave "${wave_name}")
+    if [ -n "${config}" ]; then
+        cl_args+=(--config "${config}")
+    fi
+    PYTHONPATH="${PROJECT_ROOT}" "${PY}" "${PER_WAVE_CHECKLIST}" "${cl_args[@]}" \
+        --preflight "${REPORTS_DIR}/pre_flight.json" \
+        --out "${REPORTS_DIR}/${wave_name}_subchecklist.json" \
+        --out-md "${REPORTS_DIR}/${wave_name}_subchecklist.md" \
+        --time-budget-hr "${budget_hr}" \
+        > "${wave_dir}/checklist.log" 2>&1 || cl_rc=$?
+    cl_verdict="$(run_gate_check checklist "${REPORTS_DIR}/${wave_name}_subchecklist.json")"
+    cl_detail="$(gate_detail checklist)"
+    printf '%s %s\n' "${cl_verdict}" "${cl_detail}" > "${wave_dir}/checklist.verdict.txt"
+    if [ "${cl_verdict}" != "PASS" ]; then
+        warn "wave ${wave_label} checklist ${cl_verdict} (${cl_detail})"
+        die "wave ${wave_label} per-wave checklist ${cl_verdict} — refusing to launch (report: ${REPORTS_DIR}/${wave_name}_subchecklist.json)"
+    fi
+    ok "wave ${wave_label} checklist ${cl_verdict} (${cl_detail})"
 }
 
 # -----------------------------------------------------------------------------
@@ -237,7 +409,18 @@ EOF
     local started_at
     started_at=$(date +%s)
     local deadline
-    deadline=$(( started_at + ${budget_hr%.*} * 3600 ))
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: `${budget_hr%.*}` TRUNCATED the
+    # budget to a whole number of hours.  MEASURED: wave B's budget is 0.5 h
+    # => `${budget_hr%.*}` == "0" => deadline == started_at, so the first
+    # poll tick (`now >= deadline`) killed the trainer IMMEDIATELY; wave A's
+    # 1.5 h budget became a 1 h timeout and wave C's 2.5 h became 2 h.  The
+    # timeout gate therefore never measured what it claimed.  awk is present
+    # (/usr/bin/awk) and converts the decimal budget exactly.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     deadline=$(( started_at + ${budget_hr%.*} * 3600 ))
+    local budget_sec
+    budget_sec=$(awk -v h="${budget_hr}" 'BEGIN { printf "%d", h*3600 }')
+    deadline=$(( started_at + budget_sec ))
 
     # Background launcher for the trainer; PID captured for kill_then_adapt.
     # Bug fix 2026-10-08: removed --user-ok "REQUIRED" literal (G6/chemprop
@@ -245,7 +428,8 @@ EOF
     # backgrounded so no error visible). USER_OK gating is enforced by the
     # outer wrapper env check, NOT a CLI flag (per chemprop_v3 P1.4 wrapper
     # post-mortem same date).
-    CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
+    # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> ${gpu##cuda:}.
+    CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${gpu##cuda:}}" \
         PYTHONPATH=/home/hugo/codes/mol-metal \
 setsid nohup         "${PY}" "${trainer}" \
             --config "${config}" \
@@ -286,7 +470,16 @@ setsid nohup         "${PY}" "${trainer}" \
     wait "${pid}" 2>/dev/null || trainer_rc=$?
 
     local wall_sec=$(( $(date +%s) - started_at ))
-    log "Wave ${wave_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr) rc=${trainer_rc}"
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: `bc` is NOT INSTALLED on this host
+    # (MEASURED 2026-11-02: `command -v bc` -> rc=1, no binary), so the old
+    # sub-shell produced an EMPTY string and the line read "wall=123s ( hr)".
+    # awk is present (/usr/bin/awk); same pattern as
+    # scripts/launch_wf306a_drugood_vina_gpu.sh:574-576.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     log "Wave ${wave_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr) rc=${trainer_rc}"
+    local wall_hr
+    wall_hr=$(awk -v s="${wall_sec}" 'BEGIN { printf "%.2f", s/3600 }')
+    log "Wave ${wave_label} wall=${wall_sec}s (${wall_hr} hr) rc=${trainer_rc}"
 
     if [ "${trainer_rc}" -ne 0 ]; then
         warn "Wave ${wave_label} trainer exited rc=${trainer_rc} — see ${out_dir}/train.log"
@@ -303,15 +496,72 @@ setsid nohup         "${PY}" "${trainer}" \
     # Post-wave abort criteria sweep (per TODO-207 v2 §7.2)
     if [ "${aborted}" -eq 1 ] || ! grep -q "wave_${wave_label,,}_complete\|done" "${out_dir}/train.log"; then
         warn "Wave ${wave_label} FAIL — invoking abort_recovery.py"
+        # Wf-A269 wave-11 (2026-11-02) — REPAIR: the abort_recovery call was
+        # DEAD THREE WAYS.  MEASURED evidence
+        # (molmetal/scripts/abort_recovery.py):
+        #   * :366-371 — `--pattern` has choices=("NaN","OOM","IndexError",
+        #     "cfm-collapse") (SUPPORTED_PATTERNS :99-105).  "TIMEOUT" is NOT
+        #     one of them => argparse exited rc=2 before doing any work.
+        #   * :372-377 — `--metal` is REQUIRED with choices
+        #     ("Ru","Ir","Os","Rh","Re") (SUPPORTED_METALS :105).  The old
+        #     call omitted it => argparse exited rc=2 again.
+        #   * there is NO `--json` flag (the report flag is `--report-json`,
+        #     :390, type=Path) => a third argparse error; and the stdout
+        #     redirect put the tool's LOG into recovery.json, which is not a
+        #     JSON report at all.  (DEFAULT_REPORT_JSON is a SHARED default
+        #     path, so the report flag must always be given explicitly.)
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     PYTHONPATH="${PROJECT_ROOT}" "${PY}" "${ABORT_RECOVERY}" --wave "wave_${wave_label,,}" \
+        #         --pattern TIMEOUT --json \
+        #         > "${out_dir}/recovery.json" 2>&1 || true
+        #
+        # REPAIRED: a legal --pattern, the REQUIRED --metal, --report-json
+        # pointed at THIS wave's own path, the tool's stdout captured into a
+        # .log file (never into the .json path), and the tool's REAL exit
+        # code captured (`cmd; rc=$?` — an `if ! cmd` would force $?=0).
+        # Mirrors the repaired block in
+        # scripts/launch_wf306a_drugood_vina_gpu.sh:505-570.
+        # HONEST NEGATIVE: abort_recovery's --metal filter only matches
+        # checkpoints whose FILENAME STEM carries the metal token
+        # (molmetal/scripts/abort_recovery.py:143-161), so a wave whose
+        # checkpoints are not metal-named recovers nothing.
+        local rec_pattern rec_metal rec_rc=0
+        rec_pattern="${ABORT_RECOVERY_PATTERN:-OOM}"
+        rec_metal="${ABORT_RECOVERY_METAL:-Ru}"
+        case "${rec_pattern}" in
+            NaN|OOM|IndexError|cfm-collapse) : ;;
+            *) warn "ABORT_RECOVERY_PATTERN='${rec_pattern}' is not one of NaN/OOM/IndexError/cfm-collapse — falling back to OOM"
+               rec_pattern="OOM" ;;
+        esac
+        case "${rec_metal}" in
+            Ru|Ir|Os|Rh|Re) : ;;
+            *) warn "ABORT_RECOVERY_METAL='${rec_metal}' is not one of Ru/Ir/Os/Rh/Re — falling back to Ru"
+               rec_metal="Ru" ;;
+        esac
         PYTHONPATH="${PROJECT_ROOT}" "${PY}" "${ABORT_RECOVERY}" --wave "wave_${wave_label,,}" \
-            --pattern TIMEOUT --json \
-            > "${out_dir}/recovery.json" 2>&1 || true
+            --pattern "${rec_pattern}" --metal "${rec_metal}" \
+            --report-json "${out_dir}/recovery.json" \
+            > "${out_dir}/recovery.stdout.log" 2>&1 || rec_rc=$?
+        if [ -s "${out_dir}/recovery.json" ] \
+           && "${PY}" -c 'import json,sys; json.load(open(sys.argv[1]))' "${out_dir}/recovery.json" >/dev/null 2>&1; then
+            ok "abort_recovery report written: ${out_dir}/recovery.json (rc=${rec_rc})"
+        else
+            warn "abort_recovery did NOT write a valid report (${out_dir}/recovery.json; rc=${rec_rc}) — see ${out_dir}/recovery.stdout.log"
+        fi
         die "Wave ${wave_label} aborted — recovery at ${out_dir}/recovery.json"
     fi
 
     ok "Wave ${wave_label} complete — ${wall_sec}s"
-    if [ "${wall_sec}" -gt $(( ${WAVE_A_BUDGET_HR%.*} * 3600 )) ]; then
-        die "Wave ${wave_label} exceeded per-wave < 2 hr OK gate (kill_then_adapt)"
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: the per-wave OK gate compared
+    # every wave against WAVE_A_BUDGET_HR, i.e. wave B (0.5 h cap) and wave C
+    # (2.5 h cap) were both graded against wave A's 1.5 h.  It now uses the
+    # wave's OWN budget (the same `budget_sec` the deadline above uses).
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     if [ "${wall_sec}" -gt $(( ${WAVE_A_BUDGET_HR%.*} * 3600 )) ]; then
+    #         die "Wave ${wave_label} exceeded per-wave < 2 hr OK gate (kill_then_adapt)"
+    #     fi
+    if [ "${wall_sec}" -gt "${budget_sec}" ]; then
+        die "Wave ${wave_label} exceeded its own per-wave budget (${budget_hr} hr = ${budget_sec}s) — kill_then_adapt"
     fi
 }
 
@@ -320,6 +570,12 @@ setsid nohup         "${PY}" "${trainer}" \
 # -----------------------------------------------------------------------------
 wave_A() {
     local out="${REPORTS_DIR}/wave_a"
+    # Wf-A269 wave-11 (2026-11-02): the per-wave gates (#2 budget tracker,
+    # #3 per-wave checklist) run HERE, BEFORE the NOT_IMPLEMENTED guard.
+    # Inside run_wave() they could never execute for waves A/B, because the
+    # guard returns 3 first — a gate that can never run is a dead gate, and
+    # the header promised both of these checks for every wave.
+    wave_gate "A" "${WAVE_A_BUDGET_HR}" "${out}" "${P1_4_CONFIG}"
     # --frontier-multi-ph / --frontier-multi-ph-bins are NOT implemented in
     # ${CFM_TRAINER} (verified: neither the flag string nor the dest
     # frontier_multi_ph appears in the file). Passing them makes argparse exit
@@ -346,6 +602,9 @@ wave_A() {
 # -----------------------------------------------------------------------------
 wave_B() {
     local out="${REPORTS_DIR}/wave_b"
+    # Wf-A269 wave-11 (2026-11-02): per-wave gates run BEFORE the guard (see
+    # wave_A for the reason).
+    wave_gate "B" "${WAVE_B_BUDGET_HR}" "${out}" "${G6_CONFIG}"
     # Same guard as wave A: --frontier-se3 is not implemented in
     # ${DMPNN_TRAINER} (no "--frontier" string, no frontier_se3 dest).
     if ! "${PY}" "${DMPNN_TRAINER}" --help 2>&1 | grep -q -- "--frontier-se3"; then
@@ -370,6 +629,11 @@ wave_B() {
 # -----------------------------------------------------------------------------
 wave_C() {
     local out="${REPORTS_DIR}/wave_c"
+    # Wf-A269 wave-11 (2026-11-02): per-wave gates run here too (no --config:
+    # wave C is a joint sweep over the whole trainer stack, so the checklist's
+    # config-schema check is skipped — it is never a PASS by omission, the
+    # P0/P1 partition of THIS launch's pre-flight is still graded).
+    wave_gate "C" "${WAVE_C_BUDGET_HR}" "${out}" ""
     log "Wave C plan: joint frontier sweep (PROJECTED < 2 hr sub-waves × 2, cuda:0)"
     log "  wires ALL 4 frontier adapters via FrontierMathIntegration"
     warn "Wave C requires USER_OK between sub-waves — auto-OK only on dry-run"

@@ -3,7 +3,8 @@
 Wf-A36-1 (2026-10-14) E1 — wire the eval-side PocketEncoder so the
 linear probe head's input dim accommodates the PocketGenEncoder's
 ``pocket_embed_dim`` (wired through :func:`build_pocket_encoder`).
-At the §5.11 default (``use_pocket_encoder=False``) the X embedding
+At the ~~§5.11 default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+(``use_pocket_encoder=False``) the X embedding
 shape is unchanged and the probe result is bit-exact identical to the
 pre-Wf-A36-1 path for every shipped CFM YAML.
 
@@ -48,7 +49,8 @@ LOG = logging.getLogger("molmetal.eval.linear_probe")
 
 # Wf-A36-1 (2026-10-14) E1 — shared PocketEncoder helper (the
 # cross-dataset side imports the same module for E2).  At the
-# §5.11 default this short-circuits before any import / warning.
+# ~~§5.11 default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+# this short-circuits before any import / warning.
 from molmetal.eval._pocket_encoder import (
     build_pocket_encoder as _build_pocket_encoder,
 )
@@ -343,7 +345,8 @@ def run_cross_dataset_linear_probe(
         input dim with ``pocket_embed_dim`` (zero-padded in the absence
         of real pocket data; a no-op on the regression result but
         structurally wires the slot in for future pocket-conditioned
-        probes).  Default ``False`` keeps the §5.11 bit-exact path.
+        probes).  Default ``False`` keeps the ~~§5.11 bit-exact path~~
+        → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31.
 
     Returns
     -------
@@ -439,7 +442,9 @@ def run_cross_dataset_linear_probe(
     # pocket embedding is currently zero-padded in the X assembly below
     # — that is structurally a no-op on the regression but wires the
     # ``pocket_embed_dim`` slot in for a future pocket-conditioned
-    # probe.  At the §5.11 default (``use_pocket_encoder=False``) the
+    # probe.  At the ~~§5.11 default~~
+    # → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+    # (``use_pocket_encoder=False``) the
     # helper short-circuits before any import / warning, so the X
     # shape is unchanged and the probe result is bit-exact identical to
     # the pre-Wf-A36-1 path.
@@ -497,7 +502,8 @@ def run_cross_dataset_linear_probe(
     # wire the ``pocket_embed_dim`` into the head's input dim so a
     # future pocket-conditioned probe can drop in real embeddings
     # without changing the call site.  At ``use_pocket_encoder=False``
-    # (the §5.11 default) the helper returns ``pocket_embed_dim=0``
+    # (the ~~§5.11 default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31)
+    # the helper returns ``pocket_embed_dim=0``
     # and the X shape is unchanged.
     if _pocket_dim > 0:
         import numpy as _np

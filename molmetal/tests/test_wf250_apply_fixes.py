@@ -27,7 +27,14 @@ verify **wiring**, not training lift — the projected L5 R² lift in
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest import mock
+
+# Repo root — derived from this file's own location (molmetal/tests/X.py).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# The TRACKED chemprop v3 driver whose CLI flags the tests below assert on.
+V3_DRIVER_PATH = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
 
 
 
@@ -318,11 +325,7 @@ class TestMasterWassersteinIntegration:
         (string-grep) — calling ``main()`` actually runs the full
         training pipeline which is too expensive for a unit test.
         """
-        from pathlib import Path
-
-        src = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
-        ).read_text()
+        src = V3_DRIVER_PATH.read_text()
         assert '"--use-master-wass"' in src
         assert '"--master-wass-n-mc"' in src
         # The flag handler must read the value into args.use_master_wass.
@@ -395,11 +398,7 @@ class TestMasterCatherineIntegration:
         ``main()`` runs the full training pipeline — too expensive for
         a unit test).
         """
-        from pathlib import Path
-
-        src = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
-        ).read_text()
+        src = V3_DRIVER_PATH.read_text()
         assert '"--use-master-cath"' in src
         assert '"--master-cath-bias-type"' in src
         assert "args.use_master_cath" in src
@@ -415,11 +414,7 @@ class TestEnhancedMetalHeadWiring:
 
     def test_v3_driver_has_enhanced_head_flag(self):
         """Verify the source contains the enhanced-head flag plumbing."""
-        from pathlib import Path
-
-        src = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
-        ).read_text()
+        src = V3_DRIVER_PATH.read_text()
         assert '"--enhanced-head"' in src
         assert '"--metal-attention"' in src
         # The flag handler must read the value into args.enhanced_head.
@@ -432,11 +427,7 @@ class TestEnhancedMetalHeadWiring:
         Verify the guard exists in the source — invoking main() runs the
         full training pipeline (too expensive for a unit test).
         """
-        from pathlib import Path
-
-        src = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
-        ).read_text()
+        src = V3_DRIVER_PATH.read_text()
         assert "args.metal_attention and not args.enhanced_head" in src
 
     def test_chemprop_v2_mt_model_v3_has_enhanced_head(self):
@@ -508,11 +499,7 @@ class TestIntegrationSmoke:
 
     def test_all_flags_together_in_v3_driver(self):
         """All Wf-250 flags are present in the v3 driver source."""
-        from pathlib import Path
-
-        src = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
-        ).read_text()
+        src = V3_DRIVER_PATH.read_text()
         for needle in (
             "--use-master-wass",
             "--master-wass-n-mc",

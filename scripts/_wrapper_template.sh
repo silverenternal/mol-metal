@@ -1,4 +1,39 @@
 #!/usr/bin/env bash
+# scripts/_wrapper_template.sh — SUPERSEDED POINTER.  This is NOT a template.
+#
+# Wf-A269 wave-18 (2026-11-03) — this file used to be a SECOND, STALE copy of
+# the canonical wrapper template, and it was a live DEAD GATE: the class
+# AGENTS.md §6.269.17 names, "a check that cannot fail".
+#
+#   * its "Pre-flight v3 PASS gate" tested only that the FILE
+#     molmetal/reports/pre_flight.json EXISTED.  File existence is not a
+#     verdict: a stale PASS report from an earlier run authorised the launch,
+#     and a FAIL report would have authorised it just the same;
+#   * it then wrote the literal string `pre_flight_status: PASS` into
+#     DRY_RUN.log regardless of what any pre-flight had said, so the dry run
+#     RECORDED a verdict nobody measured;
+#   * it named a different pre-flight generation ("Pre-flight v3") and a
+#     different python path than the canonical template.
+#
+# MEASURED 2026-11-03: this file had ZERO references anywhere in the repo
+# (`git grep -n _wrapper_template` => 0 hits outside this file).  Nothing was
+# broken by retiring it — and 0 references also means nothing would have
+# noticed had it drifted further.
+#
+# THE CANONICAL TEMPLATE IS  scripts/_WRAPPER_TEMPLATE.sh  (upper case).  It is
+# the one the repo's own wrappers cite, and since Wf-A269 wave-17 it carries the
+# FAIL-CLOSED pre-flight gate:
+#
+#     molmetal/scripts/wf_launch_gate_verdict.py preflight --report <path>
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+# The retired template is reproduced below, byte-for-byte, inside a quoted
+# heredoc so it is inert text.  It is kept because rule #6 forbids a silent
+# deletion, and because a reader who remembers the old file can see exactly
+# what it did.
+#
+cat <<'WFA269_SUPERSEDED_RENDERING_EOF_DO_NOT_REUSE' >/dev/null
+#!/usr/bin/env bash
 # Canonical wrapper template (Wf-437 simplification per user voice "git就够了")
 #
 # Usage: extend this template for any new USER_OK-gated launch wrapper.
@@ -73,3 +108,13 @@ fi
 # --- Actual launch (USER_OK=1) ---
 echo "[${TASK}] launching ${TRAINER} on $(nvidia-smi --query-gpu=index,utilization.gpu,memory.free --format=csv,noheader | head -1)"
 exec "${PY}" "${REPO_ROOT}/${TRAINER}" "$@"
+WFA269_SUPERSEDED_RENDERING_EOF_DO_NOT_REUSE
+
+# --- the file is INERT from here on -----------------------------------------
+# It prints a pointer and exits 0.  It cannot launch a trainer, cannot probe a
+# GPU, and cannot record a verdict for anything.
+printf '%s\n' \
+  "scripts/_wrapper_template.sh is SUPERSEDED (Wf-A269 wave-18, 2026-11-03)." \
+  "The canonical wrapper template is scripts/_WRAPPER_TEMPLATE.sh (upper case)." \
+  "The superseded rendering is preserved verbatim above; this file launches nothing." >&2
+exit 0

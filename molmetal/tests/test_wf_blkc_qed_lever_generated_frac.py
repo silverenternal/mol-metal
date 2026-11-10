@@ -47,7 +47,7 @@ from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = Path("/tmp/wf_blkc_qed_lever/wf_blkc_qed_lever.py")
 
 

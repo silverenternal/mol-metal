@@ -1,13 +1,210 @@
 {
   "artifact": "cfm_sa_guided",
+  "by_pool": {
+    "panel_of_record": {
+      "comparable": true,
+      "comparable_reference": "panel_of_record",
+      "n_sa_le_gate": 0,
+      "n_scored": 66,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_fullcorpus_2026_10_10].n_train",
+      "pool_kind": "generation",
+      "pool_path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+      "rate_sa_le_gate": 0.0,
+      "tier": "full_corpus",
+      "wilson_ci95": [
+        0.0,
+        0.055
+      ]
+    },
+    "pcgrad_off": {
+      "comparable": false,
+      "comparable_reference": "panel_of_record",
+      "n_sa_le_gate": 7,
+      "n_scored": 1175,
+      "n_train": 256,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_pcgrad_off_2026_10_15].n_train",
+      "pool_kind": "generation",
+      "pool_path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
+      "rate_sa_le_gate": 0.006,
+      "tier": "small",
+      "wilson_ci95": [
+        0.0029,
+        0.0122
+      ]
+    },
+    "pcgrad_on": {
+      "comparable": false,
+      "comparable_reference": "panel_of_record",
+      "n_sa_le_gate": 9,
+      "n_scored": 1155,
+      "n_train": 256,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_pcgrad_on_2026_10_14].n_train",
+      "pool_kind": "generation",
+      "pool_path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
+      "rate_sa_le_gate": 0.0078,
+      "tier": "small",
+      "wilson_ci95": [
+        0.0041,
+        0.0147
+      ]
+    },
+    "recon_fullcorpus_b64": {
+      "comparable": false,
+      "comparable_reference": "panel_of_record",
+      "n_sa_le_gate": 12,
+      "n_scored": 40,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_fullcorpus_b64_2026_10_11].n_train",
+      "pool_kind": "reconstruction",
+      "pool_path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv",
+      "rate_sa_le_gate": 0.3,
+      "tier": "full_corpus",
+      "wilson_ci95": [
+        0.1807,
+        0.4543
+      ]
+    },
+    "recon_objective_terms": {
+      "comparable": false,
+      "comparable_reference": "panel_of_record",
+      "n_sa_le_gate": 16,
+      "n_scored": 43,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_objective_terms_2026_10_11].n_train",
+      "pool_kind": "reconstruction",
+      "pool_path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv",
+      "rate_sa_le_gate": 0.3721,
+      "tier": "full_corpus",
+      "wilson_ci95": [
+        0.2438,
+        0.5214
+      ]
+    }
+  },
+  "cohort_scale_rule": {
+    "full_corpus_n_train": 26715,
+    "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=*].n_train",
+    "rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+    "small_train_cutoff": 1024,
+    "source": "molmetal/scripts/cfm_cohort_scale.py",
+    "tiers": [
+      "full_corpus",
+      "mid",
+      "small",
+      "unknown"
+    ]
+  },
   "combined": {
+    "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+    "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+    "cohort_scales_included": {
+      "panel_of_record": 26715,
+      "pcgrad_off": 256,
+      "pcgrad_on": 256
+    },
+    "comparable": false,
     "n_sa_le_gate": 16,
     "n_scored": 2396,
+    "note": "the rate is over the GENERATION pools only.  A reconstruction pool inherits the real chemistry it started from, so pooling it with a generation pool would produce a rate that is neither a generator number nor a decoder number; its own numbers live in combined_by_kind.reconstruction (scope: decoder_fidelity_on_real_geometries).  Pool kind: molmetal/scripts/cfm_pool_kind.py.  COHORT SCALE: the denominator MIXES cohort scales -- it is a mixed-cohort rate (scale_label=mixed_cohort_scale): n_train=26715 (full_corpus, 1 pool): 0 SA<=4.5 hits in 66 molecules; n_train=256 (small, 2 pools): 16 SA<=4.5 hits in 2330 molecules -- so this rate is NOT the full-corpus generator's rate; the full-corpus-only rate is in combined_by_tier.full_corpus (combined_by_tier holds the GENERATION pools only; rule: full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None)",
+    "pools_excluded": [
+      "recon_fullcorpus_b64",
+      "recon_objective_terms"
+    ],
+    "pools_included": [
+      "panel_of_record",
+      "pcgrad_on",
+      "pcgrad_off"
+    ],
     "rate_sa_le_gate": 0.0067,
+    "scale_label": "mixed_cohort_scale",
+    "scope": "generation_only",
+    "tiers_included": [
+      "full_corpus",
+      "small"
+    ],
     "wilson_ci95": [
       0.0041,
       0.0108
     ]
+  },
+  "combined_by_kind": {
+    "generation": {
+      "measurement_meaning": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
+      "n_pools": 3,
+      "n_sa_le_gate": 16,
+      "n_scored": 2396,
+      "pools": [
+        "panel_of_record",
+        "pcgrad_on",
+        "pcgrad_off"
+      ],
+      "rate_sa_le_gate": 0.0067,
+      "verdict_scope": "generator_fragmentation",
+      "wilson_ci95": [
+        0.0041,
+        0.0108
+      ]
+    },
+    "reconstruction": {
+      "measurement_meaning": "era A: the bond head applied to REAL tmQM geometries (the pre-2026-10-12 decode-dump path): the DECODER's fidelity to real chemistry, NOT a fragmentation rate of the generator",
+      "n_pools": 2,
+      "n_sa_le_gate": 28,
+      "n_scored": 83,
+      "pools": [
+        "recon_fullcorpus_b64",
+        "recon_objective_terms"
+      ],
+      "rate_sa_le_gate": 0.3373,
+      "verdict_scope": "decoder_fidelity_on_real_geometries",
+      "wilson_ci95": [
+        0.2448,
+        0.4442
+      ]
+    }
+  },
+  "combined_by_tier": {
+    "full_corpus": {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "n_pools": 1,
+      "n_sa_le_gate": 0,
+      "n_scored": 66,
+      "n_train": 26715,
+      "n_trains": [
+        26715
+      ],
+      "pools": [
+        "panel_of_record"
+      ],
+      "rate_sa_le_gate": 0.0,
+      "tier": "full_corpus",
+      "wilson_ci95": [
+        0.0,
+        0.055
+      ]
+    },
+    "small": {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "n_pools": 2,
+      "n_sa_le_gate": 16,
+      "n_scored": 2330,
+      "n_train": 256,
+      "n_trains": [
+        256
+      ],
+      "pools": [
+        "pcgrad_on",
+        "pcgrad_off"
+      ],
+      "rate_sa_le_gate": 0.0069,
+      "tier": "small",
+      "wilson_ci95": [
+        0.0042,
+        0.0111
+      ]
+    }
   },
   "design": {
     "blockers": [
@@ -17,7 +214,36 @@
     ],
     "guided_decoding": "UNAVAILABLE",
     "novelty_gate": 0.9,
+    "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
     "pool_of_record": "cfm_free_generation_panel_seed0.json (66 molecules, 192 attempts)",
+    "pooling_rule": "a reconstruction pool is NEVER pooled with a generation pool: the gate rate is computed per kind, each with its own denominator",
+    "pools_scored": [
+      {
+        "expected_kind": "generation",
+        "label": "panel_of_record",
+        "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"
+      },
+      {
+        "expected_kind": "generation",
+        "label": "pcgrad_on",
+        "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv"
+      },
+      {
+        "expected_kind": "generation",
+        "label": "pcgrad_off",
+        "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv"
+      },
+      {
+        "expected_kind": "reconstruction",
+        "label": "recon_fullcorpus_b64",
+        "path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv"
+      },
+      {
+        "expected_kind": "reconstruction",
+        "label": "recon_objective_terms",
+        "path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv"
+      }
+    ],
     "sa_gate": 4.5,
     "thresholds": [
       4.0,
@@ -37,17 +263,81 @@
       "n": 16,
       "train_reference": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
       "underpowered": true
+    },
+    "scope": "generation_only"
+  },
+  "gate_subset_by_kind": {
+    "generation": {
+      "measurement_meaning": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
+      "n": 16,
+      "novelty": {
+        "fingerprint": "Morgan radius 2, 1024 bits",
+        "mean_novelty": 0.8757,
+        "median_novelty": 0.8889,
+        "n": 16,
+        "train_reference": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+        "underpowered": true
+      },
+      "verdict_scope": "generator_fragmentation"
+    },
+    "reconstruction": {
+      "measurement_meaning": "era A: the bond head applied to REAL tmQM geometries (the pre-2026-10-12 decode-dump path): the DECODER's fidelity to real chemistry, NOT a fragmentation rate of the generator",
+      "n": 28,
+      "novelty": {
+        "fingerprint": "Morgan radius 2, 1024 bits",
+        "mean_novelty": 0.6982,
+        "median_novelty": 0.7027,
+        "n": 28,
+        "train_reference": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+        "underpowered": false
+      },
+      "verdict_scope": "decoder_fidelity_on_real_geometries"
     }
   },
-  "generated_utc": "2026-10-19T16:55:09+00:00",
+  "generated_utc": "2026-10-30T18:44:09+00:00",
+  "n_refused_pools": 0,
+  "pool_kind_rule": {
+    "markers": {
+      "generation": "n_frags_raw",
+      "reconstruction": "metal_z"
+    },
+    "measurement_meaning": {
+      "generation": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
+      "reconstruction": "era A: the bond head applied to REAL tmQM geometries (the pre-2026-10-12 decode-dump path): the DECODER's fidelity to real chemistry, NOT a fragmentation rate of the generator",
+      "unknown": "the pool's CSV does not establish which code path wrote it (no marker, contradictory markers, or a missing / disagreeing content signal); treat the numbers as unclassified"
+    },
+    "rule": "read from the CSV HEADER (and, for a 'metal_z' pool, the CONTENT of its first data row), not the run name: an explicit 'pool_kind' column is authoritative; 'n_frags_raw' in the header is the trainer's free-generation path; a 'metal_z' header is decided by its content (sanitized == 1 and metal_z non-empty -> reconstruction; sanitized == 0 and metal_z empty -> generation); both markers, a missing row or disagreeing signals -> unknown",
+    "source": "molmetal/scripts/cfm_pool_kind.py",
+    "verdict_scope": {
+      "generation": "generator_fragmentation",
+      "reconstruction": "decoder_fidelity_on_real_geometries",
+      "unknown": "unclassified"
+    }
+  },
   "pools": [
     {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "comparable": true,
+      "comparable_reason": "same pool kind (generation) and the same cohort tier ('full_corpus') as the pool of record: the rates may be read together",
+      "comparable_reference": "panel_of_record",
+      "expected_pool_kind": "generation",
       "label": "panel_of_record",
+      "measurement_meaning": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
       "n_rows": 66,
+      "n_sa_le_gate": 0,
       "n_scored": 66,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_fullcorpus_2026_10_10].n_train",
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+      "pool_kind": "generation",
+      "pool_kind_marker": "sanitized+metal_z",
+      "pool_kind_reason": "content: sanitized == 0 and metal_z is empty -> era B, the ODE sampler's free generation",
+      "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
       "qed_mean": 0.0944,
+      "rate_sa_le_gate": 0.0,
+      "run_name": "cfm_fullcorpus_2026_10_10",
       "sa_counts_at_or_below": {
         "4.0": 0,
         "4.5": 0,
@@ -59,15 +349,37 @@
       "sa_mean": 6.4423,
       "sa_median": 6.424,
       "sa_min": 4.751,
-      "sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef"
+      "sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef",
+      "tier": "full_corpus",
+      "verdict_scope": "generator_fragmentation",
+      "wilson_ci95": [
+        0.0,
+        0.055
+      ]
     },
     {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "comparable": false,
+      "comparable_reason": "cohort tier 'small' differs from the pool of record's 'full_corpus': the two rates come from different training cohorts and must not be pooled",
+      "comparable_reference": "panel_of_record",
+      "expected_pool_kind": "generation",
       "label": "pcgrad_on",
+      "measurement_meaning": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
       "n_rows": 1155,
+      "n_sa_le_gate": 9,
       "n_scored": 1155,
+      "n_train": 256,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_pcgrad_on_2026_10_14].n_train",
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
+      "pool_kind": "generation",
+      "pool_kind_marker": "n_frags_raw",
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
       "qed_mean": 0.2001,
+      "rate_sa_le_gate": 0.0078,
+      "run_name": "cfm_pcgrad_on_2026_10_14",
       "sa_counts_at_or_below": {
         "4.0": 5,
         "4.5": 9,
@@ -79,15 +391,37 @@
       "sa_mean": 7.5478,
       "sa_median": 7.3112,
       "sa_min": 3.4792,
-      "sha256": "ccf3162466fe787336d0c585114b3e0bc4da79053b71afbff8381670be06512a"
+      "sha256": "ccf3162466fe787336d0c585114b3e0bc4da79053b71afbff8381670be06512a",
+      "tier": "small",
+      "verdict_scope": "generator_fragmentation",
+      "wilson_ci95": [
+        0.0041,
+        0.0147
+      ]
     },
     {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "comparable": false,
+      "comparable_reason": "cohort tier 'small' differs from the pool of record's 'full_corpus': the two rates come from different training cohorts and must not be pooled",
+      "comparable_reference": "panel_of_record",
+      "expected_pool_kind": "generation",
       "label": "pcgrad_off",
+      "measurement_meaning": "the sampler's free generation: the fraction of the model's own output that is ONE connected molecule -- true of BOTH free-generation writers (the trainer's own path and the 2026-10-12+ ODE path of wf_cfm_decode_dump_smiles.py)",
       "n_rows": 1175,
+      "n_sa_le_gate": 7,
       "n_scored": 1175,
+      "n_train": 256,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_pcgrad_off_2026_10_15].n_train",
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
+      "pool_kind": "generation",
+      "pool_kind_marker": "n_frags_raw",
+      "pool_kind_reason": "marker: header carries 'n_frags_raw': the trainer's free-generation path",
+      "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
       "qed_mean": 0.1981,
+      "rate_sa_le_gate": 0.006,
+      "run_name": "cfm_pcgrad_off_2026_10_15",
       "sa_counts_at_or_below": {
         "4.0": 6,
         "4.5": 7,
@@ -99,17 +433,116 @@
       "sa_mean": 7.4741,
       "sa_median": 7.2204,
       "sa_min": 3.8776,
-      "sha256": "78a12ec4a782b65464c08c24982eef6f124928ee278e74f03c9db4f2b592a771"
+      "sha256": "78a12ec4a782b65464c08c24982eef6f124928ee278e74f03c9db4f2b592a771",
+      "tier": "small",
+      "verdict_scope": "generator_fragmentation",
+      "wilson_ci95": [
+        0.0029,
+        0.0122
+      ]
+    },
+    {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "comparable": false,
+      "comparable_reason": "pool kind is 'reconstruction', not 'generation': a reconstruction pool's rate is the decoder's fidelity on real geometries and is never comparable to a generation rate",
+      "comparable_reference": "panel_of_record",
+      "expected_pool_kind": "reconstruction",
+      "label": "recon_fullcorpus_b64",
+      "measurement_meaning": "era A: the bond head applied to REAL tmQM geometries (the pre-2026-10-12 decode-dump path): the DECODER's fidelity to real chemistry, NOT a fragmentation rate of the generator",
+      "n_rows": 40,
+      "n_sa_le_gate": 12,
+      "n_scored": 40,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_fullcorpus_b64_2026_10_11].n_train",
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv",
+      "pool_kind": "reconstruction",
+      "pool_kind_marker": "sanitized+metal_z",
+      "pool_kind_reason": "content: sanitized == 1 and metal_z = '77' (non-empty) -> era A, the bond head applied to a REAL tmQM geometry",
+      "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
+      "qed_mean": 0.2275,
+      "rate_sa_le_gate": 0.3,
+      "run_name": "cfm_fullcorpus_b64_2026_10_11",
+      "sa_counts_at_or_below": {
+        "4.0": 4,
+        "4.5": 12,
+        "5.0": 24,
+        "5.5": 29,
+        "6.0": 33
+      },
+      "sa_max": 7.192,
+      "sa_mean": 5.032,
+      "sa_median": 4.8398,
+      "sa_min": 3.3551,
+      "sha256": "0fc3a83fdc7f9d2e5fd9c24dc96a4ffbbe3d0ddbc5392236ae6acc7fab0763f3",
+      "tier": "full_corpus",
+      "verdict_scope": "decoder_fidelity_on_real_geometries",
+      "wilson_ci95": [
+        0.1807,
+        0.4543
+      ]
+    },
+    {
+      "cohort_scale_rule": "full_corpus if n_train >= 26715; small if n_train < 1024; else mid; unknown if n_train is None",
+      "cohort_scale_source": "molmetal/scripts/cfm_cohort_scale.py",
+      "comparable": false,
+      "comparable_reason": "pool kind is 'reconstruction', not 'generation': a reconstruction pool's rate is the decoder's fidelity on real geometries and is never comparable to a generation rate",
+      "comparable_reference": "panel_of_record",
+      "expected_pool_kind": "reconstruction",
+      "label": "recon_objective_terms",
+      "measurement_meaning": "era A: the bond head applied to REAL tmQM geometries (the pre-2026-10-12 decode-dump path): the DECODER's fidelity to real chemistry, NOT a fragmentation rate of the generator",
+      "n_rows": 43,
+      "n_sa_le_gate": 16,
+      "n_scored": 43,
+      "n_train": 26715,
+      "n_train_source": "metrics/by_metric/cfm_run_census.json:runs[run=cfm_objective_terms_2026_10_11].n_train",
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv",
+      "pool_kind": "reconstruction",
+      "pool_kind_marker": "sanitized+metal_z",
+      "pool_kind_reason": "content: sanitized == 1 and metal_z = '77' (non-empty) -> era A, the bond head applied to a REAL tmQM geometry",
+      "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
+      "qed_mean": 0.2042,
+      "rate_sa_le_gate": 0.3721,
+      "run_name": "cfm_objective_terms_2026_10_11",
+      "sa_counts_at_or_below": {
+        "4.0": 8,
+        "4.5": 16,
+        "5.0": 23,
+        "5.5": 30,
+        "6.0": 35
+      },
+      "sa_max": 7.5901,
+      "sa_mean": 5.0334,
+      "sa_median": 4.8398,
+      "sa_min": 3.3081,
+      "sha256": "bc2ffe14e965131e6f3a04fae0717db8f260dd90571a9d5b04579b6ee46ac673",
+      "tier": "full_corpus",
+      "verdict_scope": "decoder_fidelity_on_real_geometries",
+      "wilson_ci95": [
+        0.2438,
+        0.5214
+      ]
     }
   ],
   "provenance": {
-    "git_commit": "73671a62121ed531fc38d34756d558f9f588c1f6",
+    "git_commit": "1b9470a0e2129e3c4d982da4453e034a6cc12e24",
+    "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
     "script": "molmetal/scripts/cfm_sa_yield_audit.py"
   },
+  "refused_pools": [],
   "verdict": "KILL",
   "verdict_detail": {
+    "cohort_tier": "full_corpus",
     "gate_met": false,
-    "note": "the gate is a property of the generator only if the yield is reported next to it"
+    "mixed_scale_note": "the combined rate is NOT used for the verdict: its denominator mixes cohort scales (see combined.scale_label and combined_by_tier)",
+    "mixed_scale_rate_sa_le_gate": 0.0067,
+    "n_scored": 66,
+    "note": "the gate is a property of the generator only if the yield is reported next to it",
+    "rate_sa_le_gate": 0.0,
+    "scope": "generation_only",
+    "verdict_basis": "the pool of record's cohort tier (full_corpus, panel_of_record, n=66) -- a single training cohort"
   },
-  "version": "1.0"
+  "version": "2.1"
 }

@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "generate_section4.py"
 METRICS_DIR = REPO_ROOT / "metrics" / "by_metric"
 DEFAULT_OUT = REPO_ROOT / "paper"

@@ -49,7 +49,7 @@ REPO_ROOT = PROJECT_ROOT
 sys.path.insert(0, str(SCRIPT_DIR))
 
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 WF343C2_SCRIPT = SCRIPT_DIR / "wf343c2_per_wave_check.py"
 # The script's --out default lives under REPORTS_DIR, not SCRIPT_DIR.
 _WF343C2_REPORT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check"

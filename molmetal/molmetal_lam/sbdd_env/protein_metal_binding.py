@@ -66,6 +66,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -555,8 +556,18 @@ def _ligand_only_smiles(smi: str) -> str:
 
 
 def build_protein_metal_csv(
-    src_csv: str = "/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv",
-    dst_csv: str = "/home/hugo/codes/mol-metal/molmetal/data/protein_metal_binding.csv",
+    src_csv: str = str(
+        Path(__file__).resolve().parents[3]
+        / ".data"
+        / "molmetal"
+        / "MetalCytoToxDB.csv"
+    ),
+    dst_csv: str = str(
+        Path(__file__).resolve().parents[3]
+        / "molmetal"
+        / "data"
+        / "protein_metal_binding.csv"
+    ),
     metals: Sequence[str] = ("Ru", "Ir", "Rh", "Os", "Re"),
     time_threshold: float = 24.0,
     ic50_min: float = 0.01,

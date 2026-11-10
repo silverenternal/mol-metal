@@ -11,15 +11,17 @@ Wf-A52 W1 (2026-10-16) — W3-B feature wire-in shipped: v2 symbols
 (``ATOM_FEATURE_DIM_V2``, ``_V2_EXTRA_ELEMENTS``, ``_V2_EXTRA_DIM``) are
 now exported by :mod:`molmetal.baselines.dmpnn`.  All v2 tests in this
 module are un-skipped; the v1 single-arg API (``_atom_features(a)``) is
-preserved bit-for-bit per the §5.11 YAML-only / §5.7 wire-in contract.
+preserved bit-for-bit per the ~~§5.11 YAML-only / §5.7 wire-in contract~~
+→ AGENTS.md §3.3 audit-ledger; corrected 2026-11-01.
 """
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 from rdkit import Chem
 
-sys.path.insert(0, "/home/hugo/codes/mol-metal")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from molmetal.baselines.dmpnn import (  # noqa: E402
     ATOM_FEATURE_DIM,

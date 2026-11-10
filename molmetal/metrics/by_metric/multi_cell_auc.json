@@ -1,7 +1,7 @@
 {
   "hook": "multi_cell_auc",
-  "date": "2026-09-25T22:31:47+0800",
-  "wall_clock_s": 0.004698514938354492,
+  "date": "2026-10-31T05:05:16+0800",
+  "wall_clock_s": 0.003017902374267578,
   "n_smiles": 5,
   "n_cell_lines": 2,
   "per_cell_auc": {

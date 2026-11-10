@@ -57,6 +57,25 @@ EXPECTED_PRE_FLIGHT_TOTAL = 117
 EXPECTED_PRE_FLIGHT_PASS = 114
 EXPECTED_PRE_FLIGHT_SKIP = 3
 
+# Wf-A269 wave-25 (2026-11-04) — THE THREE CONSTANTS ABOVE ARE A HISTORICAL
+# BASELINE, NOT A MEASUREMENT OF ANY RUN.  They described the 117-gate
+# pre-flight of the Wf-353-B1 / Wf-424-B1 era.  MEASURED 2026-11-04: the live
+# `all` pipeline carries 133 gates
+# (pre_flight_check.EXPECTED_GATE_COUNTS["all"] == 133 == len(build_gates("all"))),
+# so 117 is STALE by 16 gates and 114/3 are stale by more.
+# They are PRESERVED VERBATIM (AGENTS.md §5.5 rule #6 — no silent edit, no
+# deletion) and they remain the documented fallback, but the published summary
+# now LABELS which source it used:
+#   "pre_flight_source" == "measured"                  -> the caller passed --pre-flight-*
+#   "pre_flight_source" == "historical_baseline_default" -> the caller passed none
+#   "pre_flight_source" == "partial"                   -> the caller passed some
+# Wf-A269 wave-25 also FIXED the caller: molmetal/scripts/wf426a3_post_fix_retrain_launcher.sh
+# MEASURED the pre-flight live (it already ran `pre_flight_check.py --pipeline
+# all --json`, parsed PASS/FAIL/SKIP/TOTAL, printed them and gated on FAIL) and
+# then DISCARDED them by invoking this aggregator without --pre-flight-* — so
+# every published pre-flight number was this baseline, presented as if it were
+# the run's own measurement.
+
 # Default contract: launcher passes 117-gate pre-flight by emitting the
 # pre-flight JSON output via stdout (caller writes to disk).
 # This aggregator does NOT call pre-flight itself; the launcher does
@@ -229,6 +248,22 @@ def aggregate_readiness(
         pre_flight_skip if pre_flight_skip is not None else EXPECTED_PRE_FLIGHT_SKIP
     )
 
+    # Wf-A269 wave-25 (2026-11-04): record WHICH source the published pre-flight
+    # numbers came from.  Before this, a reader of the readiness JSON could not
+    # tell a MEASURED count from the Wf-353-B1/Wf-424-B1 hardcoded baseline.
+    _provided = {
+        "pass": pre_flight_pass,
+        "total": pre_flight_total,
+        "skip": pre_flight_skip,
+    }
+    _measured_fields = sorted(k for k, v in _provided.items() if v is not None)
+    if len(_measured_fields) == len(_provided):
+        pf_source = "measured"
+    elif not _measured_fields:
+        pf_source = "historical_baseline_default"
+    else:
+        pf_source = "partial"
+
     ready_count = sum(1 for v in verdicts if v["verdict"] == "READY")
     blocked_count = sum(1 for v in verdicts if v["verdict"] == "BLOCKED")
     warn_count = sum(1 for v in verdicts if v["verdict"] == "WARN")
@@ -241,6 +276,19 @@ def aggregate_readiness(
         "pre_flight_total": pf_total,
         "pre_flight_skip": pf_skip,
         "pre_flight_pass_pct": (100.0 * pf_pass / pf_total) if pf_total else 0.0,
+        # Wf-A269 wave-25 (2026-11-04): the MEASURED-vs-PROJECTED tag for the
+        # three numbers above.  "measured" = the caller passed the counts it
+        # measured; "historical_baseline_default" = the caller passed none and
+        # these are the Wf-353-B1/Wf-424-B1 constants (a HISTORICAL reading);
+        # "partial" = some but not all.
+        "pre_flight_source": pf_source,
+        "pre_flight_source_fields": _measured_fields,
+        "pre_flight_baseline_note": (
+            "Wf-353-B1 / Wf-424-B1 baseline (EXPECTED_PRE_FLIGHT_PASS / "
+            "EXPECTED_PRE_FLIGHT_TOTAL / EXPECTED_PRE_FLIGHT_SKIP) — a "
+            "HISTORICAL reading of the 117-gate pre-flight era, NOT a "
+            "measurement of this run"
+        ),
         "total_candidates": len(verdicts),
         "ready_count": ready_count,
         "blocked_count": blocked_count,
@@ -281,19 +329,34 @@ def main() -> int:
         "--pre-flight-pass",
         type=int,
         default=None,
-        help="Pre-flight PASS count (default: 114 per Wf-424-B1 baseline)",
+        help=(
+            "Pre-flight PASS count MEASURED by the caller.  If omitted, the "
+            "Wf-424-B1 HISTORICAL baseline (EXPECTED_PRE_FLIGHT_PASS) is used "
+            "and the published summary is labelled "
+            "pre_flight_source='historical_baseline_default'."
+        ),
     )
     parser.add_argument(
         "--pre-flight-total",
         type=int,
         default=None,
-        help="Pre-flight TOTAL count (default: 117 per Wf-353-B1 baseline)",
+        help=(
+            "Pre-flight TOTAL count MEASURED by the caller.  If omitted, the "
+            "Wf-353-B1 HISTORICAL baseline (EXPECTED_PRE_FLIGHT_TOTAL) is used "
+            "and the published summary is labelled "
+            "pre_flight_source='historical_baseline_default'."
+        ),
     )
     parser.add_argument(
         "--pre-flight-skip",
         type=int,
         default=None,
-        help="Pre-flight SKIP count (default: 3 per Wf-424-B1 baseline)",
+        help=(
+            "Pre-flight SKIP count MEASURED by the caller.  If omitted, the "
+            "Wf-424-B1 HISTORICAL baseline (EXPECTED_PRE_FLIGHT_SKIP) is used "
+            "and the published summary is labelled "
+            "pre_flight_source='historical_baseline_default'."
+        ),
     )
     args = parser.parse_args()
 

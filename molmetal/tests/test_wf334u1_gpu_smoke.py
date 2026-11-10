@@ -66,7 +66,7 @@ TRAINER_PATH = (
 DEFAULT_CSV = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+DEFAULT_VENV = Path(sys.executable)
 SMOKE_OUT_DIR = Path("/tmp/wf334u1_cpu_smoke")
 SMOKE_LOG = Path("/tmp/wf334u1_cpu_smoke.log")
 
@@ -374,7 +374,7 @@ def test_speedup_measurement_placeholder():
     This test is a PLACEHOLDER — when G6 frees GPU 1, run:
 
         #!/bin/bash
-        bash molmetal/scripts/launch_wf124_p3_g6.sh --dry-run
+        bash scripts/launch_wf124_p3_g6.sh --dry-run
         # (after pre-flight PASS + VRAM OK) launch the actual smoke:
         python molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\
             --metals Ru --seeds 0 --epochs 1 --max-joint-rows 128 \\

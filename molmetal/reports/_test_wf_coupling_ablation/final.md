@@ -29,15 +29,15 @@ Three shapers fit on the 70% train split, evaluated on the 30% test split:
   * `qed_mean` = RDKit QED
   * `anticancer_index` = deterministic metal-class + ring + aromaticity proxy
   * `sa_mean_norm` = 1 − SA(Ertl) / 10, clamped to [0, 1]
-* Feature computation wall-time: 12.28s.
+* Feature computation wall-time: 6.77s.
 * Target: synthetic composite `qed * qed` — a pure quadratic so LassoLarsIC cannot recover it exactly (F5 R² plateaus around 0.93); ASTSR's `mul` primitive lets it fit the target to R² ≈ 1.0 at depth=2.
 
 ## 3. Results
 
 | Shaper | R² | RMSE | Train time (s) | Notes |
 |---|---:|---:|---:|---|
-| **LambdaASTSR** | **1.0000** | **0.0000** | 14.43 | depth=4, pop=96, gen=80; best R²(train)=0.9950, complexity=5, AST depth=3 |
-| F5 (linear+hinge) | 0.9324 | 0.0211 | 0.0071 | LassoBIC nz=1; intercept=-0.0583 |
+| **LambdaASTSR** | **1.0000** | **0.0000** | 9.73 | depth=4, pop=96, gen=80; best R²(train)=0.9960, complexity=4, AST depth=4 |
+| F5 (linear+hinge) | 0.9324 | 0.0211 | 0.0228 | LassoBIC nz=1; intercept=-0.0583 |
 | No coupling | -0.0038 | 0.0813 | 0.0000 | constant predictor, ŷ=0.0740 |
 
 ### Verify gate

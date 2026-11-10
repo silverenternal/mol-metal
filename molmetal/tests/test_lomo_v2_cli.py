@@ -39,7 +39,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Use the same interpreter the task spec requires.
-_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
+_VENV_PYTHON = sys.executable
 
 
 def _run_help() -> str:

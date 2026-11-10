@@ -57,10 +57,19 @@ import pytest
 # Project + path constants
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PIPELINE_MASTER = PROJECT_ROOT / "scripts" / "gpu_pipeline_master.sh"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 MOLMETAL_SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
+# Wf-A269 wave-3 (2026-11-02) — the Wf-437 simplification wave archived two
+# of the five launchers this file pins under this directory.  Three other
+# committed tests require the SAME paths NOT to exist under scripts/:
+#   molmetal/tests/test_wf337g2_launcher_v2.py:176-185
+#   molmetal/tests/test_wf327_ultracode_closeout.py:66,96
+#   molmetal/tests/test_wf333t3_trainer_verify.py:278,304
+# The archive is therefore canonical for those two, and this file's
+# existence helper must look there too.
+ARCHIVE_DIR = PROJECT_ROOT / "TODO" / "archive" / "wf437_simplify"
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -87,6 +96,23 @@ ALL_5_LAUNCHERS = [
     LAUNCHER_WF333,
 ]
 
+# Wf-A269 wave-3 (2026-11-02) — the ``--w2-gradient-mode`` value each
+# launcher is EXPECTED to carry.  MEASURED from the launchers' own headers:
+#   - G4 uses ``sort``  — "Per Wf-328-W5: --w2-gradient-mode sort (Wf-326A
+#     MEASURED 2-3x speedup ...)"; G4 is archived and is NOT covered by the
+#     authoritative ``test_wf334u4_launcher_verify.py``.
+#   - G5/G6 use ``sliced`` — "Per Wf-328-W5 §Integration points: G5/G6 keep
+#     --w2-gradient-mode sliced ... compared bit-exact against the Wf-131 P1
+#     baseline in the paper §6 reproducibility audit (bc29aa90 flipped this
+#     to `sort` in an unrelated venv-path commit; reverted 2026-10-20)".
+#     ``test_wf334u4_launcher_verify.py`` asserts exactly this, so this map
+#     and that guard agree instead of contradicting each other.
+EXPECTED_W2_GRADIENT_MODE = {
+    LAUNCHER_G4: "sort",
+    LAUNCHER_G5: "sliced",
+    LAUNCHER_G6: "sliced",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,10 +125,33 @@ def _read_pipeline_master() -> str:
 
 
 def _wrapper_exists(wrapper_name: str) -> list[Path]:
-    """Return all on-disk paths for a wrapper (in scripts/ or molmetal/scripts/)."""
+    '''Return all on-disk paths for a wrapper.
+
+    Wf-A269 wave-3 (2026-11-02) — the archive home is now searched too.
+    Before this, this file asserted that ``scripts/launch_wf124_p3_g4.sh``
+    EXISTS while three other committed tests asserted that the SAME path
+    does NOT exist; the contradiction is resolved in favour of the archive
+    (the repo convention, and the one the other three tests enforce).
+
+    The outer docstring delimiter is THREE SINGLE QUOTES and NOT three
+    double quotes, on purpose: the SUPERSEDED RENDERING below carries the
+    old function's own double-quoted docstring, and nesting three double
+    quotes inside a three-double-quote docstring closes the outer one early
+    (SyntaxError at the preserved line).  Three single quotes keep the
+    preserved rendering's SOURCE BYTES byte-identical, which is what
+    AGENTS.md §5.5 rule #6 asks for.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+      """Return all on-disk paths for a wrapper (in scripts/ or molmetal/scripts/)."""
+      candidates = [
+          SCRIPTS_DIR / wrapper_name,
+          MOLMETAL_SCRIPTS_DIR / wrapper_name,
+      ]
+    '''
     candidates = [
         SCRIPTS_DIR / wrapper_name,
         MOLMETAL_SCRIPTS_DIR / wrapper_name,
+        ARCHIVE_DIR / wrapper_name,
     ]
     return [p for p in candidates if p.exists()]
 
@@ -182,8 +231,14 @@ class TestPipelineMasterHasAll5Launchers:
             "launch_wf333_vina_4step_gpu_bench.sh" in text
         ), "pipeline master must directly invoke Wf-333 Vina 4-step"
         assert (
-            "molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh" in text
-        ), "Wf-333 invocation must use molmetal/scripts/ path"
+            "scripts/launch_wf333_vina_4step_gpu_bench.sh" in text
+        ), "Wf-333 invocation must use a path that resolves on disk"
+        # Wf-A269 wave-3 (2026-11-02) — the message above claims the path
+        # RESOLVES, but the assertion was a bare substring test that never
+        # touched the filesystem.  Make the claim true: resolve it.
+        assert (
+            SCRIPTS_DIR / "launch_wf333_vina_4step_gpu_bench.sh"
+        ).is_file(), "Wf-333 invocation must use a path that resolves on disk"
         # Wf-264 direct invocation (in phase3_gpu1)
         assert (
             "launch_wf264_cfm_property_panel.sh" in text
@@ -253,7 +308,7 @@ class TestSequentialLaunchOrder:
         ), f"phase2 launch order is WRONG; got positions {positions}"
 
     def test_phase3_gpu1_launches_11_jobs_in_priority_order(self) -> None:
-        """Phase 3 (GPU 1) launches 11 jobs in priority order:
+        '''Phase 3 (GPU 1) launches 11 jobs in priority order:
 
          1. Wf-310F frontier Wave B
          2. Wf-219 §4.1 Ru
@@ -266,7 +321,21 @@ class TestSequentialLaunchOrder:
          9. Wf-264 CFM property panel (NEW per Wf-334-U3, CPU)
         10. Wf-264 CFM panel RUN-ONCE (NEW per Wf-338-F1)
         11. W₂ sliced GPU smoke       (NEW per Wf-338-F1)
-        """
+
+        Wf-A269 wave-3 (2026-11-02) — CORRECTION: the last expected line
+        names ``cuda:0``, not ``cuda:1``.  Commit 87b026ee ("one resolver,
+        one device — everything targets GPU 0") deliberately moved every
+        job onto GPU 0; the pipeline master carries NO ``CUDA_VISIBLE_
+        DEVICES`` pinning at all (measured: 0 hits), so the launchers pick
+        the device.  The ``cuda:1`` expectation was written in bc29aa90 and
+        was never updated after 87b026ee.  The function is still NAMED
+        ``phase3_gpu1`` — that naming is stale, and it is left as-is here
+        because renaming it would touch the pipeline master's dispatch
+        surface (out of scope for a test-only repair).
+
+        SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+            "Launching W₂ sliced GPU smoke on cuda:1",
+        '''
         text = _read_pipeline_master()
         expected_lines = [
             "Launching Wf-310F frontier Wave B",
@@ -279,7 +348,7 @@ class TestSequentialLaunchOrder:
             "Launching Wf-135 Phase 2 LOMO",
             "Launching Wf-264 CFM property panel",
             "Launching Wf-264 CFM property panel RUN-ONCE",
-            "Launching W₂ sliced GPU smoke on cuda:1",
+            "Launching W₂ sliced GPU smoke on cuda:0",
         ]
         positions = []
         for needle in expected_lines:
@@ -400,7 +469,14 @@ class TestUserOkGates:
         """Wf-333 Vina 4-step wrapper must REFUSE without USER_OK=1
         (per Wf-334-U2 audit — gate enforced by wrapper itself, exit 64).
         """
-        wrapper = MOLMETAL_SCRIPTS_DIR / LAUNCHER_WF333
+        # Wf-A269 wave-3 (2026-11-02) — CORRECTION: this composed
+        # reference named ``molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh``
+        # — a path that does NOT exist (the launcher is at ``scripts/``), so
+        # the test asserted on a MISSING file and failed for the wrong
+        # reason.  The wave-3 launcher move put it at ``scripts/``.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+        #   wrapper = MOLMETAL_SCRIPTS_DIR / LAUNCHER_WF333
+        wrapper = SCRIPTS_DIR / LAUNCHER_WF333
         assert wrapper.exists(), f"Wf-333 wrapper missing: {wrapper}"
         env = {**os.environ, "USER_OK": ""}
         proc = subprocess.run(
@@ -485,11 +561,11 @@ class TestBackwardCompat:
         """
         text = _read_pipeline_master()
         for path in (
-            "molmetal/scripts/launch_wf310f_frontier_math_gpu.sh",
-            "molmetal/scripts/launch_wf306b_wf219_ru_gpu.sh",
-            "molmetal/scripts/launch_wf310c_todo220_gpu.sh",
-            "molmetal/scripts/launch_wf310c_t179_w2_gpu.sh",
-            "molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh",
+            "scripts/launch_wf310f_frontier_math_gpu.sh",
+            "scripts/launch_wf306b_wf219_ru_gpu.sh",
+            "scripts/launch_wf310c_todo220_gpu.sh",
+            "scripts/launch_wf310c_t179_w2_gpu.sh",
+            "scripts/launch_wf306a_drugood_vina_gpu.sh",
             "scripts/launch_wf310e_wf135_phase2_gpu.sh",
         ):
             assert path in text, (
@@ -535,19 +611,44 @@ class TestBackwardCompat:
         ), "pipeline master must use strict mode"
 
     def test_wf337_g2_fixes_wired_into_g4_g5_g6(self) -> None:
-        """Per Wf-337-G2, G4 + G5 + G6 launchers must all carry the
+        '''Per Wf-337-G2, G4 + G5 + G6 launchers must all carry the
         consolidated Wf-328 + Wf-335 fixes:
           - --cpu-num-workers 8 (Wf-328-W2)
           - --num-workers 8 (Wf-328-W6)
-          - --w2-gradient-mode sort (Wf-328-W5)
+          - --w2-gradient-mode <value> (Wf-328-W5)
           - --no-cuda-graphs (Wf-335-R3)
 
         Backward-compat guard: if Wf-341 ultracode rewires any of these,
         all 3 launchers must reflect the change.
-        """
+
+        Wf-A269 wave-3 (2026-11-02) — CORRECTION: the ``--w2-gradient-mode``
+        value is now asserted PER LAUNCHER, not as a blanket ``sort``.
+
+        MEASURED root cause: this test was written in bc29aa90, the same
+        commit that flipped G5/G6 to ``sort``; that launcher flip was
+        REVERTED on 2026-10-20 (the launchers' own headers record it:
+        "G5/G6 keep --w2-gradient-mode sliced ... compared bit-exact
+        against the Wf-131 P1 baseline").  The test kept the pre-revert
+        expectation and contradicted the AUTHORITATIVE guard
+        ``molmetal/tests/test_wf334u4_launcher_verify.py`` (which asserts
+        ``--w2-gradient-mode sliced`` for G5/G6 and
+        ``DEFAULT_W2_GRADIENT_MODE == "sliced"``).
+
+        The per-launcher map is STRICTLY STRONGER than the blanket
+        assertion: it pins the exact value, so a silent flip of G5/G6 back
+        to ``sort`` — which is what bc29aa90 did — still fails here.
+
+        SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+          - --w2-gradient-mode sort (Wf-328-W5)
+        ...
+                assert (
+                    "--w2-gradient-mode sort" in text
+                ), f"{wrapper_name} missing --w2-gradient-mode sort (Wf-328-W5)"
+        '''
         for wrapper_name in (LAUNCHER_G4, LAUNCHER_G5, LAUNCHER_G6):
             paths = _wrapper_exists(wrapper_name)
             assert paths, f"launcher missing: {wrapper_name}"
+            expected_w2 = EXPECTED_W2_GRADIENT_MODE[wrapper_name]
             for p in paths:
                 text = p.read_text()
                 assert (
@@ -557,8 +658,11 @@ class TestBackwardCompat:
                     "--num-workers 8" in text
                 ), f"{wrapper_name} missing --num-workers 8 (Wf-328-W6)"
                 assert (
-                    "--w2-gradient-mode sort" in text
-                ), f"{wrapper_name} missing --w2-gradient-mode sort (Wf-328-W5)"
+                    f"--w2-gradient-mode {expected_w2}" in text
+                ), (
+                    f"{wrapper_name} missing --w2-gradient-mode {expected_w2} "
+                    f"(Wf-328-W5)"
+                )
                 assert (
                     "--no-cuda-graphs" in text
                 ), f"{wrapper_name} missing --no-cuda-graphs safety lever (Wf-335-R3)"

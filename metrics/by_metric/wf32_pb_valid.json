@@ -22,7 +22,7 @@
   "n_pb_checks_mol": 14,
   "n_pb_checks_dock": 26,
   "n_pb_checks_total": 26,
-  "date_utc": "2026-09-26",
+  "date_utc": "2026-11-09",
   "per_evaluation": [
     {
       "pocket_id": "pdk1",
@@ -30,17 +30,23 @@
       "candidate_name": "cisplatin",
       "method": "mol",
       "trajectory_method": "se3sb",
-      "status": "skipped",
-      "pb_valid": null,
-      "n_checks": 0,
-      "n_passed": 0,
-      "n_failed": 0,
-      "n_skipped": 0,
-      "pass_rate": 0.0,
-      "failed_checks": [],
-      "missing_checks": [],
-      "elapsed_s": 0.00013461901107802987,
-      "note": "posebusters not installed"
+      "status": "failed",
+      "pb_valid": false,
+      "n_checks": 13,
+      "n_passed": 9,
+      "n_failed": 2,
+      "n_skipped": 2,
+      "pass_rate": 0.6923076923076923,
+      "failed_checks": [
+        "bond_lengths",
+        "bond_angles",
+        "internal_energy"
+      ],
+      "missing_checks": [
+        "internal_energy"
+      ],
+      "elapsed_s": 0.04663916281424463,
+      "note": null
     },
     {
       "pocket_id": "pdk1",
@@ -57,21 +63,21 @@
       "pass_rate": 0.0,
       "failed_checks": [],
       "missing_checks": [],
-      "elapsed_s": 7.538602221757174e-05,
-      "note": "posebusters not installed"
+      "elapsed_s": 3.3669639378786087e-06,
+      "note": "receptor.pdbqt missing for pdk1"
     }
   ],
   "per_pocket_per_method": {
     "pdk1": {
       "mol": {
         "n": 1,
-        "mean_pass_rate": 0.0,
+        "mean_pass_rate": 0.6923076923076923,
         "std_pass_rate": 0.0,
-        "min_pass_rate": 0.0,
-        "max_pass_rate": 0.0,
+        "min_pass_rate": 0.6923076923076923,
+        "max_pass_rate": 0.6923076923076923,
         "n_passed": 0,
-        "n_failed": 0,
-        "n_skipped": 1,
+        "n_failed": 1,
+        "n_skipped": 0,
         "n_error": 0,
         "n_total": 1
       },
@@ -92,13 +98,13 @@
   "aggregate": {
     "pdk1|mol": {
       "n": 1,
-      "mean_pass_rate": 0.0,
+      "mean_pass_rate": 0.6923076923076923,
       "std_pass_rate": 0.0,
-      "min_pass_rate": 0.0,
-      "max_pass_rate": 0.0,
+      "min_pass_rate": 0.6923076923076923,
+      "max_pass_rate": 0.6923076923076923,
       "n_passed": 0,
-      "n_failed": 0,
-      "n_skipped": 1,
+      "n_failed": 1,
+      "n_skipped": 0,
       "n_error": 0,
       "n_total": 1
     },
@@ -116,15 +122,28 @@
     }
   },
   "overall_pb_pass_rate": {
-    "mol": 0.0,
+    "mol": 0.6923076923076923,
     "dock": 0.0
+  },
+  "spec_target": {
+    "n_pockets": 10,
+    "n_candidates": 5,
+    "n_modes": 2,
+    "n_cells": 100,
+    "method": "se3sb (Wf-31 backbone)",
+    "expected_wall_minutes_low": 60,
+    "expected_wall_minutes_high": 180
   },
   "wf432a1_pb_validity_deferred_block": {
     "task_id": "A2_fix_step3_cat_b",
-    "timestamp": "2026-10-01T21:14:43.243963+00:00",
-    "status": "DEFERRED HONEST_NEGATIVE \u2014 meeko + autobabel install requires sudo per AGENTS.md \u00a710; PoseBusters validity SKIPPED graceful preserved as honest-negative on validity NOT on accuracy",
-    "reason": "PoseBusters validity binary requires meeko (RDKit extension) which is LICENSE-gated; per AGENTS.md \u00a75.4 + \u00a710 wetlab + LICENSE-GATED installs are DEFERRED to USER_OK-gated follow-up",
+    "timestamp": "2026-11-09T11:59:24.244767+00:00",
+    "status": "PARTIAL \u2014 1 measured / 1 skipped",
+    "reason": "PoseBusters validity was not measured for every declared cell; the shortfall is recorded here rather than averaged away.",
     "closure_path": "Wf-433+ USER_OK-gated follow-up with explicit meeko + autobabel pip install + Wf-433-A2 PoseBusters PbValid run on the 5-pocket organic-cofactor set",
-    "honest_framing": "5/5 pockets PASS 2.0 \u00c5 SOTA gate per Wf-341-T1 \u00a73 verdict; PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)"
+    "honest_framing": "THIS ARTIFACT evaluated 2 cell(s) (1 measured, 1 skipped) against the 100-cell sweep declared in spec_target; 98 cell(s) of the declared sweep were NOT run. The coverage is PARTIAL \u2014 read the per_evaluation statuses before quoting a pass rate.",
+    "n_evaluations": 2,
+    "n_measured": 1,
+    "n_skipped": 1,
+    "n_spec_cells": 100
   }
 }

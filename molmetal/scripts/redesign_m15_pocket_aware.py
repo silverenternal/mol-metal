@@ -29,7 +29,7 @@ import statistics
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 INPUT_SUMMARY = REPO / "molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json"
 METRIC_JSON = REPO / "metrics/by_metric/docked_pose_rmsd.json"
 REPORT_DIR = REPO / "molmetal/reports/wf246b_m15_redesign"

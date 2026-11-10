@@ -54,7 +54,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PRIMARY_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p3_deferred_runs"
 FALLBACK_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p3_lomo_full"
 OUTPUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf359a2_m1_multi_seed_scaffold"

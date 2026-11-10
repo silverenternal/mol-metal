@@ -68,7 +68,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 

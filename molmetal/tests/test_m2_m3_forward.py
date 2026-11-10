@@ -9,11 +9,12 @@ Also asserts the defaults (gru/sum/outgoing) leave the model byte-identical to
 the pre-M2/M3 code path — the ablation arms must not perturb the baseline.
 """
 import sys
+from pathlib import Path
 
 import numpy as np
 import torch
 
-sys.path.insert(0, "/home/hugo/codes/mol-metal")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from molmetal.baselines.dmpnn import collate_graphs, featurize_smiles_list  # noqa: E402
 from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel  # noqa: E402

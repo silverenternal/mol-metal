@@ -1,0 +1,102 @@
+{
+  "assignment": {
+    "fractions": [
+      0.7,
+      0.1,
+      0.2
+    ],
+    "n_groups": 1434,
+    "seed": "not used (deterministic)",
+    "strategy": "largest group first, greedy capacity fill"
+  },
+  "checks": {
+    "canonical_overlap": {
+      "train_vs_test": 0,
+      "train_vs_val": 0,
+      "val_vs_test": 0
+    },
+    "metal_by_split": {
+      "test": {
+        "Ir": 866,
+        "Os": 206,
+        "Re": 95,
+        "Rh": 208,
+        "Ru": 3522
+      },
+      "train": {
+        "Ir": 2975,
+        "Os": 742,
+        "Re": 596,
+        "Rh": 743,
+        "Ru": 12082
+      },
+      "val": {
+        "Ir": 541,
+        "Os": 91,
+        "Re": 79,
+        "Rh": 118,
+        "Ru": 1619
+      }
+    },
+    "null_counts": {
+      "IC50_Dark_value": 0,
+      "Metal": 0,
+      "SMILES_Ligands": 0,
+      "activity": 0,
+      "cell_line": 0,
+      "complex_scaffold_id": 0,
+      "pic50": 0,
+      "scaffold_id": 0,
+      "source": 0,
+      "split": 0
+    },
+    "scaffold_overlap": {
+      "train_vs_test": 0,
+      "train_vs_val": 0,
+      "val_vs_test": 0
+    },
+    "split_rows": {
+      "test": 4897,
+      "train": 17138,
+      "val": 2448
+    },
+    "split_unique_molecules": {
+      "test": 1437,
+      "train": 4525,
+      "val": 781
+    },
+    "split_unique_scaffolds": {
+      "test": 488,
+      "train": 525,
+      "val": 421
+    }
+  },
+  "dedupe": {
+    "dropped_rows": 2149,
+    "keep": "first",
+    "key": [
+      "canonical SMILES",
+      "Metal",
+      "cell_line"
+    ]
+  },
+  "failed": [],
+  "input": {
+    "path": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+    "rows": 26632,
+    "sha256": "e42e79915830c85218ac162651bb6f743a2d995faac25626818650e833192ead"
+  },
+  "output": {
+    "path": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v5.csv",
+    "rows": 24483,
+    "sha256": "e83b671f7ab04a2f5af10849b8f149a46f6e55fa44f1057814b7cab8e98377f6"
+  },
+  "purpose": "Deduplicated, ligand-scaffold-disjoint CFM corpus",
+  "split_key": {
+    "column": "scaffold_id",
+    "definition": "_bemis_murcko_key (desalted to largest fragment, includeChirality=False), empty -> '__empty__<canonical SMILES>'",
+    "old_column_retained_as": "complex_scaffold_id"
+  },
+  "status": "PASS",
+  "workflow": "Wf-A52"
+}

@@ -47,7 +47,7 @@ DEFAULT-OFF
 -----------
 weight <= 0 returns an exact torch.zeros(()) without touching the inputs,
 so a run that does not set flow.ring_template_weight is bit-exact with
-the pre-Wf-A78 trainer (AGENTS.md §5.11).
+the pre-Wf-A78 trainer (~~AGENTS.md §5.11~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31).
 
 Wf-A107 (2026-10-21) — TWO GRADIENT DEFECTS IN THE COUNT FORM
 -------------------------------------------------------------

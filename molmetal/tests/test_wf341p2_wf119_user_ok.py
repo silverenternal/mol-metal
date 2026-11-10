@@ -26,11 +26,12 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf119_p1_4_chemprop_v3_lomo.sh"
 TRAINER = ROOT / "molmetal/scripts/train_chemprop_v2_v3.py"
 PRE_FLIGHT = ROOT / "molmetal/scripts/pre_flight_check.py"
@@ -278,7 +279,7 @@ def test_backward_compat_dry_run_idempotent():
     # Backward compat: --chemprop-mode + --chemprop-min-epochs +
     # --chemprop-lomo-init-scale are all present in --help (sanity probe)
     proc_help = subprocess.run(
-        ["/home/hugo/codes/mol-metal/.venv/bin/python", str(TRAINER), "--help"],
+        [sys.executable, str(TRAINER), "--help"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

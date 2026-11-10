@@ -1,0 +1,113 @@
+{
+  "created_at_utc": "2026-11-10T16:00:10.453276+00:00",
+  "status": "completed",
+  "items": [
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.05/per_pair_records.jsonl",
+      "logical_bytes": 24271824,
+      "sha256": "d2048d2478af10b66113f5254cf01b4d9bd31cbf81bf88c8c3c50caf1a951756",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.10/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "e3cd1085f9365b964cb97a0445cf2d0a4b41db6624cc40c38629bb9bf40bd7ce",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.20/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "9d047f565695f24d3250d913b3d2d1c92a75ab6d4cb3ff4ab50d21f5b5bbe031",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.30/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "1282b3c2e449560ab340c4eb76453ad08976a8b2626a8081d004c71c0277e99c",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.40/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "6ef1c05ab17bc26ef68732024a237f93e4cc126837f26e8be7cfbdcb75f261d0",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.50/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "29a51c6a59ea4196d95aa1a8a413723c164fb0d6ccced0bf85e9aa8e16fc009e",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.60/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "d18954f31f115ee99157b70a9e8f7b6d9320fa08865220dbdb6092a91320ba72",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.70/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "3d65746a52669a39d43b2cd881b3fc0e0dce24b49e44074fe20b4d6d3508ebff",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.80/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "7957d58e137f5bb9138bd026382f455f282584ff1e6af0ed33872f7a101a7bc0",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.90/per_pair_records.jsonl",
+      "logical_bytes": 24157297,
+      "sha256": "0e6abac39080490f216bbc57f0bbbf4c5b80f1485d9ef3aca4bd2f14234e2c0b",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_band_sweep_1.30_2026_10_13/per_pair_records.jsonl",
+      "logical_bytes": 28852502,
+      "sha256": "b46264ab382ebb63a450344905fd0bae8c0f1174e07c28ca47b6d4070893480e",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_band_sweep_1.45_2026_10_13/per_pair_records.jsonl",
+      "logical_bytes": 28824680,
+      "sha256": "5cf4b37befa8fe1807e05d6ec4fb3dadaa82e0cba12f206256daaab0447f91e6",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/cfm_blkc_m4_band_sweep_1.50_2026_10_13/per_pair_records.jsonl",
+      "logical_bytes": 28820152,
+      "sha256": "a6bbc32c3e946b5d64ce7f45b01f2fd4d9403ec1125dcf2f93002dbe04445f87",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/wfa164_bond_threshold_narrative/c7_pool_check/per_row.json",
+      "logical_bytes": 211583752,
+      "sha256": "596d6d3c415523c8f7675732e2ed19e40d93b755c18c426ffd7f25cc6bbdd3dc",
+      "type": "raw_diagnostic",
+      "removed": true
+    },
+    {
+      "path": "molmetal/reports/wf182_chemprop_v2_drugood_3configs/shared_cache",
+      "logical_bytes": 379839065,
+      "files": 266522,
+      "type": "rebuildable_feature_cache",
+      "removed": true
+    }
+  ],
+  "impact": "Raw per-pair diagnostic rows removed; per-run diagnostic summaries and c7 per-row CSV retained. Feature cache will need rebuilding if old DrugOOD experiments are rerun.",
+  "logical_bytes": 919607648
+}

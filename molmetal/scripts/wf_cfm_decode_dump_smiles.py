@@ -20,43 +20,73 @@ decoded SMILES string was computed and dropped on the floor. That leaves
 `cfm_property_panel.py` with nothing to score, which is exactly why m4 (QED),
 m5 (SA) and m7 (diversity) are UNMEASURED rather than bad: they were never fed.
 
-This replays the BOND HEAD from each checkpoint and writes the CSV those tools
-want, so the panel and any downstream classifier can finally run on decoded
-molecules instead of on nothing.
+In its first era (before 2026-10-12) this replayed the BOND HEAD from each
+checkpoint and wrote the CSV those tools want, so the panel and any downstream
+classifier could finally run on decoded molecules instead of on nothing. Since
+2026-10-12 it replays the MODEL's own generation path instead -- see PROVENANCE
+below.
 
 It does NOT retrain and does NOT change any metric already on disk. It writes
 one new CSV per run.
 
-!! THESE ARE NOT GENERATED MOLECULES. MEASURED 2026-10-11. !!
-    This script loads REAL tmQM geometries via load_tmqm_clouds (:142) and runs
-    only the bond head: featurise -> _select_bonds -> _bridge_components ->
-    _assemble_mol. It never calls the sampler. The trainer's real generation path
-    is evaluate_generation_validity -> generate_clouds_from_noise
-    (train_cfm_yuelbond_wasserstein.py:4683), which integrates the ODE from
-    noise; this script calls none of it.
+PROVENANCE -- IT DEPENDS ON WHEN THE FILE WAS WRITTEN
+------------------------------------------------------
+!! "THESE ARE NOT GENERATED MOLECULES" WAS TRUE FOR THE FILES WRITTEN BEFORE
+!! 2026-10-12 AND IS FALSE FOR EVERY FILE WRITTEN AFTER IT. !!
 
-    So every SMILES it writes is a BOND-HEAD RECONSTRUCTION OF A REAL CORPUS
-    MOLECULE, not a de-novo structure. Any panel metric computed from these CSVs
-    (QED, SA, single-fragment ratio, diversity) describes the bond head
+    ERA A (files written before 2026-10-12 -- MEASURED 2026-10-11). The script
+    loaded REAL tmQM geometries via load_tmqm_clouds and ran only the bond
+    head: featurise -> _select_bonds -> _bridge_components -> _assemble_mol. It
+    never called the sampler. The trainer's real generation path is
+    evaluate_generation_validity -> generate_clouds_from_noise
+    (train_cfm_yuelbond_wasserstein.py:4683), which integrates the ODE from
+    noise; this script called none of it.
+
+    So every SMILES it wrote was a BOND-HEAD RECONSTRUCTION OF A REAL CORPUS
+    MOLECULE, not a de-novo structure. Any panel metric computed from those
+    CSVs (QED, SA, single-fragment ratio, diversity) describes the bond head
     reconstructing known chemistry -- NOT the generator. The proof is that real
     tmQM itself scores SA 4.9781 mean over 31150 complexes, against 5.0146 over
-    these three CSVs: a gap of 0.14 SA, because the geometry was supplied.
+    those three era-A CSVs: a gap of 0.14 SA, because the geometry was
+    supplied.
 
     Independent confirmation that the gap is population, not batch: per-run
     means 4.974 / 5.033 / 5.032 (eta^2 = 0.0006, corr(SA, epoch) = -0.021), and
     size-matched to 192 the real corpus is 4.8781 -- 1.5-2.8 SA BETTER than these
     at every heavy-atom bucket.
 
-    Reporting these as generator quality would be the same class of error as
+    Reporting those as generator quality would be the same class of error as
     `gen_validity` itself, which is 0.23-0.38 for free generation and ~1.0 for
     seeded reconstruction.
 
+    ERA B (files written from 2026-10-12 onwards -- MEASURED 2026-10-12). The
+    loop below calls the trainer's own generation path,
+    evaluate_generation_validity -> generate_clouds_from_noise (the real ODE
+    integrator), and writes what the MODEL produced: these ARE free-generation
+    molecules, and the banner above does not apply to them. MEASURED on
+    molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv: 192
+    attempted, 66 valid, gen_validity 0.344 (the same numbers as
+    metrics/by_metric/cfm_free_generation_panel_seed0.json).
+
+    ONE SCRIPT, ONE HEADER, TWO ERAS -- so the header alone cannot tell them
+    apart. molmetal/scripts/cfm_pool_kind.py therefore reads the CONTENT of a
+    `metal_z` pool (sanitized + metal_z) rather than trusting the header, and
+    this writer now stamps its OWN provenance so that no future pool can be
+    ambiguous at all: every CSV it writes carries a `pool_kind` column whose
+    value is "generation" (it always runs the ODE path) and an `n_attempted`
+    column carrying the number of draws the sampler made.
+
 COLUMNS
-    epoch,seed,smiles,sanitized,n_fragments,largest_fragment_frac,metal_z
+    epoch,seed,smiles,sanitized,n_fragments,largest_fragment_frac,metal_z,
+    pool_kind,n_attempted
 
 `epoch` is the checkpoint's own epoch so the panel's `--last-epoch` works, and
 `n_fragments` is carried alongside the SMILES so the connectivity story can be
-recomputed downstream without re-decoding.
+recomputed downstream without re-decoding.  `pool_kind` is this writer's own
+provenance stamp ("generation": the ODE path ran) and `n_attempted` is the
+number of draws `evaluate_generation_validity` made, so the pool's
+validity rate can be recomputed from the file itself instead of from a
+neighbouring log.
 """
 
 from __future__ import annotations
@@ -108,7 +138,6 @@ def main() -> int:
     from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import get_z_table
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
-        YuelBondDecoder,
     )
     from rdkit import Chem
 
@@ -146,11 +175,14 @@ def main() -> int:
         model.load_state_dict(ckpt["model_state_dict"])
         model.eval()
 
-        head = YuelBondDecoder(
-            head=model.head,
-            hidden_dim=int(a["hidden_dim"]),
-            n_layers=int(a["n_layers"]),
-        )
+        # 2026-10-30 (Wf-A114D) -- the standalone YuelBondDecoder that used to
+        # be built here was NEVER used: `dec` (the bond decoder the sampler
+        # calls) builds its own inner YuelBondDecoder from `model.head`
+        # (cfm_decoder_yuelbond.py, YuelBondBondDecoder.__init__).  It was
+        # deleted rather than silenced: `YuelBondDecoder.__init__` stores the
+        # head it is given and creates no module when one is passed, so the
+        # construction drew no random numbers and had no other side effect --
+        # the deletion is a no-op for the pools this script writes.
         dec = YuelBondBondDecoder(
             head=model.head,
             hidden_dim=int(a["hidden_dim"]),
@@ -237,6 +269,16 @@ def main() -> int:
                     "n_fragments": int(frags or 0),
                     "largest_fragment_frac": round(float(largest or 0.0), 4),
                     "metal_z": row.get("metal_z", ""),
+                    # This writer's own provenance stamp.  It always runs the
+                    # ODE path (era B above), so the pool is FREE GENERATION
+                    # and says so in the file -- no pool is left to be guessed
+                    # from its header.  cfm_pool_kind.py treats this column as
+                    # authoritative.
+                    "pool_kind": "generation",
+                    # The number of draws the sampler made (n_tot from
+                    # evaluate_generation_validity), so the pool's validity
+                    # rate can be recomputed from the file itself.
+                    "n_attempted": int(n_tot),
                 }
             )
         print(
@@ -258,6 +300,8 @@ def main() -> int:
                     "n_fragments",
                     "largest_fragment_frac",
                     "metal_z",
+                    "pool_kind",
+                    "n_attempted",
                 ],
             )
             w.writeheader()

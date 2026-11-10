@@ -138,7 +138,9 @@ molmetal = "molmetal.__main__:cli_main"
 # repositories under ``molmetal/references`` ship their own plugins, options,
 # and optional dependencies; collecting them causes import-time failures.
 #
-# Per Wf-A2 code consolidation (AGENTS.md §5.8 omega-flow minimalism pattern):
+# Per Wf-A2 code consolidation (~~AGENTS.md §5.8 omega-flow minimalism pattern~~
+# → AGENTS.md §5.10 OmegaFold gap-fill — flat-package rule; full text in
+# docs/STANDING_DIRECTIVES.md §G; corrected 2026-10-31):
 #   - `tests/` is the CPU-only regression-guard surface (per-wave audits).
 #   - `molmetal/tests/` is the canonical pytest root (558 script-aligned).
 #   - See `tests/INDEX.md` for per-test-file scope + when-to-run map.

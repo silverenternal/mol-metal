@@ -1,0 +1,1 @@
+PASS remaining_hr=0.25 [0.5h budget sufficient; 0.2h buffer remaining after projected waves.]

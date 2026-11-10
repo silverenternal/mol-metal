@@ -1,0 +1,152 @@
+# configs/retry_g5_missing_pairs_wf310a.yaml — DEDICATED config for
+# scripts/retry_g5_missing_pairs.sh (Wf-310A G5 pair recovery).
+#
+# WHY A DEDICATED FILE (AGENTS.md §5.11, user directive 2026-10-09):
+#   The wrapper used to pass every hyperparameter on the trainer command
+#   line (--epochs/--batch-size/--hidden/--depth/--lr/--alpha/--metals/
+#   --seeds/--csv/--data-csv/--device/--wasserstein-weight/--use-l2-guard/
+#   --ablation-config/--w2-gradient-mode/--n-mc/--cpu-num-workers).
+#   configs/dmpnn.yaml is SHARED by 8 launchers, so its values could not be
+#   edited to carry this wrapper's numbers without changing the other 7.
+#   This file is a private copy of configs/dmpnn.yaml with THIS wrapper's
+#   values written in; every value below is the value the wrapper used to
+#   pass on the command line, and nothing else was changed.
+#
+# PER-PAIR NARROWING (trap: the trainer loops over args.metals x args.seeds):
+#   The trainer iterates `for metal in args.metals:` x `for seed in
+#   args.seeds:` internally, so a per-(metal, seed) PROCESS needs a config
+#   that declares exactly ONE metal and ONE seed. The values below describe
+#   the whole 2-pair sweep this wrapper runs (Ru seed=2, Ir seed=0); the
+#   wrapper DERIVES a per-pair copy at launch time (narrowing
+#   data.metals / data.seeds / protocol.seeds to the one pair) and passes
+#   that copy as --config. The derivation is asserted before the trainer is
+#   started, so a narrowing that silently fails aborts the launch instead of
+#   training the whole cohort.
+#
+# LIST-VALUED KEYS MUST BE YAML SEQUENCES (AGENTS.md §5.11):
+#   --metals is nargs="+" and --seeds is nargs="+" type=int. A YAML string
+#   ("Ru Ir Os Re") is delivered as ONE token and matches zero rows; the
+#   2026-10-09 incident trained 4 folds x 5 seeds to test_auc = nan. Both
+#   keys below are sequences, and the seeds are UNQUOTED so they arrive as
+#   int, not str (the loader does not convert elements of a YAML list).
+#
+# PRECEDENCE (molmetal/scripts/wfA2_config_loader.py: apply_yaml_overrides):
+#   explicit CLI flag > YAML > argparse default. The wrapper now passes ONLY
+#   --config / --out-dir / --ckpt-dir, so every value below is what the
+#   trainer receives. LIST dests are YAML-wins when the CLI did not supply
+#   them (the loader's list special case at wfA2_config_loader.py:835).
+
+# `csv` is the dest of the trainer's `--csv` flag (the property corpus that
+# overrides the one selected by --dataset). It is TOP-LEVEL on purpose:
+# `data.csv` flattens to `data_csv`, which is a DIFFERENT dest (the
+# MetalCytoToxDB base path, --data-csv). The old command line passed both
+# flags with the same path, so both dests are declared here.
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+model:
+  # --hidden 300 (the wrapper's value; configs/dmpnn.yaml shipped 128).
+  # `depth` was already 3 and is restated so the architecture is recorded.
+  hidden: 300
+  depth: 3
+  # See configs/dmpnn.yaml for the full wire-in status of each Triton knob.
+  # All four are false here exactly as they are there.
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  # REPORT-ONLY ridge readout on the frozen encoder embedding. Must be an
+  # unquoted YAML boolean (MEASURED 2026-10-11).
+  pic50_ridge_readout: false
+
+train:
+  # --epochs 50
+  epochs: 50
+  # --batch-size 256 (the wrapper's value; configs/dmpnn.yaml shipped 64).
+  batch_size: 256
+  # --lr 1e-3
+  lr: 1.0e-3
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  lr_scheduler: none
+  lr_min_lr: 1.0e-6
+  lr_warmup_epochs: 5
+  # --alpha 0.5 (BCE balance between the regression and the classification head)
+  alpha: 0.5
+  # --ablation-config mtl_baseline (the trainer's own argparse default).
+  ablation_config: mtl_baseline
+  # Kendall tau UW MTL loss, ON by default. The dest is `kendall`, not
+  # `use_kendall` (train_dmpnn_multitask_wasserstein.py:2572-2574).
+  kendall: true
+
+data:
+  # --data-csv <path>. `data.csv` flattens to the dest `data_csv`; the
+  # top-level `csv:` above is the OTHER dest. Both were passed with this
+  # same path by the old command line.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  # --metals <one metal per launch> — the 2-pair sweep this wrapper runs.
+  # The wrapper narrows this to the single pair it is launching.
+  metals:
+    - Ru
+    - Ir
+  # --seeds <one seed per launch> — same narrowing.
+  seeds:
+    - 0
+    - 2
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  active_pic50_threshold: 6.0
+
+eval:
+  # --wasserstein-weight 0.05
+  wasserstein_weight: 0.05
+  use_wasserstein_2: false
+  use_wasserstein_w1: true
+  # --w2-gradient-mode sliced
+  w2_gradient_mode: sliced
+  use_triton_wasserstein_sliced: false
+  use_ot_cfm: false
+  triton_ot: false
+  # --use-l2-guard (store_true, and the argparse default is already True).
+  use_l2_guard: true
+  # --n-mc 256
+  n_mc: 256
+
+compute:
+  # --device cuda:0
+  device: "cuda:0"
+  tf32: false
+  torch_compile: false
+  # --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS on the 24-core host;
+  # Wf-328-W2). The dest is `cpu_num_workers` (`compute.cpu_workers` is the
+  # schema alias for it).
+  cpu_num_workers: 8
+  pin_memory: true
+
+# Restated with the identical value it has under `data:` — the loader treats
+# list dests as YAML-wins, so both writes land the same list.
+protocol:
+  seeds:
+    - 0
+    - 2
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  # Only --config and --out-dir — the §5.11 allowlist. Every hyperparameter
+  # lives above.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+output:
+  out_dir: molmetal/reports/wf310a_retry_g5_missing_pairs
+  ckpt_dir: molmetal/checkpoints
+  # The trainer has no `base_dir` dest; scripts/start.sh reads it. Kept for
+  # the same reason as configs/dmpnn.yaml.
+  base_dir: molmetal/reports/wf310a_retry_g5_missing_pairs
+  resume_from: auto
+  checkpoint_interval: 50

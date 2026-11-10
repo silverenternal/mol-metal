@@ -1405,9 +1405,55 @@ def _resolve_csv(arg: str, fallback_name: str) -> Path:
     return p  # last-resort — caller will see a clean error
 
 
-def main() -> int:
+def _resolve_output_dir(arg: str) -> str:
+    """Anchor a REPO-RELATIVE output directory on the repo root.
+
+    Wf-A269 (2026-11-03) — AGENTS.md §5.11 migration.  The hyperparameter
+    sweep this trainer runs is now driven by a YAML config, and a config
+    carries REPO-RELATIVE paths (``molmetal/reports/...``).  A relative path
+    resolved against the shell's CWD is not the same directory for every
+    launcher, so the output directory is anchored on the repo root here —
+    the same convention ``_resolve_csv`` already applies to the CSV inputs.
+
+    An absolute path is returned unchanged: a caller that wants a directory
+    outside the repo still gets exactly what it asked for.
+
+    MEASURED consequence for the equivalence probe: the OLD command line
+    passed an ABSOLUTE path (``${RUN_ROOT}/seed${SEED}``) and the YAML passes
+    the repo-relative form of the SAME directory; both land on the same
+    absolute string, so the migration is value-preserving rather than
+    merely plausible.
+    """
+    p = Path(arg)
+    if p.is_absolute():
+        return str(p)
+    return str(_REPO_ROOT / p)
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    """Entry point.
+
+    ``argv`` is optional so the repo's config-binding / equivalence probes can
+    capture this trainer's parser without starting a training run (they call
+    ``main([])`` and abort the parse).  ``None`` = read ``sys.argv`` (the
+    normal command-line launch).
+    """
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[1] if __doc__ else "Wf-37 L5"
+    )
+    # Wf-A269 (2026-11-03) — AGENTS.md §5.11 wire-in.  This trainer had NO
+    # --config flag and NO apply_yaml_overrides call, so it could not be
+    # launched from a YAML config at all: every hyperparameter below was
+    # reachable ONLY as a command-line flag.  The flag is added here and the
+    # YAML is layered on top of the parse (explicit CLI flag > YAML >
+    # argparse default), which is what makes the §5.11 migration of
+    # scripts/launch_wf310c_t179_w2_gpu.sh possible at all.
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (AGENTS.md §5.11). Every hyperparameter of this "
+        "trainer is declared there; the command line selects WHICH run.",
     )
     parser.add_argument(
         "--dataset",
@@ -1471,9 +1517,11 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        type=str,
+        type=_resolve_output_dir,
         default="molmetal/reports/wf37_hilbert_astsr",
-        help="Output directory for r2_bench.json + comparison_table.md.",
+        help="Output directory for r2_bench.json + comparison_table.md. A "
+        "repo-relative path is anchored on the repo root (same convention as "
+        "the CSV inputs), so one YAML config resolves identically from any CWD.",
     )
     # Wf-246-A (TODO-179) — Wasserstein pIC50 alignment wire-in.
     parser.add_argument(
@@ -1514,7 +1562,21 @@ def main() -> int:
         "molmetal/data/platinai_4cell_rdkit_extended_features.csv). "
         "Only used when --feature-set rdkit_32d.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    # AGENTS.md §5.11: the YAML config carries every hyperparameter; the
+    # command line selects WHICH run (--config) and nothing else.  Precedence
+    # is explicit CLI flag > YAML > argparse default, resolved by the repo's
+    # shared loader so the ordering is identical to every other config-driven
+    # trainer in this repo.
+    if args.config is not None:
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(
+            parser,
+            args,
+            str(args.config),
+            argv=list(argv) if argv is not None else None,
+        )
 
     out_dir = Path(args.output)
     out_dir.mkdir(parents=True, exist_ok=True)

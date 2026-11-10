@@ -11,9 +11,15 @@
 #     are the levers; turning them off for the Rh-LOSO-with-leak path
 #     removes the prior push and restores the natural ranking.
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
+
+# Repo root derived from this file's own location (molmetal/tests/X.py ->
+# parents[2]).  Keeps the tracked-source greps below checkout-independent.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _make_rh_only_df():
@@ -182,7 +188,7 @@ def test_d3_rh_fold_pos_weight_disabled():
 def test_d3_non_rh_fold_keeps_auto_pos_weight():
     """D3 fix: non-Rh folds retain auto pos_weight + balanced sampler."""
     src = open(
-        "/home/hugo/codes/mol-metal/molmetal/scripts/train_metal_lomo_wasserstein.py",
+        REPO_ROOT / "molmetal" / "scripts" / "train_metal_lomo_wasserstein.py",
         "r",
     ).read()
     # The D3 branch is gated on args.metals contains "Rh" — make sure that's

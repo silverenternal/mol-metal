@@ -50,6 +50,150 @@
 - `molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/cfm_yuelbond_wasserstein.pt` (best checkpoint)
 - `molmetal/reports/cfm_c7_fullgen_2026_10_20/synthesis.md` (this file)
 
+> **⚠️ CORRECTION (2026-10-31, Wf-A141 guard-repair sub-wave — read-only
+> audit; the file does NOT exist).**  The "best checkpoint" bullet above is
+> **FALSE as written**: the directory
+> `molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints` is **EMPTY** (0
+> entries — MEASURED 2026-10-31 with `ls -la`; the directory's mtime is
+> 2026-10-21 16:52 and it was ALREADY empty then, per catalog **§6.197**
+> point 3, so it has been empty for the whole period).  The run's per-epoch
+> records survived — `per_epoch_metrics.json`, `per_epoch_metrics.csv`,
+> `wasserstein_decay.json`, `events.jsonl`, `generated_smiles.csv` — but the
+> **weights did not**.  §6.197 diagnosed this absence at the
+> `cfm_todo.json` claim site; **this** bullet is a second site that §6.197
+> did not correct, and it stood for seven days.  The original bullet is
+> PRESERVED VERBATIM above per AGENTS.md §5.5 rule #6.  Recorded as catalog
+> **§6.254 §7** and **§6.255**.
+
+> **⚠️ CORRECTION 2 (2026-10-31, Wf-A142 — provenance of the missing
+> checkpoint: when it went away, whether it can be recovered, and whether the
+> CPU-only blocker still applies).**  The correction immediately above
+> (Wf-A141 / catalog **§6.254 §7** + **§6.255**) records THAT the
+> advertised file is missing. **This block adds the provenance and recovery
+> evidence, which that block did not carry.** Nothing above is changed; both
+> corrections are additive (AGENTS.md §5.5 rule #6). Per the §6.255
+> convention — *"a path that does not exist must be cited in a form that is
+> not a pointer"* — the missing file is cited below by its **bare name** plus
+> its **existing** parent directory, except inside the two shell commands
+> whose subject IS the path.
+>
+> **(a) The file does NOT exist on disk.**  MEASURED 2026-10-31:
+>
+> ```
+> $ ls -la molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints/
+> total 0
+> drwxr-xr-x 1 hugo hugo    0 Oct 21 16:52 .
+> drwxr-xr-x 1 hugo hugo  240 Oct 31 17:30 ..
+> ```
+>
+> `total 0`, **0 entries** (only `.` and `..`): the directory exists and is
+> **EMPTY**. The file named in the "best checkpoint" bullet above —
+> `cfm_yuelbond_wasserstein.pt`, inside that directory — **does not exist on
+> disk**.
+>
+> **(b) When the directory was emptied.**
+>
+> | evidence | value (MEASURED 2026-10-31) |
+> |---|---|
+> | directory `Modify` / `Change` (mtime) | **2026-10-21 16:52:07.634677957 +0800** |
+> | directory `Birth` | **2026-10-20 23:17:46.319283848 +0800** |
+> | the run's own artifacts (`per_epoch_metrics.json`, `per_epoch_metrics.csv`, `generated_smiles.csv`, `events.jsonl`, `wasserstein_decay.json`) | 2026-10-21 05:04 — **11 h 48 m earlier** |
+> | `git log --oneline -- <path>` | **EMPTY — the file was NEVER committed** |
+> | `git ls-files molmetal/reports/cfm_c7_fullgen_2026_10_20/` | **one file only: `synthesis.md`** |
+>
+> The emptying was therefore **not a git operation**: there is no blob, no
+> commit and no deletion record — only a filesystem event. The 16:52:07
+> mtime is the directory's **last content change**. A census of every
+> `checkpoints` / `ckpt` / `ckpts` directory in the repo (`find`, never
+> `os.walk`) finds **87** now-empty directories sharing that **exact**
+> mtime `2026-10-21 16:52` — **87 of 99 empty** under a `find -maxdepth 6`
+> scope (138 directories total) and **87 of 101 empty** under the ledger's
+> `**/checkpoints` + `**/ckpt` scope (136 total); the two totals differ only
+> by scope and **every scope agrees the c7 directory is one of the 87**. The
+> emptying was a **single bulk filesystem event** at 2026-10-21 16:52, not a
+> per-run cleanup. The repo's own ledger had already recorded it
+> (`todo.json`, Wf-A96 entry: *"该目录的 checkpoints/ 自 2026-10-21 16:52 起
+> 为空"* — "this directory's `checkpoints/` has been empty since 2026-10-21
+> 16:52"), which is the same instant §6.197 point 3 measured.
+>
+> **(c) Where the checkpoint is — it is LOST, not relocated.**  MEASURED
+> 2026-10-31:
+>
+> ```
+> $ find . -name 'cfm_yuelbond_wasserstein.pt' -not -path './.git/*'
+> ```
+>
+> returns **16 hits, every one of them under `.claude/worktrees/`**:
+> `wf_60231cff-03e-11`, `wf_bf4f3451-73b-3`, `wf_cf385f8f-b2e-4`,
+> `wf_cf385f8f-b2e-6` x
+> `results/cfm_per_innovation_ablation_p1.4/{a_full_stack,b_yuelbond_only,c_w2_only,d_catherine_only}/ckpts/`.
+> Those are the **Wf-299 per-innovation ablation** checkpoints — a different
+> cohort, a different experiment, in throwaway worktrees. **None of the 16 is
+> this run's epoch-17 best checkpoint.**
+>
+> ```
+> $ git log --all --diff-filter=D --name-only | grep -i cfm_yuelbond
+> ```
+>
+> lists only these **`.pt`** deletions, all from **one** commit — `ce8b0383`
+> *"purge: drop 75 superseded checkpoints (59 under results/, 16 under
+> logs/)"*:
+> `results/cfm_per_innovation_ablation_p1.4/{a_full_stack,b_yuelbond_only,c_w2_only,d_catherine_only}/ckpts/cfm_yuelbond_wasserstein.pt`
+> and
+> `results/cfm_tmqm_all6/_superseded/cfm_yuelbond_wasserstein_seed0_ep9_saturating_gate.pt`.
+> (The same grep also matches eight `train_cfm_yuelbond_wasserstein.py.bak.*`
+> trainer-script backups — scripts, not checkpoints.) **The c7 path appears in
+> no deletion record**, because there was never a committed file to delete.
+>
+> **Verdict: the epoch-17 "best checkpoint" is LOST.** It was never in git,
+> and no surviving copy on disk is this run's.
+>
+> It was also **probably never written under that name at all.** This trainer
+> writes **seed-qualified** names only —
+> `cfm_yuelbond_wasserstein_seed{seed}.pt` /
+> `..._seed{seed}_last.pt` / `..._seed{seed}_epoch{N}.pt` /
+> `..._seed{seed}_best_epoch{N}.pt`
+> (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py:20159`, `:20357`,
+> `:20440`, `:20553`, `:20578`) — and the trainer's own comment records why
+> (`:18103-18108`): *"The checkpoint filename is now qualified by seed. It
+> was a fixed `cfm_yuelbond_wasserstein.pt` … so all five seeds in a sweep
+> wrote to the SAME path and the last one to finish won."* The "best
+> checkpoint" bullet is a **leftover of the pre-2026-10-04 unseeded naming
+> era**, emitted as a hard-coded f-string with **no existence check**
+> (`:21245`). It was a **template, not a report of a write**.
+>
+> **A third, still-unrepaired false claim site** (reported, not edited — the
+> trainer is out of scope for this wave): the same trainer's module
+> docstring (`:55`) advertises
+> `molmetal/checkpoints/cfm_yuelbond_wasserstein.pt` as the *"trained
+> YuelBond head + velocity-field metadata"*. **That file does not exist
+> either**; the two similarly-named files in that directory are
+> `cfm_yuelbond_wasserstein.smoke_stub.pt` (639 549 B, 2026-10-04) and
+> `cfm_yuelbond_wasserstein_seed0.smoke_stub.pt` (7 807 093 B, 2026-10-10) —
+> **smoke stubs**, not the trained head.
+>
+> **(d) The CPU-only deserialisation blocker still applies.**
+> `docs/HONEST_NEGATIVE_CATALOG.md` **§6.248** records that
+> `torch.load(ckpt, map_location="cpu")` — and
+> `torch.load(ckpt, map_location=torch.device("cpu"))` — **both** raise
+> `RuntimeError: Attempting to deserialize object on a CUDA device but
+> torch.cuda.is_available() is False` for the sibling run's checkpoint
+> (`cfm_yuelbond_wasserstein_seed0_last.pt` under the c8 report directory,
+> 8 395 006 B, still on disk). That blocker is **UNCHANGED** as of
+> 2026-10-31. For **this** run it is moot in the strict sense — **there is
+> no file to load at all** — but it means a *replacement* checkpoint would
+> still very likely not be loadable on a CPU-only host. So the decoder's own
+> `bonds_dropped` / `dropped_reasons` histogram
+> (`molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:1614-1629`)
+> remains **unobtainable** for this pool, and the dominant cause of the
+> pool's fragmentation stands as **§6.253** records it: MEASURED-RANKED, with
+> the assembler-drops-bonds mechanism **REFUTED** for this pool.
+>
+> **Scope of this correction.** No number in the per-epoch table above
+> changes: it comes from `per_epoch_metrics.json` / `events.jsonl`, which do
+> exist. What changes is the status of **one advertised output**: the "best
+> checkpoint" is not on disk and cannot be recovered.
+
 ## Cross-references
 
 - TODO-119 (decode_ratio strengthen) — primary target

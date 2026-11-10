@@ -1,13 +1,13 @@
 {
   "cases": [
     {
-      "actual_R2": -19217.63093962989,
+      "actual_R2": -18438.364020903024,
       "collapse_threshold_ratio": 0.1,
       "model_name": "Wf-25 Hilbert composite",
       "n_test": 40,
       "n_train": 40,
-      "pred_std": 1.3848789818205065,
-      "std_ratio": 37.72385922546717,
+      "pred_std": 0.5235428602143364,
+      "std_ratio": 14.261215179438588,
       "verdict": "normal_negative_R2",
       "weak_threshold_ratio": 0.4,
       "y_test_mean": 4.992702258593125,
@@ -31,14 +31,14 @@
       "zero_R2": -22.955354212857113
     },
     {
-      "actual_R2": -17.402008450553478,
+      "actual_R2": -39.965129453033526,
       "collapse_threshold_ratio": 0.1,
       "model_name": "Wf-37 L5 evolutionary",
       "n_test": 60,
       "n_train": 60,
-      "pred_std": 0.0,
-      "std_ratio": 0.0,
-      "verdict": "mean_collapse",
+      "pred_std": 1.109487242131143,
+      "std_ratio": 1.343287322947363,
+      "verdict": "normal_negative_R2",
       "weak_threshold_ratio": 0.4,
       "y_test_mean": 4.94550658378421,
       "y_test_std": 0.8259493134326397,
@@ -46,14 +46,14 @@
       "zero_R2": -4.6424797695676645e-05
     },
     {
-      "actual_R2": -63.571246940904004,
+      "actual_R2": -196.35978155502505,
       "collapse_threshold_ratio": 0.1,
       "model_name": "Wf-39 AST composite",
       "n_test": 40,
       "n_train": 40,
-      "pred_std": 0.0,
-      "std_ratio": 0.0,
-      "verdict": "mean_collapse",
+      "pred_std": 0.7837100834364239,
+      "std_ratio": 2.1348124456528557,
+      "verdict": "normal_negative_R2",
       "weak_threshold_ratio": 0.4,
       "y_test_mean": 4.92702258593125,
       "y_test_std": 0.36710957209955475,
@@ -91,11 +91,11 @@
       "zero_R2": -4.477520870360685e-05
     }
   ],
-  "collapse_count": 3,
+  "collapse_count": 1,
   "description": "Per-model check whether negative R\u00b2 is caused by a predict-the-mean collapse.  Returns ``verdict`` \u2208 {mean_collapse, weak_signal, normal_negative_R2, normal_positive_R2}.",
   "generated_by": "molmetal/scripts/check_r2_baseline.py",
   "n_cases": 6,
-  "normal_negative_count": 2,
+  "normal_negative_count": 4,
   "normal_positive_count": 1,
   "title": "Negative R-squared baseline check (predict-mean)",
   "weak_count": 0,

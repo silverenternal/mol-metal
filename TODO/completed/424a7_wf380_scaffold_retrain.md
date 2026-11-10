@@ -98,14 +98,33 @@ All 14 Wf-380 + 3 Wf-388 + 3 Wf-408 + 2 Wf-409 + 1 Wf-410 + 3 Wf-394 + 1 Wf-410 
 | `--repulsion-weight` | 1820 | 0.0 | Liu 2021 repulsion loss | ✓ |
 | `--sa-penalty` | 1729 | 0.0 | Wf-380-A6 SA penalty | ✓ |
 | `--sa-target` | 1748 | 2.8 | Ertl 2009 synthesizable-region threshold | ✓ |
-| `--flowmol-unified` | n/a | n/a | LICENSE-GATED CC-BY-NC, excluded from Wf-299 wrapper per Wf-385-A2 §7 | ✓ (CC-BY-NC BY-DESIGN) |
+| `--flowmol-unified` | n/a | n/a | LICENSE-GATED CC BY-SA 4.0, excluded from Wf-299 wrapper per Wf-385-A2 §7 | ✓ (CC BY-SA 4.0 BY-DESIGN) |
 | `--so3-average` | 2076 | yes | SO(3)-averaged FM (Cao 2025 ICML) | ✓ |
 | `--log-normal-t` | 2105 | yes | EDM-style log-normal t sampling | ✓ |
 | `--lambda-cfm-coupling` | 1978 | no | Wf-406-A2 / Wf-394-A1 Lambda × CFM joint retrain | ✓ |
 | `--cfm-multiph-pll` | 2019 | no | Wf-409-A1 Multi-PH + PLL CFM trainer wire-in | ✓ |
 | `--chemprop-v3-cache` | 2173 | no | Wf-409-A2 CFM chemprop v3 cache | ✓ |
 
-**`--flowmol-unified` LICENSE-GATED** per Wf-353-A4 + Wf-385-A2: FlowMol arXiv:2412.01966 CC-BY-NC, requires explicit USER_OK=1 + AGENTS.md §5.1 for production integration.
+**`--flowmol-unified` LICENSE-GATED** per Wf-353-A4 + Wf-385-A2: FlowMol arXiv:2404.19739 CC BY-SA 4.0, requires explicit USER_OK=1 + AGENTS.md §5.1 for production integration.
+
+**CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+verbatim: “FlowMol arXiv:2412.01966 CC-BY-NC”. Verified against the primary
+sources on 2026-10-31: `arXiv:2412.01966` is **not** FlowMol — the arXiv abs
+page returns “Implementing Semiclassical Szegedy Walks in Classical-Quantum
+Circuits for Homomorphic Encryption” (Ortega, S. A.; Fernández, P.;
+Martin-Delgado, M. A.), a quantum-homomorphic-encryption paper, and the arXiv
+API returns no record titled “FlowMol: A Unified Flow Matching Model for 3D
+Molecular Generation” and no record authored by “Qiang, B.; Song, Y.; ...;
+Kingma, D. P.”. The real upstream is Dunn, I.; Koes, D. R. (2024), *Mixed
+Continuous and Categorical Flow Matching for 3D De Novo Molecule Generation*
+(FlowMol), `arXiv:2404.19739` — the identifier this repo’s own canonical
+`unified_atom_bond_flow.py` already cites — with siblings `arXiv:2411.16644`
+(FlowMol-CTMC) + `arXiv:2508.12629` (FlowMol3). **LICENCE: all three are CC
+BY-SA 4.0**, **not** CC-BY-NC (arXiv abs-page
+`creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is unchanged — CC
+BY-SA 4.0 still carries attribution + share-alike obligations, so USER_OK is
+still required. Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+#6.
 
 ## §5 ⚠️ HONEST-NEGATIVE FINDING: Harness task brief misframed
 
@@ -202,7 +221,7 @@ drwxr-xr-x  hugo hugo  Oct  1 02:55 wave_a/  # output target
 | 1 | Harness task brief literal invocation FAILS at argparse (`--metals` + `--seeds` not in trainer) | HONEST_NEGATIVE_REFUSED (literal invocation) | Wf-299 launcher via Wf-415-A1 transparent-passthrough is the canonical path; per-trainer `--metals`/`--seeds` would require code change |
 | 2 | `--scaffold-conditioning` has shape mismatch bug per Wf-396-A3 (`(B, N, V)` vs `(E, V)`) | HONEST_NEGATIVE_OPEN | Wf-396-A3 §3 closure path: reshape logits before `scaffold_condition` call OR remove flag — NOT in scope for Wf-424-A7 |
 | 3 | MEASURED m7 + m3 + m4 lift NOT in scope for Wf-424-A7 (training run, not property evaluation) | PROJECTED_PENDING_POST_HOC | Wf-425-A1 follow-up: `molmetal/scripts/cfm_property_panel.py` eval on trained model + update `m7_diversity.json` + `m4_sa.json` + `m3_vina.json` |
-| 4 | `--flowmol-unified` LICENSE-GATED CC-BY-NC (excluded from Wf-299 wrapper per Wf-385-A2) | LICENSE_GATED | USER_OK=1 required for production integration |
+| 4 | `--flowmol-unified` LICENSE-GATED CC BY-SA 4.0 (excluded from Wf-299 wrapper per Wf-385-A2; [licence corrected 2026-10-31, Wf-A149 — CC BY-SA 4.0, not CC-BY-NC; full note in §4]) | LICENSE_GATED | USER_OK=1 required for production integration |
 | 5 | m6_kappa + m2 R² + m1 AUC structural gates HONEST_NEGATIVE_FINAL (per Wf-411-A4 + Wf-419-A2 + Wf-388-A1) | PRESERVED | Out of scope for Wf-424-A7; Wf-420+ forward-looking |
 | 6 | 3 pre-existing SKIPs BY-DESIGN (yuelbond env gap + wave_budget overrun + bindingdb external) | PRESERVED | Per Wf-262 §7.1 + Wf-345-A2 + AGENTS.md §5.4 |
 | 7 | 2 pre-existing FAILs (if any emerge during Wave A) | PROJECTED_RECOVERED | Pre-flight PASSED at start; if Wave A internal sub-pre-flight FAILs, the launcher will abort gracefully per kill_then_adapt §0 |

@@ -49,10 +49,43 @@ a trained model.
 
 Lit anchors
 -----------
-* Wang, S., Dokholyan, P. (2025). *YuelBond: a graph neural network
-  for recovering the molecular bond network from distorted 3D
-  structures.*  bioRxiv 10.1101/2025.05.06.652517.  F1=92.7 % on
-  distorted molecules.
+* Wang, J.; Dokholyan, N. V. (2026). *Multimodal Bond Reconstruction
+  toward Generative Molecular Design.*  J. Chem. Inf. Model. 66(2),
+  1003-1012.  DOI 10.1021/acs.jcim.5c03052  (preprint: bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11).  F1 = 92.7 % on the CDG set
+  (worst case, sigma = 0.2 A); F1 = 98.4 % on standard 3-D.
+  (Citation corrected 2026-10-31, Wf-A143 — this bullet previously
+  printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  See
+  `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
+  Correction note (2026-10-31, Wf-A148) — the Wf-A143 note above is
+  PARTLY FALSE AT THIS SITE.  Its third clause claims that this file's
+  pre-repair bullet carried "the attribution of the 783/1000 RDKit failure
+  count to ``DetermineConnectivity``".
+  It did not: neither "783" nor "DetermineConnectivity" ever occurred
+  in this file.  Evidence (MEASURED against git on 2026-10-31):
+      git show HEAD:molmetal/molmetal_lam/lam_chem/cfm_decoder.py | grep -n "783\\|DetermineConnectivity"
+  -> NO MATCH (grep exit status 1).  The SAME grep on HEAD's
+  `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` DOES match
+  (lines 20-21), so the Wf-A143 note was accurate at THAT site and is
+  wrong at THIS one.  The Wf-A143 note's REMAINING claims ARE true
+  at this site and stand unchanged: the pre-repair bullet really did
+  print the title "YuelBond: a graph neural network for recovering the
+  molecular bond network from distorted 3D structures" and the author
+  initials "Wang, S., Dokholyan, P.", and it really did carry only the
+  bioRxiv preprint identifier with no journal DOI; the current bullet
+  corrects all three to the published record — Wang, J.; Dokholyan,
+  N. V. (2026), *Multimodal Bond Reconstruction toward Generative
+  Molecular Design*, J. Chem. Inf. Model. 66(2), 1003-1012, DOI
+  10.1021/acs.jcim.5c03052, whose preprint (bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11) is titled "Multimodal Bonds
+  Reconstruction Towards Generative Molecular Design".  Superseded
+  wording preserved verbatim (AGENTS.md §5.5 rule #6) — the Wf-A143
+  note is retained above, unaltered and undeleted:
+      "(Citation corrected 2026-10-31, Wf-A143 — this bullet previously
+      printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  See
+      `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)"
+  (Catalog entry pending — this wave does not own
+  `docs/HONEST_NEGATIVE_CATALOG.md`.)
 * Jin, W., Barzilay, R., Jaakkola, T. (2018). *Junction Tree
   Variational Autoencoder for Molecular Graph Generation.*  ICML
   2018, arXiv:1802.04364.  Valence-aware greedy selection.

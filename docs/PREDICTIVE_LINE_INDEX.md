@@ -227,7 +227,7 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "C6.lomo_wasserstein_real_only", "value": 0.3812, "artifact": "metrics/by_metric/metal_lomo_auc_wasserstein.json", "path": "real_only_fold_value"},
   {"id": "C6.ru_within", "value": 0.8271, "artifact": "metrics/by_metric/metal_activity_transfer_seed_stability_v2.json", "path": "within_metal_stability.Ru.mean", "tol": 0.0002},
   {"id": "C6.ir_within", "value": 0.8430, "artifact": "metrics/by_metric/metal_activity_transfer_seed_stability_v2.json", "path": "within_metal_stability.Ir.mean", "tol": 0.0002},
-  {"id": "C7.sa_le_4p5_full_corpus", "value": 0.0028, "artifact": "metrics/by_metric/c7_scale_matched_pools.json", "path": "by_pipeline.generation.by_tier.full_corpus.rate_sa_le_gate"},
+  {"id": "C7.sa_le_4p5_full_corpus", "value": 0.004, "artifact": "metrics/by_metric/c7_scale_matched_pools.json", "path": "by_pipeline.generation.by_tier.full_corpus.rate_sa_le_gate"},
   {"id": "C8.dominant_share", "value": 0.7052, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "dominant_term.mean_share"},
   {"id": "C8.offset_share", "value": 0.1002, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_offset_share"},
   {"id": "C8.scale_share", "value": 0.2060, "artifact": "metrics/by_metric/msrs_lomo_error_decomposition.json", "path": "endpoints.potency.splits.metal_out.verdict.mean_scale_share"},
@@ -1401,6 +1401,7 @@ UP-33 的 Mondrian 臂在**均值**口径上过门（最差金属 0.8888），�
 | 2026-10-19 | **Δ 符号 0.6193** | **0.5826**（5 seed） | 单 seed 高抽样：5 个 seed 落在 0.5183–0.5963，0.6193 比全部五个都高 |
 | 2026-10-20 | 「0.5826 接近 0.65 门槛」 | 多数类率 **0.6009** | 门内 218 对只有两个金属对，正号占 60.1%。0.5826 **低于"永远答正号"**，不是"接近门槛" |
 | 2026-10-20 | 生成 **SA≤4.5 = 33.7%** | **0.28%** | 33.7% 是键头重建池（给定真实 tmQM 几何只跑键头），从不调用采样器 |
+| 2026-10-31 | 「生成 SA≤4.5 = **0.28%**」（单池 `cfm_c7_fullgen_2026_10_20` 36/12,668） | **0.4% [0.31, 0.52]**（全语料层三池 60/14,846） | Wf-A118 修好了这个池的 cohort（ts 认证的 master.log 说是 26,715，不是被覆盖的 64），于是全语料层从两池变三池；同时 §6.143b 的两个假断言作废 |
 | 2026-10-19 | 「LOMO 0.5575，差 0.04」 | 可解析子集 **0.5974** | 0.5575 把 Rh(51)/Os(36)/Re(74) 三个低于 `MIN_UNIQUE_FOR_GATE=200` 的折等权平均进去 |
 | 2026-10-21 | 「换哪个金属更好**不可学**」（无条件全称） | 「**点估计不可学（raw 低于多数类率），balanced 口径可学但未达可用**」 | UP-2b 在同一批折上改 listwise 目标后 balanced 0.5985 [0.5262, 0.6663]，CI 不含 0.5。**但没有撤回 0.5826/0.5333 那三行**：它们仍是 raw 口径的正确读数。说"不可学"而不说口径，是这次的错误 |
 | 2026-10-21 | 「交互份额 0.712 ⇒ 放开加性约束能救 metal_out」 | **约束不是杠杆**（free −0.097 / pair −0.113 / product −0.164） | 方差分解测的是**观测到的**交互，metal_out 要求把它**外推到没见过的金属**；这两件事不是同一个量。以后引用 0.712 必须同时说它只描述训练金属内部 |

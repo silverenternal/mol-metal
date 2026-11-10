@@ -52,7 +52,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+ROOT = Path(__file__).resolve().parents[2]
 REPORT_ROOT = ROOT / "molmetal" / "reports" / "wf_path_b_gpu_retrain"
 REPORT_JSON_IN = REPORT_ROOT / "cfm_10kstep" / "report.json"
 MANIFEST = ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"

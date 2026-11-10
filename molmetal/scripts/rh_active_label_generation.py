@@ -58,12 +58,24 @@ DEFAULT_N_ACTIVE = 250
 DEFAULT_N_INACTIVE = 250
 
 # Paths (override via CLI)
-DEFAULT_REAL_CSV = (
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_REAL_CSV = str(
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_SYNTH_JSON = "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p2_rh_oversample/synthetic_rh_cohort.json"
-DEFAULT_OUTPUT_DIR = (
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort"
+DEFAULT_SYNTH_JSON = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf131_p2_rh_oversample"
+    / "synthetic_rh_cohort.json"
+)
+DEFAULT_OUTPUT_DIR = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
 )
 
 # Random seed for reproducibility

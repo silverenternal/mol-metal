@@ -4,7 +4,7 @@
 Wf-310D (Wf-301B full run aggregation, follow-up of Wf-306A Phase-B):
 
 Inputs (read-only, written by Wf-301B / Wf-305D full 100-mol × 4-pocket GPU
-run launched via molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh --phase B):
+run launched via scripts/launch_wf306a_drugood_vina_gpu.sh --phase B):
 
 * molmetal/reports/wf301b_vina_pt_strip/vina.json
     shape: {

@@ -29,10 +29,14 @@ and three coordination sites.  53.4% of Ru clouds in the cohort are pi-bound.
 What this file pins
 -------------------
 1. Every cohort metal's decoder cap is at or above the corpus MND p99.
-2. Pt is the one deliberate exception (pinned at 4, the Pt(II) target).
+2. Pt is NOT an exception.  Wf-A113 (T88, 2026-10-29) removed the last
+   chemistry pin: it cost 1,465 of 8,275 Pt complexes (17.7%) and 2,714
+   metal bonds, against 0.2-0.9% for the other five, and it excluded Pt(IV)
+   octahedral prodrugs -- a first-class anticancer class.
 3. An eta6-arene Ru complex with three extra donors keeps all nine bonds
    through ``_select_bonds`` — the case the old cap deleted.
-4. A cap that is too high is still caught: Pd keeps 4 of 5 attempted bonds.
+4. A cap that is too high is still caught: Pd keeps 4 of 5 attempted bonds,
+   and Pt keeps 6 of 7.
 """
 
 from __future__ import annotations
@@ -70,8 +74,11 @@ COHORT = {
     76: "Os",
     75: "Re",
 }
-#: Pt is the one element whose cap is a chemistry decision, not the p99.
-CHEMISTRY_PINNED = {78: 4}
+#: Wf-A113 (T88) — empty.  Pt was the last chemistry pin; it is now the p99
+#: like every other cohort metal.  Kept as an explicit empty mapping so the
+#: exemption has to be re-declared with a reason rather than reappearing as a
+#: silent skip.
+CHEMISTRY_PINNED: dict[int, int] = {}
 
 
 def _mnd_percentiles() -> dict[str, list[int]]:
@@ -154,9 +161,18 @@ def test_caps_are_not_the_corpus_median():
     )
 
 
-def test_pt_cap_is_the_documented_chemistry_choice():
-    """Pt is pinned at 4 on purpose — 81.8% of the Pt corpus is 4-coordinate."""
-    assert int(_COVALENT_VALENCE[78]) == CHEMISTRY_PINNED[78]
+def test_no_cohort_metal_is_exempt_from_the_p99_rule():
+    """Wf-A113 (T88) — the exemption list must stay empty.
+
+    It held Pt at 4 for two rounds.  The T72 artifact already recorded the
+    cost (``frac_metal_bonds_unrepresentable`` 0.0813 for Pt, 0.0 for every
+    other metal) and the exception survived anyway, so the list is asserted
+    empty rather than merely unused.
+    """
+    assert CHEMISTRY_PINNED == {}, (
+        f"a chemistry pin reappeared: {CHEMISTRY_PINNED}; every cohort metal "
+        "must take the corpus MND p99"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -216,11 +232,18 @@ def test_pd_still_refuses_a_fifth_bond():
     assert (n_kept, n_overvalent) == (4, 1)
 
 
-def test_pt_still_refuses_a_fifth_bond():
+def test_pt_keeps_six_and_refuses_the_seventh():
+    """Wf-A113 (T88) — Pt(IV) is octahedral; the old cap stopped at four.
+
+    1,143 Pt complexes in tmQM are six-coordinate and 277 are five.  A cap of
+    4 dropped the axial bonds of every one of them, which opens the chelate
+    ring and turns a single fragment into several.  The cap is 6 now and must
+    still refuse a seventh bond, or it is not a cap.
+    """
     torch.manual_seed(0)
     decoder = YuelBondBondDecoder(hidden_dim=32, n_layers=2)
-    z_list = [78, 7, 7, 7, 7, 7]
-    pairs = [(0, k) for k in range(1, 6)]
+    z_list = [78] + [7] * 7
+    pairs = [(0, k) for k in range(1, 8)]
     cloud, yres = _forced_single_result(z_list, pairs)
     _bo, _d, n_kept, n_overvalent = decoder._select_bonds(cloud, yres)
-    assert (n_kept, n_overvalent) == (4, 1)
+    assert (n_kept, n_overvalent) == (6, 1)

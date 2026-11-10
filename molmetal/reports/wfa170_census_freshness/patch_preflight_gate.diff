@@ -1,0 +1,105 @@
+--- a/molmetal/scripts/pre_flight_check.py
++++ b/molmetal/scripts/pre_flight_check.py
+@@ -324,6 +324,28 @@
+ # via POSIX-atomic temp-file + rename (process-local per-path lock).
+ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
+ 
++# Wf-A170 (2026-11-01) — the ADVISORY census-freshness check.
++#
++# WHY THIS IMPORT EXISTS
++# ----------------------
++# A *census artefact* is a JSON file that records the SHA-256 of a file it
++# described.  When the described file is still under active edit, the
++# artefact goes stale on every unrelated edit — and it goes stale SILENTLY:
++# the artefact still says PASS and still carries a verdict derived from a
++# version of the source that no longer exists.  That is the Wf-A159 shape
++# (``molmetal/reports/wfa159_timeout_verdict_census/
++# timeout_verdict_census.json`` pinned a ``target_sha256`` that matched
++# neither HEAD nor the working tree), and the same shape as the §6.262 /
++# §6.264 incidents.
++#
++# The guard is imported (NOT shelled out) for the same reason
++# ``wf343c1_pre_retrain_check`` is: the check is cheap, in-process, and
++# must not spawn anything.  It is STANDARD LIBRARY ONLY — no torch, no
++# CUDA, no subprocess (the git HEAD is read from ``.git`` as files).
++from molmetal.scripts import (  # noqa: E402
++    wfa170_census_freshness_guard as _wfa170_freshness,
++)
++
+ VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/mol-metal/.venv/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
+ # Wf-300D harness auto-fallback wrapper is a USER-LEVEL file, not part of
+ # this repo. Located at $HOME/.claude/wrapper.py; Wf-306C P3 gate verifies
+@@ -17528,6 +17550,62 @@
+             "exit code unchanged",
+             file=sys.stderr,
+         )
++
++    # ---- Wf-A170 (2026-11-01) — ADVISORY census-freshness check. ----
++    #
++    # This is ADVISORY BY CONSTRUCTION, on four independent counts:
++    #   * it is NOT registered in build_gates(), so EXPECTED_GATE_COUNTS is
++    #     UNCHANGED (129 on "all", 131 on "launch") — no PINNED gate count
++    #     moves, and no other test's count assertion can break;
++    #   * it NEVER changes the exit code — a stale pin is a finding to
++    #     REPORT, not a reason to block a launch;
++    #   * it is wrapped in try/except, so a missing or broken guard can
++    #     never break a pre-flight run;
++    #   * it is a separate STATUS, not a FAIL — the same posture the WARN
++    #     gates already take (Wf-A125 G11a).
++    #
++    # COST: the guard re-hashes every sha-pinned artefact under
++    # molmetal/reports/.  MEASURED 2026-11-01 on this host: ~15 s against a
++    # ~411 s full pre-flight.
++    census_freshness: Dict[str, Any] = {"status": "SKIP", "reason": "not run"}
++    try:
++        freshness = _wfa170_freshness.scan_reports()
++        fs = freshness["summary"]
++        census_freshness = {
++            "status": freshness["status"],
++            "n_json_artefacts_scanned": fs["n_json_artefacts_scanned"],
++            "n_artefacts_with_a_sha_pin": fs["n_artefacts_with_a_sha_pin"],
++            "n_sha_pins_checked": fs["n_sha_pins_checked"],
++            "n_stale": fs["n_stale"],
++            "n_fresh": fs["n_fresh"],
++            "n_missing_target": fs["n_missing_target"],
++            "n_unpaired_sha_pins": fs["n_unpaired_sha_pins"],
++            "stale_artefacts": freshness["stale_artefacts"],
++            "would_block_launch_if_fail": fs["n_stale"] > 0,
++            "note": (
++                "ADVISORY: a FAIL-ing version of this check would block "
++                f"launches iff n_stale > 0; n_stale = {fs['n_stale']}."
++            ),
++        }
++        if fs["n_stale"]:
++            print(
++                f"[pre_flight] ADVISORY {fs['n_stale']} stale census "
++                f"SHA-256 pin(s) across "
++                f"{fs['n_artefacts_with_a_sha_pin']} sha-pinning artefact(s) "
++                "— advisory, exit code unchanged; re-run "
++                "`python molmetal/scripts/wfa170_census_freshness_guard.py`",
++                file=sys.stderr,
++            )
++    except Exception as exc:  # advisory must never break a pre-flight run
++        census_freshness = {
++            "status": "SKIP",
++            "reason": f"{type(exc).__name__}: {exc}",
++        }
++        print(
++            "[pre_flight] ADVISORY the census-freshness check could not run "
++            f"({type(exc).__name__}: {exc}) — advisory, exit code unchanged",
++            file=sys.stderr,
++        )
+     # Wf-A135 (2026-10-31) — TIMEOUT is a FIRST-CLASS status too.
+     # A wall-clock timeout means the gate's MEASUREMENT WAS NEVER
+     # OBTAINED.  It is NOT a defect verdict, so it is counted neither as
+@@ -17561,6 +17639,10 @@
+             "total_wall_sec": round(total_wall, 4),
+         },
+         "gates": [r.to_dict() for r in results],
++        # Wf-A170 (2026-11-01) — the ADVISORY census-freshness summary.
++        # Never a FAIL and never an exit-code input: it REPORTS stale
++        # SHA-256 pins on files the reports themselves name.
++        "census_freshness": census_freshness,
+         # --changed-only audit surface: names of scoped gates that were NOT run
+         # because no staged file touched their scope. Empty in the default run.
+         "incremental": {

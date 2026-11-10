@@ -107,7 +107,7 @@ TODO_134 = PROJECT_ROOT / "TODO" / "completed" / "134_m15_docking_rmsd_redesign.
 DOCKED_POSE_METRIC = PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
 
 # project .venv has Vina Python binding + meeko + RDKit + scipy
-PROJECT_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+PROJECT_VENV_PY = Path(sys.executable)
 # Alt: Wf-84 P2 micromamba conda-forge vina CLI binary (executable, libboost intact)
 WF84_VINA_CLI = Path("/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina")
 
@@ -752,7 +752,14 @@ def write_summary(
     md_lines.append("")
     md_lines.append("* `summary.json` — machine-readable aggregate.")
     md_lines.append("* `<pocket>/vina_pose.json` — per-pocket pose + RMSD record.")
-    (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
+    _wf416_atomic_write_text(out_dir / "synthesis.md", "\n".join(md_lines) + "\n")
 
     return payload
 

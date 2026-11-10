@@ -25,7 +25,7 @@ import re
 from pathlib import Path
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 LAMBDA_ROADMAP = REPO_ROOT / "TODO" / "03_plans" / "LAMBDA_ROADMAP.md"
 
 

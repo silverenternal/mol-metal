@@ -57,7 +57,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Project root + path setup
 # ---------------------------------------------------------------------------
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT / "scripts"
 TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 
@@ -65,7 +65,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-LAUNCH_SCRIPT = SCRIPTS_DIR / "launch_wf74_v2_drugood_dann.sh"
+LAUNCH_SCRIPT = (
+    Path(__file__).resolve().parents[2]
+    / "scripts"
+    / "launch_wf74_v2_drugood_dann.sh"
+)
 DRUGOOD_TRAINER = TEST_SCRIPTS_DIR / "wf305d_drugood_dann_train.py"
 PRE_FLIGHT = TEST_SCRIPTS_DIR / "pre_flight_check.py"
 DRUGOOD_CSV = ROOT / "molmetal" / ".data" / "molmetal" / "drugood_ecfp4_scaffold.csv"

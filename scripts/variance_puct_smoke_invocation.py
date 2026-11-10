@@ -34,8 +34,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
-PY = REPO / ".venv/bin/python"
+REPO = Path(__file__).resolve().parents[1]
+PY = sys.executable
 BENCH = REPO / "molmetal/scripts/bench_mcts_search_quality.py"
 sys.path.insert(0, str(REPO / "molmetal"))
 sys.path.insert(0, str(REPO))

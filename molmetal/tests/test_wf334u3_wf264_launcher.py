@@ -26,8 +26,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path("/home/hugo/codes/mol-metal")
-WRAPPER = ROOT / "scripts" / "launch_wf264_cfm_property_panel.sh"
+ROOT = Path(__file__).resolve().parents[2]
+WRAPPER = Path(__file__).resolve().parents[2] / "scripts" / "launch_wf264_cfm_property_panel.sh"
 SMILES_CSV = ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 SCRIPT = ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"
 

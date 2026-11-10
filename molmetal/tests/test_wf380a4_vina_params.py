@@ -285,7 +285,25 @@ def test_15_block_sequences_load_as_lists() -> None:
     # Every other block sequence in the same file was dropped the same way.
     assert len(cfg["cross_references"]) == 12
     assert len(cfg["honest_framing"]["claims"]) == 4
-    assert len(cfg["directives"]["pre_flight_gates_required"]) == 4
+    # Wf-A176 (2026-11-01) REPAIR — the count moved 4 -> 3.
+    #
+    # SUPERSEDED (2026-11-01, rendering PRESERVED VERBATIM per AGENTS.md
+    # §5.5 rule #6):
+    #     assert len(cfg["directives"]["pre_flight_gates_required"]) == 4
+    #
+    # WHY: the 4th entry was `p1_pytorch_cuda_available` — a gate name with
+    # ZERO occurrences in any `.py` at HEAD and ZERO in the repository's
+    # entire git history (`git log --all -S 'p1_pytorch_cuda_available' --
+    # '*.py'` -> 0).  It had no referent, and `pre_flight_check.py --gates`
+    # HARD-ERRORS (return 1) on a name no pipeline owns
+    # (`pre_flight_check.py:17455-17466`), so this config declared a
+    # requirement that made a compliant launch impossible.  Wf-A176 removed
+    # the dead entry from all 82 configs that named it (the dead name is
+    # preserved VERBATIM in a dated YAML comment above the key in each
+    # file).  The live CUDA-availability coverage is `p1_gpu_env_probe`,
+    # registered on the `all`/`launch` pipelines
+    # (`pre_flight_check.py:16210`).
+    assert len(cfg["directives"]["pre_flight_gates_required"]) == 3
 
 
 def test_16_a_pending_key_becomes_a_list_only_when_an_item_follows() -> None:

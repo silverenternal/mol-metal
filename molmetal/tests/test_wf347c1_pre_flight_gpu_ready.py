@@ -56,7 +56,7 @@ import subprocess
 from pathlib import Path
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = PROJECT_ROOT / "scripts" / "pre_flight_gpu_ready.sh"
 
 

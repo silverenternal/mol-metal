@@ -366,7 +366,13 @@ def run_smoke(args) -> dict:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
-        "--csv", default="/home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv"
+        "--csv",
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "data"
+            / "platinai_4cell.csv"
+        ),
     )
     p.add_argument(
         "--cell-line",
@@ -380,7 +386,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--w-w", type=float, default=1.0)
     p.add_argument(
         "--out-dir",
-        default="/home/hugo/codes/mol-metal/molmetal/reports/wf179_w2_pic50_fix",
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf179_w2_pic50_fix"
+        ),
     )
     return p.parse_args()
 

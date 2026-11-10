@@ -1,0 +1,326 @@
+{
+  "metric": "wfa155_ligand_connected_rate",
+  "tag": "MEASURED",
+  "date": "2026-11-01",
+  "wave": "Wf-A155 (branch LIG) + Wf-A162 (computed narrative)",
+  "purpose": "Frontier option (A): a LIGAND-ONLY 'connected' rate published ALONGSIDE the metal-inclusive one, to separate 'the metal fell off' from 'the ligand itself fragmented'. Reporting-only. This run measures ONE pool of 2112 rows; whether it reproduces a published rate for this pool is COMPUTED in published_cross_check, not asserted.",
+  "direction": "single_fragment_rate is HIGHER IS BETTER for both arms, but the ligand-only arm is a DIAGNOSTIC, not a target: a coordination complex is SUPPOSED to have the metal as part of its connectivity, so a low ligand-only rate is not per se a defect. Read the two arms TOGETHER (see verdict).",
+  "gpu": "0 (CPU-only, RDKit-only, no checkpoint, no decode)",
+  "source_pool": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+  "script": "molmetal/scripts/wf_a155_ligand_connected_rate.py",
+  "definitions": {
+    "metal_symbols_rule": "an atom is 'a metal' iff its element symbol is in the repo's canonical d-block TRANSITION_METALS list (Sc..Hg); the trainer's cohort set {Ru,Rh,Re,Os,Ir,Pt} is a subset. Stripping deletes the metal atom and every bond incident to it; nothing else is touched (counterions stay).",
+    "connected_rule": "one RDKit connected component AND at least one heavy atom. An empty ligand is NOT connected.",
+    "both_arms_same_code_path": "both arms go through arm_stats(), so the metal-inclusive and ligand-only numbers are internally comparable by construction."
+  },
+  "denominators": {
+    "n_rows_in_csv": 2112,
+    "n_empty_string": 0,
+    "n_unparseable": 0,
+    "n_analyzed": 2112,
+    "n_with_no_metal": 0,
+    "n_empty_ligand_after_strip": 0,
+    "n_metal_alone_in_own_fragment": 30,
+    "n_with_free_halide_counterion": 60,
+    "denominator_note": "Every rate below is over the n_analyzed rows. A row whose ligand is empty after stripping is NOT connected in either arm and is NOT removed from the denominator; it is counted in n_empty_ligand_after_strip."
+  },
+  "metal_inclusive": {
+    "definition": "the whole emitted molecule, exactly as the pool CSV reports it -- the arm a frontier comparison would target.",
+    "n_single_fragment": 529,
+    "single_fragment_rate": 0.25047348484848486,
+    "n_frags_histogram": {
+      "1": 529,
+      "2": 666,
+      "3": 508,
+      "4": 265,
+      "5": 94,
+      "6": 41,
+      "7": 7,
+      "8": 2
+    },
+    "largest_frag_frac": {
+      "n": 2112,
+      "mean": 0.9432267756078445,
+      "median": 0.9655172413793104,
+      "min": 0.3793103448275862,
+      "max": 1.0
+    },
+    "mean_n_frags": 2.4744318181818183
+  },
+  "ligand_only": {
+    "definition": "the SAME molecule with every metal atom deleted (and its bonds removed): the connectivity the organic skeleton has on its own. Not a real molecule -- a counterfactual.",
+    "n_single_fragment": 60,
+    "single_fragment_rate": 0.028409090909090908,
+    "single_fragment_rate_over_nonempty_ligand": 0.028409090909090908,
+    "n_frags_histogram": {
+      "1": 60,
+      "2": 167,
+      "3": 319,
+      "4": 431,
+      "5": 418,
+      "6": 362,
+      "7": 209,
+      "8": 89,
+      "9": 39,
+      "10": 15,
+      "11": 3
+    },
+    "largest_frag_frac": {
+      "n": 2112,
+      "mean": 0.7010549309967147,
+      "median": 0.7142857142857143,
+      "min": 0.2,
+      "max": 1.0
+    },
+    "mean_n_frags": 4.756628787878788
+  },
+  "paired": {
+    "contingency": {
+      "a_both_connected": 53,
+      "b_ligand_only_connected_metal_inclusive_not": 7,
+      "c_metal_inclusive_connected_ligand_only_not": 476,
+      "d_neither_connected": 1576,
+      "note": "b = the metal fell off and the ligand stayed intact (a metal-coordination failure). c = the whole molecule is one fragment ONLY because the metal bridges otherwise disconnected ligand pieces -- the ligand is fragmented and the metal is hiding it."
+    },
+    "mcnemar_exact": {
+      "discordant_total": 483,
+      "p_value_two_sided": 9.4663045613785e-131,
+      "p_value_log10": -130.02381952699687,
+      "p_value_underflow_to_zero": false,
+      "p_value_exact_numerator": 2364113803306640,
+      "p_value_exact_denominator": 24973988402527937851052777838345330445988785141319769206873255677002973910558124960962448824507935769278615448971252983163583805434306282450321408
+    },
+    "n_frags_delta_histogram": {
+      "-1": 30,
+      "0": 226,
+      "1": 379,
+      "2": 517,
+      "3": 515,
+      "4": 333,
+      "5": 112
+    },
+    "n_frags_delta_note": "ligand-only n_frags minus metal-inclusive n_frags, per row. Negative = the metal was a fragment of its own (it fell off); positive = the metal was bonding ligand pieces together (removing it splits them)."
+  },
+  "metal_symbol_counts": {
+    "Ir": 177,
+    "Os": 114,
+    "Pt": 225,
+    "Re": 456,
+    "Rh": 45,
+    "Ru": 1095
+  },
+  "n_metal_atoms_per_row": {
+    "1": 2112
+  },
+  "per_epoch": {
+    "0": {
+      "n": 704,
+      "metal_inclusive_single": 143,
+      "ligand_only_single": 34,
+      "metal_inclusive_single_rate": 0.203125,
+      "ligand_only_single_rate": 0.048295454545454544
+    },
+    "1": {
+      "n": 704,
+      "metal_inclusive_single": 141,
+      "ligand_only_single": 9,
+      "metal_inclusive_single_rate": 0.2002840909090909,
+      "ligand_only_single_rate": 0.01278409090909091
+    },
+    "2": {
+      "n": 704,
+      "metal_inclusive_single": 245,
+      "ligand_only_single": 17,
+      "metal_inclusive_single_rate": 0.34801136363636365,
+      "ligand_only_single_rate": 0.024147727272727272
+    }
+  },
+  "csv_cross_check": {
+    "n_frags_raw_mismatches": 0,
+    "largest_frag_frac_max_abs_delta": 4.999999999999449e-05,
+    "all_atoms_heavy": true,
+    "note": "The metal-inclusive arm was recomputed from scratch by this tool and compared against the pool's own n_frags_raw / largest_frag_frac columns. Zero mismatches means the two arms are measured over the same molecules by the same definition."
+  },
+  "metal_set_invariance": {
+    "rule": "d-block TRANSITION_METALS (the project's own metal predicate)",
+    "narrower_rule": "the trainer's _TARGET_METALS cohort {Ru, Rh, Re, Os, Ir, Pt}",
+    "metal_inclusive_single_fragment_rate": 0.25047348484848486,
+    "ligand_only_single_fragment_rate_dblock": 0.028409090909090908,
+    "ligand_only_single_fragment_rate_cohort": 0.028409090909090908,
+    "n_empty_ligand_dblock": 0,
+    "n_empty_ligand_cohort": 0,
+    "identical": true,
+    "note": "The rule is not pool-fitted: the answer is identical under the project's broad d-block metal predicate and under the narrow trainer cohort set."
+  },
+  "verdict": {
+    "question": "How much of the pool's fragmentation is the METAL falling off, versus the LIGAND itself fragmenting?",
+    "metal_alone_in_own_fragment_rows": 30,
+    "metal_alone_rate": 0.014204545454545454,
+    "empty_ligand_rows": 0,
+    "b_metal_fell_off_ligand_intact": 7,
+    "c_metal_bridged_fragmented_ligand": 476,
+    "conclusion": "The 'the metal fell off' hypothesis is REFUTED as the dominant explanation, and the measurement points the other way: only 7 of 2112 rows are 'metal fell off, ligand intact'. The overwhelming majority of the fragmentation is LIGAND-side. Moreover the metal-inclusive rate (0.2505) is much HIGHER than the ligand-only rate (0.0284) because in 476 rows the whole molecule is one fragment ONLY because the metal bridges otherwise-disconnected ligand pieces. So the metal-inclusive 'connected' count is largely the metal CONCEALING ligand fragmentation, not the ligand being intact -- the repair effort belongs on the ligand skeleton, not on keeping the metal attached. This is an honest negative for the metal-falls-off hypothesis and a positive finding that the metal is a connectivity hub."
+  },
+  "premise_checks": {
+    "brief_claim": "the task brief asserted that the rows whose metal is alone in its fragment are exactly the rows whose ligand becomes empty after stripping.",
+    "verdict": "NOT SUPPORTED BY THE DATA",
+    "measured_metal_alone_in_own_fragment_rows": 30,
+    "measured_empty_ligand_rows": 0,
+    "explanation": "In every one of the metal-alone rows the row ALSO carries ligand-bearing fragments, so stripping the metal leaves a non-empty ligand. The genuinely empty-ligand case -- a row that is metal and nothing else -- has count 0 on this pool. The two quantities are reported under separate names so the distinction survives."
+  },
+  "end_to_end_headline": {
+    "source": "metrics/by_metric/cfm_fragmentation_audit.json",
+    "jsonpath": "/summary/generation_side/single_molecule_rate_end_to_end",
+    "present": true,
+    "median": 0.08506944444444445,
+    "n_runs": 9,
+    "definition": "'one connected, parseable molecule per DRAWN sample', median over the generation-side runs"
+  },
+  "published_cross_check": {
+    "rule": "a published artifact is compared ONLY when its own source_pool names THIS pool; the comparison is computed, never asserted",
+    "this_pool_name": "cfm_c8_fullgen_2026_10_24",
+    "this_run_rate": 0.25047348484848486,
+    "this_run_n_single": 529,
+    "published_artifacts_considered": [
+      {
+        "metric": "wfa155_ligand_connected_rate",
+        "present": true,
+        "source_pool": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+        "source_pool_name": "cfm_c8_fullgen_2026_10_24",
+        "published_rate": 0.25047348484848486,
+        "published_n_single": 529,
+        "names_this_pool": true
+      },
+      {
+        "metric": "cfm_fragmentation_postproc_arm",
+        "present": true,
+        "source_pool": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+        "source_pool_name": "cfm_c7_fullgen_2026_10_20",
+        "published_rate": 0.08509630565203663,
+        "published_n_single": 1078,
+        "names_this_pool": false
+      }
+    ],
+    "matches": [
+      {
+        "metric": "wfa155_ligand_connected_rate",
+        "published_rate": 0.25047348484848486,
+        "published_n_single": 529,
+        "this_run_rate": 0.25047348484848486,
+        "this_run_n_single": 529,
+        "abs_delta": 0.0,
+        "rate_identical": true,
+        "numerator_identical": true
+      }
+    ],
+    "n_matches": 1,
+    "verdict": "THIS RUN REPRODUCES the published rate for THIS pool exactly (bit-for-bit)"
+  },
+  "not_comparable_to": {
+    "end_to_end_median_headline": "metrics/by_metric/cfm_fragmentation_audit.json -> /summary/generation_side/single_molecule_rate_end_to_end is an END-TO-END rate over 9 RUNS of a different quantity ('one connected parseable molecule per DRAWN sample'). This metric is a per-ROW paired analysis over ONE pool of 2112 rows.",
+    "other_pools_single_pool_counts": "the metal-inclusive arm of THIS tool is a single-pool rate for THIS pool only; it is reported so the two arms are comparable. The NEW quantity is the ligand-only rate, over a NEW denominator definition. Which published number (if any) this run reproduces is COMPUTED in published_cross_check -- it is not asserted here."
+  },
+  "comparability": {
+    "statement": "These numbers are NOT comparable to the published frontier band of 92.7-94 %. 4 independent breaks separate them, and all 4 must hold simultaneously for any comparison to be meaningful.",
+    "breaks": [
+      {
+        "break": "DENOMINATOR",
+        "frontier": "92.7-94 % is measured over 10,000-15,000 generated molecules from a training-set-distribution sampling.",
+        "ours": "ONE pool of 2112 rows from ONE post-hoc decode (cfm_c8_fullgen_2026_10_24/generated_smiles.csv)."
+      },
+      {
+        "break": "METRIC",
+        "frontier": "'connected' there means the DECODER's own connectivity claim; 'valid' means RDKit sanitisation; '% PB-Valid' means PoseBusters geometry.",
+        "ours": "an RDKit connected-component count of the emitted SMILES. The ligand-only arm additionally deletes the metal atom(s) first, which is a counterfactual the frontier papers do not publish."
+      },
+      {
+        "break": "POST-PROCESSING",
+        "frontier": "under the `band_provenance` reading the band's two endpoints are RAW (post_processed: false in that reading), while the competing `sources`.`EF-TALFM` reading pairs a raw connectivity cell with a post-processed companion cell -- so whether the band as a whole is RAW is NOT settled on disk, and which frontier cells the band names is NOT settled on disk: the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- the first under `band_provenance`, the second under `sources`.`EF-TALFM` -- and they do not even agree on the numerals. Under BOTH readings the band is external, is NOT one homogeneous quantity, and is NOT on our scale -- so the post-processing axis is a THIRD, separate axis on top of the METRIC break, not the break itself.",
+        "ours": "every number here is RAW -- the SMILES exactly as the sampler emitted it, no LargestFragmentChooser, no explicit H, no UFF."
+      },
+      {
+        "break": "HYDROGENS",
+        "frontier": "the frontier dataset carries explicit hydrogens.",
+        "ours": "our pool does not (implicit H), which changes both sanitisation and geometry."
+      }
+    ],
+    "superseded_frontier_2026_11_01_wfa183": {
+      "date": "2026-11-01",
+      "wave": "Wf-A183",
+      "rule": "AGENTS.md §5.5 rule #6 - the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "supersedes_field": "comparability.breaks[2].frontier",
+      "rendering": "the published band's two endpoints are RAW (post_processed: false in the band-provenance record), and which frontier cells the band names is NOT settled on disk: the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- the first under `band_provenance`, the second under `sources`.`EF-TALFM` -- and they do not even agree on the numerals. Under BOTH readings the band is external, is NOT one homogeneous quantity, and is NOT on our scale -- so the post-processing axis is a THIRD, separate axis on top of the METRIC break, not the break itself.",
+      "why_superseded": "the superseded rendering asserted the published band's whole-band RAW-ness UNCONDITIONALLY.  That holds only under the `band_provenance` reading of molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json; the competing `sources`.`EF-TALFM` reading of the same record pairs a raw connectivity cell with a post-processed companion cell, so whether the band as a whole is RAW is NOT settled on disk.  This is the MIRROR of the blanket POST-PROCESSED over-claim Wf-A175 already refuted.  The live rendering is now READING-CONDITIONAL; it introduces NO numeral and keeps every numeral the superseded rendering carried.",
+      "why_this_key_is_not_inside_the_breaks_list": "the repo's own regression test molmetal/tests/test_wfa162_narrative_self_consistency.py asserts that `comparability.breaks` resolves to exactly four breaks x (break, frontier, ours), so the superseded rendering is carried in a SIBLING key of `breaks` rather than as a fourth field of a break.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves are UNCHANGED and the added leaves are STRINGS only.  The emitter was re-run on the SAME published pool and its output matched this artefact in every numeric leaf; the only difference is the narrative string repaired here.",
+      "guard_counters_note": "the recorded `narrative_self_consistency` leaf counters in this artefact are the emitter's own output, computed on the artefact BEFORE the guard block itself was attached, so they already under-count the leaves on disk before this patch - a pre-existing self-reference quirk of the emitter, NOT introduced here.  A fresh `_narrative_self_consistency(...)` run on this artefact still PASSES (`unbacked_numbers` is empty); its leaf counts are larger than the recorded ones by the guard block's own leaves plus the dated keys added here.  The recorded counters were left UNCHANGED on purpose: no existing numeric leaf of this artefact may move."
+    },
+    "superseded_frontier_2026_11_01_wfa189": {
+      "date": "2026-11-01",
+      "wave": "Wf-A189",
+      "rule": "AGENTS.md §5.5 rule #6 - the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "supersedes": "comparability.breaks[2].frontier",
+      "field": "frontier",
+      "rendering": "the published band's two endpoints are RAW (post_processed: false in the band-provenance record), and which frontier cells the band names is NOT settled on disk: the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- under `band_provenance` and under `frontier_axis_mapping` -- and they do not even agree on the numerals. Under BOTH readings the band is external, is NOT one homogeneous quantity, and is NOT on our scale -- so the post-processing axis is a THIRD, separate axis on top of the METRIC break, not the break itself.",
+      "why_superseded": "Wf-A183 (2026-11-01) replaced the LIVE rendering of `comparability.breaks[2].frontier` and preserved ITS OWN predecessor (the Wf-A177-era wording) in the sibling key `comparability.superseded_frontier_2026_11_01_wfa183`.  The IMMEDIATELY-PRECEDING rendering - the Wf-A179-era wording that Wf-A183 itself replaced - survived NOWHERE on disk, so the rule-#6 chain had a hole: a re-run of the producer would have dropped the whole dated record and the published artefact would have become hand-patched and non-reproducible.  This key closes the hole by restoring that rendering VERBATIM.  The restored rendering cites the locator `frontier_axis_mapping` for the second provenance reading; per the Wf-A183 record that token is NOT a JSON key of the frontier post-processing matrix record (it survives only as a string value), which is exactly why the LIVE rendering cites JSON PATHS.  The rendering is restored VERBATIM anyway: rule #6 preserves what WAS published, and the correction lives in the dated live rendering, never in a silent edit of history.",
+      "source_of_this_rendering": "/tmp/wfa179_old_ligand.json (md5 59492ebef64d8fe82eeb8ee9620a0074), read out at the JSON path `comparability.breaks[2].frontier` - the Wf-A179-era state of this artefact.  That file is EPHEMERAL (/tmp is not durable; a reboot erases it) and this rendering is NOT recoverable from ANY tracked file: a verbatim containment search over the repo's tracked + untracked + gitignored text files found ZERO other holders of this string.  The repo's rule-#6 chain therefore rested on a hand-copied /tmp baseline, which is why a re-run could have erased the history with nobody noticing.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves are UNCHANGED and the added leaves are STRINGS only.",
+      "guard_counters_note": "the recorded `narrative_self_consistency` leaf counters in this artefact are the emitter's own output, computed on the artefact BEFORE the guard block itself was attached, so they already under-count the leaves on disk before this patch - a pre-existing self-reference quirk of the emitter, NOT introduced here.  A fresh `_narrative_self_consistency(...)` run on this artefact still PASSES (`unbacked_numbers` is empty); its leaf counts are larger than the recorded ones by the guard block's own leaves plus the dated keys added here.  The recorded counters were left UNCHANGED on purpose: no existing numeric leaf of this artefact may move."
+    },
+    "superseded_frontier_2026_11_02_wfa194": {
+      "date": "2026-11-02",
+      "wave": "Wf-A194",
+      "rule": "AGENTS.md §5.5 rule #6 -- the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "supersedes_field": "comparability.breaks[2].frontier",
+      "rendering": "the published band is measured on the published POST-PROCESSED stream.",
+      "why_superseded": "the published rendering asserted, WITHOUT qualification, that the 92.7-94 % frontier band is measured on a POST-PROCESSED stream.  That is FALSE under the `band_provenance` reading of molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json, whose band endpoints carry `post_processed: false`; and it is not a settled statement under the competing `sources`.`EF-TALFM` reading of the SAME record, whose frontier arm is MIXED (a RAW connectivity cell `C.` = 92.98 % counted BEFORE the largest-component retention, paired with the post-processed `N. & U. & S.` = 94.33 % companion cell).  The corrected rendering is the one the emitter already carries (the Wf-A183/Wf-A189 chain in molmetal/scripts/wf_a155_ligand_connected_rate.py): it scopes the `post_processed: false` statement to the `band_provenance` reading and states that whether the band AS A WHOLE is RAW is NOT settled on disk.  It introduces NO numeral and keeps every numeral the superseded rendering carried.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves are UNCHANGED and the added leaves are STRINGS only.  The tool was NOT re-run, because a re-run would produce a NEW measurement, not a correction.",
+      "producer_parity": "the LIVE rendering is byte-identical to the output of `wf_a155_ligand_connected_rate.py::build_comparability_breaks` re-run on this artefact's own `denominators.n_analyzed` and pool name, so a producer re-run REPRODUCES the repair instead of erasing it.  THIS dated key is NOT emitter-emitted (the emitter is owned by another wave), so a producer re-run would DROP it; the emitter's own dated siblings `comparability.superseded_frontier_2026_11_01_wfa183` and `comparability.superseded_frontier_2026_11_01_wfa189` are the emitter-side record of the same correction chain, and they are added here in the emitter's own positions."
+    },
+    "n_breaks": 4,
+    "frontier_band": "92.7-94 %",
+    "frontier_denominator": "10,000-15,000"
+  },
+  "superseded_producer_parity_2026_11_02_wfa204": {
+    "date": "2026-11-02",
+    "wave": "Wf-A204",
+    "rule": "AGENTS.md §5.5 rule #6 - the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+    "supersedes": "the `producer_parity` leaf of `comparability.superseded_frontier_2026_11_02_wfa194`",
+    "field": "comparability.superseded_frontier_2026_11_02_wfa194.producer_parity",
+    "rendering": "the LIVE rendering is byte-identical to the output of `wf_a155_ligand_connected_rate.py::build_comparability_breaks` re-run on this artefact's own `denominators.n_analyzed` and pool name, so a producer re-run REPRODUCES the repair instead of erasing it.  THIS dated key is NOT emitter-emitted (the emitter is owned by another wave), so a producer re-run would DROP it; the emitter's own dated siblings `comparability.superseded_frontier_2026_11_01_wfa183` and `comparability.superseded_frontier_2026_11_01_wfa189` are the emitter-side record of the same correction chain, and they are added here in the emitter's own positions.",
+    "why_superseded": "the superseded rendering asserted that the dated key is NOT emitter-emitted and that a producer re-run would DROP it.  That was TRUE when Wf-A194 hand-patched the artefact, because the emitter was owned by another wave then; it became FALSE when Wf-A199 added the dated key to the producer's own `comparability` dict, and it is FALSE for the artefact this record travels with: the dated key IS emitted, and this artefact is byte-identical to a producer re-run of the emitter on its own pool.  The superseded rendering is preserved VERBATIM in the `rendering` leaf of this record; this note is the additive + dated correction, and it changes NO numeral and NO numeric leaf.",
+    "number_preserving": "TEXT-ONLY record: every leaf of this record is a STRING, so no numeric leaf of the artefact moves.  The narrative self-consistency guard is computed on the artefact BEFORE the dated records are attached, so the recorded guard counters keep their values and the guard block written by a re-run is byte-identical to the one already on disk."
+  },
+  "caveats": [
+    "The ligand-only arm is a counterfactual (the metal deleted), not a real molecule; a coordination complex legitimately needs the metal in its connectivity.",
+    "Both arms are RAW: no LargestFragmentChooser, no explicit H, no UFF, no post-processing of any kind.",
+    "ONE pool, ONE post-hoc decode, 2112 rows -- not a training-set-distribution sampling, so this is not a rate over the generator's output distribution.",
+    "The pool carries implicit hydrogens; the frontier datasets carry explicit ones.",
+    "The 60 rows with a free halide counterion contribute an extra fragment to BOTH arms; they are counted, not removed."
+  ],
+  "narrative_self_consistency": {
+    "rule": "every number rendered in a narrative string must be backed by a machine field of the same artifact -- as a standalone number inside a machine string, or equal (to the token's own decimal count) to a machine number",
+    "narrative_paths": [
+      "purpose",
+      "direction",
+      "definitions",
+      "not_comparable_to",
+      "comparability.statement",
+      "comparability.breaks",
+      "caveats",
+      "verdict.question",
+      "verdict.conclusion",
+      "premise_checks.brief_claim",
+      "premise_checks.explanation",
+      "metal_set_invariance.rule",
+      "metal_set_invariance.note"
+    ],
+    "n_prose_leaves": 31,
+    "n_prose_numbers": 24,
+    "n_machine_leaves": 151,
+    "n_machine_numbers": 111,
+    "n_machine_strings": 30,
+    "unbacked_numbers": {},
+    "pass": true
+  }
+}

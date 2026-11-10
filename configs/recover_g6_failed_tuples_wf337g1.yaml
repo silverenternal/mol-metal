@@ -1,0 +1,149 @@
+# configs/recover_g6_failed_tuples_wf337g1.yaml — DEDICATED config for
+# scripts/recover_g6_failed_tuples.sh (Wf-337-G1 G6 tuple recovery).
+#
+# WHY A DEDICATED FILE (AGENTS.md §5.11, user directive 2026-10-09):
+#   The wrapper used to pass every hyperparameter on the trainer command
+#   line (--epochs/--batch-size/--hidden/--depth/--lr/--alpha/--metals/
+#   --seeds/--data-csv/--device/--cuda-visible-devices/--cpu-num-workers/
+#   --n-mc/--w2-gradient-mode/--use-l2-guard, plus one per-ablation lever).
+#   configs/dmpnn.yaml is SHARED by 8 launchers, so its values could not be
+#   edited to carry this wrapper's numbers without changing the other 7.
+#   This file is a private copy of configs/dmpnn.yaml with THIS wrapper's
+#   values written in; every value below is the value the wrapper used to
+#   pass on the command line, and nothing else was changed.
+#
+# PER-TUPLE NARROWING + PER-ABLATION LEVER:
+#   The trainer loops over args.metals x args.seeds internally, so a
+#   per-(cfg, metal, seed) PROCESS needs a config that declares exactly ONE
+#   metal, ONE seed, and the ONE ablation lever for that cfg. The values
+#   below describe the whole sweep this wrapper runs (4 ablation cfgs x
+#   5 metals x 3 seeds); the wrapper DERIVES a per-tuple copy at launch time
+#   (narrowing data.metals / data.seeds / protocol.seeds, and applying the
+#   cfg's lever) and passes that copy as --config. The derivation is
+#   asserted before the trainer is started.
+#
+#   The four ablation levers and the dest each one lands on:
+#     no_multi_task -> --single-task        -> train.single_task = true
+#     no_wass       -> --wasserstein-weight 0.0 -> eval.wasserstein_weight = 0.0
+#     no_kendall    -> --no-kendall         -> train.kendall = false   (dest `kendall`)
+#     no_dann       -> --no-dann            -> train.dann = false
+#   The dest-name traps are real: --use-kendall/--no-kendall share
+#   dest="kendall" (train_dmpnn_multitask_wasserstein.py:2572-2574) and
+#   there is no `no_l2_guard` dest.
+#
+# LIST-VALUED KEYS MUST BE YAML SEQUENCES (AGENTS.md §5.11):
+#   --metals is nargs="+" and --seeds is nargs="+" type=int. The seeds are
+#   UNQUOTED so they arrive as int, not str (the loader does not convert the
+#   elements of a YAML list).
+
+model:
+  # --hidden 300 (the wrapper's value; configs/dmpnn.yaml shipped 128).
+  hidden: 300
+  depth: 3
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  pic50_ridge_readout: false
+
+train:
+  # --epochs 50
+  epochs: 50
+  # --batch-size 256 (the wrapper's value; configs/dmpnn.yaml shipped 64).
+  batch_size: 256
+  # --lr 1e-3
+  lr: 1.0e-3
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  lr_scheduler: none
+  lr_min_lr: 1.0e-6
+  lr_warmup_epochs: 5
+  # --alpha 0.5
+  alpha: 0.5
+  # The trainer's own argparse default (`--ablation-config mtl_baseline`).
+  ablation_config: mtl_baseline
+  # --single-task (no_multi_task cfg flips this to true).
+  single_task: false
+  # --no-kendall (no_kendall cfg flips this to false). The dest is
+  # `kendall`, not `use_kendall`.
+  kendall: true
+  # --no-dann (no_dann cfg flips this to false). The dest is `dann`.
+  dann: true
+
+data:
+  # --data-csv <path>. `data.csv` flattens to the dest `data_csv`. This
+  # wrapper did NOT pass --csv, so there is deliberately NO top-level
+  # `csv:` key here — the `csv` dest stays at its argparse default (None),
+  # exactly as it did before the migration.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  # --metals <one metal per tuple> — the G6 cohort.
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+  # --seeds <one seed per tuple>
+  seeds:
+    - 0
+    - 1
+    - 2
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  active_pic50_threshold: 6.0
+
+eval:
+  # The `no_wass` cfg flips this to 0.0 (the old --wasserstein-weight 0.0).
+  wasserstein_weight: 0.05
+  use_wasserstein_2: false
+  use_wasserstein_w1: true
+  # --w2-gradient-mode sliced
+  w2_gradient_mode: sliced
+  use_triton_wasserstein_sliced: false
+  use_ot_cfm: false
+  triton_ot: false
+  # --use-l2-guard (store_true, and the argparse default is already True).
+  use_l2_guard: true
+  # --n-mc 256
+  n_mc: 256
+
+compute:
+  # --device cuda:0
+  device: "cuda:0"
+  tf32: false
+  torch_compile: false
+  # --cpu-num-workers 8 (Wf-328-W2; Wf-326B OPTIMAL_NUM_WORKERS).
+  cpu_num_workers: 8
+  pin_memory: true
+  # --cuda-visible-devices 0. The dest takes the STRING "0" (the flag has
+  # no type=), so the value is quoted: an unquoted 0 would arrive as int and
+  # would not be the value the CLI passed.
+  cuda_visible_devices: "0"
+
+# Restated with the identical value it has under `data:` — the loader treats
+# list dests as YAML-wins, so both writes land the same list.
+protocol:
+  seeds:
+    - 0
+    - 1
+    - 2
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  # Only --config and --out-dir — the §5.11 allowlist.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+output:
+  out_dir: molmetal/reports/wf337g1_g6_recovery
+  ckpt_dir: molmetal/checkpoints
+  # The trainer has no `base_dir` dest; scripts/start.sh reads it.
+  base_dir: molmetal/reports/wf337g1_g6_recovery
+  resume_from: auto
+  checkpoint_interval: 50

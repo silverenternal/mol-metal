@@ -61,24 +61,52 @@ mkdir -p "${OUT_BASE}"
 #   are the LOMO scaffold-split integrity levers
 SCRIPT="molmetal/scripts/train_chemprop_v2_v3.py"
 GPU="cuda:0"  # PRO 6000 Blackwell (per Wf-300C Wave-A)
+CONFIG="configs/wf119_p1_4_chemprop_v3_lomo.yaml"
 
 # 4 ablation configs (per Wf-244 §3 + Wf-266 TODO-130 G5 follow-up):
 #   baseline              — no LOMO levers (control)
 #   v3_fix_only           — v3-fix mode only
 #   min_epochs_only       — --chemprop-min-epochs=10 only
 #   lomo_init_scale_only  — --chemprop-lomo-init-scale=1e-3 only
-COMMON_ARGS=(
-  --epochs 3
-  --allow-single-seed
-  --seeds 0
-  --batch-size 50
-  --hidden 300
-  --depth 3
-  --lr 1e-3
-  --device "${GPU}"
-  --no-bf16  # Wf-328-W3 BF16 default off for chemprop smoke (per Wf-321H §2)
-  --num-workers 8  # Wf-328-W2 OPTIMAL_NUM_WORKERS on 24-core host (chemprop reserves this arg)
-)
+#
+# §5.11 (2026-11-03) — THE COMMON HYPERPARAMETERS ARE IN THE YAML NOW.
+# The wrapper used to splice them in as
+#   COMMON_ARGS=(
+#     --epochs 3 --allow-single-seed --seeds 0 --batch-size 50
+#     --hidden 300 --depth 3 --lr 1e-3 --device "${GPU}" --no-bf16
+#     --num-workers 8
+#   )
+#   ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}")
+#   setsid nohup ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}"
+# which is the shape AGENTS.md §5.11 forbids: a trainer invocation line may
+# carry only --config / --out-dir / --ckpt-dir / --help.
+#
+# Every value above is transcribed into configs/wf119_p1_4_chemprop_v3_lomo.yaml
+# at its real dest, and the equivalence is MEASURED, not asserted:
+# scripts/_yaml_equivalence_probe.py over the old argv and the new config
+# compares the trainer's own namespace dest by dest, value AND type —
+#   MEASURED 2026-11-03: 37 dests compared, 11 equal (epochs 3 / batch_size 50
+#   / hidden 300 / depth 3 / lr 0.001 / device cuda:0 / bf16 False /
+#   allow_single_seed True / num_workers 8 / seeds [0]), 2 differ — and the 2
+#   that differ are exactly the two PER-ARM levers, which the per-arm derived
+#   config carries (see the derivation below).
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   COMMON_ARGS=(
+#     --epochs 3
+#     --allow-single-seed
+#     --seeds 0
+#     --batch-size 50
+#     --hidden 300
+#     --depth 3
+#     --lr 1e-3
+#     --device "${GPU}"
+#     --no-bf16  # Wf-328-W3 BF16 default off for chemprop smoke (per Wf-321H §2)
+#     --num-workers 8  # Wf-328-W2 OPTIMAL_NUM_WORKERS on 24-core host (chemprop reserves this arg)
+#   )
+#
+# The GPU variable stays declared above for the reader: `compute.device` in
+# the YAML carries "cuda:0", the same value this wrapper used to pass.
 
 # ---- DRY-RUN mode: verify config + script paths only (no GPU execution) ----
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -198,7 +226,6 @@ echo ""
 # error below was masked by `tee` returning rc=0 (no pipefail), so the wrapper
 # falsely reported success and moved on. The user-OK gating is enforced by
 # USER_OK env var check above (line ~140), NOT by a CLI flag — so just drop it.
-ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}")
 for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
   if ! want_ablation "${ablation}"; then
     echo "  [SKIP] ablation=${ablation}"
@@ -209,46 +236,83 @@ for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
   ABLATION_OUT="${OUT_BASE}/${ablation}/seed0"
   mkdir -p "${ABLATION_OUT}"
   ABLATION_LOG="${ABLATION_OUT}/train.log"
+  # §5.11 (2026-11-03) — the arm's levers are CONFIG KEYS, not command-line
+  # flags.  The derivation below writes the base config plus this arm's
+  # lever(s) into a per-arm YAML, and the trainer is invoked with
+  # --config / --out-dir only.
+  #
+  # The lever VALUES are transcribed exactly from the flags the wrapper used
+  # to pass; nothing is invented here.
+  #   baseline              -> chemprop_mode: v3-fallback
+  #   v3_fix_only           -> chemprop_mode: v3-fix
+  #   min_epochs_only       -> chemprop_mode: v3-fallback, chemprop_min_epochs: 3
+  #   lomo_init_scale_only  -> chemprop_mode: v3-fallback,
+  #                            chemprop_lomo_init_scale: 0.001
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   case "${ablation}" in
+  #     baseline)             ABLATION_ARGS=( --chemprop-mode v3-fallback --out-dir "${ABLATION_OUT}" ) ;;
+  #     v3_fix_only)          ABLATION_ARGS=( --chemprop-mode v3-fix      --out-dir "${ABLATION_OUT}" ) ;;
+  #     min_epochs_only)      ABLATION_ARGS=( --chemprop-mode v3-fallback --chemprop-min-epochs 3 --out-dir "${ABLATION_OUT}" ) ;;
+  #     lomo_init_scale_only) ABLATION_ARGS=( --chemprop-mode v3-fallback --chemprop-lomo-init-scale 1e-3 --out-dir "${ABLATION_OUT}" ) ;;
+  #   esac
   case "${ablation}" in
     baseline)
-      ABLATION_ARGS=(
-        --chemprop-mode v3-fallback
-        --out-dir "${ABLATION_OUT}"
-      )
+      ARM_LEVERS="chemprop_mode: v3-fallback"
       ;;
     v3_fix_only)
-      ABLATION_ARGS=(
-        --chemprop-mode v3-fix
-        --out-dir "${ABLATION_OUT}"
-      )
+      ARM_LEVERS="chemprop_mode: v3-fix"
       ;;
     min_epochs_only)
-      ABLATION_ARGS=(
-        --chemprop-mode v3-fallback
-        --chemprop-min-epochs 3
-        --out-dir "${ABLATION_OUT}"
-      )
+      ARM_LEVERS="chemprop_mode: v3-fallback
+chemprop_min_epochs: 3"
       ;;
     lomo_init_scale_only)
-      ABLATION_ARGS=(
-        --chemprop-mode v3-fallback
-        --chemprop-lomo-init-scale 1e-3
-        --out-dir "${ABLATION_OUT}"
-      )
+      ARM_LEVERS="chemprop_mode: v3-fallback
+chemprop_lomo_init_scale: 0.001"
       ;;
     *)
       echo "FAIL: unknown ablation ${ablation}"
       exit 1
       ;;
   esac
-  echo "  CMD: ${PY} ${SCRIPT} ${ABLATION_BASE_ARGS[*]} ${ABLATION_ARGS[*]}"
+  ABLATION_CONFIG="${ABLATION_OUT}/_derived_config.yaml"
+  if ! ${PY} - "${CONFIG}" "${ABLATION_CONFIG}" "${ablation}" "${ARM_LEVERS}" <<'PYEOF'
+import sys
+
+import yaml
+
+base, out, arm, levers = sys.argv[1:5]
+with open(base, encoding="utf-8") as fh:
+    cfg = yaml.safe_load(fh)
+# The arm's levers go under `train:` — the section the loader treats as a
+# run-describing one (wfA2_config_loader.py:_LEAF_FALLBACK_SECTIONS), so each
+# leaf resolves to the dest of the same name on this trainer's parser.
+for line in levers.splitlines():
+    if not line.strip():
+        continue
+    key, _, value = line.partition(":")
+    cfg.setdefault("train", {})[key.strip()] = yaml.safe_load(value)
+with open(out, "w", encoding="utf-8") as fh:
+    fh.write("# DERIVED per-arm config for scripts/launch_wf119_p1_4_chemprop_v3_lomo.sh\n")
+    fh.write("# base: %s\n" % base)
+    fh.write("# arm: %s\n" % arm)
+    fh.write("# Only the arm's lever(s) differ from the base; everything else is\n")
+    fh.write("# the base config's own values, which carry the hyperparameters the\n")
+    fh.write("# command line used to pass.\n")
+    yaml.safe_dump(cfg, fh, sort_keys=False, default_flow_style=False)
+PYEOF
+  then
+    echo "FAIL: per-arm config derivation failed for ablation=${ablation}"
+    exit 1
+  fi
+  echo "  CMD: ${PY} ${SCRIPT} --config ${ABLATION_CONFIG} --out-dir ${ABLATION_OUT}"
   # Bug B fix (2026-10-08): ${PY} trainer | tee log || { exit 1 } catches
   # tee's exit code, NOT the trainer's. Without pipefail (disabled above to
   # avoid SIGPIPE), an argparse error / early trainer exit (rc=2) was masked
   # by tee rc=0, and the wrapper falsely reported success. Capture the
   # trainer's actual exit code via ${PIPESTATUS[0]} and bail on rc != 0.
   set +e
-setsid nohup   ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}" 2>&1 | tee "${ABLATION_LOG}"
+setsid nohup   ${PY} "${SCRIPT}" --config "${ABLATION_CONFIG}" --out-dir "${ABLATION_OUT}" 2>&1 | tee "${ABLATION_LOG}"
   trainer_rc=${PIPESTATUS[0]}
   set -e
   if [[ ${trainer_rc} -ne 0 ]]; then

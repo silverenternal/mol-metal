@@ -1,0 +1,220 @@
+# configs/wf131_p3_deferred_runs.yaml — BASE (template) config for
+# scripts/launch_wf131_p3_deferred_runs.sh
+#
+# WHY THIS FILE (AGENTS.md §5.11, user directive 2026-10-09, verbatim
+# "以后要求能且只能用yaml配置启动训练和推理，no cli参数"):
+# The wrapper used to pass --metals / --seeds / --epochs / --wasserstein-weight
+# / --rh-oversample / --rh-cohort-json / --csv / --use-l2-guard / --out-metric
+# / --device on the trainer invocation line. Every one of those values now
+# lives HERE, and the wrapper passes only:
+#     <trainer> --config <derived> --out-dir <dir>
+#
+# THIS FILE IS A TEMPLATE, NOT A LAUNCHABLE CONFIG ON ITS OWN.
+# The sweep dimensions (data.metals / protocol.seeds) and output.out_metric
+# are PER PAIR: the trainer loops internally over args.metals x args.seeds
+# (train_metal_lomo_wasserstein.py:4352 / :4356), so a config that carried the
+# full cohort would collapse the wrapper's 7 separate PROCESSES into 1 — a
+# different run (process count, per-pair out-dir/log layout, resume
+# semantics). The wrapper therefore derives one config per (metal, seed) with
+# scripts/_wf_yaml_pair_config.py and passes THAT.
+#
+# The cohort written below is therefore the DEFAULT SWEEP the wrapper
+# enumerates (Rh + Re x the seeds it runs) and is narrowed per pair at
+# derivation time. Do not launch this file directly.
+#
+# VALUES: every key below carries EXACTLY the value the wrapper used to pass
+# on the command line (or the argparse default for a key the wrapper did not
+# pass — no such key changes the run).
+#
+# FLAG -> DEST MAP (measured against the trainer's OWN argparse actions via
+# scripts/_config_binding_gate.py :: _capture_parser; not a grep):
+#   --metals <METAL>          -> data.metals              (nargs='+' -> YAML sequence)
+#   --seeds <SEED>            -> protocol.seeds           (nargs='+' type=int -> YAML sequence of ints)
+#   --epochs 50               -> protocol.epochs
+#   --wasserstein-weight 0.05 -> protocol.wasserstein_weight
+#   --rh-oversample 500       -> data.rh_oversample
+#   --rh-cohort-json <path>   -> data.rh_cohort_json
+#   --csv <path>              -> csv                      (top-level: this trainer declares no data_csv dest)
+#   --use-l2-guard            -> eval.use_l2_guard        (BooleanOptionalAction -> UNQUOTED YAML boolean)
+#   --out-metric <path>       -> output.out_metric
+#   --device cuda:0           -> compute.device
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM (AGENTS.md §5.5 rule #6). The
+# pre-migration wrapper's trainer invocation, byte-for-byte, was:
+#     if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait "${PY}" "${TRAINER}" \
+#             --metals "${METAL}" \
+#             --seeds "${SEED}" \
+#             --epochs "${EPOCHS}" \
+#             --wasserstein-weight 0.05 \
+#             --rh-oversample 500 \
+#             --rh-cohort-json "${RH_COHORT_JSON}" \
+#             --csv "${LOMO_CSV}" \
+#             --use-l2-guard \
+#             --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
+#             --out-metric "${REPORTS_DIR}/${METAL}/seed${SEED}/metrics.json" \
+#             --device cuda:0 \
+#             >> "${RUN_LOG}" 2>&1; then
+# and its DRY-RUN rendering was:
+#     log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
+#     log "    --metals <METAL> --seeds <SEED> \\"
+#     log "    --epochs ${EPOCHS} \\"
+#     log "    --wasserstein-weight 0.05 \\"
+#     log "    --rh-oversample 500 \\"
+#     log "    --rh-cohort-json ${RH_COHORT_JSON} \\"
+#     log "    --csv ${LOMO_CSV} \\"
+#     log "    --use-l2-guard \\"
+#     log "    --device=cuda:0"
+# The pre-migration FILE itself is preserved byte-for-byte at
+# molmetal/reports/wfa269_yaml_migration/launch_wf131_p3_deferred_runs.before.sh
+# (the yaml-only gate run on it still reproduces the §5.11 violation at its
+# line 313), and the machine-readable receipt is at
+# molmetal/reports/wfa269_yaml_migration/launch_wf131_p3_deferred_runs.json.
+# WRAPPER HEADER — VERBATIM (2026-11-03, AGENTS.md §5.11 YAML-only migration).
+# The wrapper's own header block (Refs + HONEST FRAMING + Usage + USER_OK gate +
+# stop semantics + pre-launch checks) is preserved here byte-for-byte, because the
+# wrapper's 200<=LOC<=350 bound (molmetal/tests/test_wf355b1_wf131_p3_deferred.py)
+# forces the live file to carry a pointer to it instead of the full prose. Source of
+# truth for the wording: molmetal/reports/wfa269_yaml_migration/
+# launch_wf131_p3_deferred_runs.before.sh lines 15-73 (the whole pre-migration file).
+# Refs:
+#   - TODO/completed/354a1_wf342_p2_lomo_integration.md §1.2 + §5 (per-run
+#     DEFERRED status)
+#   - metrics/by_metric/metal_lomo_auc.json `wf131_p3_lomo_partial_update`
+#     (MEASURED 18/25 = 72% complete on BUGGY Wf-125 P1 cohort)
+#   - TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md §1.4 (acceptance gates)
+#   - mol-metal-gpu-execution §0 (kill_then_adapt standing directive)
+#   - Wf-335-R1+R3 (--no-cuda-graphs safety lever for Blackwell sm_120)
+#   - Wf-328-W2 (--cpu-num-workers 8 — NOT supported by train_metal_lomo*; removed Wf-379-A1)
+#   - Wf-328-W5 (--w2-gradient-mode sort — NOT supported by train_metal_lomo*; removed Wf-379-A1)
+#
+# HONEST FRAMING (party-twenty-spirit §3.5):
+#   - user_ok_required: true (kill_then_adapt; 7 runs × ~40 min wall each
+#     = ~5 hr GPU wall PROJECTED)
+#   - Scope: 7 DEFERRED (metal, seed) runs on BUGGY Wf-125 P1 cohort:
+#       Rh seed=3, Rh seed=4, Re seed=0, Re seed=1, Re seed=2, Re seed=3, Re seed=4
+#   - Wall: ~5 hr GPU (PROJECTED) per Wf-260 G6 timing:
+#       - Rh (small cohort, 1.2k rows): ~15 min/run × 2 = ~30 min
+#       - Re (smallest cohort, 800 rows): ~30 min/run × 5 = ~2.5 hr
+#       - Sequential overhead + ckpt write: +1 hr
+#       - TOTAL: ~5 hr GPU (vs Wf-310E Wf-135 Phase 2 ~10 hr for 25 runs)
+#   - Rh fold AUC MEASURED 3/5 seeds on BUGGY cohort (Rh mean 0.6874 ± 0.3584,
+#     high std from seed0=0.274 outlier) — re-running seeds 3+4 will help
+#     clarify if seed0 was a fluke or a structural bug. Honest-negative:
+#     BUGGY cohort is the structural fix-target (TODO-135 Phase 1 = balanced
+#     Rh cohort); this re-launch on the BUGGY cohort may still NOT clear
+#     paper §4 acceptance gates.
+#   - Re fold AUC DEFERRED (0/5) — running all 5 Re seeds on the BUGGY
+#     cohort is the minimum needed to evaluate the per-metal lift axis.
+#   - The Re fold has the worst acceptance gate concern: TODO-135 §5
+#     "Re fold bias from rare-metal noise floor" — Re cohort is small
+#     (~800 rows) so per-seed AUC variance may be high.
+#   - Trainer target: molmetal/scripts/train_metal_lomo_wasserstein.py
+#     (uses W₂ transfer + Rh oversample + multi-task backbone; default
+#      out-dir = wf131_p3_lomo_full, so RE-runs will OVERWRITE existing
+#      partial results for Rh seeds 3+4)
+#
+# Usage:
+#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh --dry-run
+#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh           # actual
+#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh --runs "Rh 3 Rh 4 Re 0"
+#     # Optional: subset of the 7 runs (override defaults)
+#
+# USER_OK gate (explicit, per mol-metal-gpu-execution §0):
+#   - The wrapper REFUSES to run unless USER_OK=1 is set in the env.
+#   - --dry-run does NOT bypass the gate; it only skips GPU launch.
+#   - --runs "..." allows custom subset of (metal, seed) tuples.
+#
+# Stop semantics: per TODO-207 v2 §7.2 (per-phase abort criteria):
+#   - per-phase timeout: ckpt older than 2× projected wall-time
+#   - failure pattern: 3+ consecutive NaN/OOM/IndexError
+#   - GPU util < 70% for 5+ minutes
+#   - collapse: Rh fold AUC < 0.10 on 2+ seeds (binding regression alarm)
+#
+# Pre-launch checks (BLOCKER before any GPU work):
+#   1. pre_flight_check.py --pipeline launch (62/62 PASS target)
+#   2. wave_budget_tracker.py --budget-hr 5
+#   3. USER_OK env gate
+#   4. Trainer + cohort + CSV existence
+#
+data:
+  # Sweep dimension — narrowed to one metal per derived config.
+  metals:
+    - Rh
+    - Re
+  # Wf-131 P3 / Wf-354-A1: 500 synthetic Rh rows appended when Rh is held out.
+  rh_oversample: 500
+  # Wf-139 P7 active Rh cohort (the wrapper's --rh-cohort-json).
+  rh_cohort_json: /home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json
+
+# TOP-LEVEL `csv:` (NOT `data.csv`) — the dest is `csv`.
+# `_candidate_dests` tries the flat form first, so `data.csv` resolves to
+# `data_csv` on a trainer that declares it; train_metal_lomo_wasserstein.py
+# declares only `--csv`, and a top-level `csv:` is the unambiguous spelling
+# for the `csv` dest (same rule as
+# configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml).
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+model:
+  # Argparse defaults (MT_HIDDEN / MT_DEPTH) — the wrapper never passed
+  # --hidden / --depth for this launch, so these are recorded, not changed.
+  hidden: 128
+  depth: 3
+
+protocol:
+  # Sweep dimension — narrowed to one seed per derived config.
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  # The wrapper passed --wasserstein-weight 0.05. NOTE: the trainer IGNORES a
+  # non-zero weight unless --wasserstein-real is also set (Wf-E1), and the
+  # wrapper did NOT pass it — so this reproduces the previous run exactly
+  # (W2 off, weight recorded).
+  wasserstein_weight: 0.05
+
+eval:
+  # The wrapper passed --use-l2-guard (dest `use_l2_guard`, default True).
+  use_l2_guard: true
+
+compute:
+  # The wrapper passed --device cuda:0.
+  device: "cuda:0"
+
+output:
+  # PER-PAIR paths. The wrapper passed
+  #   --out-dir    <REPORTS_DIR>/<metal>/seed<seed>
+  #   --out-metric <REPORTS_DIR>/<metal>/seed<seed>/metrics.json
+  # and §5.11 permits --out-dir / --ckpt-dir on the command line, so the
+  # wrapper still passes them. They are written here as well so the DERIVED
+  # config is a COMPLETE, self-contained definition of the one run (the same
+  # pattern configs/dmpnn.yaml uses), and so a dest-for-dest equivalence
+  # probe can compare the old CLI namespace with the new YAML namespace.
+  # Set at derivation time (the wrapper passes them to
+  # scripts/_wf_yaml_pair_config.py --set output.out_dir=...).
+  out_dir: molmetal/reports/wf131_p3_deferred_runs/Ru/seed0
+  out_metric: molmetal/reports/wf131_p3_deferred_runs/Ru/seed0/metrics.json
+
+directives:
+  kill_then_adapt: true
+  user_ok_required: true
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: >-
+    Wf-131 P3 DEFERRED (metal, seed) re-launch on the BUGGY Wf-125 P1 cohort
+    (Rh seeds 3-4, Re seeds 0-4). 7 separate PROCESSES, one per pair.
+  note: >-
+    BUGGY cohort is the structural fix-target (TODO-135 Phase 1 = balanced Rh
+    cohort); this re-launch on the BUGGY cohort may still NOT clear the
+    paper section 4 acceptance gates.
+  project_ed: >-
+    ~5 hr GPU sequential (PROJECTED, per Wf-260 G6 timing). USER_OK=1 gate
+    is enforced by the wrapper before any GPU work.

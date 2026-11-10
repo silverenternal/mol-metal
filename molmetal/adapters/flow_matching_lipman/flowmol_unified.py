@@ -1,19 +1,45 @@
 """Wf-380-A1 §2.8 — FlowMol unified atom-bond flow SCAFFOLD.
 
-Reference: Qiang, B., Song, Y., Xu, R., Wang, G., Liu, Z., Chen, L.,
-Zheng, S., Chen, H., Kingma, D. P. (2024).  *FlowMol: A Unified Flow
-Matching Model for 3D Molecular Generation.*  arXiv:2412.01966.
+Reference: Dunn, I., Koes, D. R. (2024).  *Mixed Continuous and
+Categorical Flow Matching for 3D De Novo Molecule Generation*
+(FlowMol).  arXiv:2404.19739.  Code: github.com/dunni3/FlowMol.
+Discrete sibling (bond axis): Dunn, I., Koes, D. R. (2024).  *Exploring
+Discrete Flow Matching for 3D De Novo Molecule Generation*
+(FlowMol-CTMC).  arXiv:2411.16644.
 
 FlowMol unifies the atom and bond flows into a single graph-flow
 framework: the per-atom velocity field operates jointly with a
 per-bond (edge) velocity field, with shared message passing across
-both streams.  This is the SOTA architecture on the GEOM-DRUGS /
-QM9 generative-model benchmarks.
+both streams.  Upstream, FlowMol predicts atom positions, atom types,
+formal charges and bond orders jointly, and reports performance
+competitive with state-of-the-art diffusion models on the GEOM-DRUGS /
+QM9 generative-model benchmarks (arXiv:2404.19739).
 
-LICENSE GATE: FlowMol is arXiv:2412.01966 with CC-BY-NC licence.  The
-Python *formulation* (the equations, not verbatim code) is portable;
-verbatim reuse of the upstream Python source requires USER_OK per the
-licence terms.
+LICENSE GATE: the upstream FlowMol papers are CC BY-SA 4.0 (NOT
+CC-BY-NC).  The Python *formulation* (the equations, not verbatim code)
+is portable under attribution + share-alike; verbatim reuse of the
+upstream Python source requires USER_OK per the licence terms.
+
+CITATION CORRECTION (2026-10-31, Wf-A149).  Superseded wording, quoted
+verbatim: "Reference: Qiang, B., Song, Y., Xu, R., Wang, G., Liu, Z., Chen, L.,
+Zheng, S., Chen, H., Kingma, D. P. (2024).  *FlowMol: A Unified Flow Matching
+Model for 3D Molecular Generation.*  arXiv:2412.01966." and "LICENSE GATE:
+FlowMol is arXiv:2412.01966 with CC-BY-NC licence."  Verified against the
+primary sources on 2026-10-31: arXiv:2412.01966 is NOT FlowMol -- the arXiv abs
+page returns 'Implementing Semiclassical Szegedy Walks in Classical-Quantum
+Circuits for Homomorphic Encryption' (Ortega, S. A.; Fernandez, P.;
+Martin-Delgado, M. A.), a quantum-homomorphic-encryption paper, and the arXiv
+API returns no record titled 'FlowMol: A Unified Flow Matching Model for 3D
+Molecular Generation' and no record authored by 'Qiang, B.; Song, Y.; ...;
+Kingma, D. P.'.  The real upstream is Dunn & Koes arXiv:2404.19739 -- the
+identifier this repo's own canonical unified_atom_bond_flow.py already cites --
+with siblings arXiv:2411.16644 (FlowMol-CTMC) + arXiv:2508.12629 (FlowMol3).
+LICENCE: all three carry CC BY-SA 4.0 (arXiv abs-page
+creativecommons.org/licenses/by-sa/4.0/), NOT CC-BY-NC.  The LICENSE GATE is
+UNCHANGED -- CC BY-SA 4.0 still carries attribution + share-alike obligations,
+so USER_OK=1 still gates the bond stream; only the citation and the licence
+string are corrected.  Superseded wording preserved verbatim per AGENTS.md §5.5
+rule #6.
 
 SCAFFOLD ONLY — the canonical (license-gated) implementation lives in
 :mod:`molmetal.adapters.flow_matching_lipman.unified_atom_bond_flow`
@@ -21,7 +47,7 @@ SCAFFOLD ONLY — the canonical (license-gated) implementation lives in
 reference so the integration test can smoke the surface.
 
 Honest framing: SCAFFOLD-only; no GPU launches; license-gated; lift
-claim (+5-15% on m13 validity + m14 decode) is PROJECTED per Qiang 2024.
+claim (+5-15% on m13 validity + m14 decode) is PROJECTED per Dunn & Koes 2024 (arXiv:2404.19739).
 """
 
 from __future__ import annotations
@@ -42,7 +68,7 @@ def _user_ok() -> bool:
 
 
 LICENSE_GATED = True
-LICENSE_NAME = "arXiv:2412.01966 (FlowMol, CC-BY-NC)"
+LICENSE_NAME = "arXiv:2404.19739 (Dunn & Koes 2024 — FlowMol, CC BY-SA 4.0)"
 
 
 @dataclass(frozen=True)

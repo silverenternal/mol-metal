@@ -51,9 +51,10 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 # Wf-415-A2: sys.path injection so the script can be invoked directly via
 # `python molmetal/scripts/pre_flight_check.py ...` WITHOUT requiring
@@ -110,6 +111,197 @@ from molmetal.scripts.read_anchor_json import (  # noqa: E402
 # gate_file_exists / gate_min_lines / gate_grep / gate_regex /
 # gate_help primitives are all in-process).
 from molmetal.scripts import wf343c1_pre_retrain_check as _wf343c1  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Wf-A135 (2026-10-31) — the three §5.7 wire-in smoke BUDGETS.
+#
+# WHY THIS IS A SEPARATE BLOCK
+# ----------------------------
+# MEASURED 2026-10-31 on this host:
+#   pre_flight_check.py --pipeline all --strict
+#     -> {"pass": 113, "fail": 3, "skip": 11, "warn": 0, "total": 127,
+#         "total_wall_sec": 411.0377}
+# All THREE FAILs were wall-clock TIMEOUTS and not defects:
+#   p1_chemprop_smoke                      — 90 s budget, TIMED OUT @ 94.8 s
+#   p3_wf385_scaffold_loss_wire_in_verified — 150 s budget (inner smoke)
+#   p3_dmpnn_loss_wire_in_smoke             — 300 s budget, rc=124
+#
+# A timeout is NOT a defect verdict: the smoke did not finish, so the
+# MEASUREMENT WAS NEVER OBTAINED — and for these three gates the FAIL
+# verdict LITERALLY means "the trainer flag is NOT wired in".  The two
+# were indistinguishable in the report, so the red state could not be
+# read.  Per the Wf-A128 principle ("a gate that FAILs on missing data
+# is worse than no gate"), a TIMEOUT now carries its OWN verdict.
+#
+# WHERE THE NUMBERS LIVE
+# -----------------------
+# ``molmetal/scripts/wfa135_smoke_budget.py`` is the ONE source of truth:
+# each budget is a NAMED constant there, next to a comment recording the
+# MEASURED baseline and the headroom factor it was derived with, and each
+# is overridable by a NAMED environment variable.  The three aliases below
+# are thin re-exports so the budget is visible at the call site; the
+# EFFECTIVE budget (after the env override) is resolved at CALL time by
+# ``_smoke_budget_sec()`` — an env override must be able to change a
+# budget without re-importing this module.
+# ---------------------------------------------------------------------------
+
+# Wf-A269 wave-33 (2026-11-09) — THE IMPORT MUST NOT BE FATAL.
+#
+# MEASURED 2026-11-09 (`git ls-files --error-unmatch
+# molmetal/scripts/wfa135_smoke_budget.py` -> rc 1): the budget module is
+# NOT in git's index.  A clean checkout that carries THIS file but not the
+# budget module could not import ``pre_flight_check`` AT ALL — every gate
+# would be dead, including the enforcement-stack trackedness gate that
+# exists precisely to REPORT the untracked stack.  A detector that cannot
+# boot cannot report, so the import is OPTIONAL: when the module is absent
+# the budgets are NOT-MEASURED (``None``) and the gates that need them
+# FAIL with a NAMED reason instead of the module dying at import time.
+#
+# On a tree where the module IS present the behaviour is byte-identical to
+# before this block (the same three constants, from the same source).
+try:
+    from molmetal.scripts import wfa135_smoke_budget as _smoke_budget  # noqa: E402
+except Exception as _smoke_budget_import_error:  # noqa: BLE001 — a missing
+    # (or broken) budget module must not kill the whole pre-flight.
+    _smoke_budget = None
+    _SMOKE_BUDGET_IMPORT_ERROR = (
+        f"{type(_smoke_budget_import_error).__name__}: "
+        f"{_smoke_budget_import_error}"
+    )
+else:
+    _SMOKE_BUDGET_IMPORT_ERROR = None
+
+#: The three §5.7 wire-in smokes that carry a Wf-A135 budget.
+SMOKE_GATE_CHEMPROP = "p1_chemprop_smoke"
+SMOKE_GATE_DMPNN = "p3_dmpnn_loss_wire_in_smoke"
+SMOKE_GATE_WF385 = "p3_wf385_scaffold_loss_wire_in_verified"
+
+#: Thin aliases of the Wf-A135 defaults (the ONE source of truth is
+#: ``molmetal/scripts/wfa135_smoke_budget.py``).  These are the values
+#: used when no environment override is set.  ``None`` means NOT MEASURED:
+#: the budget module could not be imported, so no budget is known and the
+#: gate that needs one must FAIL rather than guess (AGENTS.md §1.1/§5.2).
+CHEMPROP_SMOKE_BUDGET_SEC = (
+    _smoke_budget.CHEMPROP_SMOKE_BUDGET_SEC if _smoke_budget is not None else None
+)
+DMPNN_SMOKE_BUDGET_SEC = (
+    _smoke_budget.DMPNN_SMOKE_BUDGET_SEC if _smoke_budget is not None else None
+)
+WF385_SMOKE_BUDGET_SEC = (
+    _smoke_budget.WF385_SMOKE_BUDGET_SEC if _smoke_budget is not None else None
+)
+
+#: The verdict a wall-clock timeout earns.  DISTINCT from "FAIL" (the
+#: smoke finished and the invariant was violated — a genuine defect).
+GATE_STATUS_TIMEOUT = "TIMEOUT"
+
+
+def _smoke_budget_sec(gate_name: str) -> float:
+    """Resolve the EFFECTIVE wall-clock budget for a §5.7 smoke gate.
+
+    Resolution order (highest priority first):
+
+      1. the NAMED environment variable for this gate
+         (``MOLMETAL_SMOKE_BUDGET_<NAME>_SEC``) — see
+         ``molmetal/scripts/wfa135_smoke_budget.py``;
+      2. the NAMED default constant in
+         ``molmetal/scripts/wfa135_smoke_budget.py``, which is derived
+         from a MEASURED standalone baseline times a STATED headroom
+         factor.
+
+    A malformed or non-positive override is REPORTED (stderr) and then
+    IGNORED — the default budget is used.  A bad env var must not turn
+    into a silently-instant timeout.
+
+    Wf-A269 wave-33 (2026-11-09): when the budget module could not be
+    imported (it is NOT in git's index — see the import block above) the
+    budget is UNKNOWN.  This raises a NAMED error rather than returning a
+    fabricated number: the pre-flight's runner turns a raising gate into
+    a FAIL (pre_flight_check.py ``_run_one``), so the gate that needs the
+    budget FAILS with a diagnosable reason instead of the whole pre-flight
+    dying at import time and taking every OTHER gate down with it.
+    """
+    if _smoke_budget is None:
+        raise RuntimeError(
+            "the Wf-A135 smoke-budget module "
+            "'molmetal/scripts/wfa135_smoke_budget.py' is not importable "
+            f"({_SMOKE_BUDGET_IMPORT_ERROR}) -- the wall budget for "
+            f"{gate_name!r} is UNKNOWN, so this smoke gate cannot be "
+            "given a budget (see the p3_enforcement_stack_trackedness gate)"
+        )
+    return _smoke_budget.smoke_budget_sec(gate_name)
+
+
+def _fmt_sec(value: float) -> str:
+    """Format a seconds value for evidence: no trailing zeros, <= 3 dp."""
+    return f"{value:.3f}".rstrip("0").rstrip(".") or "0"
+
+
+def _timeout_gate_result(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    budget_sec: float,
+    elapsed_sec: float,
+    tail: str,
+    detail: str,
+    not_a_verdict_on: str = "the wire-in",
+) -> GateResult:
+    """Build the Wf-A135 TIMEOUT verdict for a §5.7 smoke gate.
+
+    A TIMEOUT says, in the evidence, three things that a FAIL cannot:
+
+      * the BUDGET that was exceeded (and where it came from),
+      * the ELAPSED time,
+      * that the MEASUREMENT WAS NOT OBTAINED — so this is NOT a verdict
+        on the wire-in.
+
+    It also carries the subprocess OUTPUT TAIL, because the tail is what
+    tells an operator whether the smoke was making progress or wedged.
+
+    ``not_a_verdict_on`` (Wf-A158, 2026-11-01) names WHAT the timeout is
+    not a verdict about, so the same helper can serve gates that check
+    something other than a trainer flag (the leakage diagnostic, the
+    scaffold-leak verifier, the R20 loader contract).  Default stays
+    "the wire-in" — the original Wf-A135 wording.
+    """
+    budget = (
+        _smoke_budget.SMOKE_BUDGETS.get(name) if _smoke_budget is not None else None
+    )
+    provenance = ""
+    if budget is not None:
+        if abs(float(budget_sec) - float(budget.budget_sec)) > 1e-9:
+            # An environment override was in effect — name the EFFECTIVE
+            # budget first, so the evidence never reads as if the default
+            # had been exceeded.
+            provenance = (
+                f" (effective budget {_fmt_sec(budget_sec)}s from "
+                f"{budget.env_var}; the default "
+                f"{_fmt_sec(budget.budget_sec)}s = MEASURED standalone "
+                f"baseline {_fmt_sec(budget.measured_baseline_sec)}s x "
+                f"{budget.headroom_factor:.2f} headroom)"
+            )
+        else:
+            provenance = (
+                f" (budget {_fmt_sec(budget.budget_sec)}s = MEASURED "
+                f"standalone baseline "
+                f"{_fmt_sec(budget.measured_baseline_sec)}s x "
+                f"{budget.headroom_factor:.2f} headroom; override with "
+                f"{budget.env_var})"
+            )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        GATE_STATUS_TIMEOUT,
+        f"TIMEOUT: {detail} exceeded its {_fmt_sec(budget_sec)}s wall budget"
+        f"{provenance}; elapsed {elapsed_sec:.1f}s. The measurement was NOT "
+        f"obtained, so this is NOT a verdict on {not_a_verdict_on} (a genuine "
+        f"defect is reported as FAIL). | tail: {tail}",
+        elapsed_sec,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -183,7 +375,23 @@ GATE_SCRATCH_ROOT = REPO_ROOT / "results" / "gate_scratch"
 # via POSIX-atomic temp-file + rename (process-local per-path lock).
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/mol-metal/.venv/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
+# Wf-A269 wave-17 (2026-11-03): the canonical payload-hash definition lives
+# in the CONSUMER module, because the consumer is the light one and the two
+# sides must hash byte-identical bytes (a drift would make every verdict
+# FAIL -- fail-closed, but useless).  The consumer imports nothing from this
+# module, so this import is not circular.
+#
+# Wf-A269 wave-33 (2026-11-09): the import is LAZY.  MEASURED 2026-11-09
+# (`git ls-files --error-unmatch molmetal/scripts/wf_launch_gate_verdict.py`
+# -> rc 1): the consumer module is NOT in git's index, so a module-level
+# import of it would make this file UNIMPORTABLE on a clean checkout that
+# lacks the consumer -- every gate dead, including the trackedness gate
+# that exists to REPORT exactly that condition.  The single use site
+# (the report's payload hash) imports it on demand and fails CLOSED (the
+# report carries ``payload_sha256 = None``, which the consumer refuses).
+# On a tree where the consumer IS present the behaviour is unchanged.
+
+VENV_PY = sys.executable  # Wf-446: was hardcoded to an absolute venv path (host-specific); the running interpreter is the canonical Python for sub-gates (AGENTS.md §5.9 single-venv rule)
 # Wf-300D harness auto-fallback wrapper is a USER-LEVEL file, not part of
 # this repo. Located at $HOME/.claude/wrapper.py; Wf-306C P3 gate verifies
 # it exists so any subsequent auto-fallback calls (detect_schema_shape /
@@ -258,6 +466,52 @@ ANCHOR_FROZEN_PATHS: Tuple[Tuple[str, str], ...] = (
     (
         "molmetal/reports/wf67_p4_3_100pocket/sweep_summary.json",
         "Wf-67 P4 3x100-pocket sweep summary; shipped historical report",
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Wf-A128 (2026-10-31) — DECLARED-FROZEN historical RESULT artifacts.
+# ---------------------------------------------------------------------------
+# These are the same species of object as ``ANCHOR_FROZEN_PATHS`` above, but
+# they are not ``*_anchor.json`` stamps, so they are not matched by
+# ``ANCHOR_GLOB_PATTERNS`` and therefore were never covered by the
+# frozen-exemption mechanism.  They are:
+#
+#   * one-shot wave results that no producer in today's pipeline
+#     regenerates, and
+#   * stored under ``molmetal/reports/``, which ``.gitignore:158``
+#     (``molmetal/reports/**/*.json``) keeps OUT of git — so on a clean
+#     checkout the file is simply ABSENT.
+#
+# MEASURED 2026-10-31 on this host: the Wf-188 artifact's mtime is
+# 2026-09-27 (age 2,903,810.5 s = 33.61 d) — past the 30-day AnchorGuard
+# TTL that ``gate_json_threshold`` applies (2,592,000 s).  The gate
+# therefore raised ``AnchorStaleError`` and the VALUE CHECK NEVER RAN:
+# the reported failure was a freshness artefact, not a value regression
+# (the value itself, ``gate_4_decode_ratio = 0.9958207395798351``, is
+# ``>= 0.5``).
+#
+# ``touch``-ing the mtime would fabricate freshness (AGENTS.md §5.2), so
+# the fix is a CLASSIFICATION fix: declare the frozen status explicitly,
+# exempt the artifact from the wall-clock TTL, and SKIP (not FAIL) when
+# the file is absent.
+#
+# THESE ENTRIES ARE A DECLARATION, NOT A DISCOVERED FACT.  Neither
+# artifact carries an in-file "frozen" marker (MEASURED: the Wf-188
+# ``result.json`` has no such key) and neither has a row in
+# ``registry/*.yaml`` (MEASURED: ``grep -rn "wf188\|wf256\|catherine_30"``
+# over ``registry/`` returns 0 hits).  The declaration lives here so that
+# it is auditable in exactly one place, and so that a NEW historical
+# result must be added to this table BEFORE it can bypass the TTL.
+FROZEN_HISTORICAL_RESULTS: Tuple[Tuple[str, str], ...] = (
+    (
+        "molmetal/reports/wf188_m14_full_metalcytotox/result.json",
+        "Wf-188 m14 full-MetalCytoToxDB decode-ratio result; one-shot cuda "
+        "run (26,801 molecules, MEASURED wall 428.5 s), never regenerated; "
+        "git-ignored so ABSENT on a clean checkout. HISTORICAL anchor only "
+        "— it does NOT exercise today's code (the checkpoint changed after "
+        "the artifact was written); today's trainer is verified by "
+        "p1_cfm_live_decode_canary.",
     ),
 )
 
@@ -358,13 +612,111 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
+# ---------------------------------------------------------------------------
+# Wf-A269 wave-18 (2026-11-04) — CHILD THREAD CAPS
+#
+# THE DEFECT (MEASURED, not inferred)
+# ---------------------------------
+# The pre-flight runs its gates in a ``ThreadPoolExecutor(max_workers=jobs)``
+# with ``jobs = min(8, os.cpu_count())`` — 8 on this 32-core host.  Every gate
+# that shells out to a torch trainer spawns a CHILD process, and that child
+# inherits the parent's environment — including the thread-count knobs.
+# Nothing pinned them, so each child took torch's default:
+#
+#     MEASURED 2026-11-04 on this host:
+#         os.cpu_count()                  = 32
+#         torch.get_num_threads()         = 24   (no OMP_NUM_THREADS set)
+#         torch.get_num_interop_threads() = 24
+#
+# => 8 concurrent gates x 24 threads = 192 runnable threads on 32 cores: a
+# 6x oversubscription created BY THE PRE-FLIGHT, before any other project on
+# this shared host is counted.
+#
+# MEASURED 2026-11-04 — 8 concurrent copies of the exact command the
+# ``p1_chemprop_smoke`` gate runs:
+#
+#     arm                        epoch-1 elapsed (8/8 jobs)
+#     default threads (24 each)  260.7 .. 267.1 s
+#     OMP_NUM_THREADS=2          0.6  .. 1.0    s
+#
+# => a 260x-280x inflation, caused purely by thread oversubscription.  This
+# is the mechanism behind the ``p1_chemprop_smoke`` TIMEOUT at 137.75 s: its
+# own log line reported ``epoch=0/2 ... elapsed=106.5 s`` while the SAME smoke
+# measured 5.1 s end-to-end standalone.  The gate was not slow — it was
+# starved by its seven sibling gates.
+#
+# WHY THIS IS A GATE DEFECT AND NOT JUST A BUSY HOST
+# ---------------------------------------------------
+# ``molmetal/scripts/wfa135_smoke_budget.py`` derives each smoke budget from
+# the MAX over repeats on this shared host, times a 1.45 headroom.  That is
+# the right instinct (a budget nobody can trip is not a budget), but it also
+# means the budget absorbs the machine's worst external load AND the
+# oversubscription the pre-flight itself creates.  The two are then
+# indistinguishable: in the 2026-11-04 census the three smoke gates landed
+# at 137.8 s (budget 137.5 s), 341.8 s (budget 435 s) and 268.9 s (budget
+# 324.6 s) — ALL THREE within ~20 % of their budgets, so all three verdicts
+# are hostage to whatever else is running on the box.
+#
+# THE REPAIR
+# ----------
+# Cap each child's thread count at ``cpu_count // jobs`` (floor 1) by
+# exporting the standard knobs into the PARENT's environment BEFORE the
+# executor starts: every child inherits them, and the two call sites that
+# build an explicit ``env`` from ``os.environ`` inherit them too.  With
+# ``jobs == 1`` the single gate keeps the machine's full width.
+# ``MOLMETAL_PREFLIGHT_OMP_THREADS`` overrides the computed value.
+# ---------------------------------------------------------------------------
+
+#: The environment variables that pin a child's CPU thread count.  OMP is
+#: read by torch (intra-op), MKL by Intel's BLAS, OPENBLAS by the BLAS numpy
+#: ships in manylinux wheels.
+THREAD_CAP_ENV_VARS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")
+
+#: Explicit override for the per-child thread cap.  An operator who knows the
+#: host is quiet can widen it; an operator who wants serial gates can narrow
+#: it.  A non-integer value is IGNORED (the computed default is used) — a
+#: typo must not silently change the machine's parallelism.
+ENV_THREAD_CAP_OVERRIDE = "MOLMETAL_PREFLIGHT_OMP_THREADS"
+
+
+def _pin_gate_child_thread_caps(jobs: int) -> Dict[str, str]:
+    """Pin the CPU thread count of every gate child.  Returns what was set.
+
+    MEASURED 2026-11-04: with 8 concurrent children and no cap, each child's
+    epoch took 260-267 s; with ``OMP_NUM_THREADS=2`` the same 8 children took
+    0.6-1.0 s.  See the comment block above for the full reading.
+    """
+    n_cores = os.cpu_count() or 1
+    per_job = max(1, n_cores // max(1, int(jobs)))
+    raw = os.environ.get(ENV_THREAD_CAP_OVERRIDE, "").strip()
+    if raw:
+        try:
+            per_job = max(1, int(raw))
+        except ValueError:
+            print(
+                f"[pre_flight] {ENV_THREAD_CAP_OVERRIDE}={raw!r} is not an "
+                f"integer — ignoring it and using the computed cap "
+                f"({per_job}).",
+                file=sys.stderr,
+            )
+    for name in THREAD_CAP_ENV_VARS:
+        os.environ[name] = str(per_job)
+    return {name: str(per_job) for name in THREAD_CAP_ENV_VARS}
+
+
 def _run(
     cmd: List[str],
     *,
     timeout: Optional[float] = None,
     cwd: Optional[Path] = None,
+    env: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, str, str]:
-    """Run subprocess; return (returncode, stdout, stderr). Never raises."""
+    """Run subprocess; return (returncode, stdout, stderr). Never raises.
+
+    ``env`` (Wf-A128, 2026-10-31) is an optional environment override;
+    when it is None the child inherits the parent's environment exactly
+    as before, so every existing call site is unchanged.
+    """
     try:
         proc = subprocess.run(
             cmd,
@@ -372,6 +724,7 @@ def _run(
             text=True,
             timeout=timeout,
             cwd=str(cwd) if cwd is not None else None,
+            env=env,
             check=False,
         )
         return proc.returncode, proc.stdout, proc.stderr
@@ -384,12 +737,16 @@ def _run(
         # from inside the timeout handler itself, and the caller reported the
         # real condition ("the smoke exceeded its budget") as a bare
         # "gate raised: TypeError" — the failure mode hid the failure.
-        def _as_text(v: object) -> str:
-            if v is None:
-                return ""
-            if isinstance(v, bytes):
-                return v.decode("utf-8", errors="replace")
-            return str(v)
+        #
+        # Wf-A154 (2026-11-01): the SAME defect was still live in the
+        # forked copy ``molmetal/scripts/wf343c1_pre_retrain_check.py``
+        # (whose own `_run` predated this fix), and it poisoned the shared
+        # ``_HELP_PROBE_CACHE`` — six pre-flight gates failed with "wf343c1
+        # runner raised: TypeError: can't concat str to bytes" on
+        # 2026-11-01.  The rule now has ONE implementation, in the module
+        # this file already imports, so the two copies cannot drift apart a
+        # second time.
+        _as_text = _wf343c1._as_text
 
         return (
             124,
@@ -479,7 +836,7 @@ def gate_help(
     *,
     py: str = VENV_PY,
     extra_args: Optional[List[str]] = None,
-    timeout: float = 30.0,
+    timeout: Optional[float] = None,
 ) -> GateResult:
     """DECLARATION-ONLY check: every token in ``pattern`` appears as an
     argparse option/choice in ``--help`` output.
@@ -520,15 +877,39 @@ def gate_help(
     # same INVOCATION-column parsing below; only the second and later calls
     # for one key are served from memory.  A FAILing probe is cached too, so
     # twelve gates cannot disagree about one script.
+    #
+    # Wf-A157 (2026-11-01) — the cache alone is NOT enough here.  This
+    # pre-flight runs its gates CONCURRENTLY (ThreadPoolExecutor, default
+    # ``--jobs 8``), so get-then-set on a plain dict let every caller MISS
+    # and all twelve probes spawned at once; their concurrent torch+chemprop
+    # imports pushed every probe past the hard-coded 30 s budget, and twelve
+    # determinate questions ("is flag X declared?") were answered TIMEOUT
+    # instead of PASS.  MEASURED 2026-11-01: 12 TIMEOUT gates and a PASS
+    # count of 101, below the 107 floor pinned by
+    # ``test_wf415a3_preflight_fail_audit.py``.  The probe budget is now
+    # ``_wf343c1.help_probe_timeout()`` (env-overridable, default 180 s vs
+    # the MEASURED 14.84 s quiet-host cost) and one lock per cache key makes
+    # the probe happen exactly once.
+    if timeout is None:
+        timeout = _wf343c1.help_probe_timeout()
     cache_key = (str(py), str(script), tuple(extra_args or ()))
-    hit = _HELP_PROBE_CACHE.get(cache_key)
-    if hit is None:
-        args = [py, str(script)] + (extra_args or []) + ["--help"]
-        rc, out, err = _run(args, timeout=timeout)
-        _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
-    else:
-        rc, out, err = hit
+    with _wf343c1.help_probe_lock(cache_key):
+        hit = _HELP_PROBE_CACHE.get(cache_key)
+        if hit is None:
+            args = [py, str(script)] + (extra_args or []) + ["--help"]
+            rc, out, err = _run(args, timeout=timeout)
+            _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
+        else:
+            rc, out, err = hit
     elapsed = time.perf_counter() - t0
+    # Wf-A154 (2026-11-01) — coerce the cache slot to text ON THE WAY OUT,
+    # not only on the way in.  The shared ``_HELP_PROBE_CACHE`` is aliased
+    # into ``wf343c1_pre_retrain_check`` (line 657), so an entry written by
+    # a buggy producer can hold BYTES and `bytes + "\n"` raises TypeError.
+    # MEASURED 2026-11-01: this exact path failed six gates with "wf343c1
+    # runner raised: TypeError: can't concat str to bytes".
+    out = _wf343c1._as_text(out)
+    err = _wf343c1._as_text(err)
     blob = out + "\n" + err
     tokens = pattern.split()
     # Wf-A12 — build the INVOCATION column of each argparse option line.
@@ -560,6 +941,25 @@ def gate_help(
         tok_re = re.compile(r"(?<![\w-])" + re.escape(tok) + r"(?![\w-])")
         if not any(tok_re.search(inv) for inv in option_invocations):
             missing.append(tok)
+    # Wf-A154 (2026-11-01) — a TIMEOUT is NOT a verdict that the flag is
+    # missing.  rc=124 means the probe never finished, so the flag's
+    # presence was NOT DETERMINED.  Reporting that as "missing token(s)" is
+    # a false defect claim (AGENTS.md §5.2 honest framing): the honest
+    # verdict is its own status.  Under --strict a TIMEOUT fails the run
+    # exactly like a SKIP does — the run did not verify what it claims to
+    # have verified.
+    if rc == 124:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            GATE_STATUS_TIMEOUT,
+            f"the --help probe TIMED OUT — the presence of the "
+            f"{len(tokens)} token(s) of '{pattern}' in {script.name} was NOT "
+            f"determined (this is NOT a verdict that the flag is missing; "
+            f"the measurement was NOT obtained)",
+            elapsed,
+        )
     if not missing:
         return GateResult(
             name,
@@ -755,6 +1155,166 @@ def gate_json_threshold(
     )
 
 
+def _frozen_declaration_for(
+    json_path: Path,
+    frozen_registry: Tuple[Tuple[str, str], ...],
+) -> Optional[str]:
+    """Return the frozen-declaration reason for ``json_path``, else None.
+
+    Matches on the RESOLVED absolute path so that a repo-relative entry
+    in the declaration table matches an absolute path handed in by a
+    caller (and vice versa), the same normalisation
+    :func:`gate_wf343c4_anchor_freshness_24h` uses.
+    """
+    target = str(Path(json_path).resolve())
+    for rel, reason in frozen_registry:
+        p = Path(rel)
+        if str((p if p.is_absolute() else REPO_ROOT / p).resolve()) == target:
+            return reason
+    return None
+
+
+def gate_frozen_historical_json_threshold(
+    name: str,
+    priority: str,
+    pipeline: str,
+    json_path: Path,
+    *,
+    extractor: Callable[[Dict[str, Any]], float],
+    threshold: float,
+    op: str = ">=",
+    frozen_registry: Tuple[Tuple[str, str], ...] = FROZEN_HISTORICAL_RESULTS,
+) -> GateResult:
+    """Wf-A128 — read a DECLARED-FROZEN historical result artifact.
+
+    The same extractor/threshold contract as :func:`gate_json_threshold`,
+    with two deliberate differences:
+
+      1. **No wall-clock TTL.**  The artifact is declared frozen in
+         :data:`FROZEN_HISTORICAL_RESULTS` (path + reason), i.e. it is a
+         one-shot wave result that no producer in today's pipeline
+         regenerates.  A wall-clock FAIL on frozen history is
+         un-remediable without fabricating an mtime (AGENTS.md §5.2),
+         which is why the repo already exempts the 11
+         ``ANCHOR_FROZEN_PATHS`` from the freshness gate.  The artifact's
+         structural guards (file exists / parses / top-level dict) are
+         still enforced.
+
+      2. **SKIP, not FAIL, when the file is absent.**  The artifacts live
+         under ``molmetal/reports/``, which ``.gitignore:158`` keeps out
+         of git, so on a clean checkout the file is simply ABSENT.  An
+         absent frozen HISTORICAL record is not a regression: it is the
+         expected state of a checkout that never ran the wave.  The
+         evidence names the declaration and the live check that DOES
+         exercise today's code.
+
+    An artifact that is NOT declared frozen is never exempted: if it is
+    absent the gate FAILs ("json file missing"), exactly as
+    :func:`gate_json_threshold` does — the exemption is opt-in and
+    auditable, never implicit.
+
+    FAIL on: undeclared-but-absent path, unparseable JSON, a non-dict
+    top level, or a value that does not satisfy the comparison.
+    """
+    t0 = time.perf_counter()
+    reason = _frozen_declaration_for(json_path, frozen_registry)
+    if reason is None:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json file missing: {json_path} (and the path is NOT declared "
+            f"frozen in FROZEN_HISTORICAL_RESULTS, so the no-TTL treatment "
+            f"does not apply)",
+            time.perf_counter() - t0,
+        )
+    if not json_path.exists():
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"declared-frozen historical artifact absent: {json_path} "
+            f"({reason}); the artifact is git-ignored "
+            f"(molmetal/reports/**/*.json) so a clean checkout does not "
+            f"carry it — SKIP, not FAIL; no mtime was touched",
+            time.perf_counter() - t0,
+        )
+    try:
+        raw = json_path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except (json.JSONDecodeError, OSError) as exc:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"frozen historical artifact parse error in {json_path}: "
+            f"{type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    if not isinstance(data, dict):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"frozen historical artifact is not a JSON object at the top "
+            f"level (got {type(data).__name__}): {json_path}",
+            time.perf_counter() - t0,
+        )
+    try:
+        value = float(extractor(data))
+    except (KeyError, ValueError, TypeError) as exc:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"frozen historical artifact extractor error in {json_path}: "
+            f"{type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    elapsed = time.perf_counter() - t0
+    ops = {
+        ">=": lambda a, b: a >= b,
+        ">": lambda a, b: a > b,
+        "<=": lambda a, b: a <= b,
+        "<": lambda a, b: a < b,
+        "==": lambda a, b: a == b,
+    }
+    cmp = ops.get(op)
+    if cmp is None:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"unknown op '{op}'",
+            elapsed,
+        )
+    if cmp(value, threshold):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"{json_path}: value={value:.6f} {op} {threshold} "
+            f"(declared-frozen historical artifact; no wall-clock TTL applied)",
+            elapsed,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"{json_path}: value={value:.6f} NOT {op} {threshold} "
+        f"(declared-frozen historical artifact; no wall-clock TTL applied)",
+        elapsed,
+    )
+
+
 def gate_pytest(
     name: str,
     priority: str,
@@ -770,6 +1330,21 @@ def gate_pytest(
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
     tail = blob.splitlines()[-1] if blob else "(no output)"
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is its own verdict,
+        # NOT a defect verdict (AGENTS.md §5.2 honest framing): the pytest
+        # run did not finish, so the suite's verdict was NOT obtained.
+        # Reporting it as a suite failure was a FALSE DEFECT CLAIM.
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="the pytest run",
+            not_a_verdict_on="the pytest suite's verdict",
+        )
     if rc == 0:
         return GateResult(
             name,
@@ -825,6 +1400,20 @@ def gate_which_or_apt(
     # apt fallback
     rc, out, _ = _run(["apt", "list", "--installed"], timeout=15.0)
     elapsed = time.perf_counter() - t0
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # the binary is absent: the apt listing was NOT obtained, so the
+        # binary's presence was NOT determined either way (AGENTS.md §5.2).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=15.0,
+            elapsed_sec=elapsed,
+            tail="(the `apt list --installed` probe did not finish)",
+            detail="the `apt list --installed` fallback probe",
+            not_a_verdict_on="the presence of the binary",
+        )
     if rc == 0 and binary.lower() in out.lower():
         return GateResult(
             name,
@@ -1115,22 +1704,45 @@ def gate_csv_hash(
     mismatches: List[str] = []
     unverified: List[str] = []
     linecount_only: List[str] = []
+    # Wf-A159 (2026-11-01) — a timed-out measurement is recorded here,
+    # NOT in `bad`: a timeout is not a defect (AGENTS.md §5.2).
+    not_measured: List[str] = []
 
     for p, min_lines in csv_paths_with_min_lines:
         if not p.is_file():
             bad.append(f"missing: {p}")
             continue
         rc, out, _ = _run(["wc", "-l", str(p)], timeout=10.0)
-        if rc != 0:
+        if rc == 124:
+            # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the line
+            # count was NOT obtained.  That is NOT a defect claim about the
+            # CSV (AGENTS.md §5.2 honest framing): the file is not proven
+            # short, it is UNMEASURED.  The old code appended "wc failed
+            # for {p}", i.e. it reported the timeout as a broken file —
+            # a FALSE DEFECT CLAIM.  The SHA-256 layer below still runs.
+            not_measured.append(
+                _timeout_gate_result(
+                    name,
+                    priority,
+                    pipeline,
+                    budget_sec=10.0,
+                    elapsed_sec=time.perf_counter() - t0,
+                    tail=f"wc -l {p}",
+                    detail=f"the `wc -l` line-count probe for {p}",
+                    not_a_verdict_on="the CSV line count",
+                ).evidence
+            )
+        elif rc != 0:
             bad.append(f"wc failed for {p}")
             continue
-        try:
-            n = int(out.strip().split()[0])
-        except (ValueError, IndexError):
-            bad.append(f"wc parse failed for {p}")
-            continue
-        if n < min_lines:
-            bad.append(f"{p} has {n} lines (< {min_lines})")
+        else:
+            try:
+                n = int(out.strip().split()[0])
+            except (ValueError, IndexError):
+                bad.append(f"wc parse failed for {p}")
+                continue
+            if n < min_lines:
+                bad.append(f"{p} has {n} lines (< {min_lines})")
 
         # ---- SHA-256 layer (HOLE-6) ----
         if manifest is None:
@@ -1188,6 +1800,24 @@ def gate_csv_hash(
             pipeline,
             "FAIL",
             "; ".join(bad),
+            elapsed,
+        )
+
+    if not_measured:
+        # Wf-A159 (2026-11-01) — a timed-out measurement is its own
+        # verdict: the gate did NOT obtain the line count for the file(s)
+        # below, so it cannot claim the gated CSV set is verified.  A REAL
+        # defect (missing file / short file / digest mismatch) still FAILs
+        # above — only the timeout itself is demoted to TIMEOUT.
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            GATE_STATUS_TIMEOUT,
+            f"TIMEOUT: the `wc -l` line-count probe timed out for "
+            f"{len(not_measured)} CSV(s); the measurement was NOT obtained, "
+            f"so this is NOT a verdict on the CSV contents. | "
+            + " || ".join(not_measured),
             elapsed,
         )
 
@@ -1251,13 +1881,32 @@ def freeze_csv_hash_manifest(
     now = _now_iso()
     files: Dict[str, Any] = {}
     missing: List[str] = []
+    # Wf-A159 (2026-11-01) — line counts that were NOT obtained (timeout).
+    not_measured: List[str] = []
     for p, min_lines in spec_list:
         if not p.is_file():
             missing.append(str(p))
             continue
         rc, out, _ = _run(["wc", "-l", str(p)], timeout=10.0)
         n_lines = -1
-        if rc == 0 and out.strip():
+        if rc == 124:
+            # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the line
+            # count was NOT obtained.  It is NOT a claim that the CSV is
+            # broken (AGENTS.md §5.2): record it as "not measured"
+            # (n_lines = -1, the existing sentinel) and say so loudly.
+            not_measured.append(
+                _timeout_gate_result(
+                    "csv_hash_freeze",
+                    "P0",
+                    "all",
+                    budget_sec=10.0,
+                    elapsed_sec=time.perf_counter() - t0,
+                    tail=f"wc -l {p}",
+                    detail=f"the `wc -l` line-count probe for {p}",
+                    not_a_verdict_on="the CSV line count",
+                ).evidence
+            )
+        elif rc == 0 and out.strip():
             try:
                 n_lines = int(out.strip().split()[0])
             except (ValueError, IndexError):
@@ -1270,6 +1919,13 @@ def freeze_csv_hash_manifest(
             "min_lines": min_lines,
             "frozen_at": now,
         }
+    if not_measured:
+        print(
+            f"[freeze-csv-hashes] WARNING: the `wc -l` line-count probe "
+            f"timed out for {len(not_measured)} CSV(s); their line count was "
+            f"NOT obtained (n_lines=-1): {' | '.join(not_measured)}",
+            file=sys.stderr,
+        )
     if missing:
         print(
             f"[freeze-csv-hashes] REFUSED: {len(missing)} gated CSV(s) "
@@ -1443,11 +2099,28 @@ def gate_scaffold_zero_leak(
         "    else:\n"
         "        print('LIGAND ' + label + ' unavailable')\n"
     )
+    scaffold_probe_timeout = 40.0 + 40.0 * len(csv_specs)
     rc, out, err = _run(
         [sys.executable, "-c", probe],
-        timeout=40.0 + 40.0 * len(csv_specs),
+        timeout=scaffold_probe_timeout,
     )
     elapsed = time.perf_counter() - t0
+    if rc == 124:
+        # Wf-A158 (2026-11-01) — a wall-clock TIMEOUT is its own verdict,
+        # NOT a FAIL (the Wf-A135 rule, applied here for the first time).
+        # The verifier subprocess did not finish; the scaffold split
+        # strictness was NOT measured either way.
+        err_tail = (err or "").strip().splitlines()[-3:]
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(scaffold_probe_timeout),
+            elapsed_sec=elapsed,
+            tail=" | ".join(line for line in err_tail if line) or "(no stderr)",
+            detail="scaffold-leak verifier subprocess",
+            not_a_verdict_on="the scaffold split strictness",
+        )
     if rc != 0:
         # Wf-345B1 env-aware SKIP: a pandas-import failure is an env gap,
         # not a regression. The CSV file IS present (verified above);
@@ -1487,7 +2160,7 @@ def gate_scaffold_zero_leak(
                 f"gate's pandas import probe cannot execute without "
                 f"the expected pandas-enabled runtime (the repo-local "
                 f"canonical "
-                f"/home/hugo/codes/mol-metal/.venv/bin/python "
+                f"{REPO_ROOT}/.venv/bin/python "
                 f"per AGENTS.md §5.1 + §5.9). This is an env gap, not a "
                 f"regression. Original probe error: {err_tail_str}",
                 elapsed,
@@ -1660,6 +2333,21 @@ def gate_metalcytotox_v1_known_leaky(
     )
     rc, out, err = _run([sys.executable, "-c", probe], timeout=60.0)
     elapsed = time.perf_counter() - t0
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # the v1 scaffold-leak probe failed: the probe did not finish, so
+        # the v1 leak was NOT measured (AGENTS.md §5.2 honest framing).
+        err_tail = (err or "").strip().splitlines()[-3:]
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=60.0,
+            elapsed_sec=elapsed,
+            tail=" | ".join(line for line in err_tail if line) or "(no stderr)",
+            detail="the v1 metalcytotox scaffold-leak visibility probe",
+            not_a_verdict_on="the v1 metalcytotox scaffold leak",
+        )
     if rc != 0:
         err_tail = (err or "").strip().splitlines()[-3:]
         err_tail_str = " | ".join(line for line in err_tail if line) or "(no stderr)"
@@ -1685,7 +2373,7 @@ def gate_metalcytotox_v1_known_leaky(
                 f"host Python); the v1 CSV IS present ({csv_path}) and "
                 f"readable, but the probe cannot execute without the "
                 f"expected pandas-enabled runtime (the repo-local "
-                f"canonical /home/hugo/codes/mol-metal/.venv/bin/python "
+                f"canonical {REPO_ROOT}/.venv/bin/python "
                 f"per AGENTS.md §5.1 + §5.9). Env gap, not a regression. "
                 f"Original probe error: {err_tail_str}",
                 elapsed,
@@ -1734,7 +2422,8 @@ def gate_metalcytotox_v1_known_leaky(
             pipeline,
             "FAIL",
             f"v1 no longer leaks: 0 scaffold overlaps "
-            f"(rows={fields['ROWS']}, sha256={sha[:12]}…).  v1 is the "
+            f"(rows={fields['ROWS']}, sha256={sha[:12]}…).  INSPECTED "
+            f"ARTIFACT: {csv_path}.  v1 is the "
             f"KNOWN-LEAKY historical artifact; 0 leaks means it was "
             f"mutated / re-split / replaced.  Remedy: restore the frozen "
             f"bytes whose digest is recorded in configs/data_checksums.json "
@@ -1742,7 +2431,12 @@ def gate_metalcytotox_v1_known_leaky(
             f"identity), or, if a clean re-split is intended, re-freeze "
             f"the digest (one command: `python -m molmetal.scripts."
             f"pre_flight_check --freeze-csv-hashes`) AND update this "
-            f"gate's contract in the same edit.  Open item — consumers "
+            f"gate's contract in the same edit.  NOTE: if the inspected "
+            f"artifact is the CLEAN replacement cohort "
+            f"(metalcytotox_5metal_multitask_v4.csv) this FAIL is "
+            f"EXPECTED and is NOT a data regression — see "
+            f"molmetal/tests/test_wf446_l5_v1_known_leaky_gate.py.  "
+            f"Open item — consumers "
             f"still defaulting to this path: " + "; ".join(consumers),
             elapsed,
         )
@@ -1754,7 +2448,8 @@ def gate_metalcytotox_v1_known_leaky(
         f"KNOWN-LEAKY v1 artifact still leaky as expected: "
         f"rows={fields['ROWS']}, scaffold overlaps "
         f"{fields['OVERLAPS']} (total={total}), sha256={sha[:12]}… "
-        f"(bytes frozen by p0_csv_hash_verify).  Open remedy (not this "
+        f"(bytes frozen by p0_csv_hash_verify).  INSPECTED ARTIFACT: "
+        f"{csv_path}.  Open remedy (not this "
         f"gate's lane): repoint the default consumers at "
         f"metalcytotox_5metal_multitask_v4.csv — " + "; ".join(consumers),
         elapsed,
@@ -1929,7 +2624,7 @@ def gate_nci60_split_no_leak(
             pipeline,
             "SKIP",
             f"nci60 split-leak probe requires the pandas/rdkit-enabled repo "
-            f"venv (canonical /home/hugo/codes/mol-metal/.venv/bin/python per "
+            f"venv (canonical {REPO_ROOT}/.venv/bin/python per "
             f"AGENTS.md §5.1 + §5.9); import failed with "
             f"{type(exc).__name__}: {exc}. The nci60 CSV IS present "
             f"({csv_path}); this is an env gap, not a regression.",
@@ -2346,6 +3041,8 @@ def gate_wf350a2_compute_manifest(
     # ---- (2) probe nvidia-smi (per-GPU inventory) ----
     gpus: List[Dict[str, Any]] = []
     driver_version: Optional[str] = None
+    # Wf-A159 (2026-11-01) — probes whose measurement was NOT obtained.
+    timeout_results: List[GateResult] = []
     nvidia_rc, nvidia_out, nvidia_err = _run(
         [
             nvidia_smi_bin,
@@ -2354,7 +3051,28 @@ def gate_wf350a2_compute_manifest(
         ],
         timeout=15.0,
     )
-    if nvidia_rc == 0 and nvidia_out.strip():
+    if nvidia_rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # the host has no NVIDIA driver: the probe did not finish, so the
+        # driver's presence was NOT determined either way (AGENTS.md §5.2).
+        # The old fall-through reported "no-gpu-detected" — a false
+        # environmental claim produced by a timeout.
+        timeout_results.append(
+            _timeout_gate_result(
+                name,
+                priority,
+                pipeline,
+                budget_sec=15.0,
+                elapsed_sec=time.perf_counter() - t0,
+                tail=(nvidia_err or "").strip()[:200] or "(no stderr)",
+                detail="the nvidia-smi GPU-inventory probe",
+                not_a_verdict_on=(
+                    "the host's NVIDIA driver availability or its GPU "
+                    "inventory"
+                ),
+            )
+        )
+    elif nvidia_rc == 0 and nvidia_out.strip():
         for raw_line in nvidia_out.strip().splitlines():
             parts = [p.strip() for p in raw_line.split(",")]
             if len(parts) < 4:
@@ -2384,7 +3102,22 @@ def gate_wf350a2_compute_manifest(
         [VENV_PY, "-c", "import torch; print(torch.__version__, torch.version.cuda)"],
         timeout=30.0,
     )
-    if torch_rc == 0 and torch_out.strip():
+    if torch_rc == 124:
+        # Wf-A159 (2026-11-01) — a timeout means the torch/CUDA version was
+        # NOT measured; it is not a defect claim (AGENTS.md §5.2).
+        timeout_results.append(
+            _timeout_gate_result(
+                name,
+                priority,
+                pipeline,
+                budget_sec=30.0,
+                elapsed_sec=time.perf_counter() - t0,
+                tail=(_torch_err or "").strip()[:200] or "(no stderr)",
+                detail="the torch/CUDA version probe",
+                not_a_verdict_on="the host torch/CUDA version",
+            )
+        )
+    elif torch_rc == 0 and torch_out.strip():
         tok = torch_out.strip().split()
         if len(tok) >= 1:
             torch_version = tok[0]
@@ -2397,7 +3130,22 @@ def gate_wf350a2_compute_manifest(
         ["uname", "-a"],
         timeout=5.0,
     )
-    if uname_rc == 0 and uname_out.strip():
+    if uname_rc == 124:
+        # Wf-A159 (2026-11-01) — a timeout means the host description was
+        # NOT measured; it is not a defect claim (AGENTS.md §5.2).
+        timeout_results.append(
+            _timeout_gate_result(
+                name,
+                priority,
+                pipeline,
+                budget_sec=5.0,
+                elapsed_sec=time.perf_counter() - t0,
+                tail=(_uname_err or "").strip()[:200] or "(no stderr)",
+                detail="the `uname -a` host probe",
+                not_a_verdict_on="the host kernel/arch description",
+            )
+        )
+    elif uname_rc == 0 and uname_out.strip():
         # uname -a format: "Linux host kernel-version arch ..."
         uname_parts = uname_out.strip().split(None, 4)
         if len(uname_parts) >= 5:
@@ -2439,6 +3187,23 @@ def gate_wf350a2_compute_manifest(
             pipeline,
             "FAIL",
             f"cannot write manifest {manifest_path!s}: {exc}",
+            time.perf_counter() - t0,
+        )
+
+    # ---- Wf-A159: a timed-out probe is a TIMEOUT, not a defect ----
+    # The manifest artefact is still written above (it records whatever the
+    # probes DID return), but the VERDICT must not claim "no GPU
+    # detected" when the probe simply did not finish.
+    if timeout_results:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            GATE_STATUS_TIMEOUT,
+            f"TIMEOUT: {len(timeout_results)} compute-manifest probe(s) "
+            f"timed out; the measurement was NOT obtained, so this is NOT "
+            f"a verdict on the host's GPU/driver state. | "
+            + " || ".join(r.evidence for r in timeout_results),
             time.perf_counter() - t0,
         )
 
@@ -2618,6 +3383,21 @@ def gate_r20_phase0_loaders_complete(
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
     tail = blob.splitlines()[-1] if blob else "(no output)"
+    if rc == 124:
+        # Wf-A158 (2026-11-01) — a wall-clock TIMEOUT is its own verdict,
+        # NOT a FAIL (the Wf-A135 rule, applied here for the first time).
+        # The loader test suite did not finish; that says nothing about
+        # whether the loader contract holds.
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=180.0,
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="R20-Phase-0 loader pytest",
+            not_a_verdict_on="the R20 loader contract",
+        )
     if rc == 0:
         return GateResult(
             name,
@@ -2959,6 +3739,7 @@ def gate_anchor_version_pin(
     required_version: str = ANCHOR_VERSION,
     glob_patterns: Tuple[str, ...] = ANCHOR_GLOB_PATTERNS,
     max_age_sec: float = 30 * 86400.0,
+    frozen_paths: Tuple[Tuple[str, str], ...] = ANCHOR_FROZEN_PATHS,
 ) -> GateResult:
     """Wf-306C — every paper-grade ``*_anchor.json`` carrying ``version`` MUST pin ``1.0.0``.
 
@@ -2984,24 +3765,83 @@ def gate_anchor_version_pin(
         malformed JSON are explicitly disallowed per the Wf-291H
         §4 explicit-error contract.
 
+    Scope (2026-11-01 fix, Wf-A175): the mtime-freshness guard applies
+    ONLY to LIVE anchors — files a current pipeline still writes or
+    serves.  Matches listed in ``frozen_paths`` (path + reason; see
+    :data:`ANCHOR_FROZEN_PATHS`) are shipped historical wave reports with
+    no producer in today's pipeline, and are read WITHOUT the TTL, exactly
+    as the sibling gate :func:`gate_anchor_freshness` does.  The
+    content/version-pin contract still applies to them IN FULL — a frozen
+    anchor whose ``version`` drifts still FAILs this gate.
+
+    WHY (2026-11-01): this gate read every anchor through
+    ``AnchorGuard.require()``, which enforces FOUR guards in order
+    (path-exists, mtime-freshness, JSON-parse, version).  The version-pin
+    gate therefore enforced the FRESHNESS contract as a side effect, on
+    the 11 anchors that are ALREADY declared frozen — re-introducing
+    exactly the "permanent decoration" wall-clock FAIL the 2026-10-03
+    anchor-scope fix (defect 2) removed from this file.  MEASURED
+    2026-11-01: all 6 FAILs were ``AnchorStaleError`` (ages
+    2600430.1 / 2600801.6 / 2600809.9 s against a 2592000.0 s budget —
+    ~2.4 h past the 30-day threshold); the 3 anchors that opt into
+    version pinning all carry ``"version": "1.0.0"``.
+
+    The remedy for a genuinely stale LIVE anchor is to RE-RUN the wave
+    that produced it — never to touch its mtime, which is fabricated
+    freshness (AGENTS.md §5.2).  Freshness on LIVE anchors is audited by
+    the sibling gate ``p3_wf343c4_anchor_freshness_24h``.
+
+    SUPERSEDED (2026-11-01, Wf-306C rendering — PRESERVED VERBATIM per
+    AGENTS.md §5.5 rule #6): this gate applied the 30-day mtime budget to
+    EVERY matched anchor, frozen included, and its PASS/FAIL contract
+    read exactly:
+
+        PASS = every checked anchor that opts in to version pinning is
+        pinned at ``required_version``; legacy anchors are skipped without
+        affecting the gate status.
+
+        FAIL = at least one opt-in anchor is version-drifted, OR an anchor
+        raised a read error.
+
+    with the superseded statement that any read error — including a
+    wall-clock staleness error on frozen history — is a FAIL.
+
     PASS = every checked anchor that opts in to version pinning is
     pinned at ``required_version``; legacy anchors are skipped without
     affecting the gate status.
 
-    FAIL = at least one opt-in anchor is version-drifted, OR an anchor
-    raised a read error.
+    FAIL = at least one opt-in anchor is version-drifted, OR a LIVE
+    anchor raised a read error.
     """
     t0 = time.perf_counter()
     checked: List[str] = []
     pinned: List[str] = []
     skipped_legacy: List[str] = []
+    frozen_seen: List[str] = []
     failures: List[str] = []
+
+    # Resolve the frozen allowlist to absolute-path keys for exact matching
+    # (covers both repo-relative and absolute spellings of an entry) —
+    # the same idiom as the sibling gate `gate_anchor_freshness`.
+    frozen_by_key: Dict[str, str] = {}
+    for rel, reason in frozen_paths:
+        p = Path(rel)
+        frozen_by_key[str((p if p.is_absolute() else REPO_ROOT / p).resolve())] = reason
+
     for pattern in glob_patterns:
         for path in sorted(REPO_ROOT.glob(pattern)):
             if not path.is_file():
                 failures.append(f"missing: {path}")
                 continue
             checked.append(str(path))
+            # Wf-A175 (2026-11-01): a DECLARED-FROZEN anchor is read
+            # WITHOUT the mtime TTL — its staleness is not this gate's
+            # verdict (see the docstring).  The path / JSON-parse /
+            # version guards still apply in full.
+            key = str(path.resolve())
+            is_frozen = key in frozen_by_key
+            if is_frozen:
+                frozen_seen.append(str(path.relative_to(REPO_ROOT)))
             try:
                 # Read WITHOUT required_version — we want to inspect the
                 # raw dict first to determine if the anchor opts in to
@@ -3009,7 +3849,7 @@ def gate_anchor_version_pin(
                 # parse guards still apply (cf. Wf-291H §4).
                 guard = AnchorGuard(
                     path=path,
-                    max_age_sec=max_age_sec,
+                    max_age_sec=(float("inf") if is_frozen else max_age_sec),
                     required_version=None,
                     version_field="version",
                 )
@@ -3037,6 +3877,10 @@ def gate_anchor_version_pin(
                 continue
             pinned.append(str(path))
     elapsed = time.perf_counter() - t0
+    frozen_note = (
+        f"[frozen-exempt: {len(frozen_seen)} historical anchor(s) not "
+        f"mtime-checked; version-pin contract still enforced]"
+    )
     if failures:
         return GateResult(
             name,
@@ -3045,7 +3889,8 @@ def gate_anchor_version_pin(
             "FAIL",
             f"{len(failures)}/{len(checked)} anchors failed pin "
             f"(pinned={len(pinned)}, legacy-skipped={len(skipped_legacy)}): "
-            f"{failures[:3]}" + ("..." if len(failures) > 3 else ""),
+            f"{failures[:3]}" + ("..." if len(failures) > 3 else "")
+            + f" {frozen_note}",
             elapsed,
         )
     return GateResult(
@@ -3054,7 +3899,8 @@ def gate_anchor_version_pin(
         pipeline,
         "PASS",
         f"{len(pinned)}/{len(checked)} anchors pinned at version={required_version!r} "
-        f"({len(skipped_legacy)} legacy pre-Wf-305C skipped)",
+        f"({len(skipped_legacy)} legacy pre-Wf-305C skipped)"
+        + f" {frozen_note}",
         elapsed,
     )
 
@@ -3446,7 +4292,23 @@ def gate_wf315d_pb_smoke(
                 elif line.startswith("posebusters="):
                     pb_v = line.split("=", 1)[1].strip()
             packages_ok = rdkit_v is not None and pb_v is not None
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+    except subprocess.TimeoutExpired as exc:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the package
+        # availability was NOT measured; it is NOT evidence that RDKit /
+        # PoseBusters are missing (AGENTS.md §5.2).  The old code folded
+        # the timeout into `packages_ok = False`, i.e. it reported the
+        # timeout as "the packages are not installed".
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=20.0,
+            elapsed_sec=time.perf_counter() - t0,
+            tail=f"TimeoutExpired: {exc}",
+            detail="the rdkit/posebusters availability probe",
+            not_a_verdict_on="the rdkit/posebusters package availability",
+        )
+    except (FileNotFoundError, OSError) as exc:
         packages_ok = False
 
     elapsed = time.perf_counter() - t0
@@ -3837,7 +4699,25 @@ def gate_wf319c_pb_packages_status_present(
                     rdkit_v = line.split("=", 1)[1].strip()
                 elif line.startswith("posebusters="):
                     pb_v = line.split("=", 1)[1].strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+    except subprocess.TimeoutExpired as exc:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the package
+        # availability was NOT measured.  The old code folded the timeout
+        # into the SAME `probe_err` variable as a genuine ImportError, so
+        # a timeout was reported as "venv probe failed ... TimeoutExpired"
+        # — a FALSE DEFECT CLAIM (AGENTS.md §5.2).  Split the handler: the
+        # timeout is its own verdict, a genuine exec error stays on the
+        # failure path.
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=20.0,
+            elapsed_sec=time.perf_counter() - t0,
+            tail=f"TimeoutExpired: {exc}",
+            detail="the rdkit/posebusters availability probe",
+            not_a_verdict_on="the rdkit/posebusters package availability",
+        )
+    except (FileNotFoundError, OSError) as exc:
         probe_err = f"{type(exc).__name__}:{exc}"
 
     if probe_err is not None or rdkit_v is None or pb_v is None:
@@ -5023,7 +5903,7 @@ def gate_section9_entry_count(
 #   * ``chemprop_v2_v3`` → 14 gates (13 pre-Wf-350A2 baseline + 1 NEW
 #                       Wf-350-A2 compute-manifest gate).
 #   * ``cfm``         →  7 gates (6 Wf-259 baseline + 1 NEW HOLE-1
-#                       `p1_cfm_live_decode_canary` — live 3-epoch CPU
+#                       `p1_cfm_live_decode_canary` — live 13-epoch CPU
 #                       smoke of today's CFM trainer + YuelBond decoder;
 #                       the frozen Wf-188 `p1_cfm_smoke_decoded` anchor
 #                       is kept but relabelled HISTORICAL)
@@ -5032,6 +5912,10 @@ def gate_section9_entry_count(
 # pipeline only; 'frontier' / 'chemprop_v2_v3' / 'cfm' are subsets that
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
+    # 2026-10-31 (Wf-A125 G5): "all" 126 -> 127 and "launch" 128 -> 129,
+    # MEASURED via len(build_gates(...)) after adding
+    # p3_run_ledger_provenance (a ledger row that names a file version this
+    # repository has never held must fail a launch).
     # 2026-10-18 (FIX-E1 + FIX-P2, MSRS representation audit): "all" 124 -> 126
     # and "launch" 126 -> 128, MEASURED via len(build_gates(...)) after adding
     # p3_msrs_dual_split_check (every arm artifact must report both
@@ -5129,6 +6013,17 @@ EXPECTED_GATE_COUNTS = {
     # the "zombie" count (opt-in gates whose env var is unset in a normal run).
     # REPORT-ONLY: always PASSes, so the count moves but no existing pre-flight
     # verdict does. Implementation: molmetal/scripts/gate_inventory.py.
+    #
+    # 2026-11-04 (Wf-A269 dead-gates sweep) — the "REPORT-ONLY: always PASSes"
+    # rendering above is SUPERSEDED; it is PRESERVED VERBATIM per AGENTS.md §5.5
+    # rule #6.  A P0 gate whose status literal can only be "PASS" cannot block
+    # anything it is registered as a blocker for (the DEAD-GATE class,
+    # HONEST_NEGATIVE_CATALOG §6.269.17), and the zombie count it published
+    # was 0 on a tree with 5 opt-in gates because the scan never followed the
+    # thin-wrapper -> delegate hop (both repaired in molmetal/scripts/
+    # gate_inventory.py + gate_gate_inventory_audit).  The gate COUNT is
+    # UNCHANGED by this repair: 133 ("all") / 135 ("launch"), re-derived from
+    # build_gates() — only the verdict logic moved.
     # §5.11 (2026-10-09): 121 -> 123, MEASURED via len(build_gates("all"))
     # after two launch gates were added — p3_yaml_only_launch_check (wrappers
     # must pass --config only) and p3_config_trainer_binding_check (every config
@@ -5141,7 +6036,61 @@ EXPECTED_GATE_COUNTS = {
     # step and its two gates were already in the working tree uncommitted when
     # this edit landed; they are recorded here now so the count's provenance is
     # readable rather than implied. Measured: len(build_gates("all")) == 124.
-    "all": 126,
+    #
+    # 2026-11-03 (Wf-A269 wave-19): 129 -> 130, MEASURED via
+    # len(build_gates("all")) == 130 after adding p3_launch_contract_check —
+    # the third §5.11 gate: the flags a wrapper DOES pass must be DECLARED by
+    # the parser of the trainer that invocation runs. §5.11's allowlist is
+    # FIXED and per-trainer reality is not (MEASURED 2026-11-03: `--ckpt-dir`
+    # is declared by 8 of 38 trainers; the repo's own run log records a launch
+    # that aborted on it at
+    # molmetal/reports/wf125_p1_controlled_pair/run_synthetic/run.log:18), so
+    # "the wrapper obeys the allowlist" is not the same claim as "the wrapper
+    # launches". Launch-pipeline in behaviour, registered on "all" like the
+    # other p3_* gates; not opt-in, so an existing pre-flight verdict can now
+    # FAIL where it previously passed — by design, that is the point.
+    #
+    # 2026-11-03 (Wf-A269 wave-19, later the same day) — THE "8 of 38"
+    # DENOMINATOR IS SUPERSEDED BY "8 of 43"; the per-flag NUMBERS are not.
+    # The reading above was taken over the 38 trainers whose parser the gate
+    # could capture; the corpus was `molmetal/scripts/train_*.py` (43 files)
+    # and 5 of them were unreadable because the gate called `mod.main([])`
+    # unconditionally and every one of the five declares a ZERO-ARGUMENT
+    # `def main():`. After the capture repair: 43 of 43 readable, and the
+    # per-flag counts are `--config` 16/43, `--out-dir` 29/43, `--ckpt-dir`
+    # 8/43 — the five newly-readable trainers declare NONE of the three, so
+    # the numerator is unchanged and only the denominator grew. The gate's
+    # coverage-gap branch was also reversed from fail-open to fail-closed in
+    # the same edit.
+    # 2026-11-04 (Wf-A269 wave-5): 130 -> 131, MEASURED via
+    # len(build_gates("all")) == 131 after adding
+    # p3_run_ledger_config_provenance (the CONFIG half of the ledger's
+    # provenance: a ledger row's `config_sha` must resolve back to a file).
+    # MEASURED 2026-11-04: 434 ledger rows, 6 with a non-null `config_sha`,
+    # 3 distinct hashes, 0 carrying a config path.
+    # 2026-11-04 (Wf-A269 wave-5/6): 131 -> 132, MEASURED via
+    # len(build_gates("all")) == 132 after adding
+    # p3_runtime_transport_check — the third §5.11 gate, the one that reads
+    # the flags a wrapper transports AT RUN TIME rather than the literal
+    # invocation lines.  MEASURED 2026-11-04 by the gate itself: 2 runtime
+    # strings, 14 transport sites, 2 live violations (both since repaired).
+    # The gate script `scripts/_runtime_transport_gate.py` and its test are
+    # UNTRACKED as of this edit — a clean checkout of HEAD would FAIL this
+    # gate with "script missing" (fail-closed).  Recorded in
+    # docs/HONEST_NEGATIVE_CATALOG.md §6.269.23.
+    # 2026-11-04 (Wf-A269 wave-19): 132 -> 133, MEASURED via
+    # len(build_gates("all")) == 133 after adding p3_script_contract_check —
+    # the FOURTH §5.11 gate, the one that covers the class the other three
+    # structurally cannot see: a repo-local script whose name is NOT
+    # `train_*`.  The other three find the script to ask by matching
+    # `^train_[a-z0-9_]+\.py$`, so they never ask it for the runners, the
+    # drivers, the smoke helpers, the pre-flight, or the scaffolds.
+    # MEASURED 2026-11-04 by the census over the 101 in-contract wrappers:
+    # 2 live launch-killers in that blind spot, both REPAIRED.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #     "all": 132,
+    "all": 133,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -5202,15 +6151,73 @@ EXPECTED_GATE_COUNTS = {
     # §5.11 (2026-10-09): 121 -> 123 with the two gates above; then
     # 2026-10-10: 125 -> 126 with the narrative-claims gate.
     # Measured: len(build_gates("launch")) == 126.
-    "launch": 128,
+    # Wf-A154 (2026-11-01): "all" 127 -> 129 and "launch" 129 -> 131 with
+    # the two SSOT-document consistency gates (p3_ssot_path_reference_check,
+    # p3_ssot_census_claim_check), MEASURED via len(build_gates(...)) after
+    # registering them on the "all" pipeline.  Each runner script imports
+    # its guard module and calls that module's OWN assertions, so the rule
+    # has one implementation (molmetal/scripts/wf_a131_path_reference_guard_runner.py
+    # and molmetal/scripts/wf_a152_census_claim_guard_runner.py).
+    # These are the FIRST gates that make a DOCUMENT defect able to FAIL a
+    # pre-flight: before this, a commit that introduced a broken repo-path
+    # citation or a stale census statistic passed, because both audits
+    # existed only as pytest modules.  "cfm" / "frontier" / "chemprop_v2_v3"
+    # are unchanged (8 / 25 / 18).
+    # 2026-11-03 (Wf-A269 wave-19): 131 -> 132, MEASURED via
+    # len(build_gates("launch")) == 132 after adding p3_launch_contract_check
+    # (the third §5.11 gate — see the "all" entry above for what it proves and
+    # why "the wrapper obeys the allowlist" is not the same claim as "the
+    # wrapper launches").
+    # 2026-11-04 (Wf-A269 wave-5): 132 -> 133, MEASURED via
+    # len(build_gates("launch")) == 133 — the same
+    # p3_run_ledger_config_provenance gate (it is registered in the "all"
+    # group, which "launch" inherits after the normalisation at
+    # build_gates()).
+    # 2026-11-04 (Wf-A269 wave-5/6): 133 -> 134, MEASURED via
+    # len(build_gates("launch")) == 134 — the same
+    # p3_runtime_transport_check gate (registered in the "all" group, which
+    # "launch" inherits after the normalisation at build_gates()).
+    # 2026-11-04 (Wf-A269 wave-19): 134 -> 135, MEASURED via
+    # len(build_gates("launch")) == 135 after adding p3_script_contract_check
+    # — the FOURTH §5.11 gate, the one that covers the class the other three
+    # structurally cannot see: a repo-local script whose name is NOT
+    # `train_*`.  MEASURED 2026-11-04 by the census over the 101 in-contract
+    # wrappers: 2 live launch-killers in that blind spot (a wrapper passing
+    # `--fast` to a script that declares no such option, and one passing
+    # `--no-smoke` to a scaffold whose own help promises the flag); both
+    # abort with argparse's "unrecognized arguments" before any work is done,
+    # and both are REPAIRED.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6
+    # (the counts below are the values that were live when this gate was
+    # wired; the pin had ALSO drifted before that — the test that asserts
+    # it still read 129 / 131 while the live tree measured 132 / 134, i.e.
+    # the pin was a RED TEST hiding three added gates):
+    #     "all": 132, "launch": 134,
+    #
+    # Wf-A269 wave-33 (2026-11-09): "launch" 135 -> 136 after adding
+    # p3_enforcement_stack_trackedness to the LAUNCH-ONLY block.  MEASURED
+    # via len(build_gates("launch")) after the registration.  Registered on
+    # the ``launch`` pipeline ONLY: "all" is unchanged (133), because the
+    # audit doc TODO/completed/321d_preflight_gate_audit.md §2.1/§6 pins
+    # the ``all`` count (and "all" is the COMMIT-time pipeline, whereas
+    # this gate certifies the LAUNCH surface).
+    "launch": 136,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
     # the 14 was stale (pre-Wf-A12 docs drift).
-    "cfm": 7,  # HOLE-1 fix (2026-10-03): 6 → 7 — added the LIVE decode
+    # Wf-A132 (2026-10-31): 7 -> 8 — added p3_cfm_fragmentation_preflight,
+    # the pre-flight REGISTRATION of the Wf-A128 standalone fragmentation
+    # gate (molmetal/scripts/pre_flight_fragmentation_check.py).  MEASURED
+    # via len(build_gates("cfm")) after the registration.  Registered on
+    # the ``cfm`` pipeline ONLY: "all" and "launch" are unchanged (127 /
+    # 129), because a gate that FAILs on a historical fragmentation record
+    # would block every commit and every unrelated launcher.
+    "cfm": 8,  # HOLE-1 fix (2026-10-03): 6 → 7 — added the LIVE decode
     # canary `p1_cfm_live_decode_canary` (cfm-pipeline-only)
     # which executes TODAY's train_cfm_yuelbond_wasserstein.py
-    # + YuelBond decoder via the proven Wf-385-A3 3-epoch CPU
+    # + YuelBond decoder via the proven Wf-385-A3 13-epoch CPU
     # smoke (loss decrease 0.3% floor + decode_ratio > 0,
     # fail-closed).  The frozen Wf-188 anchor
     # `p1_cfm_smoke_decoded` remains as a relabelled
@@ -5218,6 +6225,392 @@ EXPECTED_GATE_COUNTS = {
     # len(build_gates("cfm")) at the fix timestamp (update
     # this value in the SAME edit as any cfm gate add/remove,
     # per the Wf-321D §5.3 bump protocol).
+}
+
+
+# ---------------------------------------------------------------------------
+# EXPECTED_GATE_NAMES — the FROZEN NAME SET (2026-11-04, Wf-A269 frontier sweep)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS.  `EXPECTED_GATE_COUNTS` (above) freezes a NUMBER.  A number
+# cannot distinguish
+#
+#   * "the gate named `p3_foo` was RENAMED to `p3_bar`"  — count unchanged;
+#   * "the gate `p3_foo` MOVED from the `all` pipeline to the `frontier`
+#     pipeline"                                             — both counts
+#                                                            unchanged;
+#   * "the gate `p3_foo` was REPLACED by a different gate `p3_baz`"
+#                                                            — count unchanged.
+#
+# In all three cases the gate-count audit said "consistent" while the surface
+# it certifies had changed.  That is the §6.269.17 DEAD-GATE class in its
+# "counting instead of reading" costume — a check that cannot fail.
+#
+# `EXPECTED_GATE_NAMES` freezes the NAMES, so each of the three is a drift.
+# THE COUNT IS NOW A DERIVED ASSERTION of the name set: the audit gate
+# (`gate_gate_count_consistency_audit`) checks, in EXPLICIT mode, that
+# `expected_total == len(EXPECTED_GATE_NAMES[pipeline])` and that the live
+# registration's names equal the frozen set.
+#
+# PRE-REPAIR RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6 — the
+# count-only constant above is UNCHANGED by this edit; it is the SUPERSEDED
+# (weaker) expectation and it stays on disk exactly as it was, dated by its
+# own comments:
+#
+#     EXPECTED_GATE_COUNTS = {
+#         ...
+#         "all": 133,
+#         "launch": 135,
+#         "frontier": 25,
+#         "chemprop_v2_v3": 18,
+#         "cfm": 8,
+#     }
+#
+# PROVENANCE OF THE VALUES (MEASURED 2026-11-04).  The tuples below were
+# GENERATED from a LIVE import of `build_gates` on this tree — never typed by
+# hand.  MEASURED counts at that timestamp: all 133, launch 135, frontier 25,
+# chemprop_v2_v3 18, cfm 8 — identical to `EXPECTED_GATE_COUNTS` above.
+#
+# HONEST LIMITS.
+#   * The comparison is ORDER-INSENSITIVE (the tuples are sorted): a gate
+#     whose REGISTRATION ORDER changed is NOT detected here.  The count never
+#     moved in that case either, so the limit is stated rather than hidden.
+#   * The set is a snapshot of ONE tree state.  Adding, removing or renaming
+#     a gate requires regenerating it — the Wf-321D §5.3 bump protocol now
+#     covers THREE artefacts (the doc, `EXPECTED_GATE_COUNTS` and this set).
+#   * These tuples are the EXPECTATION, not a measurement: they say what the
+#     registered surface must BE; `build_gates` says what it IS.
+EXPECTED_GATE_NAMES: dict[str, tuple[str, ...]] = {
+    "all": (
+        "p0_config_schema_verify",
+        "p0_csv_hash_verify",
+        "p0_gate_inventory_audit",
+        "p0_metalcytotox_v1_known_leaky",
+        "p0_nci60_split_no_leak",
+        "p0_scaffold_zero_leak",
+        "p1_cfm_catherine_30metals",
+        "p1_cfm_config_exists",
+        "p1_cfm_decoder_exists",
+        "p1_cfm_script_exists",
+        "p1_cfm_smoke_decoded",
+        "p1_cfm_wasserstein_loss_exists",
+        "p1_chemprop_ablation_flags",
+        "p1_chemprop_click_aug_flag",
+        "p1_chemprop_dann_per_metal",
+        "p1_chemprop_epoch_avg",
+        "p1_chemprop_grad_clip",
+        "p1_chemprop_indices_fix",
+        "p1_chemprop_kendall_optimizer",
+        "p1_chemprop_master_cath_flag",
+        "p1_chemprop_master_wass_flag",
+        "p1_chemprop_nan_guard",
+        "p1_chemprop_seeds_min",
+        "p1_chemprop_smoke",
+        "p1_compute_manifest",
+        "p1_gpu_env_probe",
+        "p1_hp_provenance_log",
+        "p1_runtime_energy_report",
+        "p2_data_leakage_diag",
+        "p2_data_metalcytotox_exists",
+        "p2_data_metallo_drugs_exists",
+        "p2_tests_pass",
+        "p2_vina_installed",
+        "p3_ablation_runner_aggregate_csv_present",
+        "p3_ablation_runner_registry_complete",
+        "p3_ablation_runner_tests_present",
+        "p3_admet_4_below_documented",
+        "p3_admet_ames_druglikeness",
+        "p3_admet_aq_sol_honest_negative_tag",
+        "p3_admet_cell_perm_druglikeness",
+        "p3_admet_hepatotox_honest_negative",
+        "p3_admet_logp7_4_honest_negative",
+        "p3_admet_m6_kappa_honest_negative",
+        "p3_anchorguard_consumers_adopt",
+        "p3_anchorguard_version_pin",
+        "p3_catherine_30metal_closeout_documented",
+        "p3_config_trainer_binding_check",
+        "p3_dmpnn_loss_wire_in_smoke",
+        "p3_frontier_math_day_3_5_integration_tests",
+        "p3_frontier_math_paper_refs_present",
+        "p3_frontier_math_wire_in",
+        "p3_gate_count_consistency_audit",
+        "p3_harness_auto_fallback_present",
+        "p3_honest_neg_closure_m1_re_fold",
+        "p3_honest_neg_closure_m2_r2",
+        "p3_honest_neg_closure_m6_kappa",
+        "p3_launch_contract_check",
+        "p3_m4_sa_qed_subcriterion_documented",
+        "p3_m8_full_pass_rate_documented",
+        "p3_mock_to_real_m14_decode_ratio_REAL_30_probes",
+        "p3_mock_to_real_m15_rmsd_REAL_5_pocket",
+        "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds",
+        "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds",
+        "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket",
+        "p3_msrs_dual_split_check",
+        "p3_msrs_granularity_check",
+        "p3_narrative_claims_check",
+        "p3_nci60_9cell_per_cell_aggregate",
+        "p3_ood_rdkit_fix_documented",
+        "p3_pb_packages_available_or_documented",
+        "p3_pb_packages_status_present",
+        "p3_phase3g_f2a_runtime_unblock_verified",
+        "p3_protocol_alignment_yaml_dataset_authorized",
+        "p3_protocol_alignment_yaml_no_inline_cli",
+        "p3_protocol_alignment_yaml_split_matches_baseline",
+        "p3_protocol_alignment_yaml_target_in_baseline_range",
+        "p3_qed_score_metric_present",
+        "p3_r20_p0_loader_api_doc_present",
+        "p3_r20_phase0_loaders_complete",
+        "p3_registry_consistency",
+        "p3_run_ledger_config_provenance",
+        "p3_run_ledger_provenance",
+        "p3_run_ledger_staleness",
+        "p3_runtime_transport_check",
+        "p3_sa_score_metric_present",
+        "p3_script_contract_check",
+        "p3_section9_honest_framing_min30",
+        "p3_smoke_fail_on_missing_audit",
+        "p3_ssot_census_claim_check",
+        "p3_ssot_path_reference_check",
+        "p3_todo220_drivers_present",
+        "p3_todo_119_p14_cpu_smoke_ready",
+        "p3_uff_min_pt_pool_present",
+        "p3_wf304b_platinai_selenium_diag",
+        "p3_wf327_cpu_num_workers_sufficient",
+        "p3_wf343c3_data_quality_check",
+        "p3_wf343c4_hyperparams_config_complete",
+        "p3_wf343c4_wave_budget_remaining_nonneg",
+        "p3_wf343c4_yuelbond_decoder_env",
+        "p3_wf353b1_ablation_1_3_1_flags_present",
+        "p3_wf353b1_ablation_1_3_2_single_metal_flag",
+        "p3_wf353b1_ablation_1_3_3_n_seeds_min_flag",
+        "p3_wf353b1_code_1_1_10_master_modules_flags",
+        "p3_wf353b1_code_1_1_1_indices_aliasing_fix",
+        "p3_wf353b1_code_1_1_2_kendall_log_sigma",
+        "p3_wf353b1_code_1_1_3_dann_per_metal",
+        "p3_wf353b1_code_1_1_4_nan_to_num_guard",
+        "p3_wf353b1_code_1_1_5_grad_clip_max_norm",
+        "p3_wf353b1_code_1_1_6_w2_epoch_avg_history",
+        "p3_wf353b1_code_1_1_7_ablation_flags_present",
+        "p3_wf353b1_code_1_1_8_enhanced_metal_head",
+        "p3_wf353b1_code_1_1_9_click_aug_flag",
+        "p3_wf353b1_data_2_1_1_metalcytotox_5metal_csv",
+        "p3_wf353b1_data_2_1_2_metalcytotox_raw_csv",
+        "p3_wf353b1_data_2_1_3_drugood_dir",
+        "p3_wf353b1_data_2_1_4_nci60_dir",
+        "p3_wf353b1_data_2_1_5_platinai_4cell_dir",
+        "p3_wf353b1_data_2_1_6_bindingdb_external_honest_negative",
+        "p3_wf353b1_data_2_1_7_click_yields_csv",
+        "p3_wf353b1_honest_framing_8_15_catalog_entry_count",
+        "p3_wf353b1_test_3_1_5_nan_guard_test_present",
+        "p3_wf35_protocol_lock_m17_drugood_ood",
+        "p3_wf35_protocol_lock_m19_lomo",
+        "p3_wf35_protocol_lock_m1_ru_auc",
+        "p3_wf35_protocol_lock_m21_nci60_9cell",
+        "p3_wf35_protocol_lock_m2_r2_per_cell",
+        "p3_wf385_scaffold_loss_wire_in_verified",
+        "p3_wf_r43_m16_pt_ckpt_gap",
+        "p3_wf_r43_m19_lomo_headline",
+        "p3_wf_r43_m1_paper_cohort",
+        "p3_wf_r43_m2_cohort_independence",
+        "p3_wf_r43_m7_subpocket_uniform",
+        "p3_yaml_only_launch_check",
+    ),
+    "launch": (
+        "p0_config_schema_verify",
+        "p0_csv_hash_verify",
+        "p0_gate_inventory_audit",
+        "p0_metalcytotox_v1_known_leaky",
+        "p0_nci60_split_no_leak",
+        "p0_scaffold_zero_leak",
+        "p1_cfm_catherine_30metals",
+        "p1_cfm_config_exists",
+        "p1_cfm_decoder_exists",
+        "p1_cfm_script_exists",
+        "p1_cfm_smoke_decoded",
+        "p1_cfm_wasserstein_loss_exists",
+        "p1_chemprop_ablation_flags",
+        "p1_chemprop_click_aug_flag",
+        "p1_chemprop_dann_per_metal",
+        "p1_chemprop_epoch_avg",
+        "p1_chemprop_grad_clip",
+        "p1_chemprop_indices_fix",
+        "p1_chemprop_kendall_optimizer",
+        "p1_chemprop_master_cath_flag",
+        "p1_chemprop_master_wass_flag",
+        "p1_chemprop_nan_guard",
+        "p1_chemprop_seeds_min",
+        "p1_chemprop_smoke",
+        "p1_compute_manifest",
+        "p1_gpu_env_probe",
+        "p1_hp_provenance_log",
+        "p1_runtime_energy_report",
+        "p2_data_leakage_diag",
+        "p2_data_metalcytotox_exists",
+        "p2_data_metallo_drugs_exists",
+        "p2_tests_pass",
+        "p2_vina_installed",
+        "p3_ablation_runner_aggregate_csv_present",
+        "p3_ablation_runner_registry_complete",
+        "p3_ablation_runner_tests_present",
+        "p3_admet_4_below_documented",
+        "p3_admet_ames_druglikeness",
+        "p3_admet_aq_sol_honest_negative_tag",
+        "p3_admet_cell_perm_druglikeness",
+        "p3_admet_hepatotox_honest_negative",
+        "p3_admet_logp7_4_honest_negative",
+        "p3_admet_m6_kappa_honest_negative",
+        "p3_anchorguard_consumers_adopt",
+        "p3_anchorguard_version_pin",
+        "p3_catherine_30metal_closeout_documented",
+        "p3_config_trainer_binding_check",
+        "p3_dmpnn_loss_wire_in_smoke",
+        "p3_enforcement_stack_trackedness",
+        "p3_frontier_math_day_3_5_integration_tests",
+        "p3_frontier_math_paper_refs_present",
+        "p3_frontier_math_wire_in",
+        "p3_gate_count_consistency_audit",
+        "p3_harness_auto_fallback_present",
+        "p3_honest_neg_closure_m1_re_fold",
+        "p3_honest_neg_closure_m2_r2",
+        "p3_honest_neg_closure_m6_kappa",
+        "p3_launch_contract_check",
+        "p3_m4_sa_qed_subcriterion_documented",
+        "p3_m8_full_pass_rate_documented",
+        "p3_mock_to_real_m14_decode_ratio_REAL_30_probes",
+        "p3_mock_to_real_m15_rmsd_REAL_5_pocket",
+        "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds",
+        "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds",
+        "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket",
+        "p3_msrs_dual_split_check",
+        "p3_msrs_granularity_check",
+        "p3_narrative_claims_check",
+        "p3_nci60_9cell_per_cell_aggregate",
+        "p3_ood_rdkit_fix_documented",
+        "p3_pb_packages_available_or_documented",
+        "p3_pb_packages_status_present",
+        "p3_phase3g_f2a_runtime_unblock_verified",
+        "p3_protocol_alignment_yaml_dataset_authorized",
+        "p3_protocol_alignment_yaml_no_inline_cli",
+        "p3_protocol_alignment_yaml_split_matches_baseline",
+        "p3_protocol_alignment_yaml_target_in_baseline_range",
+        "p3_qed_score_metric_present",
+        "p3_r20_p0_loader_api_doc_present",
+        "p3_r20_phase0_loaders_complete",
+        "p3_registry_consistency",
+        "p3_run_ledger_config_provenance",
+        "p3_run_ledger_provenance",
+        "p3_run_ledger_staleness",
+        "p3_runtime_transport_check",
+        "p3_sa_score_metric_present",
+        "p3_script_contract_check",
+        "p3_section9_honest_framing_min30",
+        "p3_smoke_fail_on_missing_audit",
+        "p3_ssot_census_claim_check",
+        "p3_ssot_path_reference_check",
+        "p3_todo220_drivers_present",
+        "p3_todo_119_p14_cpu_smoke_ready",
+        "p3_uff_min_pt_pool_present",
+        "p3_wf304b_platinai_selenium_diag",
+        "p3_wf327_cpu_num_workers_sufficient",
+        "p3_wf343c2_per_wave_runtime_check",
+        "p3_wf343c3_data_quality_check",
+        "p3_wf343c4_anchor_freshness_24h",
+        "p3_wf343c4_hyperparams_config_complete",
+        "p3_wf343c4_wave_budget_remaining_nonneg",
+        "p3_wf343c4_yuelbond_decoder_env",
+        "p3_wf353b1_ablation_1_3_1_flags_present",
+        "p3_wf353b1_ablation_1_3_2_single_metal_flag",
+        "p3_wf353b1_ablation_1_3_3_n_seeds_min_flag",
+        "p3_wf353b1_code_1_1_10_master_modules_flags",
+        "p3_wf353b1_code_1_1_1_indices_aliasing_fix",
+        "p3_wf353b1_code_1_1_2_kendall_log_sigma",
+        "p3_wf353b1_code_1_1_3_dann_per_metal",
+        "p3_wf353b1_code_1_1_4_nan_to_num_guard",
+        "p3_wf353b1_code_1_1_5_grad_clip_max_norm",
+        "p3_wf353b1_code_1_1_6_w2_epoch_avg_history",
+        "p3_wf353b1_code_1_1_7_ablation_flags_present",
+        "p3_wf353b1_code_1_1_8_enhanced_metal_head",
+        "p3_wf353b1_code_1_1_9_click_aug_flag",
+        "p3_wf353b1_data_2_1_1_metalcytotox_5metal_csv",
+        "p3_wf353b1_data_2_1_2_metalcytotox_raw_csv",
+        "p3_wf353b1_data_2_1_3_drugood_dir",
+        "p3_wf353b1_data_2_1_4_nci60_dir",
+        "p3_wf353b1_data_2_1_5_platinai_4cell_dir",
+        "p3_wf353b1_data_2_1_6_bindingdb_external_honest_negative",
+        "p3_wf353b1_data_2_1_7_click_yields_csv",
+        "p3_wf353b1_honest_framing_8_15_catalog_entry_count",
+        "p3_wf353b1_test_3_1_5_nan_guard_test_present",
+        "p3_wf35_protocol_lock_m17_drugood_ood",
+        "p3_wf35_protocol_lock_m19_lomo",
+        "p3_wf35_protocol_lock_m1_ru_auc",
+        "p3_wf35_protocol_lock_m21_nci60_9cell",
+        "p3_wf35_protocol_lock_m2_r2_per_cell",
+        "p3_wf385_scaffold_loss_wire_in_verified",
+        "p3_wf_r43_m16_pt_ckpt_gap",
+        "p3_wf_r43_m19_lomo_headline",
+        "p3_wf_r43_m1_paper_cohort",
+        "p3_wf_r43_m2_cohort_independence",
+        "p3_wf_r43_m7_subpocket_uniform",
+        "p3_yaml_only_launch_check",
+    ),
+    "frontier": (
+        "p3_admet_4_below_documented",
+        "p3_admet_ames_druglikeness",
+        "p3_admet_aq_sol_honest_negative_tag",
+        "p3_admet_cell_perm_druglikeness",
+        "p3_admet_hepatotox_honest_negative",
+        "p3_admet_logp7_4_honest_negative",
+        "p3_admet_m6_kappa_honest_negative",
+        "p3_anchorguard_consumers_adopt",
+        "p3_anchorguard_version_pin",
+        "p3_frontier_math_day_3_5_integration_tests",
+        "p3_frontier_math_paper_refs_present",
+        "p3_frontier_math_wire_in",
+        "p3_harness_auto_fallback_present",
+        "p3_loi_send_ready",
+        "p3_m4_sa_qed_subcriterion_documented",
+        "p3_m6_kappa_closeout_documented",
+        "p3_nci60_9cell_per_cell_aggregate",
+        "p3_qed_score_metric_present",
+        "p3_sa_score_metric_present",
+        "p3_section9_honest_framing_min30",
+        "p3_smoke_fail_on_missing_audit",
+        "p3_todo220_drivers_present",
+        "p3_wf135_phase2_cpu_smoke_ready",
+        "p3_wf176_m19_lomo_closeout_documented",
+        "p3_wf304b_platinai_selenium_diag",
+    ),
+    "chemprop_v2_v3": (
+        "p1_chemprop_ablation_flags",
+        "p1_chemprop_click_aug_flag",
+        "p1_chemprop_dann_per_metal",
+        "p1_chemprop_epoch_avg",
+        "p1_chemprop_grad_clip",
+        "p1_chemprop_indices_fix",
+        "p1_chemprop_kendall_optimizer",
+        "p1_chemprop_master_cath_flag",
+        "p1_chemprop_master_wass_flag",
+        "p1_chemprop_nan_guard",
+        "p1_chemprop_seeds_min",
+        "p1_chemprop_smoke",
+        "p1_compute_manifest",
+        "p3_protocol_alignment_yaml_dataset_authorized",
+        "p3_protocol_alignment_yaml_no_inline_cli",
+        "p3_protocol_alignment_yaml_split_matches_baseline",
+        "p3_protocol_alignment_yaml_target_in_baseline_range",
+        "p3_todo_119_p14_cpu_smoke_ready",
+    ),
+    "cfm": (
+        "p1_cfm_catherine_30metals",
+        "p1_cfm_config_exists",
+        "p1_cfm_decoder_exists",
+        "p1_cfm_live_decode_canary",
+        "p1_cfm_script_exists",
+        "p1_cfm_smoke_decoded",
+        "p1_cfm_wasserstein_loss_exists",
+        "p3_cfm_fragmentation_preflight",
+    ),
 }
 
 
@@ -5385,6 +6778,20 @@ def _changed_file_list(explicit: Optional[str]) -> List[str]:
             text=True,
             timeout=20.0,
         )
+    except subprocess.TimeoutExpired:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the changed-file
+        # list was NOT obtained.  The documented fallback (run ALL gates) is
+        # the conservative outcome; it is NOT a claim that nothing changed
+        # (AGENTS.md §5.2).  Named explicitly so the timeout is not folded
+        # into the generic exec-error handler, and said out loud so the
+        # operator knows the list was not measured.
+        print(
+            f"[pre_flight_check] WARNING {GATE_STATUS_TIMEOUT}: `git diff "
+            f"--cached --name-only` timed out — the changed-file list was "
+            f"NOT obtained; running ALL gates.",
+            file=sys.stderr,
+        )
+        return []
     except (OSError, subprocess.SubprocessError):
         return []
     if out.returncode != 0:
@@ -5485,6 +6892,8 @@ def gate_p1_hp_provenance_log(
     records: List[Dict[str, Any]] = []
     problems: List[str] = []
     file_writes: List[str] = []
+    # Wf-A159 (2026-11-01) — git probes whose measurement was NOT obtained.
+    not_measured: List[str] = []
 
     for cfg in config_paths:
         if not cfg.is_file():
@@ -5497,6 +6906,24 @@ def gate_p1_hp_provenance_log(
             timeout=timeout,
             cwd=REPO_ROOT,
         )
+        if rc_head == 124:
+            # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the commit
+            # SHA was NOT obtained; it is NOT a claim that the config has
+            # no git provenance (AGENTS.md §5.2).  Record it as "not
+            # measured" instead of as a defect.
+            not_measured.append(
+                _timeout_gate_result(
+                    name,
+                    priority,
+                    pipeline,
+                    budget_sec=float(timeout),
+                    elapsed_sec=time.perf_counter() - t0,
+                    tail=err_head.strip()[:200] or "(no stderr)",
+                    detail="git rev-parse HEAD",
+                    not_a_verdict_on="the config's git provenance",
+                ).evidence
+            )
+            continue
         if rc_head != 0:
             problems.append(
                 f"git rev-parse HEAD failed for {cfg.name} (rc={rc_head}): {err_head.strip()}"
@@ -5520,7 +6947,22 @@ def gate_p1_hp_provenance_log(
             cwd=REPO_ROOT,
         )
         recent_commits: List[Dict[str, str]] = []
-        if rc_log != 0:
+        if rc_log == 124:
+            # Wf-A159 (2026-11-01) — a timeout means the commit history was
+            # NOT obtained; it is not a defect claim (AGENTS.md §5.2).
+            not_measured.append(
+                _timeout_gate_result(
+                    name,
+                    priority,
+                    pipeline,
+                    budget_sec=float(timeout),
+                    elapsed_sec=time.perf_counter() - t0,
+                    tail=err_log.strip()[:200] or "(no stderr)",
+                    detail=f"git log --oneline {rel_cfg}",
+                    not_a_verdict_on="the config's git history",
+                ).evidence
+            )
+        elif rc_log != 0:
             # Treat log failure as a soft problem but record empty list
             # so downstream consumers can still see the current_sha.
             problems.append(
@@ -5546,7 +6988,23 @@ def gate_p1_hp_provenance_log(
             timeout=timeout,
             cwd=REPO_ROOT,
         )
-        if rc_st != 0:
+        if rc_st == 124:
+            # Wf-A159 (2026-11-01) — a timeout means the working-tree state
+            # was NOT obtained; it is not a defect claim (AGENTS.md §5.2).
+            not_measured.append(
+                _timeout_gate_result(
+                    name,
+                    priority,
+                    pipeline,
+                    budget_sec=float(timeout),
+                    elapsed_sec=time.perf_counter() - t0,
+                    tail=err_st.strip()[:200] or "(no stderr)",
+                    detail=f"git status --short {rel_cfg}",
+                    not_a_verdict_on="the config's working-tree state",
+                ).evidence
+            )
+            uncommitted_changes = False
+        elif rc_st != 0:
             problems.append(
                 f"git status --short {rel_cfg} failed (rc={rc_st}): {err_st.strip()}"
             )
@@ -5578,6 +7036,20 @@ def gate_p1_hp_provenance_log(
         problems.append(f"failed to write {jsonl_path}: {type(exc).__name__}: {exc}")
 
     elapsed = time.perf_counter() - t0
+    if not_measured:
+        # Wf-A159 (2026-11-01) — a timed-out git probe is a TIMEOUT, not a
+        # defect: the provenance it was after was NOT obtained.  A REAL
+        # problem (a failing git command, an unwritable JSONL) still FAILs.
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            GATE_STATUS_TIMEOUT,
+            f"TIMEOUT: {len(not_measured)} git probe(s) timed out; the "
+            f"measurement was NOT obtained, so this is NOT a verdict on the "
+            f"config's git provenance. | " + " || ".join(not_measured),
+            elapsed,
+        )
     if problems:
         return GateResult(
             name,
@@ -5761,8 +7233,32 @@ def gate_p1_runtime_energy_report(
 
     per_gpu: List[Dict[str, Any]] = []
     problems: List[str] = []
+    # Wf-A159 (2026-11-01) — set when the probe's measurement was NOT
+    # obtained (wall-clock timeout).
+    timeout_result: Optional[GateResult] = None
 
-    if rc != 0:
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # this host has no NVIDIA driver.  The old wording ("likely no
+        # NVIDIA driver / GPU available on host") was a FALSE
+        # ENVIRONMENTAL CLAIM produced by a timeout: the probe did not
+        # finish, so the driver's presence was NOT determined either way
+        # (AGENTS.md §5.2 honest framing — a genuine defect is reported as
+        # a defect, and only a genuine defect may be reported as one).
+        timeout_result = _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(nvidia_smi_timeout),
+            elapsed_sec=time.perf_counter() - t0,
+            tail=(err or "").strip()[:200] or "(no stderr)",
+            detail="the nvidia-smi power/limit probe",
+            not_a_verdict_on=(
+                "this host's NVIDIA driver availability or its per-GPU "
+                "power/limit reporting"
+            ),
+        )
+    elif rc != 0:
         problems.append(
             f"nvidia-smi rc={rc} (likely no NVIDIA driver / GPU "
             f"available on host); stderr={err.strip()[:200]!r}"
@@ -5822,6 +7318,13 @@ def gate_p1_runtime_energy_report(
     json_path.write_text(json.dumps(artefact, indent=2), encoding="utf-8")
 
     elapsed = time.perf_counter() - t0
+
+    # ---- Wf-A159: the timeout verdict comes BEFORE the defect branches ----
+    # The artefact is still written above (it records n_gpus_reported=0
+    # because the probe did not finish, NOT because the host has no GPU),
+    # but the VERDICT must be the timeout, not a defect.
+    if timeout_result is not None:
+        return timeout_result
 
     # ---- FAIL branches (ordered by severity) ----
     if problems:
@@ -5916,6 +7419,23 @@ def gate_p1_gpu_env_probe(
     FAIL on any one missing record, missing field, or probe subprocess
     failure (e.g. timeout / non-zero exit code).
 
+    SKIP contract (Wf-A128, 2026-10-31): this gate is **GPU-REQUIRED**,
+    and it SKIPs when the session hides the GPUs from torch — i.e. when
+    ``CUDA_VISIBLE_DEVICES`` is present and blank (the repo's standing
+    CPU lock).  ``torch.cuda.is_available()`` consults
+    ``CUDA_VISIBLE_DEVICES`` at CALL time, so in such a session the
+    probe's torch half cannot see a GPU by construction: the
+    ``torch_probe.ok == false`` result is a SESSION artefact, not a host
+    defect, and FAILing on it made a GPU-REQUIRED check un-remediable in
+    exactly the sessions that are forbidden to touch the GPU.  The SKIP
+    is loud and carries the host facts that WERE measured (nvidia-smi is
+    unaffected by the lock): ``nvidia_smi_rc``, ``gpu_count``,
+    ``gpu_names``, ``vram_free_gb`` and the raw ``torch_probe`` dict.
+    No CUDA result is fabricated: the SKIP never claims a PASS, and every
+    FAIL branch below is unchanged for any session that does not blank
+    CUDA.  This matches the repo's existing env-gap SKIP convention
+    (the YuelBond-decoder gate and the Wf-385-A3 SCAFFOLD gate).
+
     CPU-only by design: the gate invokes ``python check_blackwell_env.py``
     once at gate invocation, then reads the JSON; total wall-budget
     on a 2-GPU host ~1-3 s (the probe spawns ``nvidia-smi`` + up to 3
@@ -5957,6 +7477,20 @@ def gate_p1_gpu_env_probe(
         timeout=probe_timeout,
         cwd=REPO_ROOT,
     )
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # the GPU environment probe script is broken: the script did not
+        # finish, so the environment was NOT measured (AGENTS.md §5.2).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(probe_timeout),
+            elapsed_sec=time.perf_counter() - t0,
+            tail=(err or "").strip()[:200] or "(no stderr)",
+            detail="the GPU environment probe script",
+            not_a_verdict_on="the GPU environment probe script's correctness",
+        )
     if rc != 0:
         return GateResult(
             name,
@@ -6054,6 +7588,58 @@ def gate_p1_gpu_env_probe(
         )
 
     # ---- (5) FAIL branches (ordered by severity) ----
+    #
+    # Wf-A128 (2026-10-31) — the GPU-REQUIRED classification.  This gate
+    # had ZERO SKIP branches, so it FAILed in a CPU-locked session even
+    # when the HOST was fine.  MEASURED on this host, in the artifact the
+    # probe itself writes (``molmetal/reports/wf350c1_gpu_env_check.json``):
+    # ``nvidia_smi_rc = 0``, ``gpu_count = 2`` (RTX PRO 6000 Blackwell +
+    # RTX 5090), ``vram_free_gb = 116.1`` — but ``torch_probe.ok = false``
+    # and ``torch_probe.device_count = 0``.  The cause is that
+    # ``torch.cuda.is_available()`` consults ``CUDA_VISIBLE_DEVICES`` at
+    # CALL time, and the repo's standing CPU lock blanks it: the probe's
+    # torch sub-probe therefore CANNOT see the GPUs no matter how healthy
+    # the host is.  That is a SESSION artefact, not a host defect, and
+    # reporting it as a FAIL made a GPU-REQUIRED check un-remediable in
+    # exactly the sessions that are not allowed to touch the GPU.
+    #
+    # The honest classification, matching the repo convention elsewhere
+    # (the YuelBond-decoder gate and the Wf-385-A3 SCAFFOLD gate both
+    # SKIP on an env gap): when the session has CUDA hidden, the
+    # torch-visibility half of this gate is NOT MEASURABLE, so the gate
+    # SKIPs and reports the host facts that WERE measured.  nvidia-smi is
+    # NOT affected by ``CUDA_VISIBLE_DEVICES``, so the host-side facts in
+    # the artefact are real measurements, not assumptions.
+    #
+    # No CUDA result is ever fabricated: the SKIP never claims a PASS, and
+    # the FAIL branches below are UNCHANGED for any session that does not
+    # blank CUDA.
+    _session_cuda_locked = _session_cuda_is_locked()
+    if _session_cuda_locked:
+        host = env_summary.get("host", {})
+        if not isinstance(host, dict):
+            host = {}
+        n_smi_rc = host.get("nvidia_smi_rc")
+        n_gpus = env_summary.get("gpu_count")
+        vram_free = env_summary.get("vram_free_gb")
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"GPU-REQUIRED probe is NOT MEASURABLE in this session: "
+            f"CUDA_VISIBLE_DEVICES is blank (the repo's standing CPU lock), "
+            f"so torch.cuda.is_available() cannot see any GPU by "
+            f"construction — the torch half of this check is a SESSION "
+            f"artefact, not a host defect. Host facts MEASURED by "
+            f"nvidia-smi (unaffected by the lock): nvidia_smi_rc={n_smi_rc}, "
+            f"gpu_count={n_gpus}, gpu_names={gpu_names}, "
+            f"vram_free_gb={vram_free}; torch_probe={torch_probe}. "
+            f"Re-run this gate in a GPU session (CUDA_VISIBLE_DEVICES "
+            f"unset) to verify torch's CUDA visibility.",
+            time.perf_counter() - t0,
+        )
+
     if not torch_probe.get("ok", False):
         return GateResult(
             name,
@@ -7230,7 +8816,7 @@ def gate_wf343c4_yuelbond_decoder_env(
             f"host Python); cfm_decoder_yuelbond.py CANNOT be "
             f"loaded without the expected torch-enabled runtime "
             f"(the repo-local canonical "
-            f"/home/hugo/codes/mol-metal/.venv/bin/python per "
+            f"{REPO_ROOT}/.venv/bin/python per "
             f"AGENTS.md §5.1 + §5.9). Module is on disk "
             f"({decoder_module}, {decoder_module.stat().st_size}B) "
             f"and structurally loadable — this is an env gap, not a "
@@ -7825,6 +9411,20 @@ def gate_wf343c2_per_wave_runtime_check(
         else "budget not declared (inner budget check SKIPs loudly; "
         "pass --budget-hr/--budget-report to make it real)"
     )
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="wf343c2_per_wave_check.py",
+            not_a_verdict_on="the per-wave runtime check's verdict",
+        )
     if rc == 0:
         return GateResult(
             name,
@@ -7911,6 +9511,20 @@ def gate_wf343c3_data_quality_check(
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
     tail = blob.splitlines()[-1] if blob else "(no output)"
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="wf343c3_data_quality_check.py",
+            not_a_verdict_on="the data-quality check's verdict",
+        )
     if rc == 0:
         return GateResult(
             name,
@@ -7972,6 +9586,20 @@ def gate_yaml_only_launch(
     rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the yaml-only launch gate script",
+            not_a_verdict_on="the yaml-only launch contract",
+        )
     if rc == 0:
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
@@ -7984,6 +9612,764 @@ def gate_yaml_only_launch(
         name, priority, pipeline, "FAIL",
         f"yaml-only launch gate FAIL (AGENTS.md §5.11, rc={rc}): "
         f"{len(violations)} violation(s); first: {head}",
+        elapsed,
+    )
+
+
+def gate_launch_contract(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 300.0,
+) -> GateResult:
+    """AGENTS.md §5.11 — every flag a wrapper passes must be DECLARED by its trainer.
+
+    The companion to :func:`gate_yaml_only_launch`.  That gate answers "is this
+    flag one of the four that may appear on a trainer invocation line?"; its
+    allowlist is FIXED — the same four strings for every trainer.  But the legal
+    set is defined by the TRAINER'S OWN PARSER, and the two are not the same
+    set: MEASURED 2026-11-03 over the 38 trainers whose parser the repo can
+    capture, ``--ckpt-dir`` is declared by 8, ``--out-dir`` by 29, ``--config``
+    by 16.  **A wrapper can obey §5.11 literally and still die at argument
+    parsing** — and the repo's own run log records exactly that:
+    ``molmetal/reports/wf125_p1_controlled_pair/run_synthetic/run.log:18``.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6
+    (Wf-A269, 2026-11-03).  The reading above was taken over the 38 trainers
+    whose parser the gate could capture; the corpus was
+    ``molmetal/scripts/train_*.py`` (43 files) and 5 of them were UNREADABLE.
+    After the gate's capture repair (see below) the corpus is **43 of 43**:
+    ``--config`` declared by 16/43, ``--out-dir`` by 29/43, ``--ckpt-dir`` by
+    8/43 — i.e. the five newly-readable trainers declare NONE of the three, so
+    the per-flag counts are unchanged while the DENOMINATOR grew.  The five
+    are train_hybrid.py, train_metal_hybrid_v4.py, train_metal_hybrid_v4_mb1.py,
+    train_property_predictor.py, train_symbolic_regression.py.  Two of them
+    declare NEAR-MISS names instead — train_symbolic_regression.py has
+    ``--output-dir`` and train_property_predictor.py has ``--output``, neither
+    of which is ``--out-dir``.
+
+    The gate IMPORTS each trainer to read its parser, so it costs more than
+    the source scan above: MEASURED 2026-11-03, importing all 43 trainers and
+    capturing every parser takes 9.7 s in total (one trainer pays 6.2 s for
+    torch; the rest are lazy).  That is affordable inside a launch-time gate.
+
+    Fail-closed rule: a flag the trainer does not declare is a violation; a
+    trainer whose parser cannot be captured is a COVERAGE GAP, counted and
+    listed in the report, not a violation.  A gate that called "the trainer
+    would not import" a defect would be right by accident and useless in
+    practice; one that called it clean would be lying.
+
+    **Wf-A269, 2026-11-03 — THE COVERAGE-GAP RULE IS REVERSED, BECAUSE THE
+    ORIGINAL WAS FAIL-OPEN.**  The paragraph above is the SUPERSEDED
+    rendering.  It treated an unreadable parser as a census entry and
+    SKIPPED the wrapper's flags — which means the gate reported PASS having
+    checked NOTHING for that wrapper.  That is a check that can PASS WITHOUT
+    CHECKING (§6.269.19.5's defect class), and it is what the migration
+    wave's "0 yaml-only violations" claim was guilty of.  **A coverage gap is
+    now a VIOLATION** (fail-closed): the gate cannot prove those flags are
+    legal, so it must not certify the launch.  The reason the original rule
+    looked reasonable — "a gate that called the trainer's import failure a
+    defect would be useless in practice" — was that the UNDERLYING capture
+    was broken: the gate called ``mod.main([])`` unconditionally, so every
+    zero-argument ``def main():`` trainer raised a TypeError that was
+    swallowed.  With the capture repaired (43/43 readable), a coverage gap
+    means something else again, and it must not be waved through.
+
+    CPU-only: the trainers are imported, never run.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect verdict:
+        # the guard did not finish, so its verdict was NOT obtained.
+        return _timeout_gate_result(
+            name, priority, pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the launch-contract gate script",
+            not_a_verdict_on="the launch contract (declared-flag set)",
+        )
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"launch-contract gate PASS (AGENTS.md §5.11): {tail}", elapsed,
+        )
+    violations = [ln.strip() for ln in blob.splitlines() if "VIOLATION" in ln]
+    head = violations[0] if violations else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"launch-contract gate FAIL (AGENTS.md §5.11, rc={rc}): "
+        f"{len(violations)} violation(s); first: {head}",
+        elapsed,
+    )
+
+
+def gate_runtime_transport(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 900.0,
+) -> GateResult:
+    """AGENTS.md §5.11 — the flags a RUNTIME string transports must be DECLARED.
+
+    The third of the three §5.11 gates, and the one that catches what a
+    STATIC scan cannot see.
+
+    ``p3_yaml_only_launch_check`` scans the *invocation lines* of a wrapper:
+    the flags written literally on a command line.  ``p3_launch_contract_check``
+    compares those same literal flags against the parser of the trainer the
+    invocation names.  Neither can see a flag that is only assembled AT RUN
+    TIME — e.g. ``scripts/start.sh`` builds ``EVENTS_FLAG`` from a YAML key and
+    interpolates it into ``$TRAINER_CMD``, so the flag exists in the file only
+    as a string constant.
+
+    MEASURED 2026-11-04 by ``scripts/_runtime_transport_gate.py``: two such
+    runtime strings, 14 transport sites, and **2 live violations** —
+
+    * ``scripts/start.sh:916`` transported ``--no-events-jsonl`` to
+      ``molmetal/scripts/train_cfm_yuelbond_wasserstein.py``, whose parser
+      declared ``--emit-json-events``/``--events-jsonl-path`` but NOT
+      ``--no-events-jsonl``; a CFM config with ``output.events_jsonl: false``
+      would have aborted with argparse's "unrecognized arguments" before a
+      single step ran.
+    * ``configs/cfm_patience10_seed0_2026_10_12.yaml`` passed ``--config`` to
+      ``molmetal/scripts/bench_cfm_decode_real.py``, whose parser declares no
+      ``--config`` at all.
+
+    Both are REPAIRED (2026-11-04): the CFM trainer now declares the flag it
+    was being handed, and the config's command template no longer transports a
+    flag its entry script does not declare.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    the gate shipped STANDALONE on 2026-11-04 (as an untracked script, with
+    its own test file) and was referenced by **0** pre-flight gates — which is
+    the §6.269.19 "disclosed but not enforced" costume of the DEAD-GATE class
+    (a check that prints its residual every run and fails nothing).  It is
+    registered here so that its verdict is CONSUMED.
+
+    Fail-closed on a missing script: a gate that cannot run must not certify
+    the launch.  Launch-time only (it inspects launch surfaces) and CPU-only
+    (the trainers are imported, never run).
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard did not finish, so its verdict was NOT
+        # obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the runtime-transport gate script",
+            not_a_verdict_on="the runtime transport contract (declared-flag set)",
+        )
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"runtime-transport gate PASS (AGENTS.md §5.11): {tail}", elapsed,
+        )
+    violations = [ln.strip() for ln in blob.splitlines() if "VIOLATION" in ln]
+    head = violations[0] if violations else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"runtime-transport gate FAIL (AGENTS.md §5.11, rc={rc}): "
+        f"{len(violations)} violation(s); first: {head}",
+        elapsed,
+    )
+
+
+def gate_script_contract(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 900.0,
+) -> GateResult:
+    """AGENTS.md §5.11 — the flags a wrapper passes to a NON-``train_*`` script.
+
+    The fourth §5.11 gate, and the one that covers the class the other three
+    structurally cannot see.
+
+    ``p3_yaml_only_launch_check`` proves a wrapper passes no hyperparameters.
+    ``p3_config_trainer_binding_check`` proves the config's keys reach a
+    dest.  ``p3_launch_contract_check`` and ``p3_runtime_transport_check``
+    prove the flags reach a parser that DECLARES them — but both find the
+    script to ask by matching ``^train_[a-z0-9_]+\\.py$``, so they never ask
+    it for the runners, the drivers, the smoke helpers, the pre-flight, or
+    the scaffolds.  For every repo-local script that is NOT named ``train_*``,
+    "does the flag reach a parser that declares it?" was NEVER CHECKED.
+
+    MEASURED 2026-11-04 by the census over the 101 in-contract wrappers:
+    **2 live launch-killers** in that blind spot —
+
+    * ``scripts/launch_wf_fix3lines_cfm_c5_repair.sh`` passed ``--fast`` to
+      ``molmetal/scripts/pre_flight_check.py``, whose parser declares 13
+      options and NOT ``--fast``;
+    * ``scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh`` passed
+      ``--no-smoke`` to
+      ``molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py``, whose own
+      help text promises ``--no-smoke`` while its parser declares only
+      ``--smoke``.
+
+    Both would abort with argparse's "unrecognized arguments" before any
+    work was done.  Both are REPAIRED (2026-11-04).
+
+    >>> SUPERSEDED 2026-11-04 (Wf-A269 wave-19; corrected the SAME DAY by the
+    >>> main thread).  The SECOND bullet above is **FALSE** — and so are
+    >>> "2", "Both", and "Both are REPAIRED".  The rendering above is
+    >>> PRESERVED VERBATIM per AGENTS.md §5.5 rule #6.  THE CORRECTION, with
+    >>> its measurement:
+    >>>
+    >>>  * ``--no-smoke`` **IS** a declared option of
+    >>>    ``molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py``:
+    >>>    its ``--smoke`` is declared with
+    >>>    ``action=argparse.BooleanOptionalAction``, and argparse's
+    >>>    ``BooleanOptionalAction`` registers BOTH ``--smoke`` AND
+    >>>    ``--no-smoke`` from ONE ``add_argument`` call (CPython
+    >>>    ``argparse._BooleanOptionalAction.__init__``).  MEASURED on the
+    >>>    real script, 2026-11-04, 0 GPU, no work done: its own usage
+    >>>    line reads ``[--smoke | --no-smoke]``, and invoking it with
+    >>>    ``--no-smoke --metals NOT_A_METAL`` fails on ``--metals``
+    >>>    ("invalid choice"), NOT on ``--no-smoke`` — so the launch does
+    >>>    NOT die with "unrecognized arguments".
+    >>>  * the TRUE instance count is **1**, not 2: only the ``--fast``
+    >>>    bullet is a live launch-killer.  It was REPAIRED by DROPPING
+    >>>    ``--fast`` from the pre-flight invocation (``--fast`` was never
+    >>>    an option of ``pre_flight_check.py`` and never was — MEASURED:
+    >>>    that parser declares 13 options, ``--fast`` among them NOT);
+    >>>    the superseded invocation is PRESERVED VERBATIM in the
+    >>>    wrapper's dated comment block.
+    >>>  * the gate's own CODE was always RIGHT about this: the
+    >>>    vocabulary extractor models ``BooleanOptionalAction`` (it adds
+    >>>    the ``--no-`` twin), so the gate never reported ``--no-smoke``
+    >>>    as a violation.  Only this PROSE was wrong — a
+    >>>    §6.269.28.5-class false attribution, published in a TRACKED
+    >>>    file, about a defect that does not exist.
+    >>>
+    >>> The rule that produced the error is now PINNED by a test in BOTH
+    >>> directions (``molmetal/tests/test_wfa269_script_contract_gate.py``):
+    >>> a ``BooleanOptionalAction`` option must make its ``--no-`` twin
+    >>> DECLARED, and a ``store_true`` option must NOT.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    the gate shipped STANDALONE on 2026-11-04 (as an untracked script, with
+    its own test file) and was referenced by **0** pre-flight gates — which is
+    the §6.269.19 "disclosed but not enforced" costume of the DEAD-GATE class
+    (a check that prints its residual every run and fails nothing).  It is
+    registered here so that its verdict is CONSUMED.
+
+    Fail-closed on a missing script: a gate that cannot run must not certify
+    the launch.  Launch-time only (it inspects launch surfaces) and CPU-only
+    (the scripts are parsed by AST, never executed).
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard did not finish, so its verdict was NOT
+        # obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the script-contract gate script",
+            not_a_verdict_on="the script contract (declared-flag set)",
+        )
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"script-contract gate PASS (AGENTS.md §5.11): {tail}", elapsed,
+        )
+    violations = [ln.strip() for ln in blob.splitlines() if "VIOLATION" in ln]
+    head = violations[0] if violations else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"script-contract gate FAIL (AGENTS.md §5.11, rc={rc}): "
+        f"{len(violations)} violation(s); first: {head}",
+        elapsed,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wf-A269 wave-33 (2026-11-09) — THE ENFORCEMENT-STACK TRACKEDNESS GATE.
+#
+# THE DEFECT THIS EXISTS TO CATCH
+# ------------------------------
+# The §5.11 launch-enforcement stack — the five yaml-only gate scripts, the
+# launch-provenance recorder, the shared verdict consumer, the smoke-budget
+# module the pre-flight itself imports, and the two path-reference guard
+# runners — is NOT IN GIT'S INDEX.  MEASURED 2026-11-09 with
+# `git ls-files --error-unmatch <path>` (rc 1 = not in the index) for each of
+# the 10 declared members: **8 of 10 are not in the index**, i.e. a clean
+# checkout of HEAD cannot run them at all.
+#
+# WHY THAT MATTERS MORE THAN A MISSING FILE
+# -----------------------------------------
+# A gate that is not tracked is not "a gate that is missing": it is a gate
+# that is PRESENT in the working tree (so every local run sees it green) and
+# ABSENT from the repository (so every clone fails closed with "script
+# missing", or — worse — does not fail at all, because the gate that would
+# have noticed is itself untracked).  The repo's own catalog calls this out
+# (docs/HONEST_NEGATIVE_CATALOG.md §6.269.23.12): "the commit is
+# load-bearing, not cosmetic".
+#
+# WHY A STATIC MANIFEST
+# ---------------------
+# The obvious implementation — enumerate the gate scripts at RUN time and
+# check each one — CANNOT detect the defect it is looking for: on a clean
+# checkout the untracked gate scripts are ABSENT *and* UNREGISTERED, so the
+# runtime enumeration cannot know they were ever supposed to exist.  The
+# declaration therefore has to be STATIC: a list of paths that MUST be
+# tracked, written down in a file that IS tracked.  This file is tracked at
+# HEAD (`git ls-files --error-unmatch molmetal/scripts/pre_flight_check.py`
+# -> rc 0; `git cat-file -e HEAD:molmetal/scripts/pre_flight_check.py` -> rc 0),
+# so the detector itself survives the clean checkout.
+#
+# THE COMPLETENESS ARM
+# --------------------
+# A static manifest can go stale: a new gate script could be registered in
+# ``build_gates`` and never declared here, and then the untracked-ness of
+# that new script would be invisible again.  The gate therefore also
+# measures the LIVE resolved surface and reports any resolved path that the
+# manifest does not declare (a MANIFEST GAP).  Together the two arms say:
+#   * every DECLARED member must be in git's index, and
+#   * every RESOLVED path must be DECLARED.
+# ⇒ every path the pre-flight can resolve is tracked, by construction.
+#
+# THE MANIFEST IS THE WHOLE RESOLVED SURFACE, NOT JUST THE §5.11 STACK
+# ---------------------------------------------------------------------
+# The §5.11 stack (10 members) is the VISIBLE half of the defect; the
+# pre-flight's resolved execution surface (34 members: 15 resolved gate
+# scripts + 12 resolved pytest files + 5 module-level import-time molmetal
+# dependencies + 1 §5.11 member the pre-flight does not resolve + 1 decoder
+# the runtime heuristic resolves) is the POPULATION.  A subset manifest
+# would under-report: MEASURED 2026-11-09, of the 34, **8 are not in git's
+# index**, and 2 of those 8 (`molmetal/scripts/wfa135_smoke_budget.py`,
+# `molmetal/scripts/wf_launch_gate_verdict.py`) are the pre-flight's OWN
+# import-time dependencies — i.e. a partial commit of this file alone kills
+# the whole pre-flight at import.
+# ---------------------------------------------------------------------------
+
+#: The §5.11 launch-enforcement stack, DECLARED.  Every member MUST be in
+#: git's index; a member that is not is a FAIL, with its path named.
+#:
+#: MEASURED 2026-11-09 (`git ls-files --error-unmatch` per path):
+#: 8 of these 10 are NOT in the index — `scripts/_launch_contract_gate.py`,
+#: `scripts/_script_contract_gate.py`, `scripts/_runtime_transport_gate.py`,
+#: `scripts/_wf_launch_provenance.py`,
+#: `molmetal/scripts/wf_launch_gate_verdict.py`,
+#: `molmetal/scripts/wfa135_smoke_budget.py`,
+#: `molmetal/scripts/wf_a131_path_reference_guard_runner.py`,
+#: `molmetal/scripts/wf_a152_census_claim_guard_runner.py`.
+#: The other two (`scripts/_yaml_only_gate.py`,
+#: `scripts/_config_binding_gate.py`) ARE in the index.
+#:
+#: This tuple is a SUBSET of ``PREFLIGHT_RESOLVED_SURFACE_PATHS`` (it is the
+#: part of that surface which is enforcement machinery rather than the
+#: pre-flight's SUBJECT).  It is kept as a named constant so the evidence
+#: string can say which offenders are §5.11 gates and which are the wider
+#: resolution surface.
+#:
+#: Paths are repo-relative (POSIX), never absolute: an absolute path would
+#: be a hardcoded-repo-path violation and would not resolve on a clone.
+ENFORCEMENT_STACK_PATHS: Tuple[str, ...] = (
+    # --- the five §5.11 launch gates -----------------------------------
+    "scripts/_yaml_only_gate.py",
+    "scripts/_config_binding_gate.py",
+    "scripts/_launch_contract_gate.py",
+    "scripts/_script_contract_gate.py",
+    "scripts/_runtime_transport_gate.py",
+    # --- the launch-provenance recorder (wrapper side + trainer side) --
+    "scripts/_wf_launch_provenance.py",
+    # --- the shared verdict consumer (reads the pre-flight report) -----
+    "molmetal/scripts/wf_launch_gate_verdict.py",
+    # --- the pre-flight's OWN import-time dependency -------------------
+    "molmetal/scripts/wfa135_smoke_budget.py",
+    # --- the two path/census guard runners -----------------------------
+    "molmetal/scripts/wf_a131_path_reference_guard_runner.py",
+    "molmetal/scripts/wf_a152_census_claim_guard_runner.py",
+)
+
+#: The pre-flight's RESOLVED EXECUTION SURFACE, DECLARED.
+#:
+#: This is the EXACT population of repo files the pre-flight resolves, in
+#: three measured parts (the enumeration that produced it is the companion
+#: test module's ``test_resolved_surface_manifest_is_complete``):
+#:
+#:   A. the 15 gate-script paths passed as a ``script_path`` argument to a
+#:      ``gate_*`` function (10 tracked, 5 NOT in git's index);
+#:   B. the 12 pytest files passed to ``gate_pytest`` (12 tracked);
+#:   C. the 5 module-level (import-time) ``molmetal`` imports the module
+#:      makes (3 tracked, 2 NOT in git's index);
+#:
+#: plus the §5.11 launch-stack member the pre-flight does NOT itself
+#: resolve (``scripts/_wf_launch_provenance.py``) and the one decoder the
+#: runtime heuristic resolves but the static enumeration does not
+#: (``molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py``).
+#:
+#: ⇒ population 34; MEASURED 2026-11-09: 26 are in git's index, 8 are NOT
+#: (all 8 NEVER COMMITTED — in neither the index nor HEAD).
+#:
+#: WHY THE WHOLE SURFACE AND NOT JUST THE §5.11 STACK: the failure this
+#: gate exists to catch is "a clean checkout cannot run the pre-flight",
+#: and that failure is caused by ANY untracked resolved dependency — the
+#: §5.11 gate scripts are the most visible, but a tracked-only gate that
+#: imports an untracked module dies exactly the same way.  A subset
+#: manifest would under-report the population (AGENTS.md §6.269.35.4:
+#: "A COUNT QUOTED FROM THE FILES YOU TOUCHED IS NOT A COUNT OF THE
+#: POPULATION").
+PREFLIGHT_RESOLVED_SURFACE_PATHS: Tuple[str, ...] = (
+    # --- A. resolved gate scripts --------------------------------------
+    "molmetal/scripts/check_data_leakage.py",
+    "molmetal/scripts/msrs_dual_split.py",
+    "molmetal/scripts/msrs_granularity_gate.py",
+    "molmetal/scripts/train_chemprop_v2_v3.py",
+    "molmetal/scripts/verify_narrative_claims.py",
+    "molmetal/scripts/wf343c2_per_wave_check.py",
+    "molmetal/scripts/wf343c3_data_quality_check.py",
+    "molmetal/scripts/wf385a3_scaffold_wire_in_gate.py",
+    "scripts/_config_binding_gate.py",
+    "scripts/_launch_contract_gate.py",
+    "scripts/_runtime_transport_gate.py",
+    "scripts/_script_contract_gate.py",
+    "scripts/_yaml_only_gate.py",
+    "molmetal/scripts/wf_a131_path_reference_guard_runner.py",
+    "molmetal/scripts/wf_a152_census_claim_guard_runner.py",
+    # --- B. resolved pytest files --------------------------------------
+    "molmetal/tests/test_kendall_dann_wiring.py",
+    "molmetal/tests/test_metal_ligand_exchange_matrix.py",
+    "molmetal/tests/test_no_kendall_no_dann_flags.py",
+    "molmetal/tests/test_read_anchor_json.py",
+    "molmetal/tests/test_smoke_fail_on_missing_audit.py",
+    "molmetal/tests/test_train_chemprop_v2_v3_nan_guard.py",
+    "molmetal/tests/test_wf146_resume.py",
+    "molmetal/tests/test_wf245_ablation_flags.py",
+    "molmetal/tests/test_wf268a_cfm_ablation_flags.py",
+    "molmetal/tests/test_wf313c_frontier_math_integration_e2e.py",
+    "molmetal/tests/test_wf319a_ablation_runner.py",
+    "molmetal/tests/test_wf344a3_configure_reference.py",
+    # --- C. module-level (import-time) molmetal imports ----------------
+    "molmetal/scripts/read_anchor_json.py",
+    "molmetal/scripts/wf343c1_pre_retrain_check.py",
+    "molmetal/scripts/wfa135_smoke_budget.py",
+    "molmetal/scripts/wf386a3_atomic_write.py",
+    "molmetal/scripts/wf_launch_gate_verdict.py",
+    # --- the §5.11 launch-stack member the pre-flight does NOT resolve --
+    "scripts/_wf_launch_provenance.py",
+    # --- resolved by the runtime heuristic, missed by the static one ----
+    "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py",
+)
+
+#: The status values `_enforcement_stack_trackedness` may return.
+ENFORCEMENT_STACK_STATUS_TRACKED = "TRACKED"
+ENFORCEMENT_STACK_STATUS_NOT_TRACKED = "NOT_TRACKED"
+ENFORCEMENT_STACK_STATUS_NOT_MEASURED = "NOT_MEASURED"
+
+
+def _git_index_paths() -> Optional[Set[str]]:
+    """The repo-relative paths in git's INDEX, or None if git cannot be read.
+
+    "In the index" is the right question, not "in HEAD": a file that is
+    staged but not yet committed is IN the index, and a clean checkout of
+    the COMMIT that follows will carry it.  A file that is in the working
+    tree but in NEITHER the index NOR HEAD is the defect this gate exists
+    for — it exists only on this machine.
+    """
+    out = _git_probe(["ls-files", "-z"])
+    if out is None:
+        return None
+    return {p for p in out.split("\0") if p}
+
+
+def _git_head_paths() -> Optional[Set[str]]:
+    """The repo-relative paths in HEAD's tree, or None if HEAD cannot be read.
+
+    A repository with no commits has no HEAD; that is reported as None
+    (NOT MEASURED for that axis only) and never as "tracked".
+    """
+    out = _git_probe(["ls-tree", "-r", "-z", "HEAD", "--name-only"])
+    if out is None:
+        return None
+    return {p for p in out.split("\0") if p}
+
+
+def _enforcement_stack_trackedness(
+    paths: Optional[Sequence[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Classify each declared resolved-surface path against git's index.
+
+    Returns one row per path::
+
+        {"path": str,
+         "in_index": bool,
+         "in_head": Optional[bool],
+         "on_disk": bool,
+         "status": "TRACKED" | "NOT_TRACKED" | "NOT_MEASURED",
+         "detail": str}
+
+    THE AXIS IS "IN GIT'S INDEX", not "on disk" and not "in HEAD":
+
+    * a file in the index (staged or committed) WILL be present in a clean
+      checkout of the commit that carries it, so it is TRACKED;
+    * a file in the working tree but in NEITHER the index NOR HEAD exists
+      only on this machine — it is NOT_TRACKED, and that is the defect this
+      gate exists for;
+    * a file in HEAD but not in the index was removed from the index
+      (a staged deletion) — it is NOT_TRACKED for the same reason: the next
+      commit will not carry it.
+
+    ``on_disk`` is reported as INFORMATION, not as part of the verdict: a
+    file that is in the index but absent from this working tree is still
+    TRACKED (a clean checkout would have it), and the pre-flight's own
+    "script missing" gate is the right place for that defect.
+
+    ``NOT_MEASURED`` is returned for EVERY path when git cannot be probed
+    at all (no git binary, not a repository, a timeout).  It is NOT a
+    defect verdict (AGENTS.md §1.1/§5.2) — but the CONSUMER of this
+    function treats it as fail-CLOSED, because a tree whose trackedness
+    cannot be PROVEN is a tree that cannot be CERTIFIED (the same rule the
+    launch-verdict consumer applies to a missing/unparseable freshness
+    stamp: "a report that cannot prove its age is not a fresh report").
+    """
+    declared = list(
+        PREFLIGHT_RESOLVED_SURFACE_PATHS if paths is None else paths
+    )
+    index = _git_index_paths()
+    if index is None:
+        return [
+            {
+                "path": p,
+                "in_index": False,
+                "in_head": None,
+                "on_disk": (REPO_ROOT / p).is_file(),
+                "status": ENFORCEMENT_STACK_STATUS_NOT_MEASURED,
+                "detail": "git could not be probed (no index read available)",
+            }
+            for p in declared
+        ]
+    head = _git_head_paths()
+    rows: List[Dict[str, Any]] = []
+    for p in declared:
+        in_index = p in index
+        in_head = (p in head) if head is not None else None
+        on_disk = (REPO_ROOT / p).is_file()
+        if in_index:
+            status = ENFORCEMENT_STACK_STATUS_TRACKED
+            detail = "in git's index (staged or committed)"
+        elif in_head is True:
+            status = ENFORCEMENT_STACK_STATUS_NOT_TRACKED
+            detail = "in HEAD but NOT in git's index (removed from the index)"
+        elif in_head is False:
+            status = ENFORCEMENT_STACK_STATUS_NOT_TRACKED
+            detail = "NEVER COMMITTED (in neither git's index nor HEAD)"
+        else:
+            status = ENFORCEMENT_STACK_STATUS_NOT_TRACKED
+            detail = "NOT in git's index (HEAD unreadable, so its status is unknown)"
+        rows.append(
+            {
+                "path": p,
+                "in_index": in_index,
+                "in_head": in_head,
+                "on_disk": on_disk,
+                "status": status,
+                "detail": detail,
+            }
+        )
+    return rows
+
+
+def _resolved_gate_surface() -> List[str]:
+    """The repo paths the pre-flight's OWN gate registrations resolve.
+
+    Method (no AST, no importing the gates): every registered runner is a
+    closure whose code object carries the file names it passes, and the
+    module's ROOT constants are the directories those names are joined to.
+    A (root, name) pair is accepted ONLY when the joined path EXISTS under
+    ``REPO_ROOT``, so a coincidental string literal cannot inflate the
+    set.
+
+    HONEST LIMIT (stated, not implied): this is a heuristic enumeration.
+    MEASURED 2026-11-09 against an exact AST enumeration of the same
+    registrations, the two agree on 24 of 27 paths; the heuristic misses
+    the three whose file name is bound to a local variable inside
+    ``build_gates`` instead of being a literal in the call, and it resolves
+    ONE path the static enumeration does not
+    (`molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py`).  The
+    heuristic is used for the COMPLETENESS arm (which path the manifest
+    failed to declare), where a miss can only under-report; the exact
+    enumeration lives in the companion test module.
+    """
+    roots = {
+        "REPO_ROOT": REPO_ROOT,
+        "SCRIPT_DIR": SCRIPT_DIR,
+        "SCRIPTS_DIR": SCRIPTS_DIR,
+        "MOLMETAL_ROOT": MOLMETAL_ROOT,
+        "TESTS_DIR": TESTS_DIR,
+        "LAM_CHEM_DIR": LAM_CHEM_DIR,
+        "CONFIGS_DIR": CONFIGS_DIR,
+    }
+    found: Set[str] = set()
+    for pipeline in ("all", "launch"):
+        try:
+            runners = build_gates(pipeline)
+        except Exception:  # noqa: BLE001 — a broken registry must not crash
+            continue
+        for _name, runner in runners:
+            code = getattr(runner, "__code__", None)
+            if code is None:
+                continue
+            consts = [
+                c
+                for c in (code.co_consts or ())
+                if isinstance(c, str) and c.endswith((".py", ".sh"))
+            ]
+            cells: List[Path] = []
+            for cell in (runner.__closure__ or ()):
+                try:
+                    value = cell.cell_contents
+                except ValueError:  # an empty cell (recursive closure)
+                    continue
+                if isinstance(value, Path):
+                    cells.append(value)
+            for name in consts:
+                for base in list(roots.values()) + cells:
+                    try:
+                        candidate = base / name
+                    except TypeError:
+                        continue
+                    try:
+                        rel = candidate.resolve().relative_to(
+                            REPO_ROOT.resolve()
+                        ).as_posix()
+                    except (ValueError, OSError):
+                        continue
+                    if candidate.is_file():
+                        found.add(rel)
+    return sorted(found)
+
+
+def gate_enforcement_stack_trackedness(
+    name: str,
+    priority: str,
+    pipeline: str,
+) -> GateResult:
+    """The resolved execution surface must be IN GIT'S INDEX, not just on disk.
+
+    Launch-time gate (Wf-A269 wave-33, 2026-11-09).
+
+    What it proves: every file of the pre-flight's RESOLVED EXECUTION
+    SURFACE that this module DECLARES in
+    ``PREFLIGHT_RESOLVED_SURFACE_PATHS`` is present in git's index (so a
+    clean checkout of the commit that carries this gate will carry the
+    surface too), and every path the pre-flight resolves at runtime is
+    declared in that manifest (so the manifest cannot silently fall behind
+    the registrations).
+
+    What it does NOT prove: that the surface is CORRECT, that it is
+    committed, or that a clone would run it — only that the files are
+    TRACKED.  A tracked-but-uncommitted file is still uncommitted; the
+    commit remains the user's decision (AGENTS.md §6.269.23.12).
+
+    Fail-closed in BOTH directions:
+
+    * a declared member that is not in git's index ⇒ FAIL (the defect);
+    * git cannot be probed at all ⇒ FAIL with ``NOT_MEASURED`` — a tree
+      whose trackedness cannot be proven cannot be certified, exactly like
+      a report whose freshness stamp cannot be read (AGENTS.md §4 stale
+      flag rule);
+    * a resolved path that the manifest does not declare ⇒ FAIL (the
+      manifest is stale, so the declaration cannot be trusted).
+
+    CPU-only, no subprocess beyond two read-only ``git`` calls, no GPU.
+    """
+    t0 = time.perf_counter()
+    rows = _enforcement_stack_trackedness()
+    declared = {r["path"] for r in rows}
+    stack = set(ENFORCEMENT_STACK_PATHS)
+    not_tracked = [
+        r for r in rows if r["status"] == ENFORCEMENT_STACK_STATUS_NOT_TRACKED
+    ]
+    not_measured = [
+        r for r in rows if r["status"] == ENFORCEMENT_STACK_STATUS_NOT_MEASURED
+    ]
+    gaps = sorted(set(_resolved_gate_surface()) - declared)
+    elapsed = time.perf_counter() - t0
+
+    if not_measured:
+        names = ", ".join(r["path"] for r in not_measured[:6])
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"enforcement-stack trackedness NOT MEASURED — git could not be "
+            f"probed, so the trackedness of {len(not_measured)} declared "
+            f"enforcement file(s) cannot be shown: {names}. A tree whose "
+            f"trackedness cannot be PROVEN cannot be CERTIFIED (fail-closed)",
+            elapsed,
+        )
+    if not_tracked:
+        n_stack = sum(1 for r in not_tracked if r["path"] in stack)
+        names = ", ".join(
+            f"{r['path']} [{r['detail']}]" for r in not_tracked
+        )
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"enforcement-stack trackedness FAIL — {len(not_tracked)} of "
+            f"{len(rows)} declared resolved-surface file(s) are NOT in git's "
+            f"index ({n_stack} of them are §5.11 enforcement machinery), so "
+            f"a clean checkout cannot run them: {names}. A gate that exists "
+            f"only in the working tree is not a gate",
+            elapsed,
+        )
+    if gaps:
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"enforcement-stack MANIFEST GAP — {len(gaps)} path(s) resolved "
+            f"by the pre-flight are not declared in "
+            f"PREFLIGHT_RESOLVED_SURFACE_PATHS, so their trackedness is "
+            f"unchecked: {', '.join(gaps)}",
+            elapsed,
+        )
+    return GateResult(
+        name, priority, pipeline, "PASS",
+        f"enforcement-stack trackedness PASS — all {len(rows)} declared "
+        f"resolved-surface file(s) are in git's index, and all "
+        f"{len(_resolved_gate_surface())} resolved path(s) are declared",
         elapsed,
     )
 
@@ -8023,6 +10409,20 @@ def gate_config_trainer_binding(
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
     inert = sum(1 for ln in blob.splitlines() if "DECLARED-INERT" in ln)
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the config<->trainer binding gate script",
+            not_a_verdict_on="the config<->trainer binding contract",
+        )
     if rc == 0:
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
@@ -8075,6 +10475,20 @@ def gate_msrs_dual_split(
     rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the dual-split gate script",
+            not_a_verdict_on="the dual-split contract",
+        )
     if rc == 0:
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
@@ -8093,6 +10507,150 @@ def gate_msrs_dual_split(
         name, priority, pipeline, "FAIL",
         f"dual-split gate FAIL (FIX-E1, rc={rc}): {len(failures)} problem(s); "
         f"first: {head}",
+        elapsed,
+    )
+
+
+def gate_ssot_path_reference(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 300.0,
+) -> GateResult:
+    """Wf-A154 — every repo-relative path an SSOT document cites must RESOLVE.
+
+    AGENTS.md §5.5 filesystem-truth says "report SHIPPED != file on disk"; the
+    inverse half is that a DOCUMENT may point at a file that does not exist,
+    and a reader who follows the citation finds nothing.  The Wf-A131 guard
+    audits exactly that over the four SSOT documents, with a 56-entry
+    adjudicated baseline for the historical breakage.
+
+    Until this gate the audit existed only as a pytest module, so a commit
+    that introduced a NEW broken citation passed the pre-flight.  The runner
+    script imports that guard module and calls its own assertions, so there
+    is ONE implementation of the rule — adding a gate here does not fork it.
+
+    Cheap and offline: a text scan plus a directory listing; no torch import,
+    no CUDA call, no checkpoint read.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the SSOT path-reference guard",
+            not_a_verdict_on="the SSOT path-reference contract",
+        )
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"SSOT path-reference guard PASS (Wf-A154): {tail}", elapsed,
+        )
+    if rc == 2:
+        return GateResult(
+            name, priority, pipeline, "SKIP",
+            "SSOT path-reference guard SKIP (Wf-A154): not applicable on this tree",
+            elapsed,
+        )
+    failures = [ln.strip() for ln in blob.splitlines() if ln.strip().startswith("FAIL")]
+    head = failures[0] if failures else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"SSOT path-reference guard FAIL (Wf-A154, rc={rc}): a repo-relative "
+        f"path cited by an SSOT document does not resolve on disk "
+        f"(AGENTS.md §5.5 filesystem-truth); first: {head}",
+        elapsed,
+    )
+
+
+def gate_ssot_census_claim(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 300.0,
+) -> GateResult:
+    """Wf-A154 — every census statistic a document quotes must be CURRENT.
+
+    The published CFM fragmentation numbers live in
+    ``metrics/by_metric/cfm_run_census.json``.  A document that quotes one of
+    them after the artifact has moved on publishes a STALE number, and a
+    stale number in an SSOT document is indistinguishable from a measured one
+    to every downstream reader.
+
+    The Wf-A152 guard resolves each quoted claim to
+    (population x epoch x cohort x key) and compares it with the artifact's
+    OWN current value — the oracle is the artifact, not a hand-written list of
+    retired numbers, which is what made the older Wf-A134 guard blind.
+
+    Until this gate the audit existed only as a pytest module.  The runner
+    script imports that guard module and calls its own assertions, so there
+    is ONE implementation of the rule.
+
+    Cheap and offline: a JSON read plus a text scan; no torch import, no CUDA
+    call, no checkpoint read.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the SSOT census-claim guard",
+            not_a_verdict_on="the SSOT census-claim contract",
+        )
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"SSOT census-claim guard PASS (Wf-A154): {tail}", elapsed,
+        )
+    if rc == 2:
+        return GateResult(
+            name, priority, pipeline, "SKIP",
+            "SSOT census-claim guard SKIP (Wf-A154): not applicable on this tree",
+            elapsed,
+        )
+    failures = [ln.strip() for ln in blob.splitlines() if ln.strip().startswith("FAIL")]
+    head = failures[0] if failures else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"SSOT census-claim guard FAIL (Wf-A154, rc={rc}): a document quotes a "
+        f"census statistic that is not the artifact's current value "
+        f"(AGENTS.md §5.2 MEASURED-vs-PROJECTED); first: {head}",
         elapsed,
     )
 
@@ -8127,6 +10685,20 @@ def gate_msrs_granularity(
     rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the granularity gate script",
+            not_a_verdict_on="the granularity contract",
+        )
     if rc == 0:
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
@@ -8177,9 +10749,30 @@ def gate_narrative_claims(
             name, priority, pipeline, "FAIL",
             f"script missing: {script_path}", time.perf_counter() - t0,
         )
-    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    # `--strict` is load-bearing (Wf-A141, 2026-10-31): the checker exits 0
+    # when the only problem is an UNVERIFIABLE claim (a missing source file
+    # or an unresolvable field), so without it this gate PASSes while a
+    # §5.2 traceability claim points at nothing — and the failure branch
+    # below counts "??" rows that this invocation could never produce.
+    rc, out, err = _run(
+        [VENV_PY, str(script_path), "--strict"], timeout=timeout, cwd=REPO_ROOT
+    )
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT a defect
+        # verdict: the guard script did not finish, so its verdict was
+        # NOT obtained (AGENTS.md §5.2 honest framing).
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=blob.splitlines()[-1] if blob else "(no output)",
+            detail="the narrative-claims checker",
+            not_a_verdict_on="the narrative-claims contract",
+        )
     if rc == 0:
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
@@ -8708,13 +11301,23 @@ def gate_run_ledger_staleness(
 
     PASS — every registry metric has a ledger entry whose source_json sha256
            matches the registry's (``current``); nothing stale, nothing unseen.
-    WARN — at least one metric is ``stale`` (the registry was refreshed from a
-           source the ledger has not recorded) or ``no_run`` (no ledger entry).
+    FAIL — at least one metric is ``stale``: the registry's number is NOT
+           backed by the ledger, which is a broken invariant (the two
+           SSOTs disagree about what the current value is).
 
-    Report-only by default: emits SKIP unless ``WF_RUN_LEDGER=1`` (AGENTS.md
-    §5.6/§5.7 new-gate opt-in pattern), so registering the gate does not change
-    an existing pre-flight run's verdict.  Implementation lives in
-    ``molmetal/scripts/run_ledger.py``.
+    Wf-A125 G11b — this gate used to return WARN, which was a broken
+    contract in two ways.  Its own docstring said "report-only by default:
+    emits SKIP unless WF_RUN_LEDGER=1", but the code has enforced by DEFAULT
+    since 2026-10-08 and the env var is a DOWNGRADE to SKIP.  And WARN was
+    invisible to the pre-flight roll-up, so the gate could not fail a launch
+    while claiming to enforce.
+
+    ``no_run`` (a coverage gap — the metric has no ledger entry) and
+    ``reformatted`` (the hashes differ but the recorded VALUE is identical,
+    i.e. the file was re-serialised) are reported in the evidence but do
+    NOT block: neither is a broken invariant.
+
+    Implementation lives in ``molmetal/scripts/run_ledger.py``.
     """
     t0 = time.perf_counter()
     if os.environ.get(RUN_LEDGER_ENFORCE_ENV, "").strip().lower() in (
@@ -8754,11 +11357,219 @@ def gate_run_ledger_staleness(
         f"stale={c['stale']}",
         f"no_run={c['no_run']}",
     ]
-    for mid, info in rep["detail"].items():
-        if info["status"] != "current":
-            parts.append(f"{mid}={info['status']}")
+    # Wf-A125 G11d — the evidence used to enumerate EVERY non-current metric
+    # id inline.  MEASURED 2026-10-31: 6400 characters on one line (182
+    # ``no_run`` metrics).  The stale ids — the only actionable ones — are
+    # listed first and in full; the rest are capped and the full list stays
+    # available through ``run_ledger.py status``.
+    stale_ids = [
+        mid
+        for mid, info in rep["detail"].items()
+        if info["status"] == "stale"
+    ]
+    other_ids = [
+        mid
+        for mid, info in rep["detail"].items()
+        if info["status"] not in ("current", "stale")
+    ]
+    if stale_ids:
+        shown = stale_ids[:25]
+        parts.append("stale_metrics=" + ",".join(shown))
+        if len(stale_ids) > len(shown):
+            parts.append(f"... and {len(stale_ids) - len(shown)} more stale")
+    if other_ids:
+        shown = other_ids[:25]
+        parts.append("non_current_ids=" + ",".join(shown))
+        if len(other_ids) > len(shown):
+            parts.append(f"... and {len(other_ids) - len(shown)} more")
+        parts.append("(full list: run_ledger.py status)")
+    status = "FAIL" if c["stale"] > 0 else "PASS"
     return GateResult(
-        name, priority, pipeline, rep["status"], f"{name}: " + " ".join(parts),
+        name, priority, pipeline, status, f"{name}: " + " ".join(parts),
+        time.perf_counter() - t0,
+    )
+
+
+def gate_run_ledger_provenance(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    ledger_path: Optional[Path] = None,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Run-ledger PROVENANCE gate — does any ledger row name a file version
+    this repository has never held?
+
+    Wf-A125 G5 — :func:`molmetal.scripts.run_ledger.uncommitted_provenance`
+    existed with exactly two callers (its own CLI and one test) and NO
+    pre-flight caller.  So "a ledger row names a file version this
+    repository has never held — it was produced by an uncommitted working
+    tree and no commit can reproduce it" was invisible to a launch.
+
+    FAIL — the metric's LATEST ledger row has a ``source_json_sha256`` that
+           matches NEITHER the file on disk NOR any committed version of it.
+    PASS — no OPEN finding.
+
+    The SUPERSEDED count (an EARLIER row with an uncommitted provenance, which
+    a later row has since replaced) is reported in the evidence but does NOT
+    block: the ledger is append-only, so those rows stay in the history
+    forever and are unfixable by construction.
+
+    MEASURED 2026-10-31 on this working tree: OPEN=0, superseded=9.
+    """
+    t0 = time.perf_counter()
+    try:
+        from molmetal.scripts.run_ledger import uncommitted_provenance
+
+        kwargs: Dict[str, Any] = {"include_superseded": True}
+        if ledger_path is not None:
+            kwargs["ledger_path"] = ledger_path
+        if repo_root is not None:
+            kwargs["repo_root"] = repo_root
+        rep = uncommitted_provenance(**kwargs)
+    except Exception as exc:  # noqa: BLE001 — a broken ledger is a FAIL
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"{name}: uncommitted-provenance check raised "
+            f"{type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    c = rep["counts"]
+    open_n = int(c.get("open_uncommitted_metrics", 0))
+    sup_n = int(c.get("superseded_uncommitted_rows", 0))
+    parts = [
+        f"ledger_rows={c.get('ledger_rows')}",
+        f"metrics={c.get('distinct_metrics')}",
+        f"OPEN_never_committed={open_n}",
+        f"superseded_never_committed={sup_n}",
+        f"OPEN_sha_never_committed={c.get('open_never_committed_metrics', 0)}",
+        f"superseded_sha_never_committed={c.get('superseded_never_committed_rows', 0)}",
+    ]
+    for d in rep.get("detail") or []:
+        if d.get("state") != "open":
+            continue
+        row = d.get("latest_row") or {}
+        parts.append(
+            f"OPEN {d.get('metric_id')} sha {str(row.get('source_json_sha256'))[:12]} "
+            f"src {row.get('source_json')}"
+        )
+    status = "FAIL" if open_n > 0 else "PASS"
+    return GateResult(
+        name, priority, pipeline, status, f"{name}: " + " ".join(parts),
+        time.perf_counter() - t0,
+    )
+
+
+#: Wf-A269 (2026-11-04) — the ledger rows that predate the ``config_path``
+#: field AND have no registry-declared ``trainer_config`` to fall back on.
+#:
+#: MEASURED 2026-11-04 on this working tree: 434 ledger rows, 6 with a
+#: non-null ``config_sha``, 3 distinct hashes, **0** carrying a config path.
+#: Five of the six resolve against ``registry/protocols.yaml``'s
+#: ``trainer_config`` for their metric_id — they are HISTORICAL (the row
+#: honestly names a committed past version of the right file).  ONE row has
+#: no pointer at all: ``l5_hilbert_r2``, whose protocol declares
+#: ``trainer_config: null``.
+#:
+#: The ledger is APPEND-ONLY (AGENTS.md §5.5 rule #6 forbids rewriting a
+#: superseded rendering), so this row cannot be repaired by editing it.  It
+#: is a documented BASELINE: the gate FAILS on any UNRESOLVABLE row and on
+#: any UNPOINTERED row OUTSIDE this baseline, so the debt cannot grow
+#: silently while the legacy row stays visible in every pre-flight report.
+LEDGER_CONFIG_UNPOINTERED_BASELINE = frozenset(
+    {
+        (
+            "l5_hilbert_r2",
+            "0be907fb425b6908098c9d23d9f0d71f88773a5245a242732ef603a32895b598",
+        ),
+    }
+)
+
+
+def gate_run_ledger_config_provenance(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    ledger_path: Optional[Path] = None,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Wf-A269 (2026-11-04) — can every ledger row's config hash be resolved?
+
+    A provenance record that carries a CONTENT HASH but no file identifier is
+    not re-resolvable: a digest cannot be dereferenced.  NOMAD's DAG and
+    SLSA's ``resolvedDependencies`` both carry the artifact IDENTIFIER
+    alongside the digest for exactly this reason.
+
+    MEASURED 2026-11-04 on this working tree (434 rows):
+    ``rows_with_config_sha=6``, ``rows_with_own_config_path=0``,
+    ``current=0``, ``historical=5``, ``unresolvable=0``, ``unpointed=1``.
+
+    FAIL — a row's ``config_sha`` matches NEITHER the file on disk NOR any
+           committed version of it (the row names a file version this
+           repository has never held), or an UNPOINTERED row appears that is
+           not in :data:`LEDGER_CONFIG_UNPOINTERED_BASELINE`.
+    PASS — every row resolves (CURRENT or HISTORICAL) and no unpointed row
+           is outside the baseline.
+
+    REPORTED, NOT FAILED — a row that resolves to a HISTORICAL version is
+    an HONEST record of the config as it was when the metric was produced.
+    The config has changed since, which is a REPRODUCIBILITY fact for the
+    paper's limitations section, not a provenance lie.  The count is in the
+    evidence so it cannot be forgotten.
+    """
+    t0 = time.perf_counter()
+    try:
+        from molmetal.scripts.run_ledger import config_provenance
+
+        kwargs: Dict[str, Any] = {}
+        if ledger_path is not None:
+            kwargs["ledger_path"] = ledger_path
+        if repo_root is not None:
+            kwargs["repo_root"] = repo_root
+        rep = config_provenance(**kwargs)
+    except Exception as exc:  # noqa: BLE001 — a broken ledger is a FAIL
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"{name}: config-provenance check raised "
+            f"{type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    c = rep["counts"]
+    baseline_keys = set(LEDGER_CONFIG_UNPOINTERED_BASELINE)
+    open_findings: List[str] = []
+    baseline_hit: List[str] = []
+    for d in rep.get("detail") or []:
+        state = d.get("state")
+        if state == "UNRESOLVABLE":
+            open_findings.append(
+                f"UNRESOLVABLE {d.get('metric_id')} sha "
+                f"{str(d.get('config_sha'))[:12]} ptr={d.get('config_path')}"
+            )
+        elif state == "UNPOINTERED":
+            key = (d.get("metric_id"), d.get("config_sha"))
+            if key in baseline_keys:
+                baseline_hit.append(f"{d.get('metric_id')} (baseline)")
+            else:
+                open_findings.append(
+                    f"UNPOINTERED {d.get('metric_id')} sha "
+                    f"{str(d.get('config_sha'))[:12]} (NOT in baseline)"
+                )
+    parts = [
+        f"ledger_rows={c.get('ledger_rows')}",
+        f"rows_with_config_sha={c.get('rows_with_config_sha')}",
+        f"rows_with_own_config_path={c.get('rows_with_own_config_path')}",
+        f"current={c.get('current')}",
+        f"historical={c.get('historical')}",
+        f"unresolvable={c.get('unresolvable')}",
+        f"unpointed={c.get('unpointed')}",
+        f"baseline_unpointed={len(baseline_hit)}",
+    ]
+    parts.extend(open_findings)
+    status = "FAIL" if open_findings else "PASS"
+    return GateResult(
+        name, priority, pipeline, status, f"{name}: " + " ".join(parts),
         time.perf_counter() - t0,
     )
 
@@ -8992,7 +11803,7 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     *,
     out_dir: Path = GATE_SCRATCH_ROOT / "wf385a3_scaffold_wire_in",
     python_bin: str = VENV_PY,
-    timeout: float = 180.0,
+    timeout: Optional[float] = None,
 ) -> GateResult:
     """Wf-385-A3 — verify every Wf-380 SCAFFOLD module exports the expected callable AND a 50-step CPU smoke training run with all 14 Wf-380 flags ON exhibits (a) decreasing loss + (b) non-zero decode_ratio.
 
@@ -9020,7 +11831,7 @@ def gate_wf385_scaffold_loss_wire_in_verified(
           regressions: missing module, empty file, syntax error,
           missing exported callable.
       (2) **50-step CPU smoke training** — runs
-          ``train_cfm_yuelbond_wasserstein.py --epochs 3
+          ``train_cfm_yuelbond_wasserstein.py --epochs 13
           --batch-size 4 --n-train 16 --n-val 8`` with ALL 14 Wf-380
           flags ON simultaneously (``--edm-preconditioning``,
           ``--use-log-normal-t``, ``--use-ema``, ``--use-shortcut-
@@ -9031,6 +11842,20 @@ def gate_wf385_scaffold_loss_wire_in_verified(
           ``--top-p 0.9``, ``--top-k 50``, ``--temperature 1.0``).
           Catches SCAFFOLD-only wire-in gaps: every flag declared but
           never called in the main loop.
+
+          Wf-A128 (2026-10-31) — the epoch budget was 3, which is
+          3 x 4 batches = **12 optimizer steps** and THREE recorded
+          per-epoch loss points, i.e. a window of 2 intervals, not the
+          ~50 steps the gate has always claimed.  MEASURED on this host:
+          the 3-epoch smoke's relative loss decrease was
+          0.1511939723838226 % — BELOW the 0.3 % floor — so the gate
+          FAILed on the WINDOW (decode_ratio was 1.0 and all 11 SCAFFOLD
+          exports were present), not on a broken wire-in.  The window was
+          widened to 13 epochs (MEASURED: 11 recorded points / 44 steps /
+          2.7064577792523594 % decrease => PASS); the 0.3 % floor was NOT
+          lowered.  The trainer's early-stop (patience 10) caps the
+          recorded run at 11 epochs, so ``--epochs 25`` measured the
+          identical series.
 
     The script writes ``gate_result.json`` to ``out_dir`` with the full
     per-module export status + loss trajectory + decode_ratio +
@@ -9069,6 +11894,14 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     + n_train=16 + n_val=8 + epochs=3 on synthetic Pt-click clouds).
     The 180 s timeout gives headroom for slow hosts.
 
+    Wf-A135 (2026-10-31) — the wall budget is no longer a hard-coded
+    literal: it is the NAMED constant
+    ``wfa135_smoke_budget.WF385_SMOKE_BUDGET_SEC``, derived from a
+    MEASURED standalone baseline times a STATED headroom factor, and it
+    is overridable via ``MOLMETAL_SMOKE_BUDGET_WF385_SEC``.  A timeout
+    now earns its OWN verdict ("TIMEOUT") instead of being folded into
+    FAIL — see ``_timeout_gate_result``.
+
     See ``TODO/completed/385a3_scaffold_wire_in_gate.md`` for the
     Wf-385-A3 ship summary + the Wf-380 SCAFFOLD-only failure mode.
     """
@@ -9098,6 +11931,15 @@ def gate_wf385_scaffold_loss_wire_in_verified(
             time.perf_counter() - t0,
         )
 
+    # ---- (2b) resolve the Wf-A135 wall budget --------------------------
+    # The budget is the OUTER subprocess budget (this gate's own `_run`
+    # timeout).  The inner gate script gets `budget - 30` so it can write
+    # its JSON before the outer subprocess is killed — the JSON is what
+    # tells us WHETHER the inner smoke timed out.
+    if timeout is None:
+        timeout = _smoke_budget_sec(SMOKE_GATE_WF385)
+    inner_timeout = max(1.0, float(timeout) - 30.0)
+
     cmd = [
         python_bin,
         str(script_path),
@@ -9106,48 +11948,89 @@ def gate_wf385_scaffold_loss_wire_in_verified(
         "--python-bin",
         python_bin,
         "--timeout",
-        str(int(timeout - 30)),  # leave headroom for JSON re-read
+        str(int(inner_timeout)),  # leave headroom for JSON re-read
     ]
     rc, _out, err = _run(cmd, timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (_out + "\n" + err).strip()
+    tail = blob.splitlines()[-1] if blob else "(no output)"
+
+    # ---- (2c) Wf-A135: the OUTER wall budget is a TIMEOUT, not a FAIL ---
+    # `_run` returns rc=124 for a subprocess.TimeoutExpired.  The
+    # measurement was NOT obtained, so this must not be reported as a
+    # defect verdict.
+    if rc == 124:
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="wf385a3_scaffold_wire_in_gate.py",
+        )
+
+    # ---- (3) re-read the JSON artefact (best-effort, even on rc != 0) ---
+    # Wf-A135: the INNER smoke can time out on its own (its budget is
+    # `inner_timeout`).  When it does, the inner script still writes
+    # `gate_result.json` with `smoke.error == "timeout after <N>s"` and
+    # exits rc=1.  Before this fix the outer gate never even READ that
+    # JSON on rc != 0, so an inner timeout was reported as the generic
+    # "FAIL (rc=1)" — indistinguishable from a genuine wire-in defect.
+    gate_json = out_dir / "gate_result.json"
+    gate_result: Optional[Dict[str, Any]] = None
+    json_error: Optional[str] = None
+    if gate_json.is_file():
+        try:
+            gate_result = json.loads(gate_json.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            json_error = f"gate_result.json is not valid JSON: {exc}"
+    else:
+        json_error = f"gate exit-code 0 but gate_result.json not at {gate_json}"
+
+    # ---- (3b) Wf-A135: an INNER smoke timeout is a TIMEOUT verdict -----
+    if gate_result is not None:
+        smoke = gate_result.get("smoke")
+        inner_error = ""
+        if isinstance(smoke, dict):
+            inner_error = str(smoke.get("error") or "")
+        if inner_error.startswith("timeout after"):
+            return _timeout_gate_result(
+                name,
+                priority,
+                pipeline,
+                budget_sec=inner_timeout,
+                elapsed_sec=elapsed,
+                tail=tail,
+                detail=(
+                    "wf385a3_scaffold_wire_in_gate.py inner smoke "
+                    f"({inner_error})"
+                ),
+            )
+
     if rc != 0:
-        blob = (_out + "\n" + err).strip()
-        tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
             name,
             priority,
             pipeline,
             "FAIL",
             f"wf385a3_scaffold_wire_in_gate.py FAIL (rc={rc}): {tail}",
-            time.perf_counter() - t0,
+            elapsed,
         )
 
-    # ---- (3) re-read the JSON artefact ----
-    gate_json = out_dir / "gate_result.json"
-    if not gate_json.is_file():
+    if gate_result is None:
         return GateResult(
             name,
             priority,
             pipeline,
             "FAIL",
-            f"gate exit-code 0 but gate_result.json not at {gate_json}",
-            time.perf_counter() - t0,
-        )
-    try:
-        gate_result = json.loads(gate_json.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(
-            name,
-            priority,
-            pipeline,
-            "FAIL",
-            f"gate_result.json is not valid JSON: {exc}",
-            time.perf_counter() - t0,
+            json_error or f"gate_result.json not readable at {gate_json}",
+            elapsed,
         )
 
     # ---- (4) parse verdict ----
     verdict = str(gate_result.get("verdict", ""))
     reason = str(gate_result.get("reason", ""))
-    elapsed = time.perf_counter() - t0
 
     # SKIP propagation (env-aware per Wf-345-A2).
     if verdict == "SKIP":
@@ -9381,7 +12264,71 @@ def gate_gate_count_consistency_audit(
                 "[pipeline] to enable real drift detection"
             )
         else:
-            suffix = " (explicit expected_total — drift check active)"
+            suffix = (
+                " (explicit expected_total — drift check active; "
+                "frozen name set verified)"
+            )
+        # 2026-11-04 (Wf-A269 frontier sweep) — the FROZEN NAME SET.
+        #
+        # PRE-REPAIR RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6
+        # — the count was the ONLY frozen expectation, so a RENAME, a
+        # CROSS-PIPELINE MOVE or a REPLACEMENT (all count-preserving) passed
+        # the audit:
+        #
+        #     else:
+        #         suffix = " (explicit expected_total — drift check active)"
+        #     return GateResult(
+        #
+        # WHY: a count cannot tell "the gate named X was renamed to Y" from
+        # "the gate named X was replaced by a different gate Z" — both leave
+        # the count unchanged.  `EXPECTED_GATE_NAMES` freezes the NAMES, and
+        # the COUNT is now a DERIVED ASSERTION of that set: a caller whose
+        # `expected_total` disagrees with `len(EXPECTED_GATE_NAMES[...])` has
+        # a stale count, and this gate says so instead of accepting it.
+        #
+        # HONEST LIMITS.
+        #   * The comparison is ORDER-INSENSITIVE (the frozen tuples are
+        #     sorted): a change of REGISTRATION ORDER is not detected here.
+        #   * The name check runs in EXPLICIT mode only.  The auto-compute
+        #     escape hatch (expected_total omitted) is left byte-identical to
+        #     its Wf-345-B3 rendering, because its evidence string says the
+        #     gate "compares the count to itself" and that statement must
+        #     stay literally true.
+        if not auto_computed:
+            frozen_names = EXPECTED_GATE_NAMES.get(pipeline)
+            if frozen_names is not None:
+                derived_total = len(frozen_names)
+                if expected_total != derived_total:
+                    return GateResult(
+                        name,
+                        priority,
+                        pipeline,
+                        "FAIL",
+                        f"gate count is NOT DERIVED from the frozen name set "
+                        f"for pipeline={pipeline!r}: expected_total="
+                        f"{expected_total} vs len(EXPECTED_GATE_NAMES"
+                        f"[{pipeline!r}])={derived_total}.  Update "
+                        f"TODO/completed/321d_preflight_gate_audit.md AND "
+                        f"EXPECTED_GATE_COUNTS AND EXPECTED_GATE_NAMES "
+                        f"together.",
+                        elapsed,
+                    )
+                actual_names = tuple(sorted(n for n, _ in actual_runners))
+                if actual_names != tuple(frozen_names):
+                    missing = sorted(set(frozen_names) - set(actual_names))
+                    added = sorted(set(actual_names) - set(frozen_names))
+                    return GateResult(
+                        name,
+                        priority,
+                        pipeline,
+                        "FAIL",
+                        f"gate NAME DRIFT for pipeline={pipeline!r}: "
+                        f"{len(actual_names)} registered names differ from "
+                        f"the frozen set (missing={missing}, added={added}).  "
+                        f"Update TODO/completed/321d_preflight_gate_audit.md "
+                        f"AND EXPECTED_GATE_NAMES together.",
+                        elapsed,
+                    )
         return GateResult(
             name,
             priority,
@@ -9414,7 +12361,7 @@ def gate_gate_inventory_audit(
     priority: str,
     pipeline: str,
 ) -> GateResult:
-    """Report-only audit of the registered gate surface (zombie-gate count).
+    """Audit of the registered gate surface (zombie-gate count).
 
     P0 gate-inventory audit: introspects ``build_gates(pipeline)`` (cheap,
     no gate is executed) and emits the number of registered gates AND the
@@ -9422,33 +12369,86 @@ def gate_gate_inventory_audit(
     normal run (registered but never enforced).  Implementation lives in
     :mod:`molmetal.scripts.gate_inventory`.
 
-    REPORT-ONLY by design: this gate ALWAYS PASSes and NEVER changes the
-    PASS/FAIL verdict of an existing pre-flight run (it surfaces the zombie
-    count as evidence for a human/agent audit).  A broken inventory build is
-    reported as PASS with an ``error=`` note rather than FAIL so a tooling
-    hiccup cannot block the commit path.
+    ------------------------------------------------------------------
+    **2026-11-04 (Wf-A269 dead-gates sweep) — the docstring below is
+    SUPERSEDED; it is PRESERVED VERBATIM per AGENTS.md §5.5 rule #6.**
+
+        REPORT-ONLY by design: this gate ALWAYS PASSes and NEVER changes the
+        PASS/FAIL verdict of an existing pre-flight run (it surfaces the zombie
+        count as evidence for a human/agent audit).  A broken inventory build is
+        reported as PASS with an ``error=`` note rather than FAIL so a tooling
+        hiccup cannot block the commit path.
+
+    **Why the rendering above was a DEFECT, not a design.**  This gate is
+    registered **P0** — i.e. it lands in ``per_wave_checklist.py``'s
+    ``p0_blocker_gates`` and in ``wf_launch_gate_verdict.py``'s P0 rule, both
+    of which treat a P0 gate as a BLOCKER.  A registered P0 blocker whose
+    status literal can only ever be ``"PASS"`` is the DEAD-GATE class
+    (AGENTS.md ``docs/HONEST_NEGATIVE_CATALOG.md`` §6.269.17): it is
+    advertised as a blocker and cannot block.  The repo's own wording, in
+    ``molmetal/reports/wfa166_synthesis/synthesis.md`` §6 "Rejected options":
+    *"A gate nobody can fail is not a gate."*  And the zombie count it
+    reported was WRONG in the same breath — the scan read only the thin
+    wrapper registered here and never followed the one-hop delegation to the
+    module that holds the real env read, so it published ``zombie_gates=0``
+    on a tree that registers 5 opt-in gates (MEASURED 2026-11-04: 133
+    registered gates / 0 opt-in / 0 zombies before the detection repair;
+    133 / 5 / 5 after it).
+
+    **The repaired contract** (2026-11-04) — the shape already used by the
+    sibling ``gate_run_ledger_config_provenance`` (a documented BASELINE plus
+    "FAIL on anything outside it"):
+
+      * FAIL — an UNDECLARED opt-in gate exists, i.e. a gate that is
+        registered, SKIPs by default, and is NOT in
+        ``gate_inventory.DECLARED_OPT_IN_GATES`` (the disclosed, documented-
+        intent set).  This is the "registered but never enforced, and nobody
+        said so" defect.
+      * FAIL — the inventory build RAISED.  A broken audit cannot certify the
+        gate surface; the sibling ledger gate already treats a broken ledger
+        as a FAIL ("a broken ledger is a FAIL").  The superseded rendering
+        deliberately chose the opposite; that choice is preserved above.
+      * PASS — every opt-in gate is declared, and the audit ran.
+
+    The declared set lives in ``molmetal/scripts/gate_inventory.py`` so the
+    producer and this consumer read ONE table.  The MEASUREMENT is still
+    STATIC: no gate is executed.
     """
     t0 = time.perf_counter()
     try:
         from molmetal.scripts.gate_inventory import (
             audit_zombie_gates,
             build_inventory,
+            undisclosed_zombies,
         )
 
         inventory = build_inventory(pipeline)
         zombies = audit_zombie_gates(inventory)
+        open_findings = undisclosed_zombies(inventory)
         n_gates = len(inventory)
         zombie_names = ", ".join(sorted(z["name"] for z in zombies)) or "none"
+        open_names = ", ".join(sorted(z["name"] for z in open_findings)) or "none"
+        parts = [
+            f"{name}: registered_gates={n_gates}",
+            f"zombie_gates={len(zombies)} [{zombie_names}]",
+            f"declared_zombie_gates={len(zombies) - len(open_findings)}",
+            f"undisclosed_zombie_gates={len(open_findings)} [{open_names}]",
+        ]
+        if open_findings:
+            parts.append(
+                "UNDECLARED opt-in gate(s): registered but never enforced and "
+                "not in gate_inventory.DECLARED_OPT_IN_GATES — declare the "
+                "intent or remove the registration"
+            )
+        status = "FAIL" if open_findings else "PASS"
+        evidence = " | ".join(parts)
+    except Exception as exc:  # noqa: BLE001 — a broken audit is a FAIL
+        status = "FAIL"
         evidence = (
-            f"{name}: report-only | registered_gates={n_gates} | "
-            f"zombie_gates={len(zombies)} [{zombie_names}]"
+            f"{name}: inventory build error={type(exc).__name__}: {exc} — a "
+            f"broken audit cannot certify the gate surface (fail-closed)"
         )
-    except Exception as exc:  # noqa: BLE001 — report-only, never blocks
-        evidence = (
-            f"{name}: report-only | inventory build error="
-            f"{type(exc).__name__}: {exc}"
-        )
-    return GateResult(name, priority, pipeline, "PASS", evidence, time.perf_counter() - t0)
+    return GateResult(name, priority, pipeline, status, evidence, time.perf_counter() - t0)
 
 
 # Wf-432-A1 — PRE_TRAINING_GATE_v2: 32 NEW gate definitions + registrations
@@ -11029,18 +14029,952 @@ def _emit_protocol_validation_hook_json(
     baseline_name: str,
     hook_id: str,
     payload: Dict[str, Any],
-) -> None:
-    """Emit / hook 3 hook outputs as JSON (no-op if hook_dir missing)."""
-    if not hook_dir.exists():
-        return
+) -> bool:
+    """Emit ONE L5 protocol-validation hook into ``{baseline}_hook.json``.
+
+    Wf-A169 REPAIR (2026-11-01) — TWO defects in the original emitter,
+    both MEASURED on this tree before the repair:
+
+    (D1) THE HOOK WAS NEVER EMITTED.  The emitter was a no-op whenever
+    ``hook_dir`` did not already exist, and NOTHING in the repo creates
+    that directory.  MEASURED: ``molmetal/reports/protocol_validation``
+    does not exist, so all 9 L5 hooks wrote NOTHING — while their gate
+    still returned PASS with the evidence string "hook emitted with
+    source_present=True at <dir>".  The Wf-432-A1 spec (§4, and the
+    deliverables list) says these hooks "auto-emit" to
+    ``molmetal/reports/protocol_validation/{krasnov, rusanov, drugood}_hook.json``,
+    so the directory is created here.
+
+    (D2) SIBLING hook_idS WERE SILENTLY DROPPED.  Every hook of one
+    baseline wrote ``{hook_id: payload}`` to the SAME
+    ``{baseline}_hook.json``, REPLACING the previous file.  MEASURED:
+    running the 3 Krasnov hooks left exactly ONE key
+    (``krasnov_protocol_alignment_diffs_documented``) in the file.  The
+    spec expects 3 hook_ids per baseline file (9 hooks = 3 baselines x 3
+    hook_ids), so the payload is now MERGED into any existing file
+    instead of replacing it.
+
+    Returns True iff the hook reached the file on disk.  Writes only
+    under ``hook_dir``; never touches the metric JSONs it references.
+
+    NOTE: every caller of this helper is one of the 9 L5 gates, and
+    NONE of those 9 is registered in any pipeline — so this repair
+    changes no live pre-flight behaviour (the "all" pipeline stays at
+    129 gates).
+    """
+    try:
+        hook_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:  # noqa: BLE001
+        return False
     out = hook_dir / f"{baseline_name}_hook.json"
+    merged: Dict[str, Any] = {}
+    try:
+        if out.exists():
+            existing = json.loads(out.read_text(encoding="utf-8"))
+            if isinstance(existing, dict):
+                merged.update(existing)
+    except Exception:  # noqa: BLE001
+        merged = {}
+    merged[hook_id] = payload
+    # Wf-A269 wave-10 (2026-11-02) — the payload's ``hook_emitted`` flag
+    # used to be a PRE-emit snapshot of ``hook_dir.exists()``: on the very
+    # first run the directory did not exist yet, so the emitted record
+    # claimed ``hook_emitted: false`` for a hook that WAS written.  The
+    # flag is now stamped by the emitter — the only code that knows
+    # whether the write reached the disk — and is un-stamped again when
+    # the write fails.  The gate's round-trip check compares the
+    # in-memory payload with the one on disk, so the two must agree.
+    payload["hook_emitted"] = True
     try:
         atomic_write_file(
             str(out),
-            json.dumps({hook_id: payload}, indent=2, sort_keys=True) + "\n",
+            json.dumps(merged, indent=2, sort_keys=True) + "\n",
         )
     except Exception:  # noqa: BLE001
-        pass
+        payload["hook_emitted"] = False
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Wf-A269 wave-10 (2026-11-02) — the L5 hook PAYLOAD-VALUE contract.
+#
+# WHY
+# ---
+# All 9 L5 per-baseline protocol-validation hooks route through
+# ``_hook_passthrough_payload``, which returned PASS iff
+# ``source_present AND emitted``.  The gate therefore could not fail on
+# the VALUE it exists to check: a hook that emitted an EMPTY (or a
+# wrong-valued) payload still PASSed, and the evidence string claimed
+# "hook emitted with source_present=True" while the payload carried no
+# measurement at all.  That is the §6.266 D3-OPEN dead-gate class (a
+# check that cannot fail) — the same class as the 7 launch gates
+# repaired in Wf-A269 wave-10.
+#
+# WHAT
+# ---
+# ``L5_HOOK_VALUE_CONTRACT`` names, per hook_id, the values the emitted
+# payload must carry, WHERE each one is read from (the gate's own source
+# argument) and the range (or the exact value) it must fall in.  The
+# payload now carries the extracted ``values``; the gate FAILS when a
+# required value is missing, is out of range, or disagrees with the
+# payload that actually reached the disk.
+#
+# The WARN branch for a MISSING SOURCE FILE is preserved: a hook whose
+# PRIMARY source is absent cannot be checked, and that is reported as
+# WARN (never PASS, never FAIL — there is nothing to fail).
+#
+# ZERO live impact: the 9 L5 gates are registered in NO pipeline (the
+# Wf-437 A2 audit removed them), so ``build_gates`` is unchanged —
+# MEASURED on this tree: all=129 / launch=131 / frontier=25 /
+# chemprop_v2_v3=18 / cfm=8.
+# ---------------------------------------------------------------------------
+
+L5_HOOK_VALUE_CONTRACT: Dict[str, Dict[str, Any]] = {
+    # ---- Krasnov (Wf-432-A1 §4 L5-Krasnov-1..3) ----
+    "krasnov_m1_per_seed_per_split_5fold_5metal": {
+        "primary_source": "metric_json",
+        "source_doc": "metrics/by_metric/metal_lomo_auc_wasserstein.json",
+        "fields": [
+            {
+                "key": "auc_mean_overall",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "value",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "n_folds",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "n_folds",
+                "expect": 5,
+            },
+            {
+                "key": "n_runs",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "n_runs",
+                "expect": 25,
+            },
+            {
+                "key": "per_fold_auc_mean",
+                "kind": "json_map_float",
+                "source": "metric_json",
+                "path": "per_fold_auc_mean",
+                "min": 0.0,
+                "max": 1.0,
+                "min_entries": 5,
+            },
+            {
+                "key": "auc_mean_is_fold_mean",
+                "kind": "json_mean_diff",
+                "source": "metric_json",
+                "path_map": "per_fold_auc_mean",
+                "path_value": "value",
+                "tol": 1e-9,
+            },
+        ],
+    },
+    "krasnov_m21_per_cell_line_per_seed": {
+        "primary_source": "dir",
+        "source_doc": "molmetal/reports/wf_nci60_precious_9cell/final.md",
+        "fields": [
+            {
+                "key": "mean_auc",
+                "kind": "text_float",
+                "source": "dir",
+                "pattern": r"Per-cell AUC mean\s*=\s*([0-9]*\.?[0-9]+)",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "mean_auc_std",
+                "kind": "text_float",
+                "source": "dir",
+                "pattern": (
+                    r"Per-cell AUC mean\s*=\s*[0-9]*\.?[0-9]+\s*±\s*([0-9]*\.?[0-9]+)"
+                ),
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "n_cell_lines",
+                "kind": "text_count",
+                "source": "dir",
+                "pattern": r"^\|\s*[A-Za-z][A-Za-z0-9]*\s*\|\s*\d+\s*\|",
+                "expect": 9,
+            },
+            {
+                "key": "n_seeds",
+                "kind": "text_count",
+                "source": "dir",
+                "pattern": r"^\|\s*\d+\s*\|\s*\d+\s*\|",
+                "expect": 3,
+            },
+        ],
+    },
+    "krasnov_protocol_alignment_diffs_documented": {
+        "primary_source": "metric_json",
+        "source_doc": (
+            "docs/HONEST_NEGATIVE_CATALOG.md + "
+            "TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md"
+        ),
+        "fields": [
+            {
+                "key": "catalog_krasnov_mentions",
+                "kind": "text_count",
+                "source": "metric_json",
+                "pattern": "Krasnov",
+                "min": 1,
+            },
+            {
+                "key": "matrix_krasnov_mentions",
+                "kind": "text_count",
+                "source": "dir",
+                "pattern": "Krasnov",
+                "min": 1,
+            },
+            {
+                "key": "matrix_m1_documented",
+                "kind": "text_token",
+                "source": "dir",
+                "token": "m1",
+                "expect": 1,
+            },
+            {
+                "key": "matrix_m21_documented",
+                "kind": "text_token",
+                "source": "dir",
+                "token": "m21",
+                "expect": 1,
+            },
+        ],
+    },
+    # ---- Rusanov (Wf-432-A1 §4 L5-Rusanov-1..3) ----
+    "rusanov_m2_per_cell_line_per_cohort": {
+        "primary_source": "metric_json",
+        "source_doc": "metrics/by_metric/m2_r2_per_cohort.json",
+        "fields": [
+            {
+                "key": "mean_r2",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "aggregate.mean_r2",
+                "min": -1.0,
+                "max": 1.0,
+            },
+            {
+                "key": "n_cohorts_tested",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "aggregate.n_cohorts_tested",
+                "expect": 3,
+            },
+            {
+                "key": "n_cohorts_independent",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "aggregate.n_cohorts_independent",
+                "expect": 2,
+            },
+            {
+                "key": "per_cohort_r2_mean",
+                "kind": "json_list_float",
+                "source": "metric_json",
+                "path": "per_cohort",
+                "item": "r2_mean",
+                "min": -1.0,
+                "max": 1.0,
+                "min_entries": 3,
+            },
+        ],
+    },
+    "rusanov_m2_4cell_baseline_comparison": {
+        "primary_source": "metric_json",
+        "source_doc": (
+            "metrics/by_metric/m2_r2_per_cohort.json + "
+            "molmetal/reports/rusanov_2025_paper_table_s4_s5_baseline/"
+        ),
+        "fields": [
+            {
+                "key": "mean_r2",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "aggregate.mean_r2",
+                "min": -1.0,
+                "max": 1.0,
+            },
+            {
+                "key": "n_cohorts_tested",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "aggregate.n_cohorts_tested",
+                "expect": 3,
+            },
+            {
+                "key": "baseline_artifacts",
+                "kind": "dir_entries",
+                "source": "dir",
+                "min": 1,
+            },
+        ],
+    },
+    "rusanov_protocol_alignment_diffs_documented": {
+        "primary_source": "metric_json",
+        "source_doc": (
+            "docs/HONEST_NEGATIVE_CATALOG.md + "
+            "TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md"
+        ),
+        "fields": [
+            {
+                "key": "catalog_rusanov_mentions",
+                "kind": "text_count",
+                "source": "metric_json",
+                "pattern": "Rusanov",
+                "min": 1,
+            },
+            {
+                "key": "matrix_rusanov_mentions",
+                "kind": "text_count",
+                "source": "dir",
+                "pattern": "Rusanov",
+                "min": 1,
+            },
+            {
+                "key": "matrix_m2_documented",
+                "kind": "text_token",
+                "source": "dir",
+                "token": "m2",
+                "expect": 1,
+            },
+        ],
+    },
+    # ---- DrugOOD (Wf-432-A1 §4 L5-DrugOOD-1..3) ----
+    # The three axes differ ONLY in the axis key, so the contract is
+    # written out three times (one entry per hook_id) rather than
+    # parameterised — the hook_id is the key, and a parameterised
+    # contract would need a second lookup layer to stay honest.
+    "drugood_m17_assay_split_auc": {
+        "primary_source": "metric_json",
+        "source_doc": "metrics/by_metric/drugood_ood_auc.json",
+        "fields": [
+            {
+                "key": "ood_auc",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc.assay",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "imold_reference",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "imold_reference.assay",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "erm_baseline",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "erm_baseline.assay",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_vs_imold",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc_delta_vs_imold.assay",
+                "min": -1.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_is_consistent",
+                "kind": "json_diff",
+                "source": "metric_json",
+                "path_a": "per_axis_auc.assay",
+                "path_b": "imold_reference.assay",
+                "path_c": "per_axis_auc_delta_vs_imold.assay",
+                "tol": 1e-6,
+            },
+            {
+                "key": "n_seeds",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "results.assay.n_seeds",
+                "expect": 3,
+            },
+            {
+                "key": "n_official_test_rows",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "n_official_test_rows.assay",
+                "min": 1,
+            },
+        ],
+    },
+    "drugood_m17_scaffold_split_auc": {
+        "primary_source": "metric_json",
+        "source_doc": "metrics/by_metric/drugood_ood_auc.json",
+        "fields": [
+            {
+                "key": "ood_auc",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc.scaffold",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "imold_reference",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "imold_reference.scaffold",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "erm_baseline",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "erm_baseline.scaffold",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_vs_imold",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc_delta_vs_imold.scaffold",
+                "min": -1.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_is_consistent",
+                "kind": "json_diff",
+                "source": "metric_json",
+                "path_a": "per_axis_auc.scaffold",
+                "path_b": "imold_reference.scaffold",
+                "path_c": "per_axis_auc_delta_vs_imold.scaffold",
+                "tol": 1e-6,
+            },
+            {
+                "key": "n_seeds",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "results.scaffold.n_seeds",
+                "expect": 3,
+            },
+            {
+                "key": "n_official_test_rows",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "n_official_test_rows.scaffold",
+                "min": 1,
+            },
+        ],
+    },
+    "drugood_m17_size_split_auc": {
+        "primary_source": "metric_json",
+        "source_doc": "metrics/by_metric/drugood_ood_auc.json",
+        "fields": [
+            {
+                "key": "ood_auc",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc.size",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "imold_reference",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "imold_reference.size",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "erm_baseline",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "erm_baseline.size",
+                "min": 0.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_vs_imold",
+                "kind": "json_float",
+                "source": "metric_json",
+                "path": "per_axis_auc_delta_vs_imold.size",
+                "min": -1.0,
+                "max": 1.0,
+            },
+            {
+                "key": "delta_is_consistent",
+                "kind": "json_diff",
+                "source": "metric_json",
+                "path_a": "per_axis_auc.size",
+                "path_b": "imold_reference.size",
+                "path_c": "per_axis_auc_delta_vs_imold.size",
+                "tol": 1e-6,
+            },
+            {
+                "key": "n_seeds",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "results.size.n_seeds",
+                "expect": 3,
+            },
+            {
+                "key": "n_official_test_rows",
+                "kind": "json_int",
+                "source": "metric_json",
+                "path": "n_official_test_rows.size",
+                "min": 1,
+            },
+        ],
+    },
+}
+
+_L5_HOOK_SOURCE_MAX_BYTES = 8 * 1024 * 1024
+_L5_HOOK_DIR_MAX_FILES = 32
+
+
+def _l5_hook_source_text(path: Optional[Path]) -> Tuple[Optional[str], Optional[str]]:
+    """Read a hook source (a FILE or a DIRECTORY) as text.
+
+    Returns ``(text, None)`` on success and ``(None, reason)`` on any
+    failure — the reason becomes part of the FAIL evidence, so it must
+    name the path.  A directory is read as the concatenation of its
+    ``*.md`` / ``*.json`` / ``*.txt`` files (sorted by name), which is
+    what the per-cell-line and per-baseline report directories hold.
+    """
+    if path is None:
+        return None, "source path not provided"
+    if not path.exists():
+        return None, f"source missing: {path}"
+    try:
+        if path.is_dir():
+            files = sorted(
+                p
+                for p in path.iterdir()
+                if p.is_file() and p.suffix in (".md", ".json", ".txt")
+            )[:_L5_HOOK_DIR_MAX_FILES]
+            if not files:
+                return None, f"source directory holds no artifact: {path}"
+            chunks: List[str] = []
+            total = 0
+            for fpath in files:
+                if total >= _L5_HOOK_SOURCE_MAX_BYTES:
+                    break
+                raw = fpath.read_text(encoding="utf-8", errors="replace")
+                room = _L5_HOOK_SOURCE_MAX_BYTES - total
+                chunks.append(raw[:room])
+                total += min(len(raw), room)
+            return "\n".join(chunks), None
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        return raw[:_L5_HOOK_SOURCE_MAX_BYTES], None
+    except OSError as exc:
+        return None, f"source unreadable: {path} ({type(exc).__name__}: {exc})"
+
+
+def _l5_hook_source_json(path: Optional[Path]) -> Tuple[Optional[Any], Optional[str]]:
+    """Read a hook source as JSON; ``(None, reason)`` on any failure."""
+    if path is None:
+        return None, "source path not provided"
+    if not path.exists():
+        return None, f"source missing: {path}"
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), None
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
+        return None, (
+            f"source is not readable JSON: {path} ({type(exc).__name__}: {exc})"
+        )
+
+
+def _l5_json_path(data: Any, dotted: str) -> Tuple[Any, Optional[str]]:
+    """Resolve a dotted JSON path (``"aggregate.mean_r2"``)."""
+    node = data
+    for part in dotted.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return None, f"missing JSON key: {dotted}"
+        node = node[part]
+    return node, None
+
+
+def _l5_extract_contract_fields(
+    contract: Dict[str, Any],
+    source_metric_json: Optional[Path],
+    source_dir: Optional[Path],
+) -> Tuple[Dict[str, Any], List[str]]:
+    """Extract + CHECK every value named by ``contract``.
+
+    Returns ``(values, errors)``.  ``errors`` is non-empty iff at least
+    one required value could not be extracted or violated its declared
+    range — the caller MUST then FAIL (never PASS).  The reasons are
+    human-readable strings because they become the gate's evidence.
+    """
+    values: Dict[str, Any] = {}
+    errors: List[str] = []
+    _json_cache: Dict[str, Tuple[Optional[Any], Optional[str]]] = {}
+    _text_cache: Dict[str, Tuple[Optional[str], Optional[str]]] = {}
+
+    def _path_for(src: str) -> Optional[Path]:
+        return source_metric_json if src == "metric_json" else source_dir
+
+    def _json_for(src: str) -> Tuple[Optional[Any], Optional[str]]:
+        if src not in _json_cache:
+            _json_cache[src] = _l5_hook_source_json(_path_for(src))
+        return _json_cache[src]
+
+    def _text_for(src: str) -> Tuple[Optional[str], Optional[str]]:
+        if src not in _text_cache:
+            _text_cache[src] = _l5_hook_source_text(_path_for(src))
+        return _text_cache[src]
+
+    for field in contract.get("fields", []):
+        key = field["key"]
+        kind = field["kind"]
+        src = field.get("source", "metric_json")
+        lo = field.get("min")
+        hi = field.get("max")
+
+        if kind in (
+            "json_float",
+            "json_int",
+            "json_map_float",
+            "json_list_float",
+            "json_diff",
+            "json_mean_diff",
+        ):
+            data, err = _json_for(src)
+            if err is not None:
+                errors.append(f"{key}: {err}")
+                continue
+            if kind == "json_float":
+                node, perr = _l5_json_path(data, field["path"])
+                if perr is not None:
+                    errors.append(f"{key}: {perr}")
+                    continue
+                if isinstance(node, bool) or not isinstance(node, (int, float)):
+                    errors.append(
+                        f"{key}: {field['path']} is not numeric "
+                        f"({type(node).__name__})"
+                    )
+                    continue
+                val = float(node)
+                if (lo is not None and val < lo) or (hi is not None and val > hi):
+                    errors.append(
+                        f"{key}: {field['path']}={val} outside [{lo}, {hi}]"
+                    )
+                    continue
+                if "expect" in field and abs(
+                    val - float(field["expect"])
+                ) > float(field.get("tol", 1e-9)):
+                    errors.append(
+                        f"{key}: {field['path']}={val} != expected "
+                        f"{field['expect']}"
+                    )
+                    continue
+                values[key] = val
+            elif kind == "json_int":
+                node, perr = _l5_json_path(data, field["path"])
+                if perr is not None:
+                    errors.append(f"{key}: {perr}")
+                    continue
+                if isinstance(node, bool):
+                    errors.append(f"{key}: {field['path']} is a boolean")
+                    continue
+                if isinstance(node, float) and float(node).is_integer():
+                    node = int(node)
+                if not isinstance(node, int):
+                    errors.append(
+                        f"{key}: {field['path']} is not an integer "
+                        f"({type(node).__name__})"
+                    )
+                    continue
+                if (lo is not None and node < lo) or (hi is not None and node > hi):
+                    errors.append(
+                        f"{key}: {field['path']}={node} outside [{lo}, {hi}]"
+                    )
+                    continue
+                if "expect" in field and node != int(field["expect"]):
+                    errors.append(
+                        f"{key}: {field['path']}={node} != expected "
+                        f"{field['expect']}"
+                    )
+                    continue
+                values[key] = int(node)
+            elif kind == "json_map_float":
+                node, perr = _l5_json_path(data, field["path"])
+                if perr is not None:
+                    errors.append(f"{key}: {perr}")
+                    continue
+                if not isinstance(node, dict):
+                    errors.append(
+                        f"{key}: {field['path']} is not an object "
+                        f"({type(node).__name__})"
+                    )
+                    continue
+                min_entries = int(field.get("min_entries", 1))
+                if len(node) < min_entries:
+                    errors.append(
+                        f"{key}: {field['path']} holds {len(node)} entries, "
+                        f"expected >= {min_entries}"
+                    )
+                    continue
+                bad: List[str] = []
+                for sub_key, sub_val in node.items():
+                    if isinstance(sub_val, bool) or not isinstance(
+                        sub_val, (int, float)
+                    ):
+                        bad.append(f"{sub_key}=<{type(sub_val).__name__}>")
+                        continue
+                    if (lo is not None and sub_val < lo) or (
+                        hi is not None and sub_val > hi
+                    ):
+                        bad.append(f"{sub_key}={sub_val}")
+                if bad:
+                    errors.append(
+                        f"{key}: {field['path']} out of range: " + ", ".join(bad)
+                    )
+                    continue
+                values[key] = {k: float(v) for k, v in node.items()}
+            elif kind == "json_list_float":
+                node, perr = _l5_json_path(data, field["path"])
+                if perr is not None:
+                    errors.append(f"{key}: {perr}")
+                    continue
+                if not isinstance(node, list):
+                    errors.append(
+                        f"{key}: {field['path']} is not a list "
+                        f"({type(node).__name__})"
+                    )
+                    continue
+                min_entries = int(field.get("min_entries", 1))
+                if len(node) < min_entries:
+                    errors.append(
+                        f"{key}: {field['path']} holds {len(node)} entries, "
+                        f"expected >= {min_entries}"
+                    )
+                    continue
+                item = field["item"]
+                collected: List[float] = []
+                bad = []
+                for entry in node:
+                    if not isinstance(entry, dict) or item not in entry:
+                        bad.append(f"<missing {item}>")
+                        continue
+                    sub_val = entry[item]
+                    if isinstance(sub_val, bool) or not isinstance(
+                        sub_val, (int, float)
+                    ):
+                        bad.append(f"{item}=<{type(sub_val).__name__}>")
+                        continue
+                    if (lo is not None and sub_val < lo) or (
+                        hi is not None and sub_val > hi
+                    ):
+                        bad.append(f"{item}={sub_val}")
+                        continue
+                    collected.append(float(sub_val))
+                if bad:
+                    errors.append(
+                        f"{key}: {field['path']} out of range: " + ", ".join(bad)
+                    )
+                    continue
+                values[key] = collected
+            elif kind == "json_diff":
+                node_a, err_a = _l5_json_path(data, field["path_a"])
+                node_b, err_b = _l5_json_path(data, field["path_b"])
+                node_c, err_c = _l5_json_path(data, field["path_c"])
+                if err_a or err_b or err_c:
+                    errors.append(
+                        f"{key}: missing JSON key "
+                        f"({err_a or err_b or err_c})"
+                    )
+                    continue
+                try:
+                    diff = float(node_a) - float(node_b)
+                    target = float(node_c)
+                except (TypeError, ValueError):
+                    errors.append(f"{key}: non-numeric operands")
+                    continue
+                tol = float(field.get("tol", 1e-6))
+                if abs(diff - target) > tol:
+                    errors.append(
+                        f"{key}: {field['path_a']} - {field['path_b']} = "
+                        f"{diff} != {field['path_c']} = {target} (tol {tol})"
+                    )
+                    continue
+                values[key] = target
+            else:  # json_mean_diff
+                node_map, err_map = _l5_json_path(data, field["path_map"])
+                node_val, err_val = _l5_json_path(data, field["path_value"])
+                if err_map or err_val:
+                    errors.append(
+                        f"{key}: missing JSON key ({err_map or err_val})"
+                    )
+                    continue
+                if not isinstance(node_map, dict) or not node_map:
+                    errors.append(
+                        f"{key}: {field['path_map']} is not a non-empty object"
+                    )
+                    continue
+                nums: List[float] = []
+                for sub_key, sub_val in node_map.items():
+                    if isinstance(sub_val, bool) or not isinstance(
+                        sub_val, (int, float)
+                    ):
+                        nums = []
+                        break
+                    nums.append(float(sub_val))
+                if not nums:
+                    errors.append(
+                        f"{key}: {field['path_map']} holds non-numeric entries"
+                    )
+                    continue
+                mean = sum(nums) / len(nums)
+                tol = float(field.get("tol", 1e-9))
+                try:
+                    target = float(node_val)
+                except (TypeError, ValueError):
+                    errors.append(f"{key}: {field['path_value']} is not numeric")
+                    continue
+                if abs(mean - target) > tol:
+                    errors.append(
+                        f"{key}: mean({field['path_map']})={mean} != "
+                        f"{field['path_value']}={target} (tol {tol})"
+                    )
+                    continue
+                values[key] = target
+            continue
+
+        if kind in ("text_float", "text_count", "text_token"):
+            text, err = _text_for(src)
+            if err is not None:
+                errors.append(f"{key}: {err}")
+                continue
+            if kind == "text_float":
+                match = re.search(field["pattern"], text, re.MULTILINE)
+                if match is None:
+                    errors.append(
+                        f"{key}: pattern {field['pattern']!r} not found in source"
+                    )
+                    continue
+                try:
+                    val = float(match.group(1))
+                except (TypeError, ValueError, IndexError):
+                    errors.append(
+                        f"{key}: pattern {field['pattern']!r} captured a "
+                        "non-numeric value"
+                    )
+                    continue
+                if (lo is not None and val < lo) or (hi is not None and val > hi):
+                    errors.append(f"{key}: captured {val} outside [{lo}, {hi}]")
+                    continue
+                values[key] = val
+            elif kind == "text_count":
+                count = len(re.findall(field["pattern"], text, re.MULTILINE))
+                if (lo is not None and count < lo) or (
+                    hi is not None and count > hi
+                ):
+                    errors.append(
+                        f"{key}: counted {count} matches, expected "
+                        f"[{lo}, {hi}]"
+                    )
+                    continue
+                if "expect" in field and count != int(field["expect"]):
+                    errors.append(
+                        f"{key}: counted {count} matches, expected "
+                        f"{field['expect']}"
+                    )
+                    continue
+                values[key] = int(count)
+            else:  # text_token
+                found = 1 if field["token"] in text else 0
+                expect = int(field.get("expect", 1))
+                if found != expect:
+                    errors.append(
+                        f"{key}: token {field['token']!r} "
+                        + ("not found" if not found else "found unexpectedly")
+                        + " in source"
+                    )
+                    continue
+                values[key] = found
+            continue
+
+        if kind == "dir_entries":
+            path = _path_for(src)
+            if path is None or not path.exists() or not path.is_dir():
+                errors.append(f"{key}: source directory missing: {path}")
+                continue
+            count = len([p for p in path.iterdir() if p.is_file()])
+            if (lo is not None and count < lo) or (hi is not None and count > hi):
+                errors.append(
+                    f"{key}: source directory holds {count} file(s), expected "
+                    f"[{lo}, {hi}]"
+                )
+                continue
+            values[key] = int(count)
+            continue
+
+        errors.append(f"{key}: unknown field kind {kind!r}")
+
+    return values, errors
+
+
+def _l5_hook_payload_mismatch(
+    hook_dir: Path,
+    baseline_name: str,
+    hook_id: str,
+    payload: Dict[str, Any],
+) -> Optional[str]:
+    """Return a reason string iff the emitted hook file disagrees with
+    ``payload``; ``None`` when the round-trip is clean.
+
+    The emitter's own return value is NOT trusted: the file on disk is
+    re-read and compared with the payload the gate checked, so an
+    emitter that wrote nothing (or something else) cannot be reported
+    as PASS.
+    """
+    hook_file = hook_dir / f"{baseline_name}_hook.json"
+    try:
+        on_disk = json.loads(hook_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"hook file unreadable ({type(exc).__name__}: {exc})"
+    if not isinstance(on_disk, dict):
+        return "hook file does not hold a JSON object"
+    written = on_disk.get(hook_id)
+    if not isinstance(written, dict):
+        return f"hook file carries no {hook_id!r} payload"
+    if written.get("values") != payload.get("values"):
+        return (
+            f"values differ (disk={written.get('values')!r} vs "
+            f"checked={payload.get('values')!r})"
+        )
+    if written.get("baseline") != payload.get("baseline"):
+        return "baseline differs"
+    if written.get("source_present") is not True:
+        return "source_present is not True on disk"
+    return None
+
+
+def _l5_format_values(values: Dict[str, Any]) -> str:
+    """One-line, evidence-length summary of the checked values."""
+    parts: List[str] = []
+    for key, val in values.items():
+        if isinstance(val, dict):
+            parts.append(f"{key}=<{len(val)} entries>")
+        elif isinstance(val, list):
+            parts.append(f"{key}=<{len(val)} values>")
+        else:
+            parts.append(f"{key}={val}")
+    return ", ".join(parts) if parts else "(no fields)"
 
 
 def _hook_passthrough_payload(
@@ -11056,33 +14990,162 @@ def _hook_passthrough_payload(
 ) -> GateResult:
     """Common passthrough pattern for §4 L5 per-baseline protocol hooks.
 
-    PASS criteria (all required):
-      (a) hook_dir on disk + emit hook JSON (no-op if missing)
-      (b) source metric JSON OR source dir on disk
-    WARN if (b) missing; PASS if both present.
+    PASS criteria (ALL required) — Wf-A269 wave-10 (2026-11-02):
+      (a) hook_dir on disk + the hook JSON emitted;
+      (b) the hook's PRIMARY source artifact on disk;
+      (c) EVERY value named by ``L5_HOOK_VALUE_CONTRACT[hook_id]``
+          extracted from that source AND inside its declared range;
+      (d) the payload that reached the disk carries exactly the values
+          that were checked (round-trip).
+
+    WARN when the primary source is missing (there is nothing to check
+    — the pre-repair branch, preserved); FAIL when a required value is
+    missing / out of range, or when the emitted payload disagrees with
+    the checked values.  A hook NEVER returns PASS on presence alone.
     """
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     """Common passthrough pattern for §4 L5 per-baseline protocol hooks.
+    #
+    #     PASS criteria (all required):
+    #       (a) hook_dir on disk + emit hook JSON (no-op if missing)
+    #       (b) source metric JSON OR source dir on disk
+    #     WARN if (b) missing; PASS if both present.
+    #     """
+    #     t0 = time.perf_counter()
+    #     failures: List[str] = []
+    #     source_present = (
+    #         source_metric_json is not None and source_metric_json.exists()
+    #     ) or (source_dir is not None and source_dir.exists())
+    #     payload: Dict[str, Any] = {
+    #         "baseline": baseline_name,
+    #         "hook_id": hook_id,
+    #         "hook_emitted": hook_dir.exists(),
+    #         "source_present": bool(source_present),
+    #         "verdict_field": verdict_field,
+    #         "emitted_at_utc": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+    #     }
+    #     emitted = _emit_protocol_validation_hook_json(
+    #         hook_dir, baseline_name, hook_id, payload
+    #     )
+    #     # Wf-A169 (2026-11-01): the PASS/WARN evidence below must state what
+    #     # ACTUALLY happened.  The original string said "hook emitted" even
+    #     # when the emitter was a no-op because hook_dir did not exist — a
+    #     # claim the file system contradicted.  `emitted` is now the emitter's
+    #     # own return value, so the evidence cannot lie.
+    #     if not source_present:
+    #         return GateResult(
+    #             name,
+    #             priority,
+    #             pipeline,
+    #             "WARN",
+    #             f"{baseline_name} source metric missing; hook JSON "
+    #             f"{'emitted' if emitted else 'NOT emitted'} "
+    #             f"with source_present=False",
+    #             time.perf_counter() - t0,
+    #         )
+    #     if not emitted:
+    #         return GateResult(
+    #             name,
+    #             priority,
+    #             pipeline,
+    #             "WARN",
+    #             f"{baseline_name} {hook_id} hook NOT emitted (hook_dir "
+    #             f"{hook_dir} could not be created/written) with "
+    #             f"source_present=True",
+    #             time.perf_counter() - t0,
+    #         )
+    #     return GateResult(
+    #         name,
+    #         priority,
+    #         pipeline,
+    #         "PASS",
+    #         f"{baseline_name} {hook_id} hook emitted with source_present=True "
+    #         f"at {hook_dir}",
+    #         time.perf_counter() - t0,
+    #     )
     t0 = time.perf_counter()
-    failures: List[str] = []
     source_present = (
         source_metric_json is not None and source_metric_json.exists()
     ) or (source_dir is not None and source_dir.exists())
+    contract = L5_HOOK_VALUE_CONTRACT.get(hook_id)
+    primary_is_metric_json = (
+        (contract or {}).get("primary_source", "metric_json") == "metric_json"
+    )
+    primary = source_metric_json if primary_is_metric_json else source_dir
+    primary_present = primary is not None and primary.exists()
+
+    values: Dict[str, Any] = {}
+    errors: List[str] = []
+    if contract is None:
+        errors.append(f"no value contract registered for hook_id {hook_id!r}")
+    else:
+        values, errors = _l5_extract_contract_fields(
+            contract, source_metric_json, source_dir
+        )
     payload: Dict[str, Any] = {
         "baseline": baseline_name,
         "hook_id": hook_id,
-        "hook_emitted": hook_dir.exists(),
+        "hook_emitted": False,
         "source_present": bool(source_present),
         "verdict_field": verdict_field,
         "emitted_at_utc": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        # Wf-A269 wave-10: the payload now carries the VALUES the gate
+        # checked (and the reasons a value could not be checked), so a
+        # reader of the hook file sees the measurement, not just the
+        # fact that some file existed.
+        "value_contract": hook_id,
+        "values": values,
+        "value_contract_errors": errors,
     }
-    _emit_protocol_validation_hook_json(hook_dir, baseline_name, hook_id, payload)
-    if not source_present:
+    emitted = _emit_protocol_validation_hook_json(
+        hook_dir, baseline_name, hook_id, payload
+    )
+    # Wf-A169 (2026-11-01): the PASS/WARN evidence below must state what
+    # ACTUALLY happened.  The original string said "hook emitted" even
+    # when the emitter was a no-op because hook_dir did not exist — a
+    # claim the file system contradicted.  `emitted` is now the emitter's
+    # own return value, so the evidence cannot lie.
+    if not primary_present:
         return GateResult(
             name,
             priority,
             pipeline,
             "WARN",
-            f"{baseline_name} source metric missing; hook JSON emitted "
-            f"with source_present=False",
+            f"{baseline_name} source metric missing ({primary}); hook JSON "
+            f"{'emitted' if emitted else 'NOT emitted'} "
+            f"with source_present={bool(source_present)}",
+            time.perf_counter() - t0,
+        )
+    if not emitted:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            f"{baseline_name} {hook_id} hook NOT emitted (hook_dir "
+            f"{hook_dir} could not be created/written) with "
+            f"source_present=True",
+            time.perf_counter() - t0,
+        )
+    if errors:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{baseline_name} {hook_id} hook emitted but its VALUE contract "
+            f"failed ({len(errors)} field(s)): " + "; ".join(errors),
+            time.perf_counter() - t0,
+        )
+    mismatch = _l5_hook_payload_mismatch(hook_dir, baseline_name, hook_id, payload)
+    if mismatch:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{baseline_name} {hook_id} hook emitted but the payload on disk "
+            f"does not match the checked values: {mismatch}",
             time.perf_counter() - t0,
         )
     return GateResult(
@@ -11091,7 +15154,8 @@ def _hook_passthrough_payload(
         pipeline,
         "PASS",
         f"{baseline_name} {hook_id} hook emitted with source_present=True "
-        f"at {hook_dir}",
+        f"at {hook_dir}; value contract {hook_id} checked "
+        f"{len(values)} field(s): {_l5_format_values(values)}",
         time.perf_counter() - t0,
     )
 
@@ -11304,7 +15368,7 @@ def gate_drugood_m17_size_split_auc(
 # and (b) adds the LIVE gate ``p1_cfm_live_decode_canary`` to the
 # ``cfm`` pipeline, which EXECUTES today's
 # train_cfm_yuelbond_wasserstein.py + YuelBond decoder via the proven
-# Wf-385-A3 3-epoch CPU smoke and requires loss decrease (0.3% floor)
+# Wf-385-A3 13-epoch CPU smoke and requires loss decrease (0.3% floor)
 # + ``decode_ratio_rdkit_strict > 0`` (fail-closed 0.0 default).
 # The live gate is registered ``cfm``-only (not ``all``): the ``all``
 # pipeline already executes the identical canary under
@@ -11328,20 +15392,29 @@ def gate_cfm_smoke_decoded_historical(
     verifies: the single frozen comparison
     ``gate_4_decode_ratio >= 0.5`` in the Wf-188 artifact (MEASURED
     26,799/26,801 MetalCytoToxDB molecules on cuda, wall 428.5 s).
-    The artifact is UNTRACKED (absent on a fresh clone — the gate then
-    FAILs "json file missing", historical context rather than a live
-    regression) and its checkpoint (cfm_yuelbond_wasserstein.pt,
-    mtime 2026-10-03) changed after the artifact was written
-    (mtime 2026-09-27).  The artifact's own ``all_gates_passed`` is
-    false (real 0.9958 < synthetic 1.0 upper bound — a PARTIAL
-    honest-negative).  Today's code is verified by
-    ``p1_cfm_live_decode_canary`` instead.
+    The artifact is UNTRACKED (absent on a fresh clone) and its
+    checkpoint (cfm_yuelbond_wasserstein.pt, mtime 2026-10-03) changed
+    after the artifact was written (mtime 2026-09-27).  The artifact's
+    own ``all_gates_passed`` is false (real 0.9958 < synthetic 1.0
+    upper bound — a PARTIAL honest-negative).  Today's code is verified
+    by ``p1_cfm_live_decode_canary`` instead.
 
     The evidence string is prefixed with a HISTORICAL note carrying
     the MEASURED artifact-vs-checkpoint mtime delta (computed at gate
     invocation) so the verdict cannot be misread as a live check.
+
+    Wf-A128 (2026-10-31) — CLASSIFICATION fix.  This gate used
+    :func:`gate_json_threshold`, whose 30-day AnchorGuard TTL made it
+    FAIL with ``AnchorStaleError`` on the artifact's age (MEASURED
+    2,903,810.5 s = 33.61 d > 2,592,000 s) — the VALUE CHECK NEVER RAN,
+    so a historical anchor whose value is 0.9958207395798351 (>= 0.5)
+    was reported as a failure for being old.  It now goes through
+    :func:`gate_frozen_historical_json_threshold`, which applies the
+    declared-frozen no-TTL treatment and SKIPs (not FAILs) when the
+    git-ignored artifact is absent on a clean checkout.  No mtime was
+    touched — touching it would fabricate freshness (AGENTS.md §5.2).
     """
-    res = gate_json_threshold(
+    res = gate_frozen_historical_json_threshold(
         name,
         priority,
         pipeline,
@@ -11385,7 +15458,7 @@ def gate_cfm_live_decode_canary(
     HOLE-1 fix.  Delegates to the proven Wf-385-A3 gate
     (``gate_wf385_scaffold_loss_wire_in_verified`` →
     ``molmetal/scripts/wf385a3_scaffold_wire_in_gate.py``), which runs
-    a 3-epoch CPU smoke of today's
+    a 13-epoch CPU smoke of today's
     ``train_cfm_yuelbond_wasserstein.py`` with the 14 Wf-380 flags ON
     and requires (a) ``loss[0] > loss[-1]`` (0.3% relative floor) and
     (b) ``decode_ratio_rdkit_strict > 0`` (fail-closed 0.0 default;
@@ -11448,6 +15521,258 @@ def gate_cfm_live_decode_canary(
 
 
 # ---------------------------------------------------------------------------
+# Wf-A128 (2026-10-31) — the Catherine 30-metal gate becomes a REPRODUCING
+# gate instead of a 30-day-TTL historical-anchor read.
+#
+# TWO defects, both measured on this host before the fix:
+#
+#   (1) The artifact the gate read,
+#       ``molmetal/reports/wf256_apply/catherine_30/per_metal_pass.json``,
+#       was 2,828,234.4 s (32.73 d) old — past the 2,592,000 s (30 d)
+#       AnchorGuard TTL that ``gate_json_threshold`` applies — so the
+#       gate raised ``AnchorStaleError`` and the VALUE CHECK NEVER RAN.
+#       The artifact's content was fine (MEASURED: 30 metals,
+#       six_of_six_pass fraction = 1.000000).
+#
+#   (2) The path was one NO COMMITTED SCRIPT WRITES BY DEFAULT.  The
+#       producer ``molmetal/scripts/bench_catherine_30metals.py`` defaults
+#       ``--output-dir`` to ``molmetal/reports/wf255_catherine_30metals``,
+#       and that committed directory holds a 3-METAL SMOKE artifact
+#       (MEASURED: its ``sweep_summary.md`` reads ``n_metals: **3**``,
+#       ``per_metal_pass.json`` carries 3 metals / 18 properties).  So
+#       pointing the gate at the producer's default would have made the
+#       "30 metals" contract VACUOUS — a 3-metal smoke also yields a
+#       six_of_six fraction of 1.0.
+#
+# The fix is to treat the number as REPRODUCIBLE rather than as a
+# historical anchor: the gate runs the committed, CPU-only producer
+# (``--metals 30 --max-depth 0 --seeds 0 --n-partners 4`` — the exact
+# parameters of the historical Wf-256 artifact) into the git-ignored
+# scratch tree, then evaluates the freshly written ``per_metal_pass.json``.
+# MEASURED reproduction on this host: rc 0, 30 metals, 30/30 six-of-six,
+# 180/180 properties PASS, bench wall_time_s 1.4629 s, and a six_of_six
+# fraction of exactly 1.000000 — identical to the historical artifact's
+# fraction and cohort (30 metals / 180 properties / max_depth 0 /
+# n_partners 4).
+#
+# The gate now also asserts the COHORT SIZE (n_metals >= 30), because
+# the fraction alone cannot distinguish a 30-metal bench from a 3-metal
+# smoke — both are 1.0.
+# ---------------------------------------------------------------------------
+
+
+def gate_cfm_catherine_30metals_reproduced(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    producer_module: str = "molmetal.scripts.bench_catherine_30metals",
+    out_dir: Path = GATE_SCRATCH_ROOT / "wf256_catherine_30",
+    python_bin: str = VENV_PY,
+    timeout: float = 300.0,
+    metals: int = 30,
+    min_metals: int = 30,
+    producer_extra_flags: Tuple[str, ...] = (),
+    historical_artifact: Optional[Path] = None,
+) -> GateResult:
+    """Wf-A128 — the Catherine 30-metal bench, REPRODUCED on CPU at gate time.
+
+    Runs the committed, CPU-only producer
+    ``molmetal/scripts/bench_catherine_30metals.py`` with the exact
+    parameters of the historical Wf-256 artifact (``--metals 30
+    --max-depth 0 --seeds 0 --n-partners 4``) into a git-ignored scratch
+    directory, then evaluates the fraction of ``per_metal[*].
+    six_of_six_pass`` against a 0.95 floor.
+
+    ``metals`` is the COHORT THE PRODUCER RUNS and ``min_metals`` is the
+    COHORT THE GATE REQUIRES.  They are separate knobs on purpose
+    (Wf-A128, 2026-10-31): the run parameters must reproduce the
+    historical artifact exactly, while the requirement is the assertion
+    the gate name claims — and it is the requirement that must be
+    testable against a deliberately short run.
+
+    PASS criteria (all required):
+
+      * The producer subprocess exits 0.
+      * ``per_metal_pass.json`` is written and parses.
+      * ``n_metals >= min_metals`` (30) — the cohort the gate name
+        claims.  The fraction alone is VACUOUS without it: a 3-metal
+        smoke also scores 1.0.
+      * ``fraction(six_of_six_pass) >= 0.95``.
+
+    SKIP (honest-negative, env-aware per the Wf-345-A2 convention) when
+    the producer cannot run because the host interpreter lacks the
+    runtime it imports — the dependency is named in the evidence.
+
+    FAIL on a non-zero producer exit (for any other reason), a missing
+    or unparseable artifact, a short cohort, or a fraction below the
+    floor.
+
+    CPU-only by design: the subprocess runs with
+    ``CUDA_VISIBLE_DEVICES=""``.  MEASURED wall on the dev host: ~2 s
+    for the full 30-metal bench.
+    """
+    t0 = time.perf_counter()
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"cannot create catherine out-dir {out_dir!s}: {exc}",
+            time.perf_counter() - t0,
+        )
+
+    cmd = [
+        python_bin,
+        "-m",
+        producer_module,
+        "--metals",
+        str(metals),
+        "--max-depth",
+        "0",
+        "--seeds",
+        "0",
+        "--n-partners",
+        "4",
+        "--output-dir",
+        str(out_dir),
+    ]
+    cmd.extend(producer_extra_flags)
+    rc, out, err = _run(
+        cmd,
+        timeout=timeout,
+        cwd=REPO_ROOT,
+        # CPU-only by design — the producer is CPU-only; blanking CUDA
+        # keeps it that way (and honours the repo's standing CPU lock).
+        env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},
+    )
+    if rc == 124:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT is NOT evidence that
+        # the producer is broken: the producer did not finish, so the
+        # 30-metal closure result was NOT obtained (AGENTS.md §5.2).
+        blob = (out + err).strip()
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return _timeout_gate_result(
+            name,
+            priority,
+            pipeline,
+            budget_sec=float(timeout),
+            elapsed_sec=time.perf_counter() - t0,
+            tail=tail,
+            detail="the catherine 30-metal producer",
+            not_a_verdict_on="the catherine 30-metal producer's correctness",
+        )
+    if rc != 0:
+        blob = (out + err).strip()
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        if "ModuleNotFoundError" in blob or "ImportError" in blob:
+            return GateResult(
+                name,
+                priority,
+                pipeline,
+                "SKIP",
+                f"catherine 30-metal producer could not import its runtime "
+                f"(env gap): {tail!r}; expected the repo-local canonical "
+                f"venv {VENV_PY} per AGENTS.md §5.1/§5.9",
+                time.perf_counter() - t0,
+            )
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine 30-metal producer rc={rc}: {tail!r}",
+            time.perf_counter() - t0,
+        )
+
+    json_path = out_dir / "per_metal_pass.json"
+    if not json_path.is_file():
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine producer exit-code 0 but {json_path} not written",
+            time.perf_counter() - t0,
+        )
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine 30-metal artifact is not valid JSON ({json_path}): "
+            f"{type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    per_metal = data.get("per_metal", [])
+    if not isinstance(per_metal, list) or not per_metal:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine 30-metal artifact carries no per_metal records: "
+            f"{json_path}",
+            time.perf_counter() - t0,
+        )
+    n_metals = len(per_metal)
+    n_pass = sum(
+        1 for m in per_metal if isinstance(m, dict) and m.get("six_of_six_pass", False)
+    )
+    fraction = n_pass / max(1, n_metals)
+    elapsed = time.perf_counter() - t0
+    n_props_pass = data.get("n_total_properties_pass")
+    n_props_total = data.get("n_total_properties_6N")
+    hist_note = ""
+    if historical_artifact is not None:
+        hist_note = (
+            f"; historical (git-ignored, 30-day-TTL) artifact for "
+            f"cross-reference: {historical_artifact}"
+        )
+    if n_metals < min_metals:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine cohort is SHORT: n_metals={n_metals} < "
+            f"{min_metals} (a shorter cohort also scores fraction=1.0, so "
+            f"the fraction alone cannot prove the 30-metal claim); "
+            f"artifact={json_path}",
+            elapsed,
+        )
+    if fraction < 0.95:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"catherine six_of_six fraction={fraction:.6f} < 0.95 "
+            f"({n_pass}/{n_metals} metals); artifact={json_path}",
+            elapsed,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
+        f"catherine 30-metal bench REPRODUCED on CPU by the committed "
+        f"producer ({producer_module} --metals {metals} --max-depth 0 "
+        f"--seeds 0 --n-partners 4): six_of_six fraction="
+        f"{fraction:.6f} ({n_pass}/{n_metals} metals), properties "
+        f"{n_props_pass}/{n_props_total}; artifact={json_path}; "
+        f"wall={elapsed:.1f}s{hist_note}",
+        elapsed,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Wf-446-H4 (HOLE 4 fix, 2026-10-03): D-MPNN loss-decrease wire-in smoke.
 #
 # HOLE 4: ``train_dmpnn_multitask_wasserstein.py`` was referenced NOWHERE
@@ -11497,10 +15822,158 @@ _DMPNN_SMOKE_METAL = "Re"
 _SMOKE_DEVICE_CACHE: Optional[str] = None
 
 
+def _session_cuda_is_locked() -> bool:
+    """True when this session forbids GPU use by blanking
+    ``CUDA_VISIBLE_DEVICES``.
+
+    MEASURED: this reads the ambient environment only.  It never imports
+    torch, never touches a GPU and never spawns a subprocess.
+    """
+    return os.environ.get("CUDA_VISIBLE_DEVICES", None) == ""
+
+
+def _visible_device_count_hint() -> Optional[int]:
+    """How many CUDA devices this session can actually USE, from the
+    environment alone.  ``None`` when there is no mask (host semantics).
+
+    MEASURED: this parses ``CUDA_VISIBLE_DEVICES`` and never imports torch.
+    A negative index EXCLUDES a device, so a mask of only negative entries
+    exposes nothing.
+    """
+    mask = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if mask is None:
+        return None
+    entries = [tok.strip() for tok in mask.split(",") if tok.strip()]
+    if not entries:
+        return 0
+    return len([tok for tok in entries if not tok.startswith("-")])
+
+
+def _device_authorisation_error(device: str) -> Optional[str]:
+    """``None`` when ``device`` is authorised by this session; else the
+    reason it is not.
+
+    MEASURED: reads the ambient environment only.
+    """
+    if _session_cuda_is_locked() and device != "cpu":
+        return (
+            f"the session blanks CUDA_VISIBLE_DEVICES (the repo's standing "
+            f"CPU lock) but the smoke was about to run on '{device}'"
+        )
+    visible = _visible_device_count_hint()
+    if visible == 0 and device != "cpu":
+        return (
+            f"CUDA_VISIBLE_DEVICES hides every device (visible={visible}) "
+            f"but the smoke was about to run on '{device}'"
+        )
+    return None
+
+
 def _smoke_device() -> str:
-    """``cuda:0`` when torch can see a GPU, else ``cpu``.  Probed once."""
+    """``cuda:0`` when torch can see a GPU, else ``cpu``.  Probed once.
+
+    Wf-A162 (2026-11-01) — THE PROBE MUST NOT ALLOCATE GPU MEMORY.
+    In the installed torch
+    (``.venv/lib/python3.12/site-packages/torch/cuda/__init__.py``),
+    ``torch.cuda.is_available()`` takes the ``else`` branch unless
+    ``PYTORCH_NVML_BASED_CUDA_CHECK=1``, and that branch's own comment says
+    it "uses the CUDA Runtime API ``cudaGetDeviceCount`` which in turn
+    initializes the CUDA Driver API via ``cuInit``".  The probe used to run
+    with **no ``env=``**, so it inherited the ambient environment and
+    answered a question the session had already forbidden.
+
+    MEASURED (2026-10-31): the GPU watchdog recorded exactly ONE
+    mol-metal allocation in its life -- 550 MiB -- and no ``.pt`` was
+    written that day, so no training ran; what allocated was the
+    visibility query itself.
+
+    Two guards, in order:
+      1. If the session blanks ``CUDA_VISIBLE_DEVICES`` -- the repo's
+         standing CPU lock -- return ``"cpu"`` WITHOUT spawning torch at
+         all.  The probe would have answered ``False`` anyway, so this is
+         behaviour-identical and allocation-free.  This guard is the
+         LOAD-BEARING one.
+      2. Otherwise the probe runs with
+         ``PYTORCH_NVML_BASED_CUDA_CHECK=1``, so the answer comes from
+         NVML without ``cuInit``.  NVML does not honour the device mask,
+         which is why guard 1 exists and why a mask that hides every
+         device is also short-circuited above.
+
+    Wf-A269 wave-12 (2026-11-02) -- THE PARITY KILL-SWITCH, AND A LOUD
+    DEFAULT.  ``metallo_drug_smoke_retrain.py::_resolve_device`` has
+    honoured ``MOLMETAL_SMOKE_DEVICE=cpu|cuda`` since Wf-A121C; this
+    function did not, so **the pre-flight had no way to be told to stay on
+    the CPU** except by blanking ``CUDA_VISIBLE_DEVICES`` in the ambient
+    environment.
+
+    MEASURED (2026-11-02, 22:29:38 and 22:30:58 local): a wrapper's
+    ``--dry-run`` path invoked this file with ``--pipeline launch`` and the
+    environment NOT blanked.  ``_smoke_device()`` therefore answered
+    ``cuda:0``, and the launch pipeline's trainer-smoke gates really
+    launched ``train_chemprop_v2_v3.py --device cuda:0`` (760-820 MiB) and
+    ``train_dmpnn_multitask_wasserstein.py --device cuda:0 --epochs 2``
+    (552-790 MiB) on the GPU -- four watchdog violations in under two
+    minutes.  The probe itself still allocated nothing (Wf-A162's guard
+    works); **what allocated was the smoke trainer the probe chose**.
+
+    Two changes, both ADDITIVE and both with the DEFAULT UNCHANGED:
+      3. ``MOLMETAL_SMOKE_DEVICE=cpu`` (or ``cuda``) now overrides the
+         probe, with the same spelling and the same "default is
+         unchanged" contract as the trainer's ``_resolve_device``.
+      4. When the probe does select a GPU device, this function now says
+         so on **stderr**, so the allocation is visible in the pre-flight's
+         own output instead of only in an external watchdog.
+
+    Wf-A269 wave-12 (2026-11-02, later the same day) -- THE PRECEDENCE.
+    Two directives can contradict each other: ``MOLMETAL_SMOKE_DEVICE=cuda``
+    asks for the GPU, while the repo's standing CPU lock
+    (``CUDA_VISIBLE_DEVICES=""``, or any mask that hides every device)
+    forbids it.  **THE LOCK WINS**, and the conflict is announced on
+    stderr.  Rationale, measured rather than assumed: the two consuming
+    gates (:13550 and :17130) already call ``_device_authorisation_error``
+    and FAIL the gate outright, so letting the override through would
+    not have been silent -- it would have turned a *contradictory
+    instruction* into a **spurious FAIL of an unrelated gate** (the D-MPNN
+    / chemprop trainer smokes), with a message about a device the
+    operator never asked for.  Resolving it here keeps the lock's
+    guarantee ("this session trains nothing on a GPU") and keeps the
+    override's meaning ("here is the device to use").  This matches the
+    precedence the repo's own Wf-A163 census designed for the sibling
+    ``molmetal/scripts/infer_cfm.py`` (lock first, then the override).
+    """
+
     global _SMOKE_DEVICE_CACHE
     if _SMOKE_DEVICE_CACHE is not None:
+        return _SMOKE_DEVICE_CACHE
+    override = (os.environ.get("MOLMETAL_SMOKE_DEVICE") or "").strip().lower()
+    if override in ("cpu", "cuda"):
+        if override == "cuda" and (
+            _session_cuda_is_locked() or _visible_device_count_hint() == 0
+        ):
+            # THE LOCK WINS (see the docstring).  Announce the conflict --
+            # a silently-ignored override is how a "the GPU was requested
+            # and never used" incident becomes invisible.
+            _SMOKE_DEVICE_CACHE = "cpu"
+            print(
+                f"[pre_flight_check] WARNING MOLMETAL_SMOKE_DEVICE=cuda was "
+                f"overridden to cpu: this session forbids GPU use "
+                f"(CUDA_VISIBLE_DEVICES="
+                f"{os.environ.get('CUDA_VISIBLE_DEVICES')!r}).",
+                file=sys.stderr,
+            )
+            return _SMOKE_DEVICE_CACHE
+        _SMOKE_DEVICE_CACHE = "cpu" if override == "cpu" else "cuda:0"
+        print(
+            f"[pre_flight_check] INFO smoke device forced to "
+            f"{_SMOKE_DEVICE_CACHE} by MOLMETAL_SMOKE_DEVICE={override}",
+            file=sys.stderr,
+        )
+        return _SMOKE_DEVICE_CACHE
+    if _session_cuda_is_locked():
+        _SMOKE_DEVICE_CACHE = "cpu"
+        return _SMOKE_DEVICE_CACHE
+    if _visible_device_count_hint() == 0:
+        _SMOKE_DEVICE_CACHE = "cpu"
         return _SMOKE_DEVICE_CACHE
     device = "cpu"
     try:
@@ -11509,12 +15982,40 @@ def _smoke_device() -> str:
             capture_output=True,
             text=True,
             timeout=180,
+            env={**os.environ, "PYTORCH_NVML_BASED_CUDA_CHECK": "1"},
         )
         if probe.returncode == 0 and probe.stdout.strip().endswith("True"):
             device = "cuda:0"
+    except subprocess.TimeoutExpired:
+        # Wf-A159 (2026-11-01) — a wall-clock TIMEOUT means the GPU
+        # visibility was NOT determined.  The documented fallback (run the
+        # smoke on CPU) is the conservative outcome; it is NOT a claim that
+        # the host has no GPU (AGENTS.md §5.2).  Named explicitly so the
+        # timeout is not folded into the generic exec-error handler, and
+        # said out loud so the operator knows it was not measured.
+        print(
+            f"[pre_flight_check] WARNING {GATE_STATUS_TIMEOUT}: the torch "
+            f"GPU-visibility probe timed out — the visibility was NOT "
+            f"determined; falling back to the CPU device.",
+            file=sys.stderr,
+        )
+        device = "cpu"
     except (OSError, subprocess.SubprocessError):
         device = "cpu"
     _SMOKE_DEVICE_CACHE = device
+    if device != "cpu":
+        # Wf-A269 wave-12 (2026-11-02) — say it OUT LOUD.  The 2026-11-02
+        # violation (four watchdog hits in under two minutes) was only
+        # visible to an EXTERNAL watchdog; the pre-flight's own stdout and
+        # stderr said nothing about a GPU device.  A gate that allocates
+        # must announce it in its own output.
+        print(
+            f"[pre_flight_check] WARNING smoke device is {device}: this "
+            f"pre-flight will run its trainer smoke on the GPU. Set "
+            f"MOLMETAL_SMOKE_DEVICE=cpu (or blank CUDA_VISIBLE_DEVICES) to "
+            f"keep it on the CPU.",
+            file=sys.stderr,
+        )
     return device
 
 _DMPNN_STDOUT_LOSS_RE = re.compile(
@@ -11620,7 +16121,7 @@ def _gate_dmpnn_quick_smoke(
     dmpnn_script: Path,
     *,
     csv_path: Path = _DMPNN_SMOKE_CSV,
-    timeout: float = 300.0,
+    timeout: Optional[float] = None,
 ) -> GateResult:
     """HOLE-4 — live D-MPNN loss-descent smoke (CFM §5.7 wire-in equivalent).
 
@@ -11655,6 +16156,15 @@ def _gate_dmpnn_quick_smoke(
     the gitignored ``.data/**`` CSVs are absent — cannot verify the
     trainer on such a host, and that is not a verdict on the code.
 
+    Wf-A135 (2026-10-31) — the wall budget is no longer the hard-coded
+    300 s literal.  It is the NAMED constant
+    ``wfa135_smoke_budget.DMPNN_SMOKE_BUDGET_SEC``, derived on THIS host
+    from a MEASURED standalone (CPU-only) baseline times a STATED
+    headroom factor, and overridable via
+    ``MOLMETAL_SMOKE_BUDGET_DMPNN_SEC``.  A timeout now earns the
+    "TIMEOUT" verdict (the measurement was NOT obtained) instead of
+    being folded into FAIL — see ``_timeout_gate_result``.
+
     Registered ['all'] only — same §3.4 design contract as the
     Wf-343C4 / Wf-347A1 / Wf-350-A1/A3 / Wf-353-B1 / Wf-385-A3
     all-only gates (pre-retrain internal check, not paper-grade claim).
@@ -11663,6 +16173,12 @@ def _gate_dmpnn_quick_smoke(
     priority = "P3"
     pipeline = "dmpnn"
     t0 = time.perf_counter()
+
+    # Wf-A135 (2026-10-31) — the wall budget is the NAMED Wf-A135
+    # constant (MEASURED standalone baseline x a STATED headroom factor),
+    # overridable via MOLMETAL_SMOKE_BUDGET_DMPNN_SEC.
+    if timeout is None:
+        timeout = _smoke_budget_sec(SMOKE_GATE_DMPNN)
 
     if not csv_path.is_file():
         return GateResult(
@@ -11701,11 +16217,25 @@ def _gate_dmpnn_quick_smoke(
         )
 
     smoke_out = Path(tempfile.mkdtemp(prefix="wf446_h4_dmpnn_smoke_"))
+    # Wf-A162 (2026-11-01) — assert the device this smoke is about to use is
+    # the one the SESSION authorised, and FAIL loudly rather than silently
+    # training on a device the session forbids.
+    device = _smoke_device()
+    auth_err = _device_authorisation_error(device)
+    if auth_err is not None:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{auth_err} (smoke NOT run)",
+            time.perf_counter() - t0,
+        )
     args = [
         VENV_PY,
         str(dmpnn_script),
         "--device",
-        _smoke_device(),
+        device,
         "--epochs",
         "2",
         "--csv",
@@ -11734,15 +16264,19 @@ def _gate_dmpnn_quick_smoke(
     blob = (out + "\n" + err).strip()
     tail = " | ".join(blob.splitlines()[-3:]) if blob else "(no output)"
 
+    # Wf-A135 (2026-10-31) — a wall-clock TIMEOUT is its own verdict.
+    # rc==124 is `_run`'s subprocess.TimeoutExpired marker.  The smoke
+    # did not finish, so the loss measurement was NEVER OBTAINED — which
+    # is NOT the same thing as "the trainer flag is not wired in".
     if rc == 124:
-        return GateResult(
+        return _timeout_gate_result(
             name,
             priority,
             pipeline,
-            "FAIL",
-            f"D-MPNN CPU smoke TIMED OUT after {timeout:.0f}s (rc=124) | "
-            f"tail: {tail}",
-            elapsed,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="D-MPNN CPU smoke",
         )
     if rc != 0:
         return GateResult(
@@ -11877,14 +16411,20 @@ def gate_p2_data_leakage_diag(
     blob = (out + "\n" + err).strip()
     tail = " | ".join(blob.splitlines()[-3:]) if blob else "(no output)"
     if rc == 124:
-        return GateResult(
+        # Wf-A158 (2026-11-01) — a wall-clock TIMEOUT is its own verdict,
+        # NOT a FAIL.  The Wf-A135 rule (2026-10-31) was applied to three
+        # gates but never to this one, so a leakage diagnostic that ran out
+        # of wall time was reported as "the data leaks" — a false defect
+        # claim (AGENTS.md §5.2).  The measurement was NOT obtained.
+        return _timeout_gate_result(
             name,
             priority,
             pipeline,
-            "FAIL",
-            f"check_data_leakage.py TIMED OUT after {timeout:.0f}s (rc=124) "
-            f"| tail: {tail}",
-            elapsed,
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=tail,
+            detail="check_data_leakage.py leakage diagnostic",
+            not_a_verdict_on="the data-leakage split strictness",
         )
     if rc != 0:
         return GateResult(
@@ -11989,6 +16529,214 @@ def gate_p2_data_leakage_diag(
         + "; ".join(random_notes)
         + f" (random splits leak by design — the strict shipped/scaffold "
         f"splits are the contract); report={out_path}",
+        elapsed,
+    )
+
+
+
+# ---------------------------------------------------------------------------
+# Wf-A132 (2026-10-31): the CFM FRAGMENTATION verdict, now CONSULTED.
+#
+# WHY THIS EXISTS
+# ---------------
+# ``metrics/by_metric/cfm_run_census.json`` carries a per-run
+# ``fragmentation_gate`` verdict (built by the census builder's own
+# ``_fragmentation_verdict``), and the fragmentation rate is one of the
+# worst defects this project has MEASURED: the c7 generation pool is
+# 91.49% fragmented (``fragmented_ratio`` 0.9149104112400347,
+# ``largest_fragment_frac_mean`` 0.7395141725353019,
+# ``measured_rate`` 0.08508958875996527; n_input 12669 / n_scored 12668).
+# Wf-A135 (2026-10-31): the value above is the ARTIFACT's value —
+# ``metrics/by_metric/cfm_fragmentation_audit.json`` carries
+# 0.08508958875996527; the 0.08508958875996528 that stood here before
+# was a 1-ULP transcription slip and appears NOWHERE else on disk.
+#
+# A verdict that is recorded but never consulted consumes NOTHING: a run
+# can train for hours and publish a FAIL pool with no gate in the way.
+# The standalone scorer is ``molmetal/scripts/pre_flight_fragmentation_check.py``
+# (Wf-A128); this function is its pre-flight REGISTRATION.
+#
+# WHY IT IS REGISTERED ON THE ``cfm`` PIPELINE ONLY
+# -------------------------------------------------
+# MEASURED 2026-10-31: ``--pipeline all`` is the hand-written git hook
+# chain (``scripts/git_hooks/pre-commit``) and is what the launchers run;
+# ``--pipeline cfm`` is the CFM-specific pre-flight.  A gate that reads a
+# HISTORICAL record and FAILs on it would block every commit and every
+# unrelated launcher over a defect that belongs to the CFM line alone.
+# So the gate is registered where the defect lives.
+#
+# THE STATUS MAPPING (and why it can still be green)
+# ---------------------------------------------------
+# * the census artifact is absent, unreadable, or carries no verdict at
+#   all -> SKIP.  Missing data is never a FAIL: the gate's own principle
+#   is "a gate that FAILs on missing data is worse than no gate" — it is
+#   exactly how this repository ended up with 27 meaningless FAILs.
+# * the artifact is STALE — the gate's independent re-scoring disagrees
+#   with the artifact's own recorded verdict on >= 1 run -> SKIP, with
+#   the disagreeing runs named.  MEASURED on the artifact on disk:
+#   2 disagreements (``cfm_bond_head_30ep_onecycle_2026_10_09``,
+#   ``cfm_fm_control_2026_10_09``), because the artifact was built by a
+#   PRE-Wf-A127 census builder and cannot carry the verdict today's
+#   builder produces.  A stale record is missing data.
+# * otherwise -> the gate's own verdict: FAIL when the artifact records
+#   a measured fragmentation FAIL, PASS when it does not.
+#
+# The EVIDENCE always carries the measured tally, so the fragmentation
+# number is printed by every CFM pre-flight whatever the verdict is.
+#
+# THE RESIDUAL HOLE (named, not hidden)
+# -------------------------------------
+# While the census artifact is stale this gate cannot FAIL, so the
+# fragmentation verdict is CONSULTED but not yet ENFORCED.  Closing that
+# is one CPU-only command — re-run the census builder against the
+# current Wf-A127 nulling rule — after which this gate FAILs on the
+# fragmented runs and blocks CFM launches until the fragmentation defect
+# itself is closed.
+def gate_cfm_fragmentation_preflight(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    census_path: Optional[Path] = None,
+) -> GateResult:
+    """Wf-A132 — the CFM fragmentation verdict, consulted at pre-flight.
+
+    See the section header above for the status mapping and the reason
+    the gate is registered on the ``cfm`` pipeline only.  CPU-only: it
+    reads a JSON artifact and re-scores it; it imports no model and
+    runs no sampler.
+    """
+    t0 = time.perf_counter()
+    try:
+        from molmetal.scripts.pre_flight_fragmentation_check import (
+            DEFAULT_CENSUS,
+            check_census,
+        )
+    except Exception as exc:  # pragma: no cover - import guard
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"the fragmentation gate module could not be imported "
+            f"({type(exc).__name__}: {exc}); the fragmentation verdict is "
+            f"therefore NOT established",
+            time.perf_counter() - t0,
+        )
+
+    path = Path(census_path) if census_path is not None else DEFAULT_CENSUS
+    try:
+        report = check_census(path)
+    except Exception as exc:  # pragma: no cover - defensive
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"the fragmentation gate could not score {path} "
+            f"({type(exc).__name__}: {exc}); the fragmentation verdict is "
+            f"therefore NOT established",
+            time.perf_counter() - t0,
+        )
+
+    elapsed = time.perf_counter() - t0
+    status = str(report.get("status") or "SKIP")
+    n_runs = int(report.get("n_runs") or 0)
+    n_pass = int(report.get("n_pass") or 0)
+    n_fail = int(report.get("n_fail") or 0)
+    n_skip = int(report.get("n_skip") or 0)
+    disagreements = report.get("disagreements_with_artifact") or []
+    n_disagree = int(report.get("n_disagreements_with_artifact") or 0)
+    basis_counts = report.get("basis_counts") or {}
+    reasons = "; ".join(str(r) for r in (report.get("reasons") or []))
+    tally = (
+        f"CFM fragmentation census {path}: {n_pass} PASS / {n_fail} FAIL / "
+        f"{n_skip} SKIP over {n_runs} run(s)"
+        + (f" [basis {basis_counts}]" if basis_counts else "")
+    )
+
+    if not report.get("exists"):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{tally}; the artifact does not exist, so there is no "
+            f"fragmentation measurement to judge (missing data is never a "
+            f"FAIL — Wf-A128's principle)",
+            elapsed,
+        )
+    if n_runs == 0:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{tally}; the artifact carries no run, so there is no "
+            f"fragmentation measurement to judge (missing data is never a "
+            f"FAIL)",
+            elapsed,
+        )
+    if n_disagree:
+        named = ", ".join(
+            f"{d.get('run')!r} (artifact={d.get('recorded_status')}"
+            f"/{d.get('recorded_basis')} vs rescored="
+            f"{d.get('rescored_status')}/{d.get('rescored_basis')})"
+            for d in disagreements[:10]
+        )
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{tally}; the artifact is STALE — the gate's independent "
+            f"re-scoring disagrees with the artifact's own recorded verdict "
+            f"on {n_disagree} run(s): {named}. A stale record is missing "
+            f"data, so it is reported, never FAILed; the fragmentation "
+            f"verdict is CONSULTED but NOT ENFORCED until the census is "
+            f"rebuilt against the current verdict rule",
+            elapsed,
+        )
+    if status == "FAIL":
+        failing = [
+            str(r.get("run"))
+            for r in (report.get("runs") or [])
+            if isinstance(r, dict) and r.get("status") == "FAIL"
+        ]
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{tally}; {n_fail} run(s) carry a MEASURED fragmentation FAIL"
+            + (f" ({', '.join(failing[:10])})" if failing else "")
+            + (f"; {reasons}" if reasons else "")
+            + "; thresholds "
+            + ", ".join(
+                f"{k}={v}" for k, v in (report.get("thresholds") or {}).items()
+            ),
+            elapsed,
+        )
+    if status == "SKIP":
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{tally}; no run carries a judgeable fragmentation verdict "
+            f"(missing data is never a FAIL)"
+            + (f"; {reasons}" if reasons else ""),
+            elapsed,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
+        f"{tally}; no run carries a measured fragmentation FAIL"
+        + (f"; {reasons}" if reasons else "")
+        + "; thresholds "
+        + ", ".join(f"{k}={v}" for k, v in (report.get("thresholds") or {}).items()),
         elapsed,
     )
 
@@ -12221,7 +16969,7 @@ def build_gates(
     wf315d_pb_venv_python = (
         # Wf-A1: canonical repo-local venv per AGENTS.md §5.9 (was the
         # project .venv; .venv carries posebusters + meeko + vina).
-        "/home/hugo/codes/mol-metal/.venv/bin/python"
+        sys.executable
     )
 
     # Wf-319C — PB packages status documented gate (companion to
@@ -12648,7 +17396,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--no-multi-task --no-wass --no-kendall --no-dann",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             (
@@ -12659,7 +17407,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--n-seeds-min",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             (
@@ -12670,7 +17418,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--use-master-wass",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             (
@@ -12681,7 +17429,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--use-master-cath",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             (
@@ -12692,7 +17440,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--use-click-aug",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             (
@@ -12715,7 +17463,7 @@ def build_gates(
                     "chemprop_v2_v3",
                     chemprop_script,
                     "--chemprop-mode v3-fix --chemprop-min-epochs --chemprop-lomo-init-scale",
-                    timeout=30.0,
+                    timeout=_wf343c1.help_probe_timeout(),
                 ),
             ),
             # Wf-350-A2 — NeurIPS §E.5 compute-infrastructure manifest
@@ -12796,22 +17544,31 @@ def build_gates(
                 ),
             ),
             (
+                # Wf-A128 (2026-10-31): this gate USED to read the
+                # git-ignored historical artifact
+                # ``molmetal/reports/wf256_apply/catherine_30/
+                # per_metal_pass.json`` through ``gate_json_threshold``,
+                # i.e. through the 30-day AnchorGuard TTL.  MEASURED, the
+                # artifact was 2,828,234.4 s (32.73 d) old, so the gate
+                # raised AnchorStaleError and the VALUE CHECK NEVER RAN
+                # (its content was fine: 30 metals, fraction 1.000000).
+                # Worse, that path is one NO COMMITTED SCRIPT WRITES BY
+                # DEFAULT — the producer defaults to
+                # ``molmetal/reports/wf255_catherine_30metals``, whose
+                # committed artifact is a 3-METAL SMOKE (its
+                # sweep_summary.md reads ``n_metals: **3**``), so the
+                # "30 metals" contract was vacuous there too.
+                # The gate now REPRODUCES the bench on CPU from the
+                # committed producer and additionally asserts the cohort
+                # size (n_metals >= 30) — the six_of_six fraction alone
+                # cannot tell a 30-metal bench from a 3-metal smoke,
+                # because both are 1.0.
                 "p1_cfm_catherine_30metals",
-                lambda: gate_json_threshold(
+                lambda: gate_cfm_catherine_30metals_reproduced(
                     "p1_cfm_catherine_30metals",
                     "P1",
                     "cfm",
-                    wf256_per_metal,
-                    extractor=lambda d: (
-                        sum(
-                            1
-                            for m in d.get("per_metal", [])
-                            if m.get("six_of_six_pass", False)
-                        )
-                        / max(1, len(d.get("per_metal", [])))
-                    ),
-                    threshold=0.95,
-                    op=">=",
+                    historical_artifact=wf256_per_metal,
                 ),
             ),
         ]
@@ -12819,7 +17576,7 @@ def build_gates(
     # ---- HOLE-1 fix (2026-10-03): LIVE cfm decode canary (cfm-only) ----
     # The frozen Wf-188 anchor above cannot see today's code (untracked
     # artifact; checkpoint changed after it was written).  This gate
-    # executes the proven Wf-385-A3 3-epoch CPU smoke of TODAY's
+    # executes the proven Wf-385-A3 13-epoch CPU smoke of TODAY's
     # train_cfm_yuelbond_wasserstein.py + YuelBond decoder and requires
     # loss decrease (0.3% floor) + decode_ratio_rdkit_strict > 0
     # (fail-closed 0.0).  MEASURED wall 6.2-6.7 s on the dev host.
@@ -12837,6 +17594,20 @@ def build_gates(
                     "P1",
                     "cfm",
                     SCRIPT_DIR / "wf385a3_scaffold_wire_in_gate.py",
+                ),
+            ),
+            # Wf-A132 (2026-10-31): the fragmentation verdict is now
+            # CONSULTED.  cfm-pipeline ONLY, on purpose — see the
+            # ``gate_cfm_fragmentation_preflight`` section header: the
+            # gate reads a HISTORICAL record, and a FAIL there would
+            # block every commit and every unrelated launcher over a
+            # defect that belongs to the CFM line alone.
+            (
+                "p3_cfm_fragmentation_preflight",
+                lambda: gate_cfm_fragmentation_preflight(
+                    "p3_cfm_fragmentation_preflight",
+                    "P3",
+                    "cfm",
                 ),
             ),
         ]
@@ -13827,6 +18598,83 @@ def build_gates(
                     REPO_ROOT / "scripts" / "_config_binding_gate.py",
                 ),
             ),
+            # ---- §5.11 sibling — the LAUNCH CONTRACT.
+            # The two gates above prove (1) a wrapper passes no hyperparameters
+            # and (2) the config's keys reach a dest.  This one proves the
+            # third thing, which is the one that actually aborts a launch: the
+            # flags a wrapper DOES pass are DECLARED by the parser of the
+            # trainer that invocation runs.  §5.11's allowlist is fixed and
+            # per-trainer reality is not — MEASURED 2026-11-03, `--ckpt-dir` is
+            # declared by 8 of 38 trainers, and the repo's own run log records
+            # a launch that died on it
+            # (molmetal/reports/wf125_p1_controlled_pair/run_synthetic/run.log:18).
+            #
+            # Launch-time only (it inspects launch surfaces) and CPU-only (the
+            # trainers are imported, never run).  The 300 s budget covers the
+            # measured 9.7 s parser capture with room for a cold torch import.
+            (
+                "p3_launch_contract_check",
+                lambda: gate_launch_contract(
+                    "p3_launch_contract_check",
+                    "P3",
+                    "ag511_contract",
+                    REPO_ROOT / "scripts" / "_launch_contract_gate.py",
+                ),
+            ),
+            # ---- §5.11 sibling — the SCRIPT CONTRACT (the non-train_* class).
+            # The gate above finds the script to ask by matching
+            # `^train_[a-z0-9_]+\.py$`, so it never asks the question for the
+            # runners, the drivers, the smoke helpers, the pre-flight, or the
+            # scaffolds — every repo-local script that is NOT named train_*.
+            # MEASURED 2026-11-04 by the census over the 101 in-contract
+            # wrappers: 2 live launch-killers in that blind spot (a wrapper
+            # passing `--fast` to a script that declares no such option, and
+            # one passing `--no-smoke` to a scaffold whose own help text
+            # promises the flag).  Both abort with argparse's "unrecognized
+            # arguments" before any work is done.
+            #
+            # It reads every invoked script's declared options by AST — never
+            # by import, because importing a repo script can WRITE FILES
+            # (molmetal/scripts/wf394a3_wf299_pre_launch_verify.py runs its
+            # whole check at import time and rewrites
+            # molmetal/reports/wf394a3_wf299_pre_launch/result.json).
+            #
+            # Launch-time only (it inspects launch surfaces) and CPU-only (the
+            # scripts are parsed, never executed).  The 300 s budget covers the
+            # measured 10.8 s scan of 101 wrappers / 16298 command segments.
+            (
+                "p3_script_contract_check",
+                lambda: gate_script_contract(
+                    "p3_script_contract_check",
+                    "P3",
+                    "ag511_script_contract",
+                    REPO_ROOT / "scripts" / "_script_contract_gate.py",
+                ),
+            ),
+            # ---- §5.11 third gate — the RUNTIME transport contract.
+            # The two gates above both read STATIC text: the wrapper's
+            # literal invocation lines.  A flag that is assembled at RUN
+            # TIME (e.g. scripts/start.sh's EVENTS_FLAG, built from a YAML
+            # key and interpolated into $TRAINER_CMD) is invisible to them.
+            #
+            # MEASURED 2026-11-04: 2 runtime strings, 14 transport sites,
+            # 2 live violations — a `--no-events-jsonl` transported to the
+            # CFM trainer (which did not declare it) and a `--config`
+            # transported to bench_cfm_decode_real.py (which declares no
+            # such flag).  Both would abort the launch with argparse's
+            # "unrecognized arguments" before any work was done.
+            #
+            # Launch-time only (it inspects launch surfaces) and CPU-only (the
+            # trainers are imported, never run).
+            (
+                "p3_runtime_transport_check",
+                lambda: gate_runtime_transport(
+                    "p3_runtime_transport_check",
+                    "P3",
+                    "ag511_runtime_transport",
+                    REPO_ROOT / "scripts" / "_runtime_transport_gate.py",
+                ),
+            ),
             # ---- FIX-E1 — one scoreboard, two splits.
             # The same arm moves ~0.06 R2 between fragment-grouped and
             # canonical-grouped CV, and only the optimistic protocol was ever
@@ -14201,6 +19049,39 @@ def build_gates(
                     "run_ledger",
                 ),
             ),
+            # ---- Run-ledger PROVENANCE — the gate the staleness one could
+            # not be.  MEASURED 2026-10-31 (Wf-A125 G5):
+            # `run_ledger.uncommitted_provenance()` had NO pre-flight
+            # caller, so "a ledger row names a file version this repository
+            # has never held" was invisible to a launch.  This gate FAILS on
+            # an OPEN finding; the superseded count is reported but does not
+            # block (the ledger is append-only, so those rows are permanent).
+            (
+                "p3_run_ledger_provenance",
+                lambda: gate_run_ledger_provenance(
+                    "p3_run_ledger_provenance",
+                    "P3",
+                    "run_ledger",
+                ),
+            ),
+            # ---- Wf-A269 (2026-11-04) — the CONFIG half of the ledger's
+            # provenance.  MEASURED 2026-11-04: 434 ledger rows, 6 with a
+            # non-null `config_sha`, 3 distinct hashes, 0 carrying a config
+            # path — the producer accepted `config_path` and dropped it, so
+            # the hash could not be dereferenced and no gate could see the
+            # configs that changed under the published metrics.  The gate
+            # FAILS on a row that resolves to NOTHING (a lie) and on an
+            # unpointed row outside the dated baseline; a row that resolves
+            # to a HISTORICAL version is an honest record and is REPORTED,
+            # not failed.
+            (
+                "p3_run_ledger_config_provenance",
+                lambda: gate_run_ledger_config_provenance(
+                    "p3_run_ledger_config_provenance",
+                    "P3",
+                    "run_ledger",
+                ),
+            ),
             # ---- Gate-inventory audit — makes the pre-flight gate surface
             # auditable instead of a 14k-line monolith.  Introspects
             # build_gates() (no gate executed) and emits the registered-gate
@@ -14208,6 +19089,16 @@ def build_gates(
             # in a normal run → registered but never enforced).  REPORT-ONLY:
             # always PASS; never changes an existing pre-flight verdict.
             # Implementation: molmetal/scripts/gate_inventory.py.
+            #
+            # 2026-11-04 (Wf-A269 dead-gates sweep) — the "REPORT-ONLY: always
+            # PASS" rendering above is SUPERSEDED; it is PRESERVED VERBATIM per
+            # AGENTS.md §5.5 rule #6.  A P0 gate that can only ever PASS is the
+            # DEAD-GATE class (§6.269.17) — it is advertised as a blocker and
+            # cannot block.  The gate now FAILs on an UNDECLARED opt-in gate
+            # (registered, SKIPs by default, and not in
+            # gate_inventory.DECLARED_OPT_IN_GATES) and on a broken inventory
+            # build.  The gate COUNT is unchanged (133 / 135); only the
+            # verdict logic moved.
             (
                 "p0_gate_inventory_audit",
                 lambda: gate_gate_inventory_audit(
@@ -14295,6 +19186,50 @@ def build_gates(
             (
                 "p3_dmpnn_loss_wire_in_smoke",
                 lambda: _gate_dmpnn_quick_smoke(dmpnn_script),
+            ),
+            # ---- Wf-A154 — the two SSOT-document consistency guards.
+            # Both audits existed ONLY as pytest modules, so a commit that
+            # broke them still passed the pre-flight:
+            #   (a) p3_ssot_path_reference_check — a repo-relative path
+            #       cited by an SSOT document must RESOLVE on disk
+            #       (AGENTS.md §5.5 filesystem-truth, read from the other
+            #       side: the document points at nothing).  Carries the
+            #       Wf-A131 guard's 56-entry adjudicated baseline for the
+            #       historical breakage.
+            #   (b) p3_ssot_census_claim_check — a census statistic quoted
+            #       by a document must be the CURRENT value in
+            #       metrics/by_metric/cfm_run_census.json
+            #       (AGENTS.md §5.2 MEASURED-vs-PROJECTED).  The Wf-A152
+            #       guard resolves each claim against the artifact itself,
+            #       so a stale number cannot hide behind an uncurated list.
+            # 'all'-only per the same §3.4 design contract as the adjacent
+            # all-only gates: both are value/consistency checks, not
+            # temporal ones — a failure means a real defect that must be
+            # fixed, and it is exactly the defect a commit that edits an
+            # SSOT document can introduce.  The "launch" pipeline inherits
+            # them for free ("launch" normalises to "all").
+            # Each runner script imports its guard module and calls that
+            # module's OWN assertions, so the rule has ONE implementation
+            # (no forked copy to drift).
+            # Cheap and offline: text scan + JSON read; no torch import, no
+            # CUDA call, no checkpoint read.
+            (
+                "p3_ssot_path_reference_check",
+                lambda: gate_ssot_path_reference(
+                    "p3_ssot_path_reference_check",
+                    "P3",
+                    "wfa154_pathref",
+                    SCRIPT_DIR / "wf_a131_path_reference_guard_runner.py",
+                ),
+            ),
+            (
+                "p3_ssot_census_claim_check",
+                lambda: gate_ssot_census_claim(
+                    "p3_ssot_census_claim_check",
+                    "P3",
+                    "wfa154_censusclaim",
+                    SCRIPT_DIR / "wf_a152_census_claim_guard_runner.py",
+                ),
             ),
         ] + [
             # 22 individual gate runners — one per Wf-343c1
@@ -14725,6 +19660,27 @@ def build_gates(
                     budget_hr=declaration.budget_hr if declaration else None,
                 ),
             ),
+            (
+                # Wf-A269 wave-33 (2026-11-09) — THE ENFORCEMENT STACK
+                # MUST BE TRACKED.  Launch-only for the same reason as the
+                # gates above: it certifies the LAUNCH SURFACE (the
+                # enforcement machinery itself), so it is a launch-time
+                # question and not a commit-time one.
+                #
+                # MEASURED 2026-11-09: 8 of the 10 declared §5.11
+                # enforcement files are NOT in git's index, so a clean
+                # checkout of HEAD cannot run the yaml-only gate family at
+                # all — while every LOCAL run sees them green.  The gate
+                # makes that a first-class FAIL, and it lives in THIS file
+                # (tracked at HEAD) so the defect is detectable in the very
+                # commit where the stack was left behind.
+                "p3_enforcement_stack_trackedness",
+                lambda: gate_enforcement_stack_trackedness(
+                    "p3_enforcement_stack_trackedness",
+                    "P0",
+                    "wf_a269_wave33_enforcement_stack",
+                ),
+            ),
         ]
 
     return runners
@@ -14900,8 +19856,13 @@ def _restore_chemprop_ckpt(
     return True, "smoke wrote no ckpt (none pre-run)"
 
 
-def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
-    """Run ``{py} {script} --quick`` with a 90 s wall-clock budget and
+def _gate_chemprop_quick_smoke(
+    chemprop_script: Path,
+    *,
+    timeout: Optional[float] = None,
+    ckpt_path: Optional[Path] = None,
+) -> GateResult:
+    """Run ``{py} {script} --quick`` with a NAMED wall-clock budget and
     enforce a loss-decrease invariant on the produced metrics.
 
     Wf-294A (2026-09-29): bumped from 55 s to 90 s.  chemprop --quick
@@ -14932,11 +19893,23 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
     ``--metals`` / ``--seeds`` are pinned to the first metal/seed
     ``--quick`` slices anyway, so the overwritten path is known by
     construction.
+
+    Wf-A135 (2026-10-31) — the wall budget is no longer the hard-coded
+    90 s literal: it is the NAMED constant
+    ``wfa135_smoke_budget.CHEMPROP_SMOKE_BUDGET_SEC``, derived on THIS
+    host from a MEASURED standalone (CPU-only) baseline times a STATED
+    headroom factor, and overridable via
+    ``MOLMETAL_SMOKE_BUDGET_CHEMPROP_SEC``.  A timeout now earns the
+    "TIMEOUT" verdict (the measurement was NOT obtained) instead of
+    being folded into FAIL — see ``_timeout_gate_result``.
     """
     name = "p1_chemprop_smoke"
     t0 = time.perf_counter()
+    if timeout is None:
+        timeout = _smoke_budget_sec(SMOKE_GATE_CHEMPROP)
     smoke_out = Path(tempfile.mkdtemp(prefix="wf446_h2_chemprop_smoke_"))
-    ckpt_path = _CHEMPROP_SMOKE_CKPT_PATH
+    if ckpt_path is None:
+        ckpt_path = _CHEMPROP_SMOKE_CKPT_PATH
     backup_dir = Path(tempfile.mkdtemp(prefix="wf446_h2_chemprop_ckpt_"))
     ckpt_ok, pre_sha, ckpt_backup_detail = _prepare_chemprop_ckpt_backup(
         ckpt_path, backup_dir
@@ -14950,13 +19923,27 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
             f"{ckpt_backup_detail} (smoke NOT run)",
             time.perf_counter() - t0,
         )
+    # Wf-A162 (2026-11-01) — assert the device this smoke is about to use is
+    # the one the SESSION authorised, and FAIL loudly rather than silently
+    # training on a device the session forbids.
+    device = _smoke_device()
+    auth_err = _device_authorisation_error(device)
+    if auth_err is not None:
+        return GateResult(
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            "FAIL",
+            f"{auth_err} (smoke NOT run)",
+            time.perf_counter() - t0,
+        )
     args = [
         VENV_PY,
         str(chemprop_script),
         "--quick",
         "--allow-single-seed",
         "--device",
-        _smoke_device(),
+        device,
         "--out-dir",
         str(smoke_out),
         # Wf-446-H2/L3: pinned so the ckpt the trainer overwrites is known by
@@ -14971,7 +19958,7 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
         # pre-flight run a real (if tiny) D-MPNN training on the CPU while both
         # GPUs idled, which is also why the 90 s budget kept tripping.
     ]
-    rc, out, err = _run(args, timeout=90.0, cwd=REPO_ROOT)
+    rc, out, err = _run(args, timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
     # Wf-446-H2/L3: restore the pre-run checkpoint bytes BEFORE judging the
     # smoke, so a failed restore FAILs the gate regardless of rc.
@@ -14995,7 +19982,27 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
         else ["(no output)"]
     )
     blob_tail_str = " | ".join(blob_tail)
-    if rc == 0 and elapsed < 95.0:
+
+    # Wf-A135 (2026-10-31) — a wall-clock TIMEOUT is its own verdict.
+    # rc==124 is `_run`'s subprocess.TimeoutExpired marker: the smoke did
+    # not finish, so the loss measurement was NEVER OBTAINED — which is
+    # NOT the same thing as "the trainer flag is not wired in".
+    #
+    # NOTE (Wf-A135): the previous test was `rc == 0 and elapsed < 95.0`,
+    # so a smoke that FINISHED SUCCESSFULLY at elapsed >= 95.0 fell into
+    # the "TIMED OUT" FAIL branch — a completed run reported as a
+    # timeout.  The timeout verdict now keys on rc == 124 only.
+    if rc == 124:
+        return _timeout_gate_result(
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            budget_sec=float(timeout),
+            elapsed_sec=elapsed,
+            tail=f"{blob_tail_str}{ckpt_suffix}",
+            detail="chemprop --quick smoke",
+        )
+    if rc == 0:
         metric_files = sorted(smoke_out.glob("*/per_seed_metrics_seed*.json"))
         if not metric_files:
             return GateResult(
@@ -15027,17 +20034,6 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
             "PASS",
             f"--quick exit=0 in {elapsed:.1f}s (rc=0); {detail} | "
             f"tail: {blob_tail_str}{ckpt_suffix}",
-            elapsed,
-        )
-    if elapsed >= 90.0:
-        return GateResult(
-            name,
-            "P1",
-            "chemprop_v2_v3",
-            "FAIL",
-            f"--quick TIMED OUT after {elapsed:.1f}s (>= 90s budget; "
-            f"CPU-only chemprop --quick measured at ~34s so genuine overruns "
-            f"indicate infra regression) | tail: {blob_tail_str}{ckpt_suffix}",
             elapsed,
         )
     return GateResult(
@@ -15284,8 +20280,84 @@ def _build_reproducibility_manifest() -> Dict[str, Any]:
     return manifest
 
 
+def _git_probe(args: List[str], timeout: float = 30.0) -> Optional[str]:
+    """Run a read-only git command in the repo, or None when it cannot run.
+
+    A timeout / missing git is reported as NOT MEASURED, never as a defect
+    (AGENTS.md §5.2) and never as a silent default.
+    """
+    try:
+        out = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=str(REPO_ROOT),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip()
+
+
+def _build_provenance(started_on: str) -> Dict[str, Any]:
+    """The report's SLSA-L1-shaped PROVENANCE block.
+
+    Wf-A269 wave-16 (2026-11-03).  Frontier research (the wave's
+    ``frontier:gates`` agent, applying SLSA v1.2 Build Provenance +
+    in-toto Attestation v1 to this repo) established the rule this encodes:
+
+      * "a verdict is earned at a specific commit SHA and does not carry
+        forward across a HEAD move" — so the report records the SHA it was
+        earned at, and the shared consumer compares it to the live HEAD;
+      * "stale is treated as missing" — a mismatch is a FAIL, not a warning;
+      * content-addressed binding is stronger than mtime: the report records
+        the SHA-256 of the GATE SOURCE that produced it, so a report cannot
+        be read as if it were the output of a different gate
+        implementation (the Bazel "action cache over declared inputs" idea,
+        which hard-fails on a missing declared output).
+
+    SLSA's honest ceiling for a LOCAL report is Build **L0/L1** — provenance
+    exists, but no platform asserts the builder's identity (L2 needs a
+    hosted build platform with OIDC).  This block therefore claims L1 and
+    no more: it says WHICH revision and WHICH gate source produced the
+    report, and it does not pretend to be signed.
+
+    Every field is honest about not being measured: ``git_sha`` is None when
+    git cannot be reached, ``git_dirty`` is None for the same reason.
+    """
+    try:
+        source = Path(__file__).resolve()
+        source_rel = str(source.relative_to(REPO_ROOT))
+    except (OSError, ValueError):
+        source = None
+        source_rel = None
+    try:
+        source_sha256 = _sha256_of_file(source) if source is not None else None
+    except OSError:
+        source_sha256 = None
+
+    dirty_raw = _git_probe(["status", "--porcelain", "--untracked-files=no"])
+    dirty: Optional[bool] = None
+    if dirty_raw is not None:
+        dirty = bool(dirty_raw.strip())
+
+    return {
+        "level": "L1",
+        "git_sha": _git_probe(["rev-parse", "HEAD"]),
+        "git_dirty": dirty,
+        "run_id": uuid.uuid4().hex,
+        "started_on": started_on,
+        "finished_on": datetime.now(timezone.utc).isoformat(),
+        "gate_source": source_rel,
+        "gate_source_sha256": source_sha256,
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_argv(argv)
+    run_started_on = datetime.now(timezone.utc).isoformat()
 
     # HOLE-6 maintenance command: freeze the CSV digests and exit without
     # running any gate (see gate_csv_hash docstring for the gate side).
@@ -15299,6 +20371,34 @@ def main(argv: Optional[List[str]] = None) -> int:
         # only lives in `launch` (e.g. the anchor check) alongside one from
         # `all`.
         wanted = [n.strip() for n in args.gates.split(",") if n.strip()]
+        if not wanted:
+            # Wf-A269 wave-22 (2026-11-04) — an EMPTY required-gate list is a
+            # hard error, for the SAME reason an unknown name is: it would
+            # silently run ZERO gates and report SUCCESS.  MEASURED 2026-11-04
+            # before this repair: `--gates ""` produced
+            # `summary.total = 0`, `gates: []` and exit code 0 — i.e. a
+            # "PASS" that ran nothing.  The `--gates` docstring already
+            # promises the opposite ("a typo must not silently run zero
+            # gates"), so the empty spelling was a hole in the mode's own
+            # contract.
+            #
+            # The population this closes: 22 configs declare
+            # `pre_flight_gates_required: []` — the RESIDUE of the Wf-A176
+            # removal (catalog §6.268), which dropped the phantom
+            # `p1_pytorch_cuda_available` entry and, in those 22, left the
+            # list EMPTY.  A launcher that reads the list and passes it
+            # through would have run zero gates and reported a PASS.  The
+            # repair is fail-CLOSED here rather than in those 22 configs:
+            # the empty list is now LOUD, and whether a config should declare
+            # `p2_tests_pass` (or no list at all) is a config-semantics
+            # decision recorded as OPEN.
+            print(
+                "[pre_flight] --gates: the required-gate list is EMPTY. "
+                "Refusing to run zero gates and report success. Name at "
+                "least one gate, or omit --gates to run the pipeline.",
+                file=sys.stderr,
+            )
+            return 1
         available: Dict[str, Callable[[], GateResult]] = {}
         for pipe in PIPELINES:
             for name, fn in build_gates(pipe):
@@ -15396,6 +20496,17 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     _default_jobs = min(8, os.cpu_count() or 4)
     jobs = max(1, int(getattr(args, "jobs", _default_jobs) or _default_jobs))
+    # Wf-A269 wave-18 (2026-11-04) — pin the CHILD thread caps BEFORE the
+    # executor starts.  Without this, N concurrent gates x torch's default
+    # 24 threads oversubscribes the 32-core host by ~6x and inflates each
+    # smoke's wall time by 2-3 orders of magnitude (MEASURED: 260-267 s vs
+    # 0.6-1.0 s per epoch).  See the THREAD_CAP block above.
+    _thread_caps = _pin_gate_child_thread_caps(jobs)
+    if args.verbose:
+        print(
+            f"[pre_flight] child thread caps: {_thread_caps} (jobs={jobs})",
+            file=sys.stderr,
+        )
     if jobs == 1:
         for name, runner in runners:
             res = _run_one(name, runner)
@@ -15432,15 +20543,66 @@ def main(argv: Optional[List[str]] = None) -> int:
     n_pass = sum(1 for r in results if r.status == "PASS")
     n_fail = sum(1 for r in results if r.status == "FAIL")
     n_skip = sum(1 for r in results if r.status == "SKIP")
+    # Wf-A125 G11a — WARN is a first-class status and it MUST be counted.
+    # Before this, a WARN gate was counted in NONE of pass/fail/skip, so
+    # `pass + fail + skip` was LESS than `total` — an internally
+    # inconsistent summary that nothing checked.  MEASURED 2026-10-31:
+    # a 2-gate pre-flight reported {"pass": 1, "fail": 0, "skip": 0,
+    # "total": 2}.
+    n_warn = sum(1 for r in results if r.status == "WARN")
+    if n_warn:
+        print(
+            f"[pre_flight] WARN {n_warn} advisory gate(s) — advisory, "
+            "exit code unchanged",
+            file=sys.stderr,
+        )
+    # Wf-A135 (2026-10-31) — TIMEOUT is a FIRST-CLASS status too.
+    # A wall-clock timeout means the gate's MEASUREMENT WAS NEVER
+    # OBTAINED.  It is NOT a defect verdict, so it is counted neither as
+    # PASS nor as FAIL — but it MUST be counted, or
+    # `pass + fail + skip + warn` would be LESS than `total` (the
+    # Wf-A125 G11a inconsistency).  Under --strict it fails the run
+    # exactly like a SKIP does: the run did not verify what it claims to
+    # have verified.
+    n_timeout = sum(1 for r in results if r.status == GATE_STATUS_TIMEOUT)
+    if n_timeout:
+        print(
+            f"[pre_flight] TIMEOUT {n_timeout} gate(s) did not finish "
+            "within their wall budget — the measurement was NOT obtained; "
+            "this is NOT a defect verdict (see the gate evidence for the "
+            "budget, the elapsed time and the output tail)"
+            + (" — --strict: run FAILS (as for SKIP)" if args.strict else ""),
+            file=sys.stderr,
+        )
 
     report = {
         "timestamp": _now_iso(),
+        # Wf-A269 wave-16 (2026-11-03) — THE FRESHNESS STAMP.
+        # AGENTS.md §4 has stated a "Stale flag rule" (`now - last_refresh
+        # > 24 hr` ⇒ STALE ⇒ auto-verify refuses PASS) for many waves, but
+        # `grep -c last_refresh` on this file returned 0: the documented
+        # contract was FALSE, and every consumer that honoured it had
+        # nothing to honour.  The stamp is the report's OWN claim of when
+        # its gates were measured — an explicit ISO-8601 UTC instant, NOT
+        # the file mtime (which `touch` forges; the repo's own
+        # wf343c2_per_wave_check.py docstring calls that "fabricated
+        # freshness").  Consumers read it to refuse a stale verdict.
+        "last_refresh": datetime.now(timezone.utc).isoformat(),
+        # Wf-A269 wave-16 (2026-11-03) — the SLSA-L1-shaped PROVENANCE
+        # block (see `_build_provenance`).  It records WHICH revision and
+        # WHICH gate source earned this verdict, so the shared consumer can
+        # treat a report from another revision as MISSING rather than as a
+        # pass ("a verdict is earned at a specific commit SHA and does not
+        # carry forward across a HEAD move").
+        "provenance": _build_provenance(run_started_on),
         "schema_version": "207.v1",
         "pipeline": args.pipeline,
         "summary": {
             "pass": n_pass,
             "fail": n_fail,
             "skip": n_skip,
+            "warn": n_warn,
+            "timeout": n_timeout,
             "total": len(results),
             "total_wall_sec": round(total_wall, 4),
         },
@@ -15468,18 +20630,113 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     }
 
+    # Wf-A269 wave-17 (2026-11-03) — the PAYLOAD-CONTENT binding.
+    # The provenance block says WHICH code produced this report; it says
+    # nothing about whether the report still says what it said.  MEASURED
+    # before this line existed (2026-11-03): editing `summary.fail` from 1
+    # to 0 in a real report still produced PASS, because neither the commit
+    # SHA nor the gate-source hash covers the report's body.  The hash is
+    # computed over the report WITHOUT its provenance block (the block is
+    # metadata about the payload and cannot contain a hash of itself), and
+    # the canonical form is shared with the consumer so the two sides cannot
+    # drift (see `canonical_payload_sha256`).
+    try:
+        # Wf-A269 wave-33 (2026-11-09) — the consumer module is NOT in
+        # git's index, so it is imported ON DEMAND here rather than at
+        # module level (see the import block above).  A missing consumer
+        # leaves the report unbound, which the consumer refuses — the same
+        # fail-closed outcome as an unhashable payload.
+        from molmetal.scripts.wf_launch_gate_verdict import (  # noqa: PLC0415
+            canonical_payload_sha256,
+        )
+
+        report["provenance"]["payload_sha256"] = canonical_payload_sha256(report)
+    except Exception as exc:  # noqa: BLE001 — unhashable / mixed-type keys,
+        # or the consumer module is absent (fail-CLOSED below)
+        # Fail-CLOSED: a report we cannot bind is a report we cannot show
+        # to be intact, and the consumer refuses a report with no payload
+        # hash.  The reason is printed so the failure is diagnosable.
+        print(
+            f"[pre_flight] FATAL: could not compute the report's payload hash "
+            f"({type(exc).__name__}: {exc}); the report will be REFUSED by "
+            f"wf_launch_gate_verdict.py",
+            file=sys.stderr,
+        )
+        report["provenance"]["payload_sha256"] = None
+
     payload = json.dumps(report, indent=2, ensure_ascii=False)
     if args.json is not None:
         args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(payload, encoding="utf-8")
+        # Wf-A269 wave-16 (2026-11-03): ATOMIC PUBLISH (AGENTS.md §5.6).
+        # `write_text` is open(O_WRONLY|O_CREAT|O_TRUNC) + write: a SECOND
+        # launcher writing the same path concurrently could leave a
+        # TRUNCATED report on disk, and a truncated report parses as
+        # nothing — the same failure mode as the non-JSON artefact this
+        # replaces.  `atomic_write_file` is temp-file + os.replace, so a
+        # reader sees either the old report or the new one, never a
+        # half-written mix.
+        atomic_write_file(args.json, payload, encoding="utf-8")
         if args.verbose:
             print(f"[pre_flight] wrote JSON -> {args.json}", file=sys.stderr)
+    # NOTE: the payload goes to stdout as well, so `pre_flight_check.py ... |
+    # jq` still works.  A caller that wants a JSON FILE must use
+    # `--json PATH` and must NOT merge stderr into that file: the gate
+    # logs go to stderr, so `> file 2>&1` captures stderr-first and
+    # stdout-second — i.e. NOT JSON.  That capture idiom is what produced
+    # the 190 245-byte molmetal/reports/wf_preflight/preflight.json whose
+    # first 269 lines were "[pre_flight_check] INFO ..." (json.load raised
+    # "Expecting value: line 1 column 2").
     print(payload)
 
     if n_fail > 0:
         return 1
-    if args.strict and n_skip > 0:
+    # Wf-A269 wave-18 (2026-11-03) — a TIMEOUT now changes the exit code
+    # even WITHOUT --strict.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     # Wf-A135 (2026-10-31) — under --strict a TIMEOUT fails the run
+    #     # exactly like a SKIP does: the gate did not verify what it claims to
+    #     # have verified.  Without --strict it is reported (status + summary
+    #     # field + stderr banner) but does NOT change the exit code — a
+    #     # timeout is not a defect verdict.
+    #     if args.strict and (n_skip + n_timeout) > 0:
+    #         return 2
+    #
+    # WHY THIS CHANGED (MEASURED 2026-11-03): the exit code is not a
+    # "defect verdict" channel in this repo — it is the LAUNCH-AUTHORISATION
+    # channel.  MEASURED: 39 of the 55 wrappers that call pre_flight_check.py
+    # gate on its EXIT CODE and never read the report; the other 16 read the
+    # report through molmetal/scripts/wf_launch_gate_verdict.py.  The two
+    # channels disagreed about the SAME artefact:
+    #
+    #   * the exit code said 0 for "1 TIMEOUT, 0 FAILs" — the launch went ahead
+    #     although the measurement was never obtained;
+    #   * the consumer said FAIL for the same report ("a TIMEOUT gate(s) --
+    #     the measurement was NOT obtained").
+    #
+    # So the TIMEOUT-blind wrappers were a subset of a wider TIMEOUT-blind
+    # CLASS: the grep idiom `grep -q '"fail": 0'` (repaired earlier this wave)
+    # and the exit code were the same defect in two skins.  Wf-A135's own
+    # sentence — "the gate did not verify what it claims to have verified" —
+    # is the reason a TIMEOUT must not authorise a launch; it is not a reason
+    # to let it authorise one.
+    #
+    # WHAT DID NOT CHANGE:
+    #   * a SKIP alone still exits 0 — the repo runs 11-12 SKIPs BY DESIGN
+    #     (the consumer also treats SKIP as non-failing);
+    #   * --strict still returns 2 for SKIP+TIMEOUT;
+    #   * a FAIL still exits 1 and takes precedence over everything below.
+    #
+    # MEASURED 2026-11-03, the day of this change: the live `launch` pipeline
+    # reported 117 PASS / 3 FAIL / 11 SKIP / 0 TIMEOUT / 131 total, so the
+    # change is a no-op on today's tree — it closes the hole for the future,
+    # before the launch surface is unblocked (the 3 FAILs are the
+    # yaml-only violations, the wave-budget overrun and the ledger
+    # provenance rows).
+    if args.strict and (n_skip + n_timeout) > 0:
         return 2
+    if n_timeout > 0:
+        return 1
     return 0
 
 

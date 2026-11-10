@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = REPO_ROOT / "scripts" / "launch_wf409a3_metal_coord_retrain.sh"
 
 

@@ -14,8 +14,11 @@ import re
 from pathlib import Path
 
 
-SKILL_DIR = Path(
-    "/home/hugo/codes/mol-metal/.claude/skills/mol-metal-sci-paper-submission"
+SKILL_DIR = (
+    Path(__file__).resolve().parents[2]
+    / ".claude"
+    / "skills"
+    / "mol-metal-sci-paper-submission"
 )
 SKILL_MD = SKILL_DIR / "SKILL.md"
 

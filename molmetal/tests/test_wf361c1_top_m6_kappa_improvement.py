@@ -122,7 +122,7 @@ def test_cli_flag_wired() -> None:
             "import parse_args; parse_args()",
         ],
         cwd=str(REPO_ROOT),
-        env={"PYTHONPATH": str(REPO_ROOT)},
+        env={"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT)},
         capture_output=True,
         text=True,
         timeout=30,

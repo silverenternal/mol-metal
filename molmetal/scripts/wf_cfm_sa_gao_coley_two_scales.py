@@ -206,7 +206,7 @@ def _summarise(values: Sequence[Optional[float]]) -> Dict[str, float]:
 def _resolve_default_paths(args: argparse.Namespace):
     """Pick file paths. Defaults match the ones used by the CFM line
     today; --override is for re-runs only."""
-    repo = Path("/home/hugo/codes/mol-metal")
+    repo = Path(__file__).resolve().parents[2]
     gen_csv = Path(
         args.gen_csv
         or repo / "molmetal" / "reports" / "cfm_fullcorpus_2026_10_10" / "generated_smiles.csv"

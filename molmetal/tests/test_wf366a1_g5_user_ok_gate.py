@@ -38,7 +38,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf124_p3_g5.sh"
 HELPER = ROOT / "scripts" / "_dry_run_log_helper.sh"
 
@@ -182,22 +182,22 @@ def test_dry_run_with_user_ok_emits_log_and_plan(tmp_path: Path):
       - plan.json emitted to OUT_BASE with "user_ok": true marker
       - 15 pairs enumerated via --pair args in DRY_RUN.log
     """
-    # Use a sandboxed OUT_BASE so we don't pollute the repo's results/
-    # The wrapper hardcodes OUT_BASE = "results/wf124_p3_50epoch_full_sweep_g5"
-    # so we just verify emission into that fixed location; the dry-run is
-    # CPU-only (mkdir -p + textual emission only) so no actual data is
-    # written.
-    out_base = ROOT / "results" / "wf124_p3_50epoch_full_sweep_g5"
-
-    # Clean previous run if present (test idempotency)
-    import shutil
-
-    if out_base.exists():
-        shutil.rmtree(out_base)
+    # Wf-A269 wave-3 (2026-11-02) — REPAIR.  This test used to emit into
+    # the repo's OWN tracked results tree and then ``shutil.rmtree`` that
+    # directory for idempotency.  That DESTROYED 123 TRACKED published
+    # artefacts (one per_seed_metrics.json / per_seed_metrics_seed<N>.json /
+    # training_summary.json per (metal, seed) pair).  A pytest file that
+    # deletes the repository's own published results is a defect in the
+    # test, not in the data.  The launcher now honours WF124_G5_OUT_BASE, so
+    # the emission goes to pytest's tmp_path and the repo is untouched.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #   out_base = ROOT / "results" / "wf124_p3_50epoch_full_sweep_g5"
+    #   ... followed by ``import shutil`` + ``shutil.rmtree(out_base)``.
+    out_base = tmp_path / "wf124_p3_50epoch_full_sweep_g5"
 
     proc = _run(
         ["bash", str(WRAPPER), "--dry-run"],
-        env_extra={"USER_OK": "1"},
+        env_extra={"USER_OK": "1", "WF124_G5_OUT_BASE": str(out_base)},
         timeout=60,
     )
     assert proc.returncode == 0, (

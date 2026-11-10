@@ -84,6 +84,20 @@ REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf355a2_r20_p4_bindingdb"
 PRE_FLIGHT="${SCRIPTS_DIR}/pre_flight_check.py"
 BUDGET_TRACKER="${SCRIPTS_DIR}/wave_budget_tracker.py"
 PER_WAVE="${SCRIPTS_DIR}/per_wave_checklist.py"
+# Die helper — MOVED UP to before its first call (Wf-A269 repair 2, 2026-11-02).
+# Bash executes a script line-by-line, so a function definition that appears
+# LATER in the file is not yet in scope at an earlier call site — the call then
+# dies with "die: command not found" (rc=127) and the intended FATAL message
+# + rc=1 are both lost. ${C_RED:-}/${C_RST:-} keep the early call site safe
+# (C_RED is initialised further down); `mkdir -p` keeps the FATAL message
+# deliverable when the reports dir does not exist yet.
+die()  { mkdir -p "${REPORTS_DIR}" 2>/dev/null || true; printf '%s[FATAL]%s %s\n' "${C_RED:-}" "${C_RST:-}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
+
+# Wf-A269 wave-10 (2026-11-02): the ONE place that knows how to read a
+# launcher's pre-launch gate REPORT (pre-flight / per-wave checklist / wave
+# budget tracker) and turn it into an honest PASS / FAIL verdict.
+GATE_VERDICT_CHECKER="${SCRIPTS_DIR}/wf_launch_gate_verdict.py"
+[ -f "${GATE_VERDICT_CHECKER}" ] || die "launch-gate verdict checker missing: ${GATE_VERDICT_CHECKER}"
 DOWNLOAD_SCRIPT="${PROJECT_ROOT}/scripts/download_bindingdb_1.07M.sh"
 CHEMPROP_TRAINER="${SCRIPTS_DIR}/train_chemprop_v2_v3.py"
 
@@ -133,9 +147,26 @@ else
 fi
 
 log()  { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
-die()  { printf '%s[FATAL]%s %s\n' "${C_RED}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
 ok()   { printf '%s[OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 warn() { printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+
+# Wf-A269 wave-10 (2026-11-02): the shared gate-verdict helpers.  The
+# checker reads the REPORT a gate tool already wrote and decides PASS / FAIL
+# from that file's own contents; it never re-runs the tool and never infers a
+# verdict from the absence of output.  Exit 0=PASS, 1=FAIL, 2=SKIP.
+run_gate_check() {
+    local kind="$1" report="$2" wave="${3:-}" rc=0 out=""
+    if [ -n "${wave}" ]; then
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" \
+            --wave "${wave}" 2>&1)" || rc=$?
+    else
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" 2>&1)" || rc=$?
+    fi
+    printf '%s\n' "${out}" > "${REPORTS_DIR}/gate_${kind}.verdict.txt"
+    case "${rc}" in 0) printf 'PASS' ;; 1) printf 'FAIL' ;; *) printf 'SKIP' ;; esac
+}
+
+gate_detail() { head -1 "${REPORTS_DIR}/gate_$1.verdict.txt" 2>/dev/null || printf ''; }
 
 # -----------------------------------------------------------------------------
 # CLI
@@ -223,15 +254,45 @@ pre_flight_gate() {
         warn "DRY-RUN: skipping pre_flight GPU/live gates"
         return 0
     fi
-    if ! "${PY}" "${PRE_FLIGHT}" --pipeline all --json \
-            > "${REPORTS_DIR}/pre_flight.json" 2>&1; then
-        die "pre_flight_check FAIL — see ${REPORTS_DIR}/pre_flight.json"
+    # Wf-A269 wave-10 (2026-11-02) - REPAIR: the report was captured with
+    # `> pre_flight.json 2>&1`, so the file held the tool's STDERR log lines
+    # interleaved with the JSON payload on stdout.  The result was NOT valid
+    # JSON (MEASURED: json.load raises "Expecting value: line 1 column 2" on
+    # such a file) — the same defect as the stale
+    # molmetal/reports/wf_preflight/preflight.json — so no machine consumer
+    # could read the gate counts out of it.  The counts below were also taken
+    # by grepping the text for '"status": "PASS"' / '"status": "FAIL"',
+    # which counts the gate rows but ignores the authoritative `summary`
+    # block.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     if ! "${PY}" "${PRE_FLIGHT}" --pipeline all --json \
+    #             > "${REPORTS_DIR}/pre_flight.json" 2>&1; then
+    #         die "pre_flight_check FAIL — see ${REPORTS_DIR}/pre_flight.json"
+    #     fi
+    #     local n_pass n_fail
+    #     n_pass=$(grep -c '"status": "PASS"' "${REPORTS_DIR}/pre_flight.json" || true)
+    #     n_fail=$(grep -c '"status": "FAIL"' "${REPORTS_DIR}/pre_flight.json" || true)
+    #     ok "pre_flight ${n_pass} PASS / ${n_fail} FAIL"
+    #     [ "${n_fail}" -eq 0 ] || die "pre_flight FAIL count > 0 — BLOCKER (per TODO-207 v3)"
+    #
+    # REPAIRED: `--json <path>` writes the report to a real JSON file (the
+    # flag is `type=Path, nargs="?"`, so a bare `--json` writes NO file at
+    # all), and the verdict is read from that file by the shared checker.
+    # Wf-A269 wave-17 (2026-11-03): rm the PREVIOUS report first.  A crashed
+    # or killed pre-flight must not leave the last run's PASS report on disk
+    # for the consumer to read — "stale is treated as missing".
+    rm -f "${REPORTS_DIR}/pre_flight.json"
+    "${PY}" "${PRE_FLIGHT}" --pipeline all --json "${REPORTS_DIR}/pre_flight.json" \
+        > "${REPORTS_DIR}/pre_flight.stdout.log" 2>&1 || true
+    local pf_verdict pf_detail
+    pf_verdict="$(run_gate_check preflight "${REPORTS_DIR}/pre_flight.json")"
+    pf_detail="$(gate_detail preflight)"
+    if [ "${pf_verdict}" != "PASS" ]; then
+        warn "pre_flight_check ${pf_verdict} (${pf_detail})"
+        die "pre_flight_check ${pf_verdict} — refusing to launch (report: ${REPORTS_DIR}/pre_flight.json)"
     fi
-    local n_pass n_fail
-    n_pass=$(grep -c '"status": "PASS"' "${REPORTS_DIR}/pre_flight.json" || true)
-    n_fail=$(grep -c '"status": "FAIL"' "${REPORTS_DIR}/pre_flight.json" || true)
-    ok "pre_flight ${n_pass} PASS / ${n_fail} FAIL"
-    [ "${n_fail}" -eq 0 ] || die "pre_flight FAIL count > 0 — BLOCKER (per TODO-207 v3)"
+    ok "pre_flight ${pf_detail}"
 }
 
 # -----------------------------------------------------------------------------
@@ -243,12 +304,30 @@ budget_gate() {
         warn "DRY-RUN: budget tracker advisory only"
         return 0
     fi
-    if ! "${PY}" "${BUDGET_TRACKER}" --budget-hr 8 \
-            --report-json "${REPORTS_DIR}/budget_report.json" \
-            > "${REPORTS_DIR}/budget.log" 2>&1; then
-        warn "budget tracker returned non-zero (advisory only)"
+    # Wf-A269 wave-10 (2026-11-02) - REPAIR: the tracker's verdict lives in
+    # the JSON it writes via --report-json; its own EXIT CODE is always 0
+    # (MEASURED), so `if ! tracker; then warn; fi` could never fire and the
+    # gate reported "budget tracker logged" whatever the tracker had decided.
+    # The gate now reads the report and records the verdict.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     if ! "${PY}" "${BUDGET_TRACKER}" --budget-hr 8 \
+    #             --report-json "${REPORTS_DIR}/budget_report.json" \
+    #             > "${REPORTS_DIR}/budget.log" 2>&1; then
+    #         warn "budget tracker returned non-zero (advisory only)"
+    #     fi
+    #     ok "budget tracker logged"
+    "${PY}" "${BUDGET_TRACKER}" --budget-hr 8 \
+        --report-json "${REPORTS_DIR}/budget_report.json" \
+        > "${REPORTS_DIR}/budget.log" 2>&1 || true
+    local bg_verdict bg_detail
+    bg_verdict="$(run_gate_check budget "${REPORTS_DIR}/budget_report.json")"
+    bg_detail="$(gate_detail budget)"
+    if [ "${bg_verdict}" = "PASS" ]; then
+        ok "budget tracker ${bg_detail}"
+    else
+        warn "budget tracker ${bg_verdict} (${bg_detail}) — advisory only (bindingdb is not CFM)"
     fi
-    ok "budget tracker logged"
 }
 
 # -----------------------------------------------------------------------------
@@ -260,11 +339,52 @@ per_wave_gate() {
         warn "DRY-RUN: skipping per_wave_checklist emission"
         return 0
     fi
-    if ! "${PY}" "${PER_WAVE}" --wave "Wf-355-A2-1" \
-            > "${REPORTS_DIR}/per_wave.json" 2>&1; then
-        die "per_wave_checklist FAIL — see ${REPORTS_DIR}/per_wave.json"
+    # Wf-A269 wave-10 (2026-11-02) - REPAIR: this was a DEAD GATE.
+    #
+    # MEASURED (2026-11-02): `per_wave_checklist.py` returns 0 even when its
+    # own checklist JSON records a FAILED P0 blocker gate.  Reproduced with a
+    # synthetic pre-flight report carrying one FAIL gate:
+    #     exit code = 0
+    #     checklist JSON: preflight_fail_count = 1, P0 blocker "g_bad" = FAIL
+    # The tool only returns non-zero on an ARGUMENT error (exit 1) or an
+    # exception (exit 2), so `if ! checklist; then die; fi` could never fire
+    # on a checklist FAILURE — the gate could not fail.
+    #
+    # Two further defects in the same three lines:
+    #   (1) `--out` was not passed, so the checklist JSON landed at the
+    #       tool's SHARED default path
+    #       (molmetal/reports/wf262_checklist/per_wave.json) — where another
+    #       wrapper's run can overwrite it — while the file this gate
+    #       pointed its error message at ("${REPORTS_DIR}/per_wave.json")
+    #       held only the tool's STDERR text, not the checklist.
+    #   (2) `--preflight` was not passed, so the checklist read the tool's
+    #       stale DEFAULT pre-flight report
+    #       (molmetal/reports/wf259_run/pre_flight.json) instead of THIS
+    #       launch's own pre-flight report.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     if ! "${PY}" "${PER_WAVE}" --wave "Wf-355-A2-1" \
+    #             > "${REPORTS_DIR}/per_wave.json" 2>&1; then
+    #         die "per_wave_checklist FAIL — see ${REPORTS_DIR}/per_wave.json"
+    #     fi
+    #     ok "per_wave_checklist emitted"
+    #
+    # REPAIRED: the checklist writes to THIS launch's own report path, reads
+    # THIS launch's own pre-flight report, and its verdict is read from that
+    # report by the shared checker.
+    "${PY}" "${PER_WAVE}" --wave "Wf-355-A2-1" \
+        --preflight "${REPORTS_DIR}/pre_flight.json" \
+        --out "${REPORTS_DIR}/per_wave.json" \
+        --out-md "${REPORTS_DIR}/per_wave.md" \
+        > "${REPORTS_DIR}/per_wave.stdout.log" 2>&1 || true
+    local pw_verdict pw_detail
+    pw_verdict="$(run_gate_check checklist "${REPORTS_DIR}/per_wave.json")"
+    pw_detail="$(gate_detail checklist)"
+    if [ "${pw_verdict}" != "PASS" ]; then
+        warn "per_wave_checklist ${pw_verdict} (${pw_detail})"
+        die "per_wave_checklist ${pw_verdict} — refusing to launch (report: ${REPORTS_DIR}/per_wave.json)"
     fi
-    ok "per_wave_checklist emitted"
+    ok "per_wave_checklist ${pw_detail}"
 }
 
 # -----------------------------------------------------------------------------
@@ -290,8 +410,27 @@ vram_gate() {
                        --format=csv,noheader -i "${idx}" 2>/dev/null \
                 | head -1 | tr -d ' ' || echo "0")
     local free_gb
-    free_gb=$(echo "${free_mib} / 1024" | bc 2>/dev/null || echo "0")
-    if [ "$(echo "${free_gb} < ${VRAM_BUDGET_GB}" | bc 2>/dev/null || echo 1)" -eq 1 ]; then
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: `bc` is NOT INSTALLED on this
+    # host (MEASURED 2026-11-02: `command -v bc` -> rc=1, no binary; awk IS
+    # present at /usr/bin/awk).  The old expression therefore always
+    # evaluated free_gb="0" (the `|| echo "0"` fallback) and the comparison
+    # always evaluated "1" (the `|| echo 1` fallback), so this gate ALWAYS
+    # died with "VRAM free=0GB < budget=20GB" — even on a completely idle
+    # GPU.  A gate that cannot tell a full GPU from an empty one is not a
+    # gate at all.  Bash integer arithmetic needs no external tool.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     local free_gb
+    #     free_gb=$(echo "${free_mib} / 1024" | bc 2>/dev/null || echo "0")
+    #     if [ "$(echo "${free_gb} < ${VRAM_BUDGET_GB}" | bc 2>/dev/null || echo 1)" -eq 1 ]; then
+    #         die "VRAM free=${free_gb}GB < budget=${VRAM_BUDGET_GB}GB on GPU ${idx} (AGENTS.md §5.1 OOM risk)"
+    #     fi
+    case "${free_mib}" in
+        ''|*[!0-9]*)
+            die "nvidia-smi returned a non-numeric free VRAM ('${free_mib}') on GPU ${idx} — the AGENTS.md §5.1 VRAM budget cannot be evaluated"
+            ;;
+    esac
+    free_gb=$(( free_mib / 1024 ))
+    if [ "${free_gb}" -lt "${VRAM_BUDGET_GB}" ]; then
         die "VRAM free=${free_gb}GB < budget=${VRAM_BUDGET_GB}GB on GPU ${idx} (AGENTS.md §5.1 OOM risk)"
     fi
     ok "VRAM free=${free_gb}GB on GPU ${idx} (budget=${VRAM_BUDGET_GB}GB OK)"
@@ -445,7 +584,8 @@ setsid nohup         "${PY}" "${trainer}" --out-dir "${out_dir}" "$@" \
         pid=$!
     else
         local idx="${gpu##cuda:}"
-        CUDA_VISIBLE_DEVICES="${idx}" \
+        # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> ${idx}.
+        CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${idx}}" \
 setsid nohup             "${PY}" "${trainer}" --out-dir "${out_dir}" "$@" \
                 > "${out_dir}/train.log" 2>&1 &
         pid=$!
@@ -475,18 +615,50 @@ setsid nohup             "${PY}" "${trainer}" --out-dir "${out_dir}" "$@" \
         sleep 60
     done
 
-    wait "${pid}" 2>/dev/null || true
+    # Wf-A269 wave-10 (2026-11-02) — REPAIR: the trainer's exit code was
+    # discarded by `wait ... || true`, and the log check grepped for
+    # "phase complete|TEST.*Pearson|VAL.*Pearson" — markers that NO producer
+    # emits anywhere in the repo (train_chemprop_v2_v3.py contains ZERO
+    # case-insensitive "pearson" occurrences, and "phase complete" has no
+    # producer at all — MEASURED by `git grep -na "phase complete"`).  The
+    # success branch was therefore unreachable and EVERY phase died with
+    # "aborted", however well the run had actually gone.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     wait "${pid}" 2>/dev/null || true
+    #     if [ "${aborted}" -eq 1 ] || ! grep -q "phase complete\|TEST.*Pearson\|VAL.*Pearson" "${out_dir}/train.log"; then
+    #
+    # The trainer's own contract (train_chemprop_v2_v3.py:2377 and :1846):
+    #   exit 0 = every run finished with status=ok
+    #   exit 2 = it finished, but at least one run did not
+    #   exit 1 = it could not start
+    # and it prints "=== Wf-200 FINAL (JSON) ===" only when main() reached
+    # the end.  The exit code is the authoritative signal; the marker is the
+    # log evidence that the run really got that far.
+    local train_rc=0
+    wait "${pid}" 2>/dev/null || train_rc=$?
 
     local wall_sec
     wall_sec=$(( $(date +%s) - started_at ))
-    log "Phase ${phase_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr)"
+    # Wf-A269 wave-11 (2026-11-02) — REPAIR: `bc` is NOT INSTALLED on this
+    # host (MEASURED 2026-11-02: `command -v bc` -> rc=1), so the old
+    # sub-shell produced an EMPTY string and the log line read "wall=123s
+    # ( hr)".  awk is present (/usr/bin/awk) and is the pattern already used
+    # by scripts/launch_wf299_cfm_main.sh:576 and
+    # scripts/launch_wf306a_drugood_vina_gpu.sh:574-576.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     log "Phase ${phase_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr)"
+    local wall_hr
+    wall_hr=$(awk -v s="${wall_sec}" 'BEGIN { printf "%.2f", s/3600 }')
+    log "Phase ${phase_label} wall=${wall_sec}s (${wall_hr} hr)"
 
-    if [ "${aborted}" -eq 1 ] || ! grep -q "phase complete\|TEST.*Pearson\|VAL.*Pearson" "${out_dir}/train.log"; then
-        warn "Phase ${phase_label} FAIL — see ${out_dir}/train.log"
+    if [ "${aborted}" -eq 1 ] || [ "${train_rc}" -ne 0 ] \
+            || ! grep -q "=== Wf-200 FINAL (JSON) ===" "${out_dir}/train.log"; then
+        warn "Phase ${phase_label} FAIL (trainer exit=${train_rc}) — see ${out_dir}/train.log"
         die "Phase ${phase_label} aborted"
     fi
 
-    ok "Phase ${phase_label} complete — ${wall_sec}s"
+    ok "Phase ${phase_label} complete — ${wall_sec}s (trainer exit=0)"
 }
 
 # -----------------------------------------------------------------------------

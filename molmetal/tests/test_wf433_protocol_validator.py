@@ -46,7 +46,12 @@ def _make_m1_results() -> Dict[str, Any]:
         "n_folds": 2,
         "metals": ["Rh", "Re"],
         "seeds": [3, 4, 0, 1, 2, 3, 4],
-        "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+        "data_source": str(
+            Path(__file__).resolve().parents[2]
+            / ".data"
+            / "molmetal"
+            / "metalcytotox_5metal_multitask_v4.csv"
+        ),
         "split": "scaffold",
         "verdict": "BELOW_KRASNOV_GATE_PARTIAL",
     }

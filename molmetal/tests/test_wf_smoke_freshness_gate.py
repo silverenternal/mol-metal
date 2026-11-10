@@ -133,6 +133,7 @@ def _git(repo: Path, *args: str) -> None:
         capture_output=True,
         text=True,
         env={
+            "CUDA_VISIBLE_DEVICES": "",
             "GIT_AUTHOR_NAME": "t",
             "GIT_AUTHOR_EMAIL": "t@t",
             "GIT_COMMITTER_NAME": "t",

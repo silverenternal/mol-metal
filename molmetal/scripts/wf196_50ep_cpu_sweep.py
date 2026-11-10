@@ -20,16 +20,19 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+PY = sys.executable
 TRAIN_SCRIPT = (
     PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
-DATA_CSV = Path("/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv")
+DATA_CSV = (
+    Path(__file__).resolve().parents[2] / ".data" / "molmetal" / "MetalCytoToxDB.csv"
+)
 OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf196_50ep_sweep"
 CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf196_50ep"
 

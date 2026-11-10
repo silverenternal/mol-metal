@@ -57,7 +57,7 @@ except Exception:  # pragma: no cover - import path fallback
     )
 
 
-REPO_ROOT = "/home/hugo/codes/mol-metal"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------------------

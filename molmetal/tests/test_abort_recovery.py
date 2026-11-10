@@ -43,7 +43,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import abort_recovery  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 SUPPORTED_PATTERNS = ("NaN", "OOM", "IndexError", "cfm-collapse")
 SUPPORTED_METALS = ("Ru", "Ir", "Os", "Rh", "Re")

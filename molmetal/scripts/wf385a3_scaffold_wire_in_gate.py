@@ -17,11 +17,18 @@ file presence (Wf-343C4 yuelbond_decoder_env), help text
 (Wf-350A3 hp_provenance_log). None of them run a real training step
 with all flags ON and verify the SCAFFOLD actually mutates the loss.
 
-Wf-385-A3 closes this gap with a CPU-only 50-step smoke training run
+Wf-385-A3 closes this gap with a CPU-only ~50-step smoke training run
 that exercises all 14 Wf-380 flags ON simultaneously and verifies:
 
-  (a) **Loss decreases** — loss[0] vs loss[49] shows the optimizer is
-      actually stepping (not stuck on NaN / saturated at constant).
+  (a) **Loss decreases** — the first vs the last recorded per-epoch
+      mean loss shows the optimizer is actually stepping (not stuck on
+      NaN / saturated at constant).  Wf-A128 (2026-10-31) MEASURED the
+      window this gate actually runs: 13 requested epochs yield 11
+      recorded per-epoch points (the trainer's early-stop, patience=10,
+      closes the run) = 44 optimizer steps at batch_size 4.  The
+      "loss[0] vs loss[49]" phrasing below is the ORIGINAL Wf-385-A3
+      wording; the trainer emits PER-EPOCH means, not per-step losses,
+      so the comparison is first-point vs last-point over that window.
   (b) **decode_ratio > 0** — the YuelBond decoder was not broken by
       the SCAFFOLD chain (per Wf-269C MEASURED ``--no-yuelbond`` →
       decode_ratio 0.000 collapse, the YuelBond conditionality is the
@@ -40,10 +47,11 @@ PASS criteria (all required):
 
   * All 11 SCAFFOLD modules export the expected function.
   * Subprocess exit code 0 (smoke training completed).
-  * ``loss[0] > loss[49]`` (or at least one strict decrease over the
-    50-step window — partial decrease is acceptable as a one-batch
-    gradient descent may oscillate within ±10% but not catastrophic
-    collapse to NaN or constant-saturation).
+  * ``loss[0] > loss[-1]`` over the recorded per-epoch window (or at
+    least one strict decrease over the 50-step window — partial
+    decrease is acceptable as a one-batch gradient descent may oscillate
+    within ±10% but not catastrophic collapse to NaN or
+    constant-saturation).
   * ``decode_ratio > 0.0`` (YuelBond decoder not broken).
 
 FAIL on any one missing module, missing function, subprocess
@@ -71,7 +79,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Wf-414-A3 migration: atomic write + safe_overwrite_check + detect_truncation
 # closes the half-merged-file failure mode for the gate_result.json Write site
@@ -132,12 +140,41 @@ SCAFFOLD_MODULES: Tuple[Tuple[str, str, str], ...] = (
 )
 
 # --- Wf-385-A3 default invocation -------------------------------
-# CPU-friendly 50-step smoke: tiny batch + tiny cohort + 1 epoch.
+# CPU-friendly 50-step smoke: tiny batch + tiny cohort, enough epochs to
+# actually deliver the ~50 optimizer steps the docstring claims.
 # All 14 Wf-380-B1 flags ON simultaneously so the trainer main loop
 # exercises every SCAFFOLD in one pass.
+#
+# Wf-A128 FIX (2026-10-31) — the epoch budget was 3, NOT the ~50 steps the
+# gate has always claimed.  MEASURED on this host (CPU-only,
+# CUDA_VISIBLE_DEVICES=""): 3 epochs x batch 4 x 4 steps/epoch = 12
+# optimizer steps, which produced a per-epoch loss series of only THREE
+# points (1.422743, 1.422455, 1.420592) resting on TWO intervals.  The
+# relative decrease over that window was 0.1511939723838226 % — BELOW the
+# 0.3 % floor (LOSS_DECREASE_TOLERANCE) — so the gate FAILed on the
+# WINDOW, not on a broken wire-in: decode_ratio was 1.0 and all 11
+# SCAFFOLD module exports were present.
+# The window was widened, NOT the floor lowered: `--epochs 13` MEASURED an
+# 11-epoch / 44-step series [1.422743, 1.422591, 1.421257, 1.420585,
+# 1.418785, 1.416469, 1.412537, 1.408109, 1.402815, 1.394717, 1.384237]
+# -> decrease_pct = 2.7064577792523594 % (> 0.3 %) => PASS.  13 is the
+# smallest budget that reaches the window; the trainer's early-stop
+# (patience=10, gating metric decode_ratio which never improves past
+# epoch 0) caps the recorded run at 11 epochs, so `--epochs 25` MEASURED
+# the identical 11-epoch series and no more.
+# HONEST NEGATIVE (unchanged by this fix, recorded 2026-10-31): the
+# smoke's train_loss is 99.56 % `bond_ce` (MEASURED bond_ce_loss /
+# train_loss = 1.416494071483612 / 1.4227431118488312 = 0.9956077 on
+# epoch 0) with `fm_term = 0.0` at every epoch (`use_fm_objective =
+# False`, the trainer default) and `bond_n_scored = 0` /
+# `bond_n_truth_bonds = 0` — i.e. a gate whose docstring calls it a
+# "live cfm decode canary" verifies a BOND-CLASSIFICATION loss on a
+# cohort with no bond truth.  The `decode_ratio > 0` probe is what
+# actually exercises the YuelBond decoder here, and it does not depend
+# on the flow-matching objective at all.
 DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
     "--epochs",
-    "3",
+    "13",
     "--batch-size",
     "4",
     "--n-train",
@@ -213,10 +250,20 @@ DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
 # cohort). A catastrophic collapse (loss goes to NaN or to a constant
 # >10x the initial loss) is FAIL. The default 0.3% floor is calibrated
 # against the canonical 50-step smoke on synthetic Pt-click clouds
-# (n_train=16, batch_size=4, epochs=3, ~12 batches total) which
-# MEASURED a per-epoch decrease of 0.5-1.0% — well above the floor
-# but well below a 5% floor that would be unrealistic on the smoke
-# cohort.
+# (n_train=16, batch_size=4).
+#
+# Wf-A128 CORRECTION (2026-10-31, additive — the floor itself is NOT
+# changed).  The calibration note above used to claim that an
+# ``epochs=3`` smoke "MEASURED a per-epoch decrease of 0.5-1.0%".  That
+# claim is REFUTED by direct measurement on this host: with
+# ``--epochs 3`` (12 optimizer steps, THREE loss points) the measured
+# decrease was 0.1511939723838226 % — i.e. BELOW this floor, so the gate
+# FAILed on the window rather than on a broken wire-in.  The window is
+# now 13 epochs / 11 recorded points / 44 optimizer steps (see
+# ``DEFAULT_SMOKE_FLAGS``), which MEASURED 2.7064577792523594 % —
+# comfortably above the 0.3 % floor and far below a 5 % floor that would
+# be unrealistic on this cohort.  The floor stays at 0.003; only the
+# window widened.
 LOSS_DECREASE_TOLERANCE = 0.003  # 0.3% relative decrease floor
 # Decode-ratio floor (not zero — YuelBond conditionality per Wf-269C).
 DECODE_RATIO_FLOOR = 0.0  # >0 strict (any positive ratio passes)
@@ -300,6 +347,146 @@ def verify_module_exports() -> List[Dict[str, Any]]:
     return out
 
 
+def _requested_epochs(smoke_flags: Tuple[str, ...]) -> Optional[int]:
+    """The epoch budget this smoke REQUESTED, parsed from the flag tuple.
+
+    ``None`` when the flags carry no ``--epochs`` (the caller then has no
+    budget to match a record against).
+    """
+    for i, tok in enumerate(smoke_flags):
+        if tok == "--epochs" and i + 1 < len(smoke_flags):
+            try:
+                return int(smoke_flags[i + 1])
+            except ValueError:
+                return None
+    return None
+
+
+def _declared_epochs(record_path: Path) -> Optional[int]:
+    """The epoch BUDGET a per-epoch record declares, or None.
+
+    The trainer writes the run's declared epoch budget into
+    ``config.epochs`` (the number of epochs the run was ASKED to run).
+    Note this is NOT the number of recorded points: the trainer's
+    early-stop can close a 13-epoch run after 11 recorded epochs.
+    """
+    try:
+        data = json.loads(record_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    cfg = data.get("config")
+    if not isinstance(cfg, dict):
+        return None
+    val = cfg.get("epochs")
+    try:
+        return int(val)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _select_smoke_metrics_path(
+    candidates: List[Path],
+    *,
+    started_at: float,
+    expected_epochs: Optional[int],
+) -> Tuple[Optional[Path], str]:
+    """Pick the per-epoch record THIS run produced.
+
+    Wf-A128 (2026-10-31) — this selection is load-bearing.  The trainer
+    REFUSES to overwrite a canonical ``per_epoch_metrics.json`` that
+    belongs to a different population (its own record-preservation
+    contract, Wf-A114E D2/D3) and, when the refusal fires, writes THIS
+    run's record under a RUN-SCOPED filename instead
+    (``per_epoch_metrics.<tag>.json``).  A gate that always reads the
+    canonical name therefore silently reads the PREVIOUS run's record.
+
+    MEASURED on this host, in the gate's own persistent scratch dir
+    (``results/gate_scratch/wf385a3_scaffold_wire_in/train/``): a 3-epoch
+    record from an earlier run sat at the canonical path; the 13-epoch
+    run was REFUSED the canonical path (its declared budget differs and
+    its epoch range does not continue the old one) and wrote its
+    11-point record to ``per_epoch_metrics.c5c21d68675a.json``; the gate
+    read the stale 3-point canonical record and reported
+    ``decrease_pct=0.1512%`` — a FAIL about a run that never happened.
+
+    The selection is therefore two-sided:
+
+      1. FRESHNESS — only records written DURING this run (mtime >=
+         ``started_at``, with a 2 s clock tolerance) are eligible.
+         A displaced copy of the previous run's record is written during
+         this run too, so freshness alone is not enough.
+      2. BUDGET MATCH — among the fresh records, the one whose DECLARED
+         epoch budget (``config.epochs``) equals the budget this run
+         requested.  A displaced copy of the old record declares the OLD
+         budget and is filtered out.
+
+    Returns ``(path, note)``.  ``path`` is None when no eligible record
+    exists — the caller MUST then FAIL rather than fall back to a stale
+    record, because a stale record is exactly the defect this function
+    exists to prevent.
+    """
+    eligible: List[Tuple[float, Path]] = []
+    seen: List[str] = []
+    for path in candidates:
+        try:
+            if not path.is_file():
+                continue
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        seen.append(path.name)
+        if mtime < started_at - 2.0:
+            continue
+        if expected_epochs is not None:
+            declared = _declared_epochs(path)
+            if declared is not None and declared != expected_epochs:
+                continue
+        eligible.append((mtime, path))
+    if not eligible:
+        return None, (
+            "no per-epoch record written by THIS run was found among "
+            f"{len(seen)} candidate(s) {sorted(seen)}"
+            + (
+                f" (requested epoch budget={expected_epochs})"
+                if expected_epochs is not None
+                else ""
+            )
+            + "; stale records are NOT used"
+        )
+    # The trainer writes the DISPLACED copy of a replaced record BEFORE it
+    # writes the canonical one, so the canonical path carries the LATEST
+    # mtime of this run; the name is used only as a tie-break for records
+    # written within the same clock tick.
+    eligible.sort(key=lambda pair: (pair[0], pair[1].name == "per_epoch_metrics.json"))
+    path = eligible[-1][1]
+    return path, (
+        f"selected {path.name} (written during this run; declared epoch "
+        f"budget={_declared_epochs(path)} == requested "
+        f"{expected_epochs})"
+    )
+
+
+def _as_text(chunk: Any) -> str:
+    """Decode a subprocess output chunk into ``str``.
+
+    Wf-A128 (2026-10-31) — ``subprocess.TimeoutExpired.stdout`` /
+    ``.stderr`` are BYTES even when the call used ``text=True``: POSIX
+    ``Popen._communicate`` collects raw byte chunks and the decoding only
+    happens after it returns, so the TIMEOUT path hands back undecoded
+    bytes.  MEASURED on this host: the gate's own ``json.dumps`` then
+    raised ``TypeError: Object of type bytes is not JSON serializable``
+    and the pre-flight reported THAT opaque error instead of the timeout
+    it was owed — a timeout became indistinguishable from a code defect.
+    """
+    if chunk is None:
+        return ""
+    if isinstance(chunk, (bytes, bytearray)):
+        return bytes(chunk).decode("utf-8", errors="replace")
+    return str(chunk)
+
+
 def run_smoke_training(
     out_dir: Path,
     *,
@@ -310,7 +497,8 @@ def run_smoke_training(
     """Run a 50-step CPU smoke training via subprocess + parse metrics.
 
     Returns a dict with keys: ``returncode``, ``stdout_tail``,
-    ``stderr_tail``, ``per_epoch_metrics_path``, ``error``.
+    ``stderr_tail``, ``per_epoch_metrics_path``, ``record_candidates``,
+    ``started_at``, ``requested_epochs``, ``error``.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     trainer = _trainer_script()
@@ -349,6 +537,7 @@ def run_smoke_training(
         "--resume-from",
         "none",
     ]
+    started_at = time.time()
     try:
         proc = subprocess.run(
             cmd,
@@ -362,19 +551,32 @@ def run_smoke_training(
     except subprocess.TimeoutExpired as exc:
         return {
             "returncode": -1,
-            "stdout_tail": (exc.stdout or "")[-400:],
-            "stderr_tail": (exc.stderr or "")[-400:],
+            "stdout_tail": _as_text(exc.stdout)[-400:],
+            "stderr_tail": _as_text(exc.stderr)[-400:],
             "per_epoch_metrics_path": None,
+            "record_candidates": [],
+            "started_at": started_at,
+            "requested_epochs": _requested_epochs(smoke_flags),
             "error": f"timeout after {timeout}s",
         }
-    per_epoch_path = _repo_root() / out_dir / "per_epoch_metrics.json"
+    # Wf-A128: the trainer may write this run's record under a RUN-SCOPED
+    # filename (its record-preservation contract), so every record in the
+    # trainer's output dir is a candidate and the caller selects among them
+    # by freshness + declared budget.
+    record_candidates: List[Path] = sorted(
+        trainer_out_dir.glob("per_epoch_metrics*.json")
+    )
+    canonical = trainer_out_dir / "per_epoch_metrics.json"
+    if canonical not in record_candidates:
+        record_candidates.append(canonical)
     return {
         "returncode": proc.returncode,
         "stdout_tail": (proc.stdout or "")[-400:],
         "stderr_tail": (proc.stderr or "")[-400:],
-        "per_epoch_metrics_path": (
-            str(per_epoch_path) if per_epoch_path.is_file() else None
-        ),
+        "per_epoch_metrics_path": (str(canonical) if canonical.is_file() else None),
+        "record_candidates": [str(p) for p in record_candidates],
+        "started_at": started_at,
+        "requested_epochs": _requested_epochs(smoke_flags),
         "error": None
         if proc.returncode == 0
         else (f"rc={proc.returncode}; stderr_tail={((proc.stderr or '')[-300:])}"),
@@ -505,8 +707,17 @@ def gate_main(
         # `<repo_root>/<gate_out_dir>/per_epoch_metrics.json`.  Fall back
         # to all 3 candidate paths so the gate finds the metrics
         # regardless of which out-dir the trainer was launched with.
+        #
+        # Wf-A128 (2026-10-31) — the candidate list is now built from the
+        # records the trainer ACTUALLY wrote during this run (the trainer
+        # may refuse the canonical filename and write a run-scoped one),
+        # and the record is selected by freshness + declared epoch budget
+        # so a STALE record from an earlier run can never be measured
+        # against as if it were this run's.
         smoke_metric_candidates: List[Path] = []
-        if smoke["per_epoch_metrics_path"]:
+        for raw in smoke.get("record_candidates", []):
+            smoke_metric_candidates.append(Path(raw))
+        if smoke.get("per_epoch_metrics_path"):
             smoke_metric_candidates.append(Path(smoke["per_epoch_metrics_path"]))
         smoke_metric_candidates.append(out_dir / "train" / "per_epoch_metrics.json")
         smoke_metric_candidates.append(
@@ -520,11 +731,30 @@ def gate_main(
         smoke_metric_candidates.append(
             _repo_root() / out_dir / "per_epoch_metrics.json"
         )
-        per_epoch_path = next(
-            (p for p in smoke_metric_candidates if p.is_file()),
-            smoke_metric_candidates[-1],
+        # De-duplicate while preserving order.
+        deduped: List[Path] = []
+        for p in smoke_metric_candidates:
+            if p not in deduped:
+                deduped.append(p)
+        per_epoch_path, pick_note = _select_smoke_metrics_path(
+            deduped,
+            started_at=float(smoke.get("started_at") or 0.0),
+            expected_epochs=smoke.get("requested_epochs"),
         )
-        metrics = parse_smoke_metrics(per_epoch_path)
+        if per_epoch_path is None:
+            metrics = {
+                "loss_first": None,
+                "loss_last": None,
+                "decode_ratio": None,
+                "decrease_pct": None,
+                "passed_decrease": False,
+                "passed_decode": False,
+                "error": pick_note,
+            }
+        else:
+            metrics = parse_smoke_metrics(per_epoch_path)
+            metrics["per_epoch_metrics_path"] = str(per_epoch_path)
+            metrics["record_selection"] = pick_note
 
     # 3) Final verdict.
     if not modules_pass:
@@ -542,6 +772,14 @@ def gate_main(
     elif smoke.get("error"):
         verdict = "FAIL"
         reason = f"smoke subprocess failed: {smoke['error']}"
+    elif metrics.get("error") and "record written by THIS run" in str(
+        metrics.get("error")
+    ):
+        # Wf-A128: no eligible record => the run's own measurement is
+        # missing.  Report THAT, not a synthetic "loss did not decrease"
+        # over None values — and never fall back to a stale record.
+        verdict = "FAIL"
+        reason = f"smoke produced no usable per-epoch record: {metrics['error']}"
     elif not metrics["passed_decrease"]:
         verdict = "FAIL"
         reason = (

@@ -67,7 +67,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     detect_truncation = None  # type: ignore[assignment]
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PY = os.environ.get("PY", str(PROJECT_ROOT / ".venv" / "bin" / "python"))
 RUN_ONE = PROJECT_ROOT / "molmetal" / "scripts" / "wf229_run_one.py"
 OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf240_ablation_extended"

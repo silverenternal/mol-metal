@@ -13,8 +13,9 @@ Tests per AGENTS.md §5.5 filesystem-truth rule:
 import json
 import os
 import re
+from pathlib import Path
 
-REPO = "/home/hugo/codes/mol-metal"
+REPO = str(Path(__file__).resolve().parents[2])
 DOC_PATH = os.path.join(REPO, "docs/M6_KAPPA_DROP_DECISION.md")
 JSON_PATH = os.path.join(REPO, "metrics/by_metric/m6_kappa.json")
 

@@ -49,7 +49,8 @@ export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export TRANSFORMERS_VERBOSITY="${TRANSFORMERS_VERBOSITY:-error}"
 export MOLMETAL_DATA_DIR="${MOLMETAL_DATA_DIR:-$REPO_ROOT/.data/molmetal}"
 export MOLMETAL_TMQM_DIR="${MOLMETAL_TMQM_DIR:-$REPO_ROOT/.data/molmetal/tmQM}"
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export VIRTUAL_ENV="$SHARED_VENV"
 
 # --- Pick interpreter: $1 if it looks like a python-ish binary, else shared venv.

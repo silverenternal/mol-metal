@@ -25,6 +25,41 @@ Root-cause analysis (per AGENTS.md §5.2 MEASURED-vs-PROJECTED framing):
       /home/hugo/codes/mol-metal/scripts/launch_wf310b_g6_final.sh:62:
           --cpu-num-workers 0
 
+    2026-11-02 correction (Wf-A269 wave-3) — the block above is PRESERVED
+    VERBATIM per AGENTS.md §5.5 rule #6: it is a dated MEASURED grep
+    snapshot (2026-09-29) and its line numbers describe the files AS THEY
+    WERE on that date.  Two of the six launchers have since been MOVED by
+    the Wf-437 simplification wave (``launch_wf300_cfm_main.sh`` and
+    ``launch_wf124_p3_g4.sh`` now live at
+    ``TODO/archive/wf437_simplify/``), and Wf-328-W2 changed the flag's
+    value from 0 to 8 in every one of them, which shifted the line
+    numbers.  The lines above are a DATED GREP SNAPSHOT, not live path
+    references; the live per-launcher values are asserted by
+    ``molmetal/tests/test_wf328w2_launcher_num_workers.py``.
+    Wf-A269 wave-3 (2026-11-02) — SECOND CORRECTION: the sentence above
+    claims the live per-launcher values are asserted by
+    ``molmetal/tests/test_wf328w2_launcher_num_workers.py``.  That was FALSE
+    for the two ARCHIVED launchers: that test's constants still named
+    ``SCRIPTS / ...`` for them, so it skipped both and asserted nothing
+    about their values.  The constants now point at the archived copies
+    (same file, same `--cpu-num-workers 8`), so the claim is now TRUE for
+    all six.  See
+    ``molmetal/tests/test_wf328w2_launcher_num_workers.py``.
+    Wf-A269 wave-3 (2026-11-02) — CORRECTION: the previous rendering claimed
+    "None of the lines above is a live path reference", which is imprecise:
+    4 of the 6 preserved paths still resolve to tracked files, and only 2
+    (``launch_wf300_cfm_main.sh`` and ``launch_wf124_p3_g4.sh``) resolve to
+    nothing.  The superseded rendering is preserved VERBATIM per AGENTS.md
+    §5.5 rule #6:
+      "None of the lines above is a live path reference; the live
+       per-launcher values are asserted by
+       ``molmetal/tests/test_wf328w2_launcher_num_workers.py``." 
+
+    (Wf-A269 wave-3 (2026-11-02): the sentence below says the six launchers
+    hard-code ``--cpu-num-workers 0``; the dated correction above records
+    that Wf-328-W2 changed the flag's value from 0 to 8 in every one of
+    them.  The superseded rendering is preserved VERBATIM per AGENTS.md §5.5
+    rule #6.)
     All six launchers hard-code ``--cpu-num-workers 0`` which forces
     the trainer's manual-loop fallback path (no DataLoader, no
     pin_memory, no workers).  Even though the Wf-260 code default is

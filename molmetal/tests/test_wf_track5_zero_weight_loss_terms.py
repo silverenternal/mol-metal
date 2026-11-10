@@ -189,7 +189,8 @@ def test_entropy_term_rewards_uniformity_not_a_particular_class():
 
 
 def test_entropy_term_default_weight_is_an_exact_zero():
-    """AGENTS.md §5.11: default off must be bit-for-bit compatible."""
+    """Default off must be bit-for-bit compatible (~~AGENTS.md §5.11~~ →
+    AGENTS.md §3.3 audit-ledger; corrected 2026-11-01)."""
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # noqa: PLC0415
         _LAST_LOSS_TERMS,
     )

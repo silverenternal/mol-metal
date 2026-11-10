@@ -277,7 +277,8 @@
         "75": 4,
         "76": 3,
         "77": 12
-      }
+      },
+      "status_2026_10_31": "SUPERSEDED as the 'generated' column of this artifact -- these 37-row values describe the era-A reconstruction cohort. The 66-row era-B pool's audit is in re_measurement_attempt_2026_10_31.metal_audit_generated_was_re_measured."
     },
     "reference_cohort": {
       "path": "/home/hugo/codes/mol-metal/molmetal/data/nci60_precious_9cell.csv",
@@ -299,7 +300,8 @@
         "Os": 579,
         "Rh": 358
       },
-      "note": "metal_origin names the metal each cohort ROW was measured as; n_metal_bearing_molecules counts metals present IN THE GRAPH. The two disagree because the substrate keeps them in separate columns."
+      "note": "metal_origin names the metal each cohort ROW was measured as; n_metal_bearing_molecules counts metals present IN THE GRAPH. The two disagree because the substrate keeps them in separate columns.",
+      "status_2026_10_31": "RE-CONFIRMED unchanged on 2026-10-31 by re-running wf_generated_to_activity.py::cohort_metal_audit (identical values: 7823 rows parsed, 0 metal-bearing, 98.29% substrate match)."
     },
     "featurizer_onehot_Z": [
       6,
@@ -318,21 +320,103 @@
     ],
     "featurizer_onehot_note": "Ru(44), Os(76) and Re(75) are NOT one-hot encoded and land in the single catch-all z_other bit."
   },
-  "framing": "DISTRIBUTIONAL ONLY. The NCI-60 heads reach MEASURED test AUC 0.7617-0.9549 (per-cell, 5 seeds, 50 epochs, scaffold split) on REAL data, and here they score the GENERATED molecules at 0.609 against 0.4273 on that same real cohort through the identical code path. This does NOT mean the generated structures are predicted anticancer agents. MEASURED: the training cohort carries a precious metal in 0/7823 molecular graphs (the metal sits in a separate MetalCytoToxDB column that is never joined into the graph), while 37/37 generated molecules DO carry one. The model was fitted on metal-free graphs and is scoring metal-bearing ones. The number answers 'where do these de-novo structures sit relative to real measured complexes under this model', nothing about efficacy.",
+  "framing": "DISTRIBUTIONAL ONLY. The NCI-60 heads reach MEASURED test AUC 0.7617-0.9549 (per-cell, 5 seeds, 50 epochs, scaffold split) on REAL data, and here they score the GENERATED molecules at 0.609 against 0.4273 on that same real cohort through the identical code path. This does NOT mean the generated structures are predicted anticancer agents. MEASURED: the training cohort carries a precious metal in 0/7823 molecular graphs (the metal sits in a separate MetalCytoToxDB column that is never joined into the graph), while 37/37 generated molecules DO carry one. The model was fitted on metal-free graphs and is scoring metal-bearing ones. The number answers 'where do these de-novo structures sit relative to real measured complexes under this model', nothing about efficacy. [UPDATE 2026-10-31: the 0.609-vs-0.4273 contrast is the 37-row era-A RECONSTRUCTION cohort scored against the real cohort, both retained unchanged. It is not a measurement of the current 66-row era-B free-generation pool, whose cross-application numbers are UNMEASURED because the checkpoint family is not on disk. The metal-audit sentence is re-measured and still holds for the 66-row pool (66/66 metal-bearing).]",
   "caveats": [
-    "n=37 generated molecules. The per-cell spread (A549 0.8335 vs A2780 0.4010) is within what 37 draws can produce by chance; do not read per-cell structure into it.",
+    "n=37 generated molecules. The per-cell spread (A549 0.8335 vs A2780 0.4010) is within what 37 draws can produce by chance; do not read per-cell structure into it. [UPDATE 2026-10-31: these 37 are the SUPERSEDED era-A reconstruction cohort; the current pool at that path has 66 rows of free generation and is UNMEASURED for this metric.]",
     "The reference column scores BELOW 0.5 on 6/9 cell lines. That is not a calibration success: mean predicted probability tracks the cohort's 0.3818 active base rate, so the delta is partly a base-rate artefact of comparing against a cohort that is 38% active, not evidence of predicted activity.",
-    "featurizer z_onehot omits Ru(44)/Os(76)/Re(75), so 17/37 generated molecules carry a metal indistinguishable from any other unlisted element.",
+    "featurizer z_onehot omits Ru(44)/Os(76)/Re(75), so 17/37 generated molecules carry a metal indistinguishable from any other unlisted element. [UPDATE 2026-10-31: on the 66-row era-B pool the corresponding count is 33/66 (Z 44, 75, 76), re-measured via the same metal_audit function.]",
     "Per-cell reference pools are capped at --reference-limit (400); small cells (DU145 161 unique, SKOV3 191) are fully covered, large ones are subsampled."
   ],
   "provenance_correction_2026_10_11": {
-    "severity": "This measurement's source is NOT generated molecules.",
-    "finding": "source_csv was produced by molmetal/scripts/wf_cfm_decode_dump_smiles.py, which loads REAL tmQM geometries (load_tmqm_clouds) and runs only the bond head. It never calls the ODE sampler, so the trainer's real generation path (evaluate_generation_validity -> generate_clouds_from_noise, train_cfm_yuelbond_wasserstein.py:4683) is never executed.",
-    "what_the_numbers_actually_describe": "The bond head RECONSTRUCTING real corpus molecules, then a classifier scoring that reconstruction. They say nothing about what the generator produces.",
+    "severity": "This measurement's source is NOT generated molecules. [UPDATE 2026-10-31: still TRUE for the 37-row cohort these numbers were measured on -- that file was an era-A reconstruction. But the FILE at source_csv has since been REWRITTEN (2026-10-12 03:04) with 66 rows of era-B free generation, so the path no longer resolves to the cohort these numbers describe. See source_csv_state_2026_10_31.]",
+    "finding": "source_csv was produced by molmetal/scripts/wf_cfm_decode_dump_smiles.py, which loads REAL tmQM geometries (load_tmqm_clouds) and runs only the bond head. It never calls the ODE sampler, so the trainer's real generation path (evaluate_generation_validity -> generate_clouds_from_noise, train_cfm_yuelbond_wasserstein.py:4683) is never executed. [UPDATE 2026-10-31: still TRUE for the measured 37-row cohort. It does NOT describe the current contents of source_csv, which are 66 rows of era-B free generation.]",
+    "what_the_numbers_actually_describe": "The bond head RECONSTRUCTING real corpus molecules, then a classifier scoring that reconstruction. They say nothing about what the generator produces. [UPDATE 2026-10-31: unchanged -- the numbers still describe the 37-row era-A reconstruction. They were NOT re-derived for the 66-row pool; see re_measurement_attempt_2026_10_31.]",
     "independent_evidence": "Real tmQM itself scores SA 4.9781 mean over 31150 complexes vs 5.0146 over these three CSVs -- a 0.14 gap, because the geometry was supplied rather than sampled. Per-run means 4.974/5.033/5.032 (eta^2=0.0006, corr(SA,epoch)=-0.021) rule out a batch effect.",
     "second_problem": "n_generated=37 is far too small for a per-cell-line mean over 5 seeds, independent of the provenance issue.",
-    "what_remains_valid": "The per-cell-line SPREAD is still real and still informative: A549 0.8335 and A2780cis 0.8065 vs A2780 0.4010 and HCT116 0.4314 is the bond head reproducing cis-vs-trans geometry distinctions on known molecules. That is a statement about bond perception, not about de-novo design.",
-    "do_not_claim": "That the generator produces anticancer-active structures. gen_validity for FREE generation is 0.23-0.38; this cohort is seeded-geometry reconstruction.",
+    "what_remains_valid": "The per-cell-line SPREAD is still real and still informative: A549 0.8335 and A2780cis 0.8065 vs A2780 0.4010 and HCT116 0.4314 is the bond head reproducing cis-vs-trans geometry distinctions on known molecules. That is a statement about bond perception, not about de-novo design. [UPDATE 2026-10-31: this statement is about the 37-row cohort only. On the 66-row era-B pool the per-cell spread is UNMEASURED (no checkpoints).]",
+    "do_not_claim": "That the generator produces anticancer-active structures. gen_validity for FREE generation is 0.23-0.38; this cohort is seeded-geometry reconstruction. [UPDATE 2026-10-31: unchanged -- and note the 66-row pool's cross-application numbers are UNMEASURED, not merely unclaimable.]",
     "date": "2026-10-11"
+  },
+  "last_corrected": "2026-10-31",
+  "last_correction_reason": "Wf-A114D follow-up (CPU-only, RDKit-only, no GPU). molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv was REWRITTEN on 2026-10-12 03:04 with 66 rows of ERA-B FREE GENERATION. The numbers in this artifact were measured on the EARLIER 37-row ERA-A (reconstruction) file and are RETAINED AS THAT MEASUREMENT, explicitly labelled. A re-measurement on the current 66-row file was ATTEMPTED and FAILED: the checkpoint family this artifact names is not on disk.",
+  "source_csv_state_2026_10_31": {
+    "date": "2026-10-31",
+    "csv_path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+    "sha256_now": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef",
+    "n_rows_now": 66,
+    "file_mtime_now": "2026-10-12 03:04:27",
+    "era_now": "B",
+    "kind_now": "generation",
+    "kind_rule": "molmetal/scripts/cfm_pool_kind.py::classify_pool",
+    "kind_reason": "content: sanitized == 0 and metal_z is empty -> era B, the ODE sampler's free generation",
+    "the_numbers_above_were_measured_on": "the SUPERSEDED 37-row ERA-A (reconstruction) file that occupied this path on 2026-10-11 19:42",
+    "measurement_date_of_the_numbers_above": "2026-10-11",
+    "superseded_file_sha256": "NOT RECOVERABLE",
+    "superseded_file_sha256_why": "The 37-row file was overwritten IN PLACE on 2026-10-12 03:04 and was never committed to git: `git log --all -- <path>` is empty and `git rev-list --all --objects` has no entry for it. A repo-wide scan of metrics/by_metric/*.json, docs/, TODO/, molmetal/reports/ and molmetal/metrics/ for a 64-hex digest recorded alongside this pool path found only the CURRENT file's digest. The superseded digest is therefore UNMEASURED/UNRECORDED, not guessed.",
+    "the_path_no_longer_resolves_to_the_measured_cohort": true,
+    "how_to_identify_the_measured_cohort": "The measured cohort is the 37-row era-A reconstruction. It is identified by the numbers themselves (n_generated 37) and by the era, not by a hash."
+  },
+  "re_measurement_attempt_2026_10_31": {
+    "date": "2026-10-31",
+    "command": "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf_generated_to_activity.py --smiles-csv molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv --family nci60 --device cpu --out-json <out.json>",
+    "device": "cpu",
+    "gpu_used": false,
+    "result": "FAILED TO RUN -- the checkpoint family this artifact names is not on disk",
+    "stdout": "  no checkpoints under /home/hugo/codes/mol-metal/molmetal/reports/dmpnn_nci60_9cell_50ep",
+    "exit_code": 1,
+    "evidence": {
+      "checkpoint_dir": "molmetal/reports/dmpnn_nci60_9cell_50ep",
+      "n_pt_files_found": 0,
+      "seed_dirs_present": 5,
+      "seed_dirs_with_empty_checkpoints": [
+        "seed_0",
+        "seed_1",
+        "seed_2",
+        "seed_3",
+        "seed_4"
+      ],
+      "dir_size": "2.0M -- per_seed_metrics JSONs only, no weights",
+      "where_the_script_looks": "molmetal/scripts/wf_generated_to_activity.py::load_family globs <dir>/seed_*/checkpoints/dmpnn_mtw_<cell>_seed*.pt, finds nothing, and main() prints 'no checkpoints under ...' and returns 1",
+      "note_on_the_cli": "--ckpt-dir is IGNORED for --family nci60: the script hard-codes REPO/molmetal/reports/dmpnn_nci60_9cell_50ep for that family, so the missing weights cannot be redirected from the command line."
+    },
+    "surviving_cell_line_heads_are_not_usable": {
+      "files": [
+        "molmetal/checkpoints/dmpnn_mtw_a2780_seed0.pt",
+        "molmetal/checkpoints/dmpnn_mtw_a2780cis_seed0.pt",
+        "molmetal/checkpoints/dmpnn_mtw_mcf7_seed0.pt"
+      ],
+      "why_not": "They are a DIFFERENT ARCHITECTURE (a single domain_head, not the 9-head MultiTaskWassersteinModel) and a DIFFERENT TRAINING RUN (epoch 1 of 1, n_train 2855, n_val 414, n_test 809, test_auc 0.5018 / 0.5734 / 0.5087) than the 50-epoch family this artifact names (reports seed_0 A2780: epoch 10, n_train 801, n_val 78, n_test 216, test_auc 0.7735).",
+      "load_error": "RuntimeError: Missing key(s) in state_dict: reg_heads.4.* .. reg_heads.8.*, cls_heads.4.* .. cls_heads.8.*; Unexpected key(s) in state_dict: domain_head.classifier.0/2.weight/bias, encoder.domain_head.classifier.0/2.weight/bias",
+      "consequence": "They cannot be loaded by the artifact's own code path at all, so scoring the 66-row pool with them is not merely non-comparable -- it is impossible. No partial re-measurement is reported."
+    },
+    "verdict": "RE-MEASUREMENT OF THIS METRIC ON THE 66-ROW ERA-B POOL IS NOT FEASIBLE. The per-cell numbers in this artifact are RETAINED AS MEASURED ON THE SUPERSEDED 37-ROW FILE. They are NOT numbers for the 66-row free-generation pool.",
+    "unmeasured_for_the_66_row_pool": [
+      "n_generated",
+      "per_cell.*.mean_prob",
+      "per_cell.*.per_seed_mean",
+      "per_cell.*.seed_std",
+      "mean_over_cell_lines",
+      "min_over_cell_lines",
+      "max_over_cell_lines",
+      "delta_mean_generated_minus_real"
+    ],
+    "reference_column_unaffected": "The `reference` block scores the REAL cohort (molmetal/data/nci60_precious_9cell.csv) through the same code path and does not depend on the generated pool, so the pool rewrite does not invalidate it. It was NOT re-measured in this pass for the same reason as above (the checkpoint family is gone); it is retained unchanged.",
+    "metal_audit_generated_was_re_measured": {
+      "note": "molmetal/scripts/wf_generated_to_activity.py::metal_audit needs NO checkpoint -- it is pure RDKit over the SMILES list -- so the metal audit of the 66-row pool WAS re-derived on CPU through that same function. The per-cell PROBABILITIES were not, because they need the checkpoints.",
+      "n_parsed": 66,
+      "n_metal_bearing_molecules": 66,
+      "pct_metal_bearing": 100.0,
+      "n_metal_atoms": 66,
+      "metal_Z_counts": {
+        "44": 16,
+        "45": 15,
+        "75": 13,
+        "76": 4,
+        "77": 18
+      },
+      "comparison_to_the_superseded_37_row_audit": "37-row era-A pool: n_parsed 37, 37/37 metal-bearing, 37 metal atoms, Z counts {44:10, 45:8, 75:4, 76:3, 77:12}. The 66-row era-B pool carries a metal in 66/66 molecules as well, with a different Z mix.",
+      "caveat": "The CSV's metal_z column is EMPTY for all 66 era-B rows, because the ODE sampler's decode_chemistry dict carries no metal_z key. The metals are in the SMILES GRAPHS, which is what metal_audit counts and what the featurizer sees. Do not read the empty metal_z column as 'no metals'.",
+      "unlisted_metal_fraction": "33/66 (Z 44 Ru + 75 Re + 76 Os) carry a metal that featurizer z_onehot does not encode separately, against 17/37 on the superseded pool."
+    }
   }
 }

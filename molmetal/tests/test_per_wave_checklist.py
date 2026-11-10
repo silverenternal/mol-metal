@@ -51,7 +51,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import per_wave_checklist  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 # Required top-level contract fields per 207 v2 §9.1 (per-wave JSON).
 REQUIRED_TOP_KEYS = (

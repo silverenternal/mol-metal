@@ -1,0 +1,74 @@
+# configs/wf125_p1_controlled_pair.yaml — Wf-125 P1 CONTROLED PAIR run spec.
+#
+# Created 2026-11-03 by the AGENTS.md §5.11 migration (user directive
+# 2026-10-09, "以后要求能且只能用yaml配置启动训练和推理，no cli参数"):
+# scripts/launch_wf125_p1_controlled_pair.sh used to hand the trainer
+# `--out-metric` on the trainer invocation line, which §5.11 forbids — a
+# wrapper may pass only --config / --out-dir / --ckpt-dir / --help.
+#
+# Trainer: molmetal/scripts/train_metal_lomo_wasserstein.py
+#   It ends its own parse with
+#     apply_yaml_overrides(p, ns, getattr(ns, "config", None))
+#   (train_metal_lomo_wasserstein.py:2381), so a YAML leaf DOES reach the
+#   trainer's argparse dest here.
+#
+# DEST-NAME NOTES (each verified against the live parser, not from a grep):
+#   * `--metals` and `--seeds` are `nargs="+"` => the YAML value MUST be a
+#     LIST. `metals: Ru Ir Os Re` as a string matches zero metals and yields
+#     `test_auc = nan` on every seed (the 2026-10-09 failure). Use a
+#     YAML sequence.
+#   * `--seeds` has `type=int` => write ints (`[0]`, not `["0"]`): the loader
+#     does NOT run the argparse converter on list values.
+#   * `--csv` -> dest `csv`. This trainer declares NO `data_csv` dest, so
+#     `data.csv` would also resolve to `csv`; the TOP-LEVEL `csv:` key is
+#     used here so the dest is unambiguous.
+#   * `--use-l2-guard` is a BooleanOptionalAction (no `type=`), so the value
+#     must be an UNQUOTED YAML boolean — a quoted "true" arrives as the
+#     string 'true'.
+#   * `--out-metric` -> dest `out_metric`. The trainer EXITS NON-ZERO when it
+#     is unset, so it must always be set.
+#
+# WHAT IS NOT HERE, AND WHY:
+#   NOTHING that the launcher used to pass on the command line is absent any
+#   more. `rh_oversample` / `rh_cohort_json` used to be passed per run mode
+#   (synthetic / real / none) as CLI flags; they are hyperparameters, so they
+#   live here now. The value below is the "none" (control) instance — the
+#   run mode that passed NEITHER flag and therefore inherited the trainer's
+#   own argparse defaults (rh_oversample=0, the built-in cohort path at
+#   train_metal_lomo_wasserstein.py:189). The launcher OVERWRITES both keys
+#   per run mode at launch time, so the control run keeps its augmentation-free
+#   definition and the synthetic/real runs get their 500-row cohort.
+#
+# The launcher rewrites `output.out_dir` / `output.out_metric` at launch time:
+# the paths depend on --run-mode and on the --out-dir override, so they are
+# only known at launch. The values below are the default-path (run_none)
+# instances.
+protocol:
+  epochs: 50
+  seeds:
+    - 0
+
+data:
+  metals:
+    - Rh
+  # --rh-oversample 500 (synthetic / real) or the trainer default 0 (none)
+  rh_oversample: 0
+  # --rh-cohort-json <SYNTH | REAL | trainer default> (per run mode)
+  rh_cohort_json: /home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_rh_oversample/synthetic_rh_cohort.json
+
+eval:
+  wasserstein_weight: 0.05
+  use_l2_guard: true
+
+compute:
+  device: "cuda:0"
+
+csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+
+output:
+  out_dir: /home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_controlled_pair/run_none
+  out_metric: /home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_controlled_pair/run_none/metrics.json
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}

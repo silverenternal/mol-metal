@@ -14,12 +14,12 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 | Item | Value |
 | --- | ---: |
 | **20 wf reports in `TODO/completed/`** | 20 / 20 shipped |
-| **50+ ship R18 modules** | 203 (LOC = 109,092) |
-| **1,200+ tests** | 11,229 test defs across 1125 test files (343,714 LOC) |
+| **50+ ship R18 modules** | 224 (LOC = 125,955) |
+| **1,200+ tests** | 15,905 test defs across 1547 test files (467,544 LOC) |
 | **9 paper sections + 2 appendices** | 9 sections (6,496 LOC) + 4 appendices (2,056 LOC) |
-| **23 R18 mechanisms (M22..M44)** | 23 mechanisms (17,869 LOC + 679 tests) |
+| **23 R18 mechanisms (M22..M44)** | 23 mechanisms (18,583 LOC + 679 tests) |
 | **8 skills ecosystem** | 8 / 8 shipped, 8 / 8 R18-updated |
-| **Total `.py` LOC (project)** | 3,087 files / 1,116,472 LOC |
+| **Total `.py` LOC (project)** | 4,002 files / 1,510,995 LOC |
 
 ## 2. The 20 wf reports in `TODO/completed/`
 
@@ -80,126 +80,147 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 
 ## 4. Ship R18 modules (50+ across 6 layers)
 
-**Total**: 203 modules / 109,092 LOC.
+**Total**: 224 modules / 125,955 LOC.
 
-### 4.1 Layer `adapter` — 60 modules / 23,484 LOC (Adapter layer)
+### 4.1 Layer `adapter` — 77 modules / 32,706 LOC (Adapter layer)
 
 | LOC | Path | Role |
 | ---: | --- | --- |
-| 1,058 | `molmetal/adapters/flow_matching_lipman/w_flow.py` | R18 W1 mechanism |
+| 1,304 | `molmetal/adapters/pocketgen/models/encoders/cftfm.py` | Adapter (ship reference path) |
+| 1,096 | `molmetal/adapters/flow_matching_lipman/w_flow.py` | R18 W1 mechanism |
+| 1,050 | `molmetal/adapters/egnn_rocm.py` | R17 SE(3) EGNN ROCm |
 | 991 | `molmetal/adapters/biolm_score_full_adapter.py` | Adapter (ship reference path) |
+| 991 | `molmetal/adapters/egnn_operator_enhancements.py` | Adapter (ship reference path) |
+| 914 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py` | Adapter (ship reference path) |
+| 876 | `molmetal/adapters/quotient_space_diffusion.py` | R18 W2 mechanism |
 | 850 | `molmetal/adapters/se3_lipman_integration.py` | Wf-2 SE(3) Lipman integrator |
-| 838 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py` | Adapter (ship reference path) |
-| 834 | `molmetal/adapters/quotient_space_diffusion.py` | R18 W2 mechanism |
 | 831 | `molmetal/adapters/flow_matching_lipman/w_flow_cfm_integration.py` | Adapter (ship reference path) |
-| 805 | `molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py` | Adapter (ship reference path) |
-| 673 | `molmetal/adapters/egnn_rocm.py` | R17 SE(3) EGNN ROCm |
-| 619 | `molmetal/adapters/flow_matching_lipman/diversity_sampling.py` | Adapter (ship reference path) |
-| 612 | `molmetal/adapters/se3_sb_integration.py` | Wf-2 W2.1 SE(3) SB adapter |
+| 826 | `molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py` | Adapter (ship reference path) |
+| 707 | `molmetal/adapters/fpocket_wrapper.py` | Adapter (ship reference path) |
+| 652 | `molmetal/adapters/se3_sb_integration.py` | Wf-2 W2.1 SE(3) SB adapter |
+| 645 | `molmetal/adapters/flow_matching_lipman/diversity_sampling.py` | Adapter (ship reference path) |
+| 613 | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | R18 W2 mechanism |
 | 595 | `molmetal/adapters/flow_matching_lipman/triton_minibatch_ot.py` | Adapter (ship reference path) |
-| 587 | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | R18 W2 mechanism |
 | 566 | `molmetal/adapters/flow_matching_lipman/acceleration.py` | Adapter (ship reference path) |
+| 557 | `molmetal/adapters/multi_ph_integration.py` | Wf-2 W2.3 multi-PH adapter |
 | 549 | `molmetal/adapters/transport_relaxation_integration.py` | Wf-2 W2.2 transport relax adapter |
-| 543 | `molmetal/adapters/multi_ph_integration.py` | Wf-2 W2.3 multi-PH adapter |
+| 546 | `molmetal/adapters/p2rank_wrapper.py` | Adapter (ship reference path) |
+| 543 | `molmetal/adapters/pocketgen/models/encoders/get.py` | Adapter (ship reference path) |
+| 542 | `molmetal/adapters/flow_matching_lipman/vector_channels.py` | Adapter (ship reference path) |
+| 540 | `molmetal/adapters/pocketgen/models/encoders/gnn.py` | Adapter (ship reference path) |
+| 518 | `molmetal/adapters/coordination_gnn.py` | R18 W2 mechanism |
 | 509 | `molmetal/adapters/per_residue_protein_metal_auc.py` | Adapter (ship reference path) |
 | 502 | `molmetal/adapters/ligand_vs_pocket_rmsd_adapter.py` | Adapter (ship reference path) |
-| 481 | `molmetal/adapters/coordination_gnn.py` | R18 W2 mechanism |
 | 480 | `molmetal/adapters/rxnflow_adapter.py` | R17 RxNFlow adapter |
 | 473 | `molmetal/adapters/softmol_adapter.py` | Adapter (ship reference path) |
 | 468 | `molmetal/adapters/flow_matching_lipman/unified_atom_bond_flow.py` | Adapter (ship reference path) |
+| 451 | `molmetal/adapters/flow_matching_lipman/qed_penalty.py` | Adapter (ship reference path) |
+| 450 | `molmetal/adapters/pocketgen/models/encoders/tools.py` | Adapter (ship reference path) |
 | 442 | `molmetal/adapters/mock.py` | R17 mock backend |
 | 440 | `molmetal/adapters/flow_matching_lipman/_reference/minibatch_ot_triton.py` | Adapter (ship reference path) |
 | 433 | `molmetal/adapters/flow_matching_lipman/m5_schedulers.py` | Adapter (ship reference path) |
 | 428 | `molmetal/adapters/flow_matching_lipman/connectivity_decoder.py` | Adapter (ship reference path) |
-| 392 | `molmetal/adapters/flow_matching_lipman/so3_averaged_fm.py` | Adapter (ship reference path) |
+| 425 | `molmetal/adapters/flow_matching_lipman/amp.py` | Adapter (ship reference path) |
+| 390 | `molmetal/adapters/flow_matching_lipman/so3_averaged_fm.py` | Adapter (ship reference path) |
 | 386 | `molmetal/adapters/flow_matching_lipman/_reference/fused_smiles_featurize.py` | Adapter (ship reference path) |
 | 380 | `molmetal/adapters/flow_matching_lipman/_reference/fused_bond_head_aggregation.py` | Adapter (ship reference path) |
 | 379 | `molmetal/adapters/flow_matching_lipman/_reference/dmpnn_triton_kernel.py` | Adapter (ship reference path) |
 | 371 | `molmetal/adapters/frontier_math_integration.py` | Adapter (ship reference path) |
+| 360 | `molmetal/adapters/pair_equivariant.py` | Adapter (ship reference path) |
+| 359 | `molmetal/adapters/pocketgen/models/esm2adapter.py` | Adapter (ship reference path) |
 | 353 | `molmetal/adapters/flow_matching_lipman/stablevm_stub.py` | Adapter (ship reference path) |
 | 345 | `molmetal/adapters/flow_matching_lipman/scaffold_conditioning.py` | Adapter (ship reference path) |
 | 342 | `molmetal/adapters/flow_matching_lipman/_reference/fused_relu_mlp.py` | Adapter (ship reference path) |
+| 324 | `molmetal/adapters/pocketgen/models/common.py` | Adapter (ship reference path) |
+| 323 | `molmetal/adapters/flow_matching_lipman/sa_penalty.py` | Adapter (ship reference path) |
 | 322 | `molmetal/adapters/flow_matching_lipman/_reference/fused_wasserstein_sliced.py` | Adapter (ship reference path) |
-| 316 | `molmetal/adapters/flow_matching_lipman/amp.py` | Adapter (ship reference path) |
-| 302 | `molmetal/adapters/flow_matching_lipman/sa_penalty.py` | Adapter (ship reference path) |
+| 304 | `molmetal/adapters/equibind.py` | R17 EquiBind adapter |
 | 301 | `molmetal/adapters/diffdock.py` | R17 DiffDock adapter |
-| 289 | `molmetal/adapters/equibind.py` | R17 EquiBind adapter |
 | 281 | `molmetal/adapters/facebook_fm_wrapper.py` | R17 CFM facebook wrapper |
-| 271 | `molmetal/adapters/flow_matching_lipman/pll_features.py` | Adapter (ship reference path) |
+| 277 | `molmetal/adapters/flow_matching_lipman/pll_features.py` | Adapter (ship reference path) |
 | 255 | `molmetal/adapters/per_pocket_vina_config.py` | Adapter (ship reference path) |
+| 245 | `molmetal/adapters/flow_matching_lipman/conditioning.py` | Adapter (ship reference path) |
+| 244 | `molmetal/adapters/egnn_extensions.py` | Adapter (ship reference path) |
+| 243 | `molmetal/adapters/pocketgen/models/protein_features.py` | Adapter (ship reference path) |
 | 235 | `molmetal/adapters/rdkit_predictor.py` | R17 RDKit predictor |
 | 231 | `molmetal/adapters/egnn_predictor.py` | R17 EGNN predictor |
-| 198 | `molmetal/adapters/egnn_rocm_checkpoint.py` | R17 SE(3) EGNN ROCm checkpoint |
+| 230 | `molmetal/adapters/egnn_rocm_checkpoint.py` | R17 SE(3) EGNN ROCm checkpoint |
+| 223 | `molmetal/adapters/pocketgen/models/encoders/radial_basis.py` | Adapter (ship reference path) |
 | 186 | `molmetal/adapters/flow_matching_lipman/wasserstein_w1.py` | Adapter (ship reference path) |
 | 164 | `molmetal/adapters/flow_matching_lipman/consistency_regularization.py` | Adapter (ship reference path) |
+| 161 | `molmetal/adapters/sa_gao_coley.py` | Adapter (ship reference path) |
 | 155 | `molmetal/adapters/flow_matching_lipman/confidence_head.py` | Adapter (ship reference path) |
+| 147 | `molmetal/adapters/flow_matching_lipman/flowmol_unified.py` | Adapter (ship reference path) |
 | 146 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation.py` | Adapter (ship reference path) |
 | 145 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2_solver.py` | Adapter (ship reference path) |
+| 138 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py` | Adapter (ship reference path) |
+| 137 | `molmetal/adapters/flow_matching_lipman/_reference_loader.py` | Adapter (ship reference path) |
 | 132 | `molmetal/adapters/flow_matching_lipman/so3_average.py` | Adapter (ship reference path) |
 | 125 | `molmetal/adapters/flow_matching_lipman/edm_preconditioning.py` | Adapter (ship reference path) |
-| 122 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py` | Adapter (ship reference path) |
-| 121 | `molmetal/adapters/flow_matching_lipman/flowmol_unified.py` | Adapter (ship reference path) |
 | 111 | `molmetal/adapters/flow_matching_lipman/triton_mini_batch_ot.py` | Adapter (ship reference path) |
-| 106 | `molmetal/adapters/facebook_fm_smoke.py` | R17 CFM facebook smoke |
-| 101 | `molmetal/adapters/flow_matching_lipman/_reference_loader.py` | Adapter (ship reference path) |
+| 107 | `molmetal/adapters/facebook_fm_smoke.py` | R17 CFM facebook smoke |
+| 107 | `molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py` | Adapter (ship reference path) |
 | 96 | `molmetal/adapters/flow_matching_lipman/stable_vm.py` | Adapter (ship reference path) |
-| 93 | `molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py` | Adapter (ship reference path) |
+| 78 | `molmetal/adapters/flow_matching_lipman/log_normal_t.py` | Adapter (ship reference path) |
 | 65 | `molmetal/adapters/flow_matching_lipman/lr_warmup.py` | Adapter (ship reference path) |
-| 60 | `molmetal/adapters/flow_matching_lipman/log_normal_t.py` | Adapter (ship reference path) |
 
-### 4.2 Layer `flow_lipman` — 38 modules / 13,278 LOC (Lipman CFM reference path)
+### 4.2 Layer `flow_lipman` — 41 modules / 14,947 LOC (Lipman CFM reference path)
 
 | LOC | Path | Role |
 | ---: | --- | --- |
-| 1,058 | `molmetal/adapters/flow_matching_lipman/w_flow.py` | R18 W1 mechanism |
-| 838 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py` | Lipman CFM reference |
+| 1,096 | `molmetal/adapters/flow_matching_lipman/w_flow.py` | R18 W1 mechanism |
+| 914 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py` | Lipman CFM reference |
 | 831 | `molmetal/adapters/flow_matching_lipman/w_flow_cfm_integration.py` | R18 W-Flow CFM integration |
-| 805 | `molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py` | Lipman CFM reference |
-| 619 | `molmetal/adapters/flow_matching_lipman/diversity_sampling.py` | Lipman CFM reference |
+| 826 | `molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py` | Lipman CFM reference |
+| 645 | `molmetal/adapters/flow_matching_lipman/diversity_sampling.py` | Lipman CFM reference |
+| 613 | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | R18 W2 mechanism |
 | 595 | `molmetal/adapters/flow_matching_lipman/triton_minibatch_ot.py` | Lipman CFM reference |
-| 587 | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | R18 W2 mechanism |
 | 566 | `molmetal/adapters/flow_matching_lipman/acceleration.py` | Lipman CFM reference |
+| 542 | `molmetal/adapters/flow_matching_lipman/vector_channels.py` | Lipman CFM reference |
 | 468 | `molmetal/adapters/flow_matching_lipman/unified_atom_bond_flow.py` | Lipman CFM reference |
+| 451 | `molmetal/adapters/flow_matching_lipman/qed_penalty.py` | Lipman CFM reference |
 | 440 | `molmetal/adapters/flow_matching_lipman/_reference/minibatch_ot_triton.py` | Lipman CFM reference |
 | 433 | `molmetal/adapters/flow_matching_lipman/m5_schedulers.py` | R18 M5 schedulers |
 | 428 | `molmetal/adapters/flow_matching_lipman/connectivity_decoder.py` | R17 CFM connectivity decoder |
-| 392 | `molmetal/adapters/flow_matching_lipman/so3_averaged_fm.py` | Lipman CFM reference |
+| 425 | `molmetal/adapters/flow_matching_lipman/amp.py` | R17 CFM amp (AMP) |
+| 390 | `molmetal/adapters/flow_matching_lipman/so3_averaged_fm.py` | Lipman CFM reference |
 | 386 | `molmetal/adapters/flow_matching_lipman/_reference/fused_smiles_featurize.py` | Lipman CFM reference |
 | 380 | `molmetal/adapters/flow_matching_lipman/_reference/fused_bond_head_aggregation.py` | Lipman CFM reference |
 | 379 | `molmetal/adapters/flow_matching_lipman/_reference/dmpnn_triton_kernel.py` | Lipman CFM reference |
 | 353 | `molmetal/adapters/flow_matching_lipman/stablevm_stub.py` | Lipman CFM reference |
 | 345 | `molmetal/adapters/flow_matching_lipman/scaffold_conditioning.py` | Lipman CFM reference |
 | 342 | `molmetal/adapters/flow_matching_lipman/_reference/fused_relu_mlp.py` | Lipman CFM reference |
+| 323 | `molmetal/adapters/flow_matching_lipman/sa_penalty.py` | Lipman CFM reference |
 | 322 | `molmetal/adapters/flow_matching_lipman/_reference/fused_wasserstein_sliced.py` | Lipman CFM reference |
-| 316 | `molmetal/adapters/flow_matching_lipman/amp.py` | R17 CFM amp (AMP) |
-| 302 | `molmetal/adapters/flow_matching_lipman/sa_penalty.py` | Lipman CFM reference |
-| 271 | `molmetal/adapters/flow_matching_lipman/pll_features.py` | Lipman CFM reference |
+| 277 | `molmetal/adapters/flow_matching_lipman/pll_features.py` | Lipman CFM reference |
+| 245 | `molmetal/adapters/flow_matching_lipman/conditioning.py` | Lipman CFM reference |
 | 186 | `molmetal/adapters/flow_matching_lipman/wasserstein_w1.py` | Lipman CFM reference |
 | 164 | `molmetal/adapters/flow_matching_lipman/consistency_regularization.py` | Lipman CFM reference |
 | 155 | `molmetal/adapters/flow_matching_lipman/confidence_head.py` | Lipman CFM reference |
+| 147 | `molmetal/adapters/flow_matching_lipman/flowmol_unified.py` | Lipman CFM reference |
 | 146 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation.py` | Lipman CFM reference |
 | 145 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2_solver.py` | Lipman CFM reference |
+| 138 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py` | Lipman CFM reference |
+| 137 | `molmetal/adapters/flow_matching_lipman/_reference_loader.py` | R17 reference loader (M17) |
 | 132 | `molmetal/adapters/flow_matching_lipman/so3_average.py` | Lipman CFM reference |
 | 125 | `molmetal/adapters/flow_matching_lipman/edm_preconditioning.py` | Lipman CFM reference |
-| 122 | `molmetal/adapters/flow_matching_lipman/shortcut_distillation_wf380.py` | Lipman CFM reference |
-| 121 | `molmetal/adapters/flow_matching_lipman/flowmol_unified.py` | Lipman CFM reference |
 | 111 | `molmetal/adapters/flow_matching_lipman/triton_mini_batch_ot.py` | Lipman CFM reference |
-| 101 | `molmetal/adapters/flow_matching_lipman/_reference_loader.py` | R17 reference loader (M17) |
+| 107 | `molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py` | Lipman CFM reference |
 | 96 | `molmetal/adapters/flow_matching_lipman/stable_vm.py` | Lipman CFM reference |
-| 93 | `molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py` | Lipman CFM reference |
+| 78 | `molmetal/adapters/flow_matching_lipman/log_normal_t.py` | Lipman CFM reference |
 | 65 | `molmetal/adapters/flow_matching_lipman/lr_warmup.py` | Lipman CFM reference |
-| 60 | `molmetal/adapters/flow_matching_lipman/log_normal_t.py` | Lipman CFM reference |
 
-### 4.3 Layer `lam_chem` — 50 modules / 30,085 LOC (Lambda calculus chem (lam_chem))
+### 4.3 Layer `lam_chem` — 51 modules / 35,128 LOC (Lambda calculus chem (lam_chem))
 
 | LOC | Path | Role |
 | ---: | --- | --- |
+| 2,989 | `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` | Lambda calculus chem |
+| 2,495 | `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py` | R12 YuelBond decoder (M7) |
+| 1,216 | `molmetal/molmetal_lam/lam_chem/decoder_rework.py` | R12 decoder rework |
 | 1,033 | `molmetal/molmetal_lam/lam_chem/coupling_joint_inference.py` | R18 joint inference coupling |
 | 975 | `molmetal/molmetal_lam/lam_chem/coupling_bidirectional.py` | R18 bidirectional coupling |
-| 950 | `molmetal/molmetal_lam/lam_chem/decoder_rework.py` | R12 decoder rework |
 | 940 | `molmetal/molmetal_lam/lam_chem/medchem_gen_integration.py` | R18 medchem integration |
 | 938 | `molmetal/molmetal_lam/lam_chem/pt_click_compat.py` | R12 + R17 click compat (M2+M10+M11) |
-| 927 | `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` | Lambda calculus chem |
 | 918 | `molmetal/molmetal_lam/lam_chem/layered_generation.py` | R18 W3 mechanism |
 | 902 | `molmetal/molmetal_lam/lam_chem/skeleton_jump.py` | R18 W3 mechanism |
 | 853 | `molmetal/molmetal_lam/lam_chem/pocket_macro_inference.py` | R17 pocket macro inference |
@@ -208,13 +229,14 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 | 834 | `molmetal/molmetal_lam/lam_chem/stereo_aware_reduction.py` | R12 stereo-aware reduction |
 | 804 | `molmetal/molmetal_lam/lam_chem/multi_ph_pll_integration.py` | R18 W2 mechanism |
 | 771 | `molmetal/molmetal_lam/lam_chem/tmqm_dataset.py` | R17 tmQM dataset |
-| 741 | `molmetal/molmetal_lam/lam_chem/platinai_dataset.py` | R17 PlatinAI dataset |
+| 745 | `molmetal/molmetal_lam/lam_chem/platinai_dataset.py` | R17 PlatinAI dataset |
 | 738 | `molmetal/molmetal_lam/lam_chem/non_click_medchem_rules.py` | R18 W3 mechanism |
+| 705 | `molmetal/molmetal_lam/lam_chem/assemble_connectivity.py` | Lambda calculus chem |
 | 705 | `molmetal/molmetal_lam/lam_chem/decoder_m3_sequence.py` | R18 M3 sequence decoder |
-| 682 | `molmetal/molmetal_lam/lam_chem/pll_signature.py` | R17 PLL signature (M4) |
+| 688 | `molmetal/molmetal_lam/lam_chem/pll_signature.py` | R17 PLL signature (M4) |
 | 664 | `molmetal/molmetal_lam/lam_chem/data_diversity.py` | R17 data diversity |
 | 662 | `molmetal/molmetal_lam/lam_chem/macroguide_ph.py` | R18 W1 mechanism |
-| 659 | `molmetal/molmetal_lam/lam_chem/metal_ligand_runtime.py` | Lambda calculus chem |
+| 662 | `molmetal/molmetal_lam/lam_chem/metal_ligand_runtime.py` | Lambda calculus chem |
 | 652 | `molmetal/molmetal_lam/lam_chem/cross_attention_m4.py` | R18 M4 cross-attention |
 | 650 | `molmetal/molmetal_lam/lam_chem/buyable_gate.py` | R18 W3 mechanism |
 | 644 | `molmetal/molmetal_lam/lam_chem/closure.py` | R10 MLC closure (M1) |
@@ -222,61 +244,60 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 | 610 | `molmetal/molmetal_lam/lam_chem/pocket_macro_skeleton.py` | R17 pocket macro skeleton |
 | 591 | `molmetal/molmetal_lam/lam_chem/pt_metal_ligand_exchange.py` | R17 Pt metal-ligand exchange (M11) |
 | 561 | `molmetal/molmetal_lam/lam_chem/metal_ligand_exchange_runtime.py` | Lambda calculus chem |
-| 552 | `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py` | R12 YuelBond decoder (M7) |
 | 533 | `molmetal/molmetal_lam/lam_chem/pharmacophore_filter.py` | R17 pharmacophore filter |
 | 527 | `molmetal/molmetal_lam/lam_chem/wetlab_extensions.py` | R17 wet-lab extensions |
 | 523 | `molmetal/molmetal_lam/lam_chem/conformer_embed.py` | R12 conformer embedder |
+| 516 | `molmetal/molmetal_lam/lam_chem/well_formedness.py` | R10 MLC well-formedness |
 | 497 | `molmetal/molmetal_lam/lam_chem/ood_protocol.py` | R18 W3 mechanism |
 | 493 | `molmetal/molmetal_lam/lam_chem/reference_ligand_resolver.py` | R17 reference ligand resolver |
 | 492 | `molmetal/molmetal_lam/lam_chem/batched_rdkit.py` | R12 batched RDKit |
 | 474 | `molmetal/molmetal_lam/lam_chem/coupling_adapter.py` | R12 coupling adapter (M9) |
 | 469 | `molmetal/molmetal_lam/lam_chem/pysr_wrapper.py` | R17 PySR wrapper |
-| 435 | `molmetal/molmetal_lam/lam_chem/reducer.py` | R10 MLC reducer (M1) |
+| 441 | `molmetal/molmetal_lam/lam_chem/reducer.py` | R10 MLC reducer (M1) |
+| 432 | `molmetal/molmetal_lam/lam_chem/cfm_decoder.py` | Lambda calculus chem |
 | 415 | `molmetal/molmetal_lam/lam_chem/wetlab_protocol.py` | R17 wet-lab protocol |
-| 410 | `molmetal/molmetal_lam/lam_chem/well_formedness.py` | R10 MLC well-formedness |
-| 399 | `molmetal/molmetal_lam/lam_chem/cfm_decoder.py` | Lambda calculus chem |
-| 326 | `molmetal/molmetal_lam/lam_chem/assemble_connectivity.py` | Lambda calculus chem |
 | 324 | `molmetal/molmetal_lam/lam_chem/lambda_reward_channel.py` | Lambda calculus chem |
 | 321 | `molmetal/molmetal_lam/lam_chem/wetlab_reward_channel.py` | R17 wet-lab reward channel |
 | 296 | `molmetal/molmetal_lam/lam_chem/cfm_tanimoto_ood_filter.py` | Lambda calculus chem |
 | 277 | `molmetal/molmetal_lam/lam_chem/ast.py` | R10 MLC AST |
+| 235 | `molmetal/molmetal_lam/lam_chem/ring_prior.py` | Lambda calculus chem |
 | 187 | `molmetal/molmetal_lam/lam_chem/cisplatin_resistance.py` | R17 cisplatin resistance |
 | 178 | `molmetal/molmetal_lam/lam_chem/pharmacophore_reward_channel.py` | R17 pharmacophore reward |
 | 128 | `molmetal/molmetal_lam/lam_chem/rules.py` | Lambda calculus chem |
 | 124 | `molmetal/molmetal_lam/lam_chem/cisplatin_builder.py` | R17 cisplatin builder |
 
-### 4.4 Layer `math` — 12 modules / 7,787 LOC (Math skeleton (T1-T11))
+### 4.4 Layer `math` — 12 modules / 8,293 LOC (Math skeleton (T1-T11))
 
 | LOC | Path | Role |
 | ---: | --- | --- |
-| 1,212 | `molmetal/math_skills/multi_parameter_ph.py` | R18 W1 mechanism |
+| 1,325 | `molmetal/math_skills/multi_parameter_ph.py` | R18 W1 mechanism |
+| 950 | `molmetal/math_skills/se3_schrodinger_bridge.py` | R18 W1 mechanism |
 | 850 | `molmetal/math_skills/catherine_properties.py` | Math skeleton (T1-T11) |
-| 813 | `molmetal/math_skills/se3_schrodinger_bridge.py` | R18 W1 mechanism |
+| 793 | `molmetal/math_skills/wasserstein_gradient_flow.py` | Math skeleton (T1-T11) |
 | 736 | `molmetal/math_skills/hochschild_cohomology.py` | R18 W2 mechanism |
-| 652 | `molmetal/math_skills/wasserstein_gradient_flow.py` | Math skeleton (T1-T11) |
 | 638 | `molmetal/math_skills/sb_bass_martingale.py` | R18 W3 mechanism |
+| 622 | `molmetal/math_skills/transport_relaxation.py` | R18 W1 mechanism |
 | 615 | `molmetal/math_skills/monge_ampere_regularity.py` | Math skeleton (T1-T11) |
 | 602 | `molmetal/math_skills/quantum_semantics.py` | R18 W2 mechanism |
 | 533 | `molmetal/math_skills/bergman_kernel.py` | R18 W3 mechanism |
-| 507 | `molmetal/math_skills/transport_relaxation.py` | R18 W1 mechanism |
 | 325 | `molmetal/math_skills/bass_existence.py` | R18 Bass existence (M44 cite-only) |
 | 304 | `molmetal/math_skills/ph_hardness_guardrail.py` | Math skeleton (T1-T11) |
 
-### 4.5 Layer `reward` — 22 modules / 17,013 LOC (Reward shaping (Hilbert + astsr))
+### 4.5 Layer `reward` — 22 modules / 17,296 LOC (Reward shaping (Hilbert + astsr))
 
 | LOC | Path | Role |
 | ---: | --- | --- |
 | 1,551 | `molmetal/molmetal_lam/reward/lambda_astsr.py` | R17 LambdaASTSR (M8, 1059 LOC) |
 | 1,468 | `molmetal/molmetal_lam/reward/symbolic_regression.py` | R17 symbolic regression |
-| 1,195 | `molmetal/molmetal_lam/reward/hilbert_primal_dual.py` | R18 W1 mechanism |
+| 1,395 | `molmetal/molmetal_lam/reward/hilbert_primal_dual.py` | R18 W1 mechanism |
 | 1,177 | `molmetal/molmetal_lam/reward/pocket_closure_bias.py` | Reward shaping (Hilbert + astsr) |
-| 1,044 | `molmetal/molmetal_lam/reward/astsr_multiph_hilbert.py` | Reward shaping (Hilbert + astsr) |
+| 1,082 | `molmetal/molmetal_lam/reward/astsr_multiph_hilbert.py` | Reward shaping (Hilbert + astsr) |
 | 972 | `molmetal/molmetal_lam/reward/neural_ode_kinetics.py` | Reward shaping (Hilbert + astsr) |
 | 940 | `molmetal/molmetal_lam/reward/multiph_pll_feature.py` | Reward shaping (Hilbert + astsr) |
 | 929 | `molmetal/molmetal_lam/reward/wasserstein_loss.py` | Reward shaping (Hilbert + astsr) |
 | 868 | `molmetal/molmetal_lam/reward/chemprop_pll_integration.py` | Reward shaping (Hilbert + astsr) |
+| 696 | `molmetal/molmetal_lam/reward/hilbert_astsr_integration.py` | R18 Hilbert astsr integration |
 | 657 | `molmetal/molmetal_lam/reward/wetlab_bayesian.py` | Reward shaping (Hilbert + astsr) |
-| 651 | `molmetal/molmetal_lam/reward/hilbert_astsr_integration.py` | R18 Hilbert astsr integration |
 | 643 | `molmetal/molmetal_lam/reward/master_catherine_closure_bias.py` | Reward shaping (Hilbert + astsr) |
 | 637 | `molmetal/molmetal_lam/reward/closure_oversample.py` | Reward shaping (Hilbert + astsr) |
 | 618 | `molmetal/molmetal_lam/reward/biolm_score_adapter.py` | R17 BioLM score adapter |
@@ -289,18 +310,18 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 | 376 | `molmetal/molmetal_lam/reward/wasserstein_transfer.py` | Reward shaping (Hilbert + astsr) |
 | 359 | `molmetal/molmetal_lam/reward/learned_shaping.py` | R17 learned shaping |
 
-### 4.6 Layer `search_alg` — 21 modules / 17,445 LOC (Search algorithm (MCTS + variance))
+### 4.6 Layer `search_alg` — 21 modules / 17,585 LOC (Search algorithm (MCTS + variance))
 
 | LOC | Path | Role |
 | ---: | --- | --- |
-| 6,936 | `molmetal/molmetal_lam/search_alg/proof_search.py` | R17 KataGo-MCTS proof search (M3, 6217 LOC) |
+| 7,058 | `molmetal/molmetal_lam/search_alg/proof_search.py` | R17 KataGo-MCTS proof search (M3, 6217 LOC) |
 | 1,122 | `molmetal/molmetal_lam/search_alg/mcts_replay_buffer.py` | Search algorithm (MCTS + variance) |
 | 1,030 | `molmetal/molmetal_lam/search_alg/variance_mcts_integration.py` | R18 MCTS variance integration |
 | 984 | `molmetal/molmetal_lam/search_alg/variance_puct_integration.py` | R18 W2 mechanism |
 | 902 | `molmetal/molmetal_lam/search_alg/mcts_replay_trainer.py` | Search algorithm (MCTS + variance) |
-| 838 | `molmetal/molmetal_lam/search_alg/score_repellent_mc.py` | R18 W1 mechanism |
+| 844 | `molmetal/molmetal_lam/search_alg/score_repellent_mc.py` | R18 W1 mechanism |
 | 764 | `molmetal/molmetal_lam/search_alg/learned_prior.py` | R17 learned prior |
-| 650 | `molmetal/molmetal_lam/search_alg/pll_heuristic.py` | R17 PLL heuristic (M4) |
+| 662 | `molmetal/molmetal_lam/search_alg/pll_heuristic.py` | R17 PLL heuristic (M4) |
 | 602 | `molmetal/molmetal_lam/search_alg/warm_start.py` | R17 warm start |
 | 537 | `molmetal/molmetal_lam/search_alg/dream_rsi/discovery_tree.py` | Search algorithm (MCTS + variance) |
 | 438 | `molmetal/molmetal_lam/search_alg/pareto.py` | R17 Pareto ranker |
@@ -317,32 +338,32 @@ sections + 2 appendices, 23 R18 mechanisms (M22..M44), and the
 
 ## 5. 23 R18 mechanisms (M22..M44) — 3 wave breakdown
 
-### 5.1 W1 — 7 mechanisms / 6,285 LOC / 193 tests
+### 5.1 W1 — 7 mechanisms / 6,894 LOC / 193 tests
 
 _Wave 1 (math + Hilbert + Score-Rep + W-Flow + MacroGuide)_
 
 | ID | Mechanism | Module | LOC | Tests |
 | --- | --- | --- | ---: | ---: |
-| **M22** | SE(3) Schrödinger Bridge | `molmetal/math_skills/se3_schrodinger_bridge.py` | 813 | 25 |
-| **M23** | Transport Relaxation | `molmetal/math_skills/transport_relaxation.py` | 507 | 25 |
-| **M24** | Multi-Parameter PH | `molmetal/math_skills/multi_parameter_ph.py` | 1,212 | 25 |
-| **M25** | Hilbert primal-dual optimizer | `molmetal/molmetal_lam/reward/hilbert_primal_dual.py` | 1,195 | 31 |
-| **M26** | Score-Repellent Monte Carlo | `molmetal/molmetal_lam/search_alg/score_repellent_mc.py` | 838 | 38 |
-| **M27** | W-Flow ODE solver | `molmetal/adapters/flow_matching_lipman/w_flow.py` | 1,058 | 20 |
+| **M22** | SE(3) Schrödinger Bridge | `molmetal/math_skills/se3_schrodinger_bridge.py` | 950 | 25 |
+| **M23** | Transport Relaxation | `molmetal/math_skills/transport_relaxation.py` | 622 | 25 |
+| **M24** | Multi-Parameter PH | `molmetal/math_skills/multi_parameter_ph.py` | 1,325 | 25 |
+| **M25** | Hilbert primal-dual optimizer | `molmetal/molmetal_lam/reward/hilbert_primal_dual.py` | 1,395 | 31 |
+| **M26** | Score-Repellent Monte Carlo | `molmetal/molmetal_lam/search_alg/score_repellent_mc.py` | 844 | 38 |
+| **M27** | W-Flow ODE solver | `molmetal/adapters/flow_matching_lipman/w_flow.py` | 1,096 | 20 |
 | **M28** | MacroGuide PH | `molmetal/molmetal_lam/lam_chem/macroguide_ph.py` | 662 | 29 |
 
-### 5.2 W2 — 7 mechanisms / 5,028 LOC / 215 tests
+### 5.2 W2 — 7 mechanisms / 5,133 LOC / 215 tests
 
 _Wave 2 (Coord GNN + Quotient Diff + Quantum sem + Hochschild + VarCtrlPUCT + Fractional ODE + Multi-PH+PLL)_
 
 | ID | Mechanism | Module | LOC | Tests |
 | --- | --- | --- | ---: | ---: |
-| **M29** | Coordination-Aware GNN | `molmetal/adapters/coordination_gnn.py` | 481 | 32 |
-| **M30** | Quotient-Space Diffusion | `molmetal/adapters/quotient_space_diffusion.py` | 834 | 36 |
+| **M29** | Coordination-Aware GNN | `molmetal/adapters/coordination_gnn.py` | 518 | 32 |
+| **M30** | Quotient-Space Diffusion | `molmetal/adapters/quotient_space_diffusion.py` | 876 | 36 |
 | **M31** | Quantum semantics | `molmetal/math_skills/quantum_semantics.py` | 602 | 32 |
 | **M32** | Hochschild cohomology | `molmetal/math_skills/hochschild_cohomology.py` | 736 | 31 |
 | **M33** | VarianceControlledPUCT | `molmetal/molmetal_lam/search_alg/variance_puct_integration.py` | 984 | 25 |
-| **M34** | Fractional ODE solver | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | 587 | 25 |
+| **M34** | Fractional ODE solver | `molmetal/adapters/flow_matching_lipman/fractional_ode.py` | 613 | 25 |
 | **M35** | Multi-PH + PLL signature | `molmetal/molmetal_lam/lam_chem/multi_ph_pll_integration.py` | 804 | 34 |
 
 ### 5.3 W3 — 9 mechanisms / 6,556 LOC / 271 tests
@@ -409,9 +430,9 @@ _Wave 3 (Skeleton jump + MD stub + FG veto + Layered gen + Buyable gate + OOD + 
 
 | Item | Value |
 | --- | ---: |
-| Test files (`test_*.py`) | 1,125 |
-| Total test LOC | 343,714 |
-| `def test_*` definitions | 11,229 |
+| Test files (`test_*.py`) | 1,547 |
+| Total test LOC | 467,544 |
+| `def test_*` definitions | 15,905 |
 | R18 ship tests (Wf-1..Wf-18 aggregate) | ~1,070 (Wf-13 ledger) |
 | R17 baseline (30/30 decode + 14/14 evaluators + 7/7 guards + ~217 unit) | preserved bit-identical |
 

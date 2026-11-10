@@ -13,7 +13,7 @@
 Wf-METRIC-RESCUE surfaced **5 honest-negative findings** from regressed-metric ultracode, all MEASURED on disk per AGENTS.md §5.5 filesystem-truth rule:
 
 1. **W₁ W₂ ON/OFF de-confound** — turning W₂ ON lowers real-only LOMO by Δ=−0.023 (every-batch cadence); 3-arm de-confound (OFF 0.5575 / per-epoch 0.5496 / every-batch 0.5349) confirms W₂ is NOT a load-bearing lever at any tested cadence.
-2. **G6 per-innovation ablation (18 tuples)** — none of Wasserstein / Kendall / multi-task individually decisive for AUC at 3 seeds × 2 metals; per-lever Δ all inside seed std.
+2. **G6 per-innovation ablation (18 tuples)** — none of Wasserstein / Kendall / multi-task individually decisive for AUC at 3 seeds × 2 metals; per-lever Δ all inside seed std. → **SUPERSEDED 2026-10-31 (Wf-A124):** the "(18 tuples)" count is **retracted** — the tree holds **24 tuples** (4 cohorts × {Ru, Rh} × 3 seeds) — and the published per-lever Δ table **does not reproduce** from the shipped artifacts (**2 of 6** cells under its own `no_multi_task` reference, **0 of 6** under the G5 all-ON baseline); the qualitative conclusion ("no individual innovation is decisive at this n") **STANDS** and is re-derived by the paired-vs-G5 comparison — see the §2 SUPERSEDE note below + `docs/HONEST_NEGATIVE_CATALOG.md` §6.216..§6.222.
 3. **bace rescue attempt — hypothesis REFUTED** — class-weighting was NOT the cause of the −0.134 bace gap; rescue `--class-weight balanced` made it WORSE (0.7421 → 0.6805). 4 NEW flags wired end-to-end (NOT FLAG_ONLY).
 4. **m19 fix-stack aggregate 0.5862** — `--rh-loso-validation` specifically HURT Rh (0.5022 → 0.4056, Δ −0.097). Centering baseline (Rh 0.5022) remains the canonical value.
 5. **pIC50 pearson readout** — ridge on frozen encoder **decisively beats** trained neural head (pooled 0.4151 vs 0.1543); head is **anti-correlated on Os** (−0.278).
@@ -37,15 +37,15 @@ The single most consequential finding. The project's narrative had treated W₂ 
 | ON `--wasserstein-cadence per-epoch` | **0.5496 ± 0.0967** | 0.6031 / 0.5896 / 0.5849 / 0.3780 / 0.5924 | `molmetal/reports/m1_realonly_w2on_per-epoch_30ep/metrics.json` (W1 arm2 COMPLETE 2026-10-09) |
 | ON `--wasserstein-cadence every-batch` | **0.5349** | 0.5888 / 0.5901 / 0.5560 / 0.3794 / 0.5603 | `molmetal/reports/m1_realonly_w2on_every-batch_30ep/metrics.json` (W1 arm1 complete 2026-10-08) |
 
-**Verdict — HONEST-NEGATIVE: W₂ is NOT load-bearing** at any tested cadence. Turning W₂ ON lowers the metric; the effect is larger at every-batch cadence (Δ −0.023) than per-epoch (Δ −0.008), but both are negative. Independent confirmation from G6 18-tuple ablation (see §2).
+**Verdict — HONEST-NEGATIVE: W₂ is NOT load-bearing** at any tested cadence. Turning W₂ ON lowers the metric; the effect is larger at every-batch cadence (Δ −0.023) than per-epoch (Δ −0.008), but both are negative. Independent confirmation from G6 18-tuple ablation (see §2) — **superseded 2026-10-31 (Wf-A124):** the "CONFIRMED independently" wording does **not** stand (the two G6 arms differ in more than one lever, the difference sits inside seed std, and on Rh it is −0.0001 ≈ 0); see the §2 SUPERSEDE note + catalog §6.221.
 
 **Why this matters**: the earlier "+0.049 lift" claim should not be cited as a W₂ effect. The m19 metric is dominated by per-fold variance (Rh n_test=108, Os n_test=87 → AUC resolution ≈±0.06).
 
 ---
 
-## §2 G6 per-innovation ablation — 18 tuples MEASURED
+## §2 G6 per-innovation ablation — 18 tuples MEASURED — **SUPERSEDED 2026-10-31 (Wf-A124): see the SUPERSEDE note at the end of this §**
 
-The reduced G6 sweep (`G6_CONFIGS=3 G6_METALS=2 G6_SEEDS=3`, per `results/wf124_p3_per_innovation_ablation_g6/`) completed 18 tuples on `no_multi_task` + `no_wass` + `no_kendall`, 3 seeds × 2 metals (Ru + Rh):
+The reduced G6 sweep (`G6_CONFIGS=3 G6_METALS=2 G6_SEEDS=3`, per `results/wf124_p3_per_innovation_ablation_g6/`) completed 18 tuples on `no_multi_task` + `no_wass` + `no_kendall`, 3 seeds × 2 metals (Ru + Rh): — **SUPERSEDED 2026-10-31 (Wf-A124): the tree always held 24 tuples** (4 cohorts × {Ru, Rh} × 3 seeds, `no_dann` included from the first results commit `37aa4960`, 2026-10-09); **there was never an 18-tuple tree**. — **the Δ table below was previously claimed and is RETRACTED (not reproducible from the shipped artifacts); superseded 2026-10-31 (Wf-A124) — see catalog §6.221 and the §2 SUPERSEDE note below.**
 
 | Lever Δ vs `no_multi_task` baseline | Ru | Rh |
 |---|---|---|
@@ -53,7 +53,74 @@ The reduced G6 sweep (`G6_CONFIGS=3 G6_METALS=2 G6_SEEDS=3`, per `results/wf124_
 | Kendall (`no_kendall`) | −0.011 | +0.003 |
 | Multi-task (`no_multi_task` itself) | +0.011 | +0.001 |
 
-**All inside seed std; none individually significant.** The full 60-run sweep was killed per user voice 2026-10-07 (a 7.5 hr GPU run for an attribution that is below the 0.70 gate); the 18-tuple decisive subset confirmed: do not attribute +0.049 lift to any single innovation.
+**All inside seed std; none individually significant.** The full 60-run sweep was killed per user voice 2026-10-07 (a 7.5 hr GPU run for an attribution that is below the 0.70 gate); the 18-tuple decisive subset confirmed: do not attribute +0.049 lift to any single innovation. → **the "confirmed" wording is superseded 2026-10-31 (Wf-A124) — see the SUPERSEDE note below.**
+
+### §2 SUPERSEDE note (2026-10-31, Wf-A124 — CPU-only, 0 GPU)
+
+**This file is the ORIGIN of the per-lever Δ table** that `TODO/INDEX.md` §22.151
+and `docs/HONEST_NEGATIVE_CATALOG.md` §6.38b reproduce verbatim.  The table
+above is **historical**; the corrections below are **additive and dated**
+(AGENTS.md §5.5 rule #6 — the historical closeout trail is preserved, not
+rewritten).  Catalog entries: `docs/HONEST_NEGATIVE_CATALOG.md` §6.216..§6.222.
+
+1. **The tree always held 24 tuples, never 18.**  MEASURED: the G6 tree's first
+   results commit `37aa4960` (2026-10-09) added **all four** cohorts —
+   `no_dann` included — i.e. **4 cohorts × 2 metals (Ru, Rh) × 3 seeds = 24
+   runs** (`git ls-tree -r HEAD -- results/wf124_p3_per_innovation_ablation_g6/`
+   → 76 files = 24 runs × 3 artifacts + 2 cohort receipts + `plan.json` +
+   `recovery_manifest.tsv`).  The "18 tuples" wording above is **retracted**.
+2. **The Δ table does not reproduce.**  MEASURED 2026-10-31 against the git-HEAD
+   per-seed artifacts: **2 of the 6 published cells reproduce under the table's
+   own declared `no_multi_task` reference** (the two Wasserstein cells: Ru
+   +0.006721 ≈ +0.007, Rh −0.000082 ≈ −0.0001) and **0 of the 6 reproduce under
+   the G5 all-ON baseline** that the catalog elsewhere names (same metal column).
+   **In total 4 of the 6 published cells reproduce, each against a DIFFERENT
+   reference, and 2 reproduce under nothing** (Kendall Rh +0.003 implies a
+   reference Rh of 0.648055; multi-task Rh +0.001 implies 0.663589; no arm has
+   either).  Two further apparent matches are coincidences of magnitude, not
+   reproductions: the Kendall-Ru cell reproduces only against a **different arm**
+   (`no_wass`, −0.010758) and the multi-task-Ru cell reproduces only against the
+   **G5 Rh column** (it equals `no_multi_task(Rh) − G5(Rh)` = +0.010909, i.e. the
+   number the Rh cell of that row should carry — the two cells are swapped; the
+   Ru column's own +0.001668 appears nowhere in the published table).  The multi-task row is additionally
+   **self-referential** — its arm *is* the stated baseline, so under its own
+   header its Δ must be 0, not +0.011 / +0.001; no reference arm rescues it.
+   (Catalog §6.221.)
+3. **Which lever was disabled is not recorded for 3 of the 4 cohorts.**  MEASURED:
+   the union of keys across the 24 `training_summary.json` files is 25, and the
+   **only** lever field that varies is `wasserstein_weight` (0.0 for the 6
+   `no_wass` runs, 0.05 for the other 18).  `use_dann` / `use_kendall` /
+   multi-task fields are **absent from all 24** summaries, and `no_kendall`,
+   `no_dann` and `no_multi_task` show **0 differing fields** on every compared
+   key for Ru/seed0 (`per_metal` / `ckpt_paths` / `elapsed_seconds_total` /
+   `honest_framing_note` / `wf_tag` excluded).  The **cohort directory name is
+   the only record** of the lever identity — the AGENTS.md §5.11
+   silent-absent-knob failure mode.
+4. **The qualitative conclusion STANDS.**  The honest-negative verdict of this
+   §2 — *"no individual innovation is decisive at this n"* — is **UNCHANGED**
+   and is re-derived by the correct paired comparison against the G5 all-ON
+   baseline (`results/wf124_p3_50epoch_full_sweep_g5/`, same metal + same seed +
+   same split, n = 6, df = 5, threshold |t| > 2.5706): `no_wass` +0.009608
+   (t = +1.3177), `no_multi_task` +0.006288 (t = +0.9708), `no_kendall` −0.002497
+   (t = −0.2647), `no_dann` +0.001110 (t = +0.1606) — **every arm
+   non-significant**, and all 6 between-arm contrasts non-significant too (max
+   |t| = 2.1801).  Catalog §6.218.
+   **Confound (2026-10-31, Wf-A124):** the G5 baseline tree records **no trainer
+   fingerprint** — the 8 fields `bf16`, `dmpnn_backend`, `dmpnn_backend_requested`,
+   `tf32`, `torch_compile_cuda_graphs_disabled`, `torch_compile_enabled`,
+   `torch_compile_mode` and `w2_gradient_mode` are absent from every G5
+   `training_summary.json` — so every Δ above mixes a lever change with an
+   **unrecorded trainer-build change**.  The pairing is like-for-like (same metal,
+   same seed, same split), but it is not a clean single-lever contrast.  Catalog
+   **§6.219**.
+5. **What is NOT asserted.**  The artifacts cannot distinguish "the lever had no
+   resolvable effect" from "the lever was never applied": the between-cohort
+   spread at Ru/seed0 (0.025281) sits **inside** the range of ordinary
+   within-cohort seed spreads (0.010977–0.031655), and the per-seed signs are
+   inconsistent (seeds 0 and 1 favour the lever-OFF arm, seed 2 favours
+   `no_multi_task`).  This note therefore asserts only that the levers are
+   **unresolvable from the artifacts**; it does **not** assert that they were
+   inert.  Logged **OPEN** (catalog §6.220).
 
 ---
 
@@ -124,7 +191,7 @@ molmetal/reports/m1_realonly_w2on_per-epoch_30ep/metrics.json       (W1 arm2)
 molmetal/reports/m1_realonly_w2on_per-epoch_30ep/{Ru,Ir,Os,Rh,Re}/per_seed_metrics_seed{0..4}.json  (125 per-seed JSONs)
 molmetal/reports/m19_rh_fix_2026_10_08/metrics.json
 molmetal/reports/pearson_head_fix_2026_10_08/seed{0,1,2}.json
-results/wf124_p3_per_innovation_ablation_g6/{no_dann,no_kendall,no_multi_task,no_wass}/{Ru,Rh}/seed{0,1,2}/  (18 G6 tuples)
+results/wf124_p3_per_innovation_ablation_g6/{no_dann,no_kendall,no_multi_task,no_wass}/{Ru,Rh}/seed{0,1,2}/  (18 G6 tuples -- SUPERSEDED 2026-10-31 (Wf-A124): 24 G6 tuples; MEASURED git ls-tree -r HEAD -- results/wf124_p3_per_innovation_ablation_g6/ -> 76 files = 24 runs x 3 artifacts + 2 cohort receipts + plan.json + recovery_manifest.tsv; the 74 result artifacts were git-only from 2026-10-27 until Wf-A124 restored them to disk on 2026-10-31)
 docs/HONEST_NEGATIVE_CATALOG.md                            (§6.38 appended; 94 total entries)
 docs/ALIGNED_COMPARISON.md                                 (bace rescue caveat + m19 stale-file flag)
 docs/STATUS.md                                             (Last refreshed + Wave-METRIC-RESCUE row + catalog count 93→94)

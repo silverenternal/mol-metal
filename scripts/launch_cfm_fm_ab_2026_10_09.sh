@@ -11,7 +11,7 @@
 # That is not hypothetical: an earlier version of this file did exactly that
 # and trained with no scheduler. Verified by dry-run that the corrected path
 # emits `--lr-scheduler "onecycle"`. See also the note in
-# scripts/launch_wf_fix3lines_cfm_30ep_onecycle.sh:15 — "the no-scheduler bug
+# scripts/_retired/launch_wf_fix3lines_cfm_30ep_onecycle.sh:15 — "the no-scheduler bug
 # that prompted the restart".
 #
 # AGENTS.md §5.11  no hyperparameter appears on this command line; start.sh
@@ -30,7 +30,8 @@ LOG="$OUT/master.log"
 
 mkdir -p "$OUT"
 
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

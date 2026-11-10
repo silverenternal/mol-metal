@@ -63,9 +63,16 @@
 #
 # AGENTS.md §5.4: no wet-lab work is planned, requested, or implied here.
 
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
 # 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
 # flushing stdout after trainer exit killed the wrapper silently via `tee`).
 # Trainer rc captured via ${PIPESTATUS[0]}; tee SIGPIPE suppressed with `|| true`.
+#
+# Wf-A269 wave-10 (2026-11-02): the `|| true` half above is what made the rc
+# read DEAD — `|| true` runs AFTER the failing pipeline and CLOBBERS
+# PIPESTATUS to (0), so the "arm exited rc != 0" branch could never fire and
+# this wrapper exited 0 after a crashed trainer.  The repaired shape is at the
+# launch site below (scripts/_WRAPPER_TEMPLATE.sh:190-193).
 set -uo pipefail
 cd /home/hugo/codes/mol-metal
 
@@ -254,7 +261,35 @@ run_arm() {
     echo "=== $(date '+%H:%M:%S') START arm=${arm} ===" | tee -a "${LOG}"
     local arm_start_s
     arm_start_s=$(date +%s)
-setsid nohup     PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${SCRIPT}" \
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #   setsid nohup     PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${SCRIPT}" \
+    #       --n-targets "${N_TARGETS}" \
+    #       --n-seeds "${N_SEEDS}" \
+    #       --n-simulations "${N_SIMULATIONS}" \
+    #       --max-depth "${MAX_DEPTH}" \
+    #       --top-k 10 \
+    #       --cpuct-variance-alpha "${CPUCT_ALPHA}" \
+    #       --cpuct-mode "${arm}" \
+    #       --out-dir "${OUT_BASE}/${arm}" 2>&1 | tee "${OUT_BASE}/${arm}_run.log" || true   # 2026-10-08 pipefix
+    #   local rc=${PIPESTATUS[0]}
+    #
+    # Canonical shape (scripts/_WRAPPER_TEMPLATE.sh:190-193): pipefail off for
+    # this ONE pipeline (a trainer whose forked DataLoader workers still hold
+    # the pipe open takes SIGPIPE and would report 141 instead of its own
+    # status — the tee stays, it is the only diagnostic); `setsid --wait`
+    # (bare setsid may fork and return 0 before the trainer has done anything,
+    # which would make PIPESTATUS[0] report success for a run that had not
+    # started — and setsid gives the trainer its own session, which already
+    # covers nohup's SIGHUP immunity); and the rc read BETWEEN the two `set`
+    # lines, while PIPESTATUS still holds the pipeline's statuses.
+    #
+    # The env assignment moved in FRONT of setsid (template form): `setsid`
+    # does NOT accept `VAR=value` arguments — it execs the first argument as
+    # the program, so the old form died with
+    #   "nohup: failed to run command 'PYTHONPATH=/home/hugo/codes/mol-metal'"
+    # and rc=127, which the `|| true` then reported as a SUCCESS (rc=0).
+    set +o pipefail
+    PYTHONPATH=/home/hugo/codes/mol-metal setsid --wait ${PY} "${SCRIPT}" \
         --n-targets "${N_TARGETS}" \
         --n-seeds "${N_SEEDS}" \
         --n-simulations "${N_SIMULATIONS}" \
@@ -262,8 +297,9 @@ setsid nohup     PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${SCRIPT}" \
         --top-k 10 \
         --cpuct-variance-alpha "${CPUCT_ALPHA}" \
         --cpuct-mode "${arm}" \
-        --out-dir "${OUT_BASE}/${arm}" 2>&1 | tee "${OUT_BASE}/${arm}_run.log" || true   # 2026-10-08 pipefix
+        --out-dir "${OUT_BASE}/${arm}" 2>&1 | tee "${OUT_BASE}/${arm}_run.log"
     local rc=${PIPESTATUS[0]}
+    set -o pipefail
     local arm_elapsed_s=$(($(date +%s) - arm_start_s))
     echo "ARM_BUDGET_END ${arm} elapsed_s=${arm_elapsed_s} rc=${rc}" | tee -a "${LOG}"
     if [ "$rc" -ne 0 ]; then

@@ -44,7 +44,87 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 126 gates
+### §2.1 `all` pipeline — 133 gates
+
+> **Count synced 2026-11-04 (Wf-A269 wave-19): 132 → 133.** MEASURED
+> 2026-11-04 by live import: `len(build_gates("all")) == 133`,
+> `len(build_gates("launch")) == 135`,
+> `EXPECTED_GATE_COUNTS["all"] == 133` and
+> `EXPECTED_GATE_COUNTS["launch"] == 135` — the code constant and the
+> live count agree with each other. The bump was made by registering
+> `p3_script_contract_check`, the FOURTH §5.11 gate: the three gates
+> before it anchored the "does the flag reach a parser that DECLARES
+> it?" question to the `^train_` name prefix
+> (`scripts/_launch_contract_gate.py:189`), so a repo-local script whose
+> name is NOT `train_*` — a runner, a driver, a smoke helper, a
+> scaffold — was NEVER checked. MEASURED 2026-11-04 by the gate itself:
+> 101 wrappers / 218 invocations / 560 flags / 0 undecidable / 1
+> disclosed quoted-blob site; it found 2 live violations
+> (`molmetal/scripts/smoke/smoke_lambda.sh` passed `--out-dir` to a
+> parser declaring `--output-dir`; a GPU launcher passed `--out` to a
+> parser declaring `--json-dir`), both REPAIRED. `cfm` (8), `frontier`
+> (25) and `chemprop_v2_v3` (18) are unchanged.
+>
+> **The superseded rendering is preserved VERBATIM below**, per
+> AGENTS.md §5.5 rule #6 (the 2026-11-04 Wf-A269 wave-5/6 note, which
+> is the reading this note supersedes).
+
+> **Count synced 2026-11-04 (Wf-A269 wave-5/6): 129 → 132.** MEASURED
+> 2026-11-04 by live import: `len(build_gates("all")) == 132`,
+> `len(build_gates("launch")) == 134`,
+> `EXPECTED_GATE_COUNTS["all"] == 132` and
+> `EXPECTED_GATE_COUNTS["launch"] == 134` — the code constant and the
+> live count agree with each other. The bump was made by registering
+> `p3_runtime_transport_check`, the third §5.11 gate: the two gates
+> before it read the wrapper's **literal invocation lines**, and a flag
+> that is assembled at RUN TIME (`scripts/start.sh`'s `EVENTS_FLAG`,
+> built from a YAML key and interpolated into `$TRAINER_CMD`) is
+> invisible to both. MEASURED 2026-11-04 by the gate itself: 2 runtime
+> strings, 14 transport sites, **2 live violations** — a
+> `--no-events-jsonl` transported to the CFM trainer (which did not
+> declare it) and a `--config` transported to
+> `molmetal/scripts/bench_cfm_decode_real.py` (which declares no such
+> flag). Both would have aborted the launch with argparse's
+> "unrecognized arguments" before any work was done; both are
+> REPAIRED. `cfm` (8), `frontier` (25) and `chemprop_v2_v3` (18) are
+> unchanged.
+>
+> **The superseded rendering is preserved VERBATIM below**, per
+> AGENTS.md §5.5 rule #6 (the 2026-11-01 Wf-A154 note, which is the
+> reading this note supersedes).
+
+> **Count synced 2026-11-01 (Wf-A154): 127 → 129.** MEASURED 2026-11-01 by
+> live import: `len(build_gates("all")) == 129`,
+> `len(build_gates("launch")) == 131`,
+> `EXPECTED_GATE_COUNTS["all"] == 129` and
+> `EXPECTED_GATE_COUNTS["launch"] == 131` — the code constant and the live
+> count agree with each other. The bump was made by Wf-A154 adding the two
+> SSOT-document consistency gates `p3_ssot_path_reference_check` and
+> `p3_ssot_census_claim_check` to the `all` pipeline. Those are the FIRST
+> gates that make a **document** defect able to FAIL a pre-flight: before
+> this, a commit that introduced a broken repo-path citation or a stale
+> census statistic still passed, because both audits existed only as pytest
+> modules (`molmetal/tests/test_wfa131_repo_path_reference_guard.py` and
+> `molmetal/tests/test_wfa152_census_guard_coverage.py`). Each gate runs a
+> thin runner script (`molmetal/scripts/wf_a131_path_reference_guard_runner.py`
+> and `molmetal/scripts/wf_a152_census_claim_guard_runner.py`) that imports
+> its guard module and calls that module's OWN assertions, so the rule has
+> ONE implementation and cannot fork. `cfm` (8), `frontier` (25) and
+> `chemprop_v2_v3` (18) are unchanged.
+>
+> **Count synced 2026-10-31 (Wf-A127): 126 → 127.** MEASURED 2026-10-31 by
+> live import: `len(build_gates("all")) == 127`,
+> `len(build_gates("launch")) == 129`,
+> `EXPECTED_GATE_COUNTS["all"] == 127` and
+> `EXPECTED_GATE_COUNTS["launch"] == 129` — the code constant and the live
+> count agree with each other. The bump was made by Wf-A125 G5 (adding
+> `p3_run_ledger_provenance`); Wf-A125 bumped the constant but not this
+> doc, so `test_wf327f11_gate_count_consistency.py::TestAuditDocSync::test_audit_doc_table_count_matches_constant`
+> was RED with `doc=126 vs code=127`. This is the **same class of defect** as
+> the 2026-10-20 sync below, one wave later: the count lives in **four**
+> places (the code constant, this header, the §6 table, and
+> `molmetal/tests/test_wf415a3_preflight_fail_audit.py`), and a wave that
+> bumps one must bump all four. Catalog §6.236.
 
 > **Count synced 2026-10-20: 121 → 126.** The constant and
 > `len(build_gates("all"))` had both been at 126 since 2026-10-18 (§9), but
@@ -197,7 +277,7 @@ Wf-259 baseline 12 + Wf-321H (`p3_todo_119_p14_cpu_smoke_ready`) +
 Wf-350-A2 (`p1_compute_manifest`) + Wf-A8 (4 `p3_protocol_alignment_yaml_*`
 gates; registered for `all` + `chemprop_v2_v3`).
 
-### §2.4 `cfm` pipeline — 7 gates
+### §2.4 `cfm` pipeline — 8 gates
 
 Wf-259 baseline 6 + `p1_cfm_live_decode_canary` (HOLE-1 fix, 2026-10-03:
 live 3-epoch CPU smoke of today's `train_cfm_yuelbond_wasserstein.py` +
@@ -205,6 +285,20 @@ YuelBond decoder — loss decrease 0.3% floor + `decode_ratio_rdkit_strict
 > 0`, fail-closed). The pre-existing `p1_cfm_smoke_decoded` frozen Wf-188
 anchor is kept but relabelled HISTORICAL (it does not exercise today's
 code).
+
+**Wf-A132 (2026-10-31): 7 → 8.** `p3_cfm_fragmentation_preflight` — the
+pre-flight REGISTRATION of the Wf-A128 standalone fragmentation gate
+(`molmetal/scripts/pre_flight_fragmentation_check.py`). The census
+artifact's per-run `fragmentation_gate` verdict was recorded but never
+consulted by any gate, so a run could train for hours and publish a
+fragmented pool with nothing in the way. The gate is registered on the
+`cfm` pipeline ONLY, on purpose: it reads a HISTORICAL record, and a FAIL
+there would block every commit (`--pipeline all` is the git hook chain)
+and every unrelated launcher over a defect that belongs to the CFM line
+alone. MEASURED 2026-10-31: `all=127 launch=129 frontier=25
+chemprop_v2_v3=18 cfm=8`; re-measured 2026-11-01 (Wf-A154) after the two
+SSOT-document consistency gates landed on the `all` pipeline: `all=129 launch=131
+frontier=25 chemprop_v2_v3=18 cfm=8`.
 
 ---
 
@@ -390,7 +484,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 126 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 128 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
+| `n_gates_total` (per-pipeline COUNT) | 133 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 8 (`cfm`) — plus the `launch` pipeline at 135 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`; **re-synced 2026-10-31 (Wf-A127)** — the 2026-10-20 values were 126 (`all`) / 128 (`launch`) and were stale after Wf-A125 G5 added `p3_run_ledger_provenance`; MEASURED 2026-10-31 by live import: `all=127 launch=129 frontier=25 chemprop_v2_v3=18 cfm=7`; **re-synced again 2026-10-31 (Wf-A132)** — `cfm` 7 → 8 after `p3_cfm_fragmentation_preflight` was registered on the `cfm` pipeline only (`all` and `launch` unchanged); MEASURED 2026-10-31 by live import: `all=127 launch=129 frontier=25 chemprop_v2_v3=18 cfm=8`; **re-synced 2026-11-01 (Wf-A154)** — `all` 127 → 129 and `launch` 129 → 131 after the two SSOT-document consistency gates (`p3_ssot_path_reference_check`, `p3_ssot_census_claim_check`) were registered on the `all` pipeline; MEASURED 2026-11-01 by live import: `all=129 launch=131 frontier=25 chemprop_v2_v3=18 cfm=8`; **re-synced 2026-11-04 (Wf-A269 wave-5/6)** — `all` 129 → 132 and `launch` 131 → 134 after `p3_runtime_transport_check` was registered on the `all` pipeline; MEASURED 2026-11-04 by live import: `all=132 launch=134 frontier=25 chemprop_v2_v3=18 cfm=8`; **re-synced 2026-11-04 (Wf-A269 wave-19)** — `all` 132 → 133 and `launch` 134 → 135 after `p3_script_contract_check` was registered on the `all` pipeline; MEASURED 2026-11-04 by live import: `all=133 launch=135 frontier=25 chemprop_v2_v3=18 cfm=8`) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |
@@ -601,3 +695,140 @@ MEASURED via `len(build_gates("all")) == 126` / `len(build_gates("launch")) == 1
 **What they do not check.** Whether the reported delta is large enough to
 matter, or whether the arm belongs in the paper. Those are judgements; these
 gates only make the two structural defects above impossible to ship silently.
+
+---
+
+## §10 2026-11-01 — the pre-flight's own behaviour, MEASURED (Wf-A154 → Wf-A162)
+
+**Append-only.** Sections §1-§9 above are PRESERVED VERBATIM (AGENTS.md §5.5 rule #6). This
+section records what the Wf-A154 → Wf-A162 chain MEASURED about the pre-flight itself. Every
+number below traces to an artefact on disk or to a command in this repo; none is estimated.
+
+### §10.1 MEASURED lineage of the LIVE pre-flight (`--pipeline all --strict`, 129 gates)
+
+| when | PASS | FAIL | SKIP | WARN | TIMEOUT | TOTAL | wall |
+|---|---|---|---|---|---|---|---|
+| 2026-09-30 (Wf-415-A3 v3) | 107 | 7 | 3 | — | — | 117 | 191.19 s |
+| 2026-10-31 (Wf-A127) | 113 | 4 | 10 | 0 | — | 127 | — |
+| 2026-11-01 01:16 (Wf-A154) | 101 | 3 | 11 | 0 | **14** | 129 | **686.63 s** |
+| 2026-11-01 01:28 (Wf-A157) | **118** | **0** | 11 | 0 | **0** | 129 | 280.78 s |
+| 2026-11-01 02:35 (Wf-A162, **CPU lock**, **CONTENDED**) | **118** | **0** | 11 | 0 | **0** | 129 | **81.603 s** |
+
+The 2026-11-01 02:35 row is the newest live measurement; it is published at
+`molmetal/reports/wfa162_preflight_freshrun_2026_11_01.txt` (2,415 B). The Wf-415-A3 report at
+`molmetal/reports/wf415a3_preflight_freshrun.txt` (161 B, mtime 2026-09-30 18:38,
+112/2/3/117) is **left byte-identical** as the historical rendering — it is what the four
+`TODO/completed/415*.md` documents cite, and those citations remain true.
+
+**Why the wall time fell from 280.78 s to 81.603 s.** The run was executed under the standing
+CPU lock (`CUDA_VISIBLE_DEVICES=""`), which short-circuits the GPU-visibility probe (§10.4) and
+skips the GPU smoke spawns. The PASS/FAIL/SKIP/TIMEOUT counts are **IDENTICAL** to the
+Wf-A157 quiet measurement — the wall-time difference is a *lock* effect, not a *gate* effect.
+
+### §10.2 Wf-A157 — the `--help` probe concurrency race
+
+The 14 TIMEOUTs of the 2026-11-01 01:16 run included **all 12** `--help` probe gates. Those
+probes shared one cache slot, so 12 concurrent spawns of the same key serialised on each other
+and starved each other's wall budget. The repair collapsed the 12 spawns to **1** via a
+per-key probe lock and raised the budget from 30 s to 180 s. **MEASURED:** wall 686.63 s →
+280.78 s (−59 %) and 14 TIMEOUTs → 0.
+
+### §10.3 Wf-A158 — a TIMEOUT is not a FAIL
+
+**MEASURED (Wf-A159, `molmetal/reports/wfa159_timeout_verdict_census/timeout_verdict_census.json`):**
+**35** sites carry a timeout branch; **35** of them map to a TIMEOUT verdict; **0** unhandled.
+By role: producer **1**, gate **31**, helper **3**. By effect: `PRODUCES_RC_124` **1**,
+`TIMEOUT_VERDICT` **34**, `NOT_MEASURED_FALLBACK` **0**, `BRANCH_MAPS_TO_DEFECT` **0**.
+
+**The rule (Wf-A135, load-bearing):** a wall-clock timeout means **the measurement was NOT
+obtained**. That is never a FAIL — it is a TIMEOUT, and a TIMEOUT is not evidence of a defect.
+Three earlier waves had been reporting timeouts as failures. The invariant is now regression-
+guarded by `molmetal/tests/test_wf415a3_preflight_fail_audit.py::test_preflight_no_timeout_derived_fail`:
+**no FAIL gate's evidence may carry a timeout marker** (`TIMEOUT:`, *"the measurement was NOT
+obtained"*, `TIMED OUT`, *"wall budget"*).
+
+### §10.4 Wf-A162 — the GPU-visibility probe allocated GPU memory to ask whether there was a GPU
+
+**MEASURED.** The mol-metal GPU watchdog recorded **exactly one** mol-metal allocation in its
+life: **550 MiB**, pid 700241, 24 consecutive samples ⇒ ≈120 s held. Its last write is
+**2026-10-31 17:52**, so the event is **2026-10-31 ≈17:50-17:52**. **No `.pt` file was written
+anywhere in the repo that day** ⇒ no training, sampling or decode ran; the allocation was a
+**CUDA context** created by a *device-visibility query*.
+
+**Mechanism, read from the installed torch's SOURCE (never executed):**
+`.venv/lib/python3.12/site-packages/torch/cuda/__init__.py:205-229` — `torch.cuda.is_available()`
+takes the `else` branch unless `PYTORCH_NVML_BASED_CUDA_CHECK=1`, and that branch's own comment
+says it *"uses the CUDA Runtime API `cudaGetDeviceCount` which in turn initializes the CUDA
+Driver API via `cuInit`"*.
+
+**Two aggravating facts.** (1) The pre-flight **already computed** the repo's CPU lock for the
+GPU-REQUIRED gate (`_session_cuda_locked` at `pre_flight_check.py:6902`) and SKIPped honestly;
+`_smoke_device()` never consulted it. (2) When the lock is absent, `_smoke_device()` returns
+`"cuda:0"`, and the two gates that consume it (Wf-446 H4 D-MPNN smoke, H2 chemprop smoke) then
+run an **actual 2-epoch training on the GPU**. ⇒ **the repo's own gate tool could silently
+start GPU training.**
+
+**REPAIRED (Wf-A162):** `_smoke_device()` short-circuits to `"cpu"` under the lock **without
+spawning torch at all** (behaviour-identical, allocation-free); when it runs it carries
+`PYTORCH_NVML_BASED_CUDA_CHECK=1`; a new `_device_authorisation_error(device)` refuses any
+device the session did not authorise (including a `-1` mask, which hides every device without
+blanking the variable); **both** consuming gates now **FAIL loudly, smoke NOT run**.
+Regression surface: `molmetal/tests/test_wfa162_smoke_device_cpu_lock.py` — **10 tests**, two
+of them AST-based structural guards (every `_smoke_device()` call site must live in a function
+that also calls `_device_authorisation_error(`; no probe may run without an explicit `env=`).
+
+**MEASURED CONFIRMATION (2026-11-01 02:35):** the 129-gate contended run above executed with
+**ZERO GPU allocation** — the watchdog's output file mtime was still **2026-10-31 17:52**
+(not written during the run) and `nvidia-smi --query-compute-apps` lists **no** mol-metal
+process. The 2026-10-31 run of the same tool allocated 550 MiB. **The repair is measured, not
+asserted.**
+
+### §10.5 The pre-flight's wall time is contention-sensitive
+
+The same 129-gate run does not take the same time twice on the same machine: 686.63 s under
+Wf-A154's conditions, 280.78 s under Wf-A157's, 81.603 s under the CPU lock. ⇒ **a timeout
+measured while other work is running is not a defect measured while other work is running.**
+The repo has no contention-aware timeout policy yet — recorded as an open item in
+`docs/HONEST_NEGATIVE_CATALOG.md` §6.265 §12.
+
+
+### §10.6 The frozen COUNT was extended by a frozen NAME SET (2026-11-04, Wf-A269 frontier sweep)
+
+**The defect.** `EXPECTED_GATE_COUNTS` froze ONE NUMBER per pipeline. A number cannot
+distinguish (a) a gate **RENAME** (`p3_foo` → `p3_bar`), (b) a gate **MOVED** from the
+`all` pipeline to the `frontier` pipeline, or (c) a gate **REPLACED** by a different gate
+`p3_baz` — all three leave the count unchanged, so `p3_gate_count_consistency_audit`
+reported "consistent" while the surface it certifies had changed. That is the §6.269.17
+DEAD-GATE class in its "counting instead of reading" costume: a check that cannot fail.
+
+**The repair.** `molmetal/scripts/pre_flight_check.py` now carries
+`EXPECTED_GATE_NAMES: dict[str, tuple[str, ...]]` NEXT TO `EXPECTED_GATE_COUNTS`. The
+tuples were GENERATED from a LIVE import of `build_gates` — never typed by hand.
+MEASURED 2026-11-04 by live import: `all` 133 names, `launch` 135, `frontier` 25,
+`chemprop_v2_v3` 18, `cfm` 8 — identical to the counts in §6.
+
+**The count is now a DERIVED ASSERTION.** `gate_gate_count_consistency_audit` (in
+EXPLICIT mode, i.e. the commit path) additionally checks that
+`expected_total == len(EXPECTED_GATE_NAMES[pipeline])` and that the live registration's
+names equal the frozen tuple. A rename / a cross-pipeline move / a duplicate / an
+add-remove now FAILs the pre-flight with a `GATE NAME DRIFT` evidence string.
+
+**Bump protocol (§5.3) EXTENDED — three artefacts move together.** Adding, removing or
+renaming a gate now requires: (1) `EXPECTED_GATE_COUNTS[pipeline]`,
+(2) `EXPECTED_GATE_NAMES[pipeline]`, (3) this doc's §2 + §6.
+
+**HONEST LIMITS.**
+* The comparison is **ORDER-INSENSITIVE** (the frozen tuples are sorted): a change of
+  REGISTRATION ORDER is not detected by the name-set check (the count never moved in
+  that case either).
+* The name check runs in EXPLICIT mode only. The Wf-345-B3 auto-compute escape hatch
+  (`expected_total` omitted) is byte-identical to its previous rendering, because its
+  evidence string claims the gate "compares the count to itself" and that claim must
+  stay literally true.
+* The frozen set is a snapshot of ONE tree state: it says what the registered surface
+  must BE; `build_gates` says what it IS.
+
+**Regression surface.** `molmetal/tests/test_wf327f11_gate_count_consistency.py` —
+`TestExpectedGateNames` (4 tests) + `TestNameDriftIsDetected` (5 tests, 4 of them
+mutation proofs against the production gate). MEASURED 2026-11-04: **12 passed**
+(CPU-only, < 1 s).

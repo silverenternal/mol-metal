@@ -64,8 +64,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         (Ru/Ir/Rh/Os/Re by default).
     --seeds : integer seeds (default 0 1 2).
     --out-dir : output directory for ``result.json`` + smoke log.
-    --smoke : 5-step CPU smoke only (default True for SCAFFOLD;
-        set --smoke false to do full 50-epoch simulated training).
+    --smoke / --no-smoke : 5-step CPU smoke only (default True for
+        SCAFFOLD); use --no-smoke to run the full --epochs simulated
+        training (ONE declaration, two spellings — argparse's
+        BooleanOptionalAction, Python 3.9+).
     --per-epoch-kcal-audit : emit per-epoch kcal sign audit
         confirming ``(1 - 2*comp)*kcal_per_unit < 0`` for
         ``score.total > 0.5`` (the Wf-333-V1 fix verification).
@@ -121,9 +123,44 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="molmetal/reports/wf406a4_metal_coord_scaffold",
         help=("Output directory for result.json + per-epoch kcal audit."),
     )
+    # 2026-11-04 (Wf-A269 script-contract repair) — `--smoke` was declared as
+    # `action="store_true", default=True`, i.e. a flag that could not be
+    # turned OFF, while its OWN help text advertised "--no-smoke" and
+    # `scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh:243` (the
+    # `R3_actual` branch) actually PASSES `--no-smoke` — argparse rejected it
+    # with "unrecognized arguments: --no-smoke" (rc 2), so the wrapper's
+    # full-training branch could never have run.
+    # MEASURED (2026-11-04): the parser declared 8 options
+    # (--epochs --kcal-per-unit --metal-coord-term --metals --out-dir
+    # --per-epoch-kcal-audit --seeds --smoke) and NO --no-smoke; the
+    # `scripts/_script_contract_gate.py` run reported
+    #   VIOLATION scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh:243
+    #           [undeclared_flag] --no-smoke is passed to
+    #           molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py,
+    #           whose parser does not declare it
+    # REPAIR: `argparse.BooleanOptionalAction` (Python 3.9+) gives BOTH
+    # `--smoke` and `--no-smoke` from ONE declaration and keeps default=True,
+    # so the documented behaviour is now real. NOTE: the qualification MUST
+    # stay spelled `argparse.BooleanOptionalAction` (attribute access), not a
+    # `from argparse import BooleanOptionalAction` binding —
+    # `scripts/_script_contract_gate.py` recognises the negated spelling only
+    # through an `ast.Attribute` whose `attr` is "BooleanOptionalAction", so
+    # a bare-name binding would make the gate report `--no-smoke` as
+    # undeclared again (the gate re-reads the AST; it never imports).
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     p.add_argument(
+    #         "--smoke",
+    #         action="store_true",
+    #         default=True,
+    #         help=(
+    #             "5-step CPU smoke only (default True for SCAFFOLD). "
+    #             "Use --no-smoke for full 50-epoch simulated training."
+    #         ),
+    #     )
     p.add_argument(
         "--smoke",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
         help=(
             "5-step CPU smoke only (default True for SCAFFOLD). "
@@ -246,7 +283,9 @@ def per_epoch_kcal_sign_audit(
 def scaffold_smoke(
     args: argparse.Namespace,
 ) -> Dict[str, Any]:
-    """5-step CPU smoke for the Wf-406-A4 SCAFFOLD.
+    """CPU run for the Wf-406-A4 SCAFFOLD — 5 steps in smoke mode,
+    ``--epochs`` steps in ``--no-smoke`` mode (2026-11-04: the mode is
+    observable through the emitted ``n_steps`` / ``steps_mode``).
 
     Verifies (a) MetalCoordinationTerm import + build (b) kcal sign
     fix holds at line 635 (c) train-loop wire-in is plumbed but
@@ -260,9 +299,26 @@ def scaffold_smoke(
     build_ok, term_instance, build_detail = build_metal_coord_term(
         kcal_per_unit=args.kcal_per_unit,
     )
-    # 5-step smoke with composite_scores that span [0, 1] to verify
-    # the kcal sign fix end-to-end:
-    composite_scores = [0.0, 0.25, 0.5, 0.75, 1.0]
+    # 2026-11-04 (Wf-A269 script-contract repair) — the STEP COUNT is the
+    # observable effect of --smoke / --no-smoke (AGENTS.md §5.7: prove the
+    # flag CHANGES behaviour, do not just prove the parse succeeds):
+    #     --smoke    -> min(5, --epochs) steps  (the 5-step CPU smoke)
+    #     --no-smoke -> --epochs steps         (the full simulated training)
+    # The composite scores span [0, 1] so the kcal sign fix is verified
+    # end-to-end on EVERY step. For the 5-step smoke the list is
+    # BYTE-IDENTICAL to the pre-repair rendering below (0/4, 1/4, 2/4, 3/4,
+    # 4/4 == 0.0, 0.25, 0.5, 0.75, 1.0), so the smoke path is unchanged.
+    # `--epochs <= 0` is clamped to 1 step so the kcal audit can never be
+    # vacuously PASS over an empty population.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     # 5-step smoke with composite_scores that span [0, 1] to verify
+    #     # the kcal sign fix end-to-end:
+    #     composite_scores = [0.0, 0.25, 0.5, 0.75, 1.0]
+    n_steps = max(1, min(5, args.epochs)) if args.smoke else max(1, args.epochs)
+    composite_scores = [
+        (i / (n_steps - 1)) if n_steps > 1 else 0.5 for i in range(n_steps)
+    ]
     kcal_audit = per_epoch_kcal_sign_audit(
         composite_scores=composite_scores,
         kcal_per_unit=args.kcal_per_unit,
@@ -285,6 +341,11 @@ def scaffold_smoke(
         "seeds": list(args.seeds),
         "epochs": args.epochs,
         "smoke": args.smoke,
+        # 2026-11-04 — the OBSERVABLE effect of --smoke / --no-smoke.
+        # `n_steps` is the number of simulated steps actually executed and
+        # audited; `steps_mode` names the mode it came from.
+        "n_steps": n_steps,
+        "steps_mode": "smoke" if args.smoke else "full",
         "wall_seconds": wall,
         "honest_framing": {
             "user_ok_required_for_gpu_launch": True,

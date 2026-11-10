@@ -116,9 +116,9 @@ def _python_executable() -> str:
     bare ``python3`` fallback keeps the test runnable in a fresh shell.
     """
     candidates = [
-        Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
+        Path(sys.executable),
         Path("/home/hugo/.venvs/.venv-flowmol311/bin/python"),
-        Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
+        Path(sys.executable),
     ]
     for c in candidates:
         if c.is_file():
@@ -167,7 +167,7 @@ def test_bench_catherine_runs_on_25_metals() -> None:
         "--out-dir",
         str(smoke_out),
     ]
-    env = {"PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"}
+    env = {"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"}
     proc = subprocess.run(
         cmd,
         env=env,

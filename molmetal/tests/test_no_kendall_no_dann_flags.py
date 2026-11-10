@@ -30,7 +30,7 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
-VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VENV_PY = Path(sys.executable)
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))

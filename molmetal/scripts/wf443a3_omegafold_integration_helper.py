@@ -115,7 +115,7 @@ ls -la molmetal/tests/test_precision_policy.py
 | §5.5 filesystem-truth | **MANDATORY APPLIED** | ls -la evidence documented in §3 above; chmod 0644 restoration per rule #4 |
 | §5.6 atomic write protocol | **STRICTLY OBSERVED** | atomic_write_file from molmetal/scripts/wf386a3_atomic_write.py used for ALL writes; safe_overwrite_check + detect_truncation + OverwriteRisk + TruncationDetected intact |
 | §5.7 trainer flag wire-in smoke | N/A | No trainer flag wire-in in this integration wave; pre-flight probe precedes any future actual launch |
-| §5.8 simplification rule | RE-CONFIRMED | No wave-style file naming introduced; 0 duplication |
+| ~~§5.8 simplification rule~~ → AGENTS.md preamble wave-versioning note (2026-10-01 user directive: no per-wave file naming); corrected 2026-11-01 | RE-CONFIRMED | No wave-style file naming introduced; 0 duplication |
 | §5.9 single-venv rule | RE-CONFIRMED | All launches via project venv `/home/hugo/codes/mol-metal/.venv/bin/python`; no hardcoded `CadButEaas` paths |
 | §5.10 OmegaFold-gap-fill rule (NEW Wf-442) | VERIFIED | 6 rules remain: (1) REFERENCE — OmegaFold repo cited, (2) FLAT PACKAGE LAYOUT — molmetal/ flat, (3) ONE README.md ≤ 4 KB — **VIOLATION: README.md is 36014 B** per Wf-A2 closeout §A2 (closure = split into STATUS.md + QUICKSTART.md + ARCHITECTURE.md), (4) console_scripts ENTRY_POINT — `molmetal = "molmetal.__main__:cli_main"` in pyproject.toml, (5) MINIMAL CI — `.github/workflows/test.yml` existence check needed (deferred), (6) FLAT LICENSE — Apache-2.0 header via scripts/_add_license_headers.py |
 | §10 wetlab deprecation | RE-CONFIRMED | All 7 wetlab files DEPRECATED per §10; 0 wet-lab planning executed |

@@ -2,7 +2,7 @@
   "artifact": "msrs_data_card",
   "version": "1.0",
   "requires_dual_split": false,
-  "generated_utc": "2026-10-19T11:05:27+00:00",
+  "generated_utc": "2026-10-22T04:54:21+00:00",
   "provenance": {
     "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
     "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",

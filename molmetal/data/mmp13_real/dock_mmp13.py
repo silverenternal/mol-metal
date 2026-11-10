@@ -33,7 +33,7 @@ import torch
 for name in ("RDKit", "meeko", "vina"):
     logging.getLogger(name).setLevel(logging.ERROR)
 
-ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from rdkit import Chem, RDLogger

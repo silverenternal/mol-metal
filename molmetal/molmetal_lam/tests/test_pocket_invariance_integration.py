@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -48,6 +49,12 @@ from molmetal_lam.search_alg.warm_start import (
     modify_root_prior,
     pocket_features,
 )
+
+
+# Repo root, derived from this file's own location so the path resolves
+# on ANY checkout (this file lives at <repo>/molmetal/molmetal_lam/tests/,
+# so parents[0]=tests/, [1]=molmetal_lam/, [2]=molmetal/, [3]=repo root).
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 # ---------------------------------------------------------------------------
@@ -522,9 +529,16 @@ def test_search_pocket_invariance_break() -> None:
 
     _spec = _ilu.spec_from_file_location(
         "_r4_lambda_only_run",
-        "/home/hugo/codes/try_triton_on_rocm/molmetal/scripts/r4_lambda_only_run.py",
+        str(REPO_ROOT / "molmetal" / "scripts" / "r4_lambda_only_run.py"),
     )
     _mod = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
+    # Register the module in ``sys.modules`` BEFORE executing it.  importlib does
+    # NOT do this for you: any import inside the module body that resolves back to
+    # "r4_lambda_only_run" would otherwise build a SECOND, independent module
+    # object, and the two copies would hold separate module-level state.
+    import sys as _sys
+
+    _sys.modules["_r4_lambda_only_run"] = _mod
     _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
     pocket_derived_metal_seed = getattr(_mod, "pocket_derived_metal_seed", None)
     if pocket_derived_metal_seed is None:

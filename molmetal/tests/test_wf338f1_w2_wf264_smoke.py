@@ -42,7 +42,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 W2_SLICED_WRAPPER = PROJECT_ROOT / "scripts" / "gpu_smoke_w2_sliced.sh"
 WF264_RUN_WRAPPER = PROJECT_ROOT / "scripts" / "run_wf264_cfm_property_panel.sh"
 PIPELINE_MASTER = PROJECT_ROOT / "scripts" / "gpu_pipeline_master.sh"

@@ -1,0 +1,94 @@
+# configs/launch_wf310e_wf135_phase2_gpu.yaml
+#
+# §5.11 migration (2026-11-03) of scripts/launch_wf310e_wf135_phase2_gpu.sh.
+# The wrapper used to pass five trainer hyperparameters on the command line:
+#
+#     --metals "${METAL}" --seeds "${SEED}" --epochs "${EPOCHS}" \
+#     --balanced-cohort-json "${PHASE1_COHORT}" --device cuda:0
+#
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数") allows a launcher to pass only --config / --out-dir /
+# --ckpt-dir / --help to a trainer, so those five values now live here.
+#
+# WHAT IS *NOT* HERE IS DELIBERATE. The wrapper never passed a --config to
+# this trainer, so every other dest keeps its argparse default. A key that is
+# absent here is not "unset" — it is "exactly what the CLI produced before
+# the migration", because no flag was ever typed for it. Adding a key would
+# be a NEW declaration, not a migration.
+#
+# PER-PAIR DERIVATION. The sweep is 5 metals x 5 seeds = 25 trainer
+# invocations, one per (metal, seed) tuple, and the trainer loops internally
+# (`for metal in args.metals:` / `for seed in args.seeds:` —
+# train_metal_lomo_v2.py:2030-2031). Declaring the FULL cohort here would
+# turn 25 processes into 1 and change the run (different process boundaries,
+# different output layout under ${REPORTS_DIR}/<metal>/seed<seed>).
+# The wrapper therefore derives one file per pair from THIS file, replacing
+# `data.metals` and `data.seeds` with the single-element lists the CLI used
+# to pass. The two values below are the FIRST pair of the sweep (Rh/0) and
+# exist so this file is a valid, self-consistent YAML on its own — the §5.11
+# config-binding gate type-checks `data.metals` as a list (--metals is
+# nargs="+"), and a string there is the 2026-10-09 nan-everywhere defect.
+
+data:
+  # --balanced-cohort-json "${PHASE1_COHORT}"
+  # (scripts/launch_wf310e_wf135_phase2_gpu.sh:73). The path is ABSOLUTE
+  # because the wrapper never `cd`s into the repo: a repo-relative path
+  # would resolve against the caller's cwd. The value is the wrapper's, byte
+  # for byte.
+  balanced_cohort_json: /home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg.json
+
+  # --metals "${METAL}" / --seeds "${SEED}" — RUNTIME-PER-PAIR. Replaced by
+  # the derived file for every (metal, seed) tuple; see the header.
+  metals:
+    - Rh
+  seeds:
+    - 0
+
+protocol:
+  # --epochs "${EPOCHS}" (EPOCHS=50, scripts/launch_wf310e_wf135_phase2_gpu.sh:78)
+  epochs: 50
+
+train:
+  # NOT a migration — the wrapper never passed --batch-size / --lr, so both
+  # dests were on their argparse defaults (train_metal_lomo_v2.py:1727-1728
+  # -> MT_BATCH_SIZE=64 / MT_LR=0.001 from
+  # molmetal/baselines/dmpnn_multitask.py). They are declared here because the
+  # repo's own pre-flight gate `p3_wf343c4_hyperparams_config_complete`
+  # (pre_flight_check.py, registered in the `all` pipeline) requires every
+  # configs/*.yaml to carry train.batch_size + train.lr, and MEASURED on
+  # 2026-11-03: without these two keys the gate FAILs with
+  # "2 missing hyperparam(s): ['train.batch_size', 'train.lr']".
+  # The values are byte-equal to the defaults the run used before, so the
+  # namespace the trainer receives is UNCHANGED.
+  # NOTE: model.hidden_dim / model.n_layers are deliberately ABSENT — the
+  # LOMOv2 parser declares no --hidden/--depth dest, so those keys would be
+  # dead (the §5.11 config-binding gate would reject them); the pre-flight
+  # gate reports them as "structurally N/A for their entry trainer" and
+  # exempts them.
+  batch_size: 64
+  lr: 0.001
+
+compute:
+  # --device cuda:0
+  device: cuda:0
+
+output:
+  # --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" — RUNTIME-PER-PAIR.
+  # AGENTS.md §5.11 lets a wrapper pass --out-dir on the command line (it
+  # selects WHERE the run writes, not WHAT it trains), and the wrapper still
+  # does, with the byte-identical string it used before the migration.  The
+  # value is repeated here so the §5.11 equivalence probe can compare EVERY
+  # flag the old invocation passed — not only the five hyperparameters.
+  # At runtime the CLI wins over the YAML (explicit CLI flag > YAML >
+  # argparse default) and both carry the same path, so the run writes exactly
+  # where it wrote before.  The derived per-pair file carries this pair's own
+  # path; the value below is the FIRST pair of the sweep (Rh/0).
+  out_dir: /home/hugo/codes/mol-metal/molmetal/reports/wf310e_wf135_phase2/Rh/seed0
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_v2.py
+  # --config + --out-dir only: the same shape as
+  # configs/c6_lomo_seed_dump.yaml:50-52. start.sh is not the launcher for
+  # this wrapper (it is not used to start the sweep), so this template is
+  # documentation + the binding gate's audit anchor.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_v2.py --config {yaml_path} --out-dir {out_dir}

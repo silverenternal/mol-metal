@@ -14,8 +14,8 @@
 | Method | Bridge RMSE mean ± std | λ det | λ sep | λ norm (mean ± std) | Wall (s) mean ± std | Peak mem (MB) | Speedup |
 |---|---|---|---|---|---|---|---|
 | bridge | 0.0016 ± 0.0000 | 1.0000 | 0.7416 | 6.7361 ± 0.0000 | 0.000 ± 0.000 | 0.01 | 1.00x (ref) |
-| joint | 0.1360 ± 0.0000 | 1.0000 | 0.7416 | 6.7361 ± 0.0000 | 0.037 ± 0.000 | 0.02 | 108.69x |
-| bidirectional | 39.5707 ± 0.0000 | 1.0000 | 0.7416 | 6.7361 ± 0.0000 | 0.063 ± 0.000 | 0.03 | 187.09x |
+| joint | 0.1360 ± 0.0000 | 1.0000 | 0.7416 | 6.7361 ± 0.0000 | 0.027 ± 0.000 | 0.02 | 89.80x |
+| bidirectional | 39.5707 ± 0.0000 | 1.0000 | 0.7416 | 6.7361 ± 0.0000 | 0.048 ± 0.000 | 0.03 | 157.61x |
 
 ## Per-seed bridge RMSE
 
@@ -34,5 +34,5 @@
 * PlatinAI 5K ``ic50_nm`` is populated as ``NaN`` — the bench reports the bridge RMSE, the upstream signal an eventual IC50 model would consume, rather than an IC50 R².
 
 
-**Run timestamp (UTC):** 2026-09-26T12:56:56.932023+00:00
+**Run timestamp (UTC):** 2026-11-09T11:59:24.535659+00:00
 

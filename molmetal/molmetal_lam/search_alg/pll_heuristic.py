@@ -5,8 +5,9 @@ Background — PLL as MCTS leaf-prior heuristic
 ================================================================
 Track B of the ultracode schedule (TODO/pending/32_ultracode_trackB_lambda_calculus.md,
 item B4) wires the **Persistent Local Laplacian** signature (Liu & Feng
-2026, *J. Chem. Inf. Model.*, DOI: 10.1021/acs.jcim.6c02460) as the
-MCTS leaf-prior heuristic for the Molecular Lambda Calculus pipeline.
+2026, *J. Chem. Inf. Model.* 66 (18), 11767-11777, DOI:
+10.1021/acs.jcim.6c02460) as the MCTS leaf-prior heuristic for the
+Molecular Lambda Calculus pipeline.
 
 The heuristic maps a candidate state to a value in ``[0, 1]``::
 
@@ -98,8 +99,19 @@ Public surface
 ================================================================
 Lit anchors
 ================================================================
-* Liu & Feng 2026 (DOI: 10.1021/acs.jcim.6c02460) — the PLL signature
-  itself; cited for the spectrum-as-invariant argument.
+* Liu & Feng 2026 (*J. Chem. Inf. Model.* 66 (18), 11767-11777; DOI
+  10.1021/acs.jcim.6c02460) — the PLL signature itself; cited for the
+  spectrum-as-invariant argument.
+
+  [CITATION RECORD COMPLETED 2026-10-31, Wf-A149 — the PLL citations in this
+  module previously read "(Liu & Feng 2026, *J. Chem. Inf. Model., DOI:
+  10.1021/acs.jcim.6c02460)" (module docstring) and "(Liu & Feng 2026
+  (DOI: 10.1021/acs.jcim.6c02460))" (this list): both carried the DOI
+  but no volume / issue / pages.  The Crossref record for that DOI
+  (MEASURED 2026-10-31, HTTP 200) gives volume 66, issue 18, pages
+  11767-11777 (online 2026-09-04, print 2026-09-28); the full venue
+  record is now printed inline.  No value here was wrong before — the
+  citations were incomplete.]
 * von Luxburg 2007 (*Stat. Comput.* 17:395-416) — the normalised
   graph Laplacian spectrum, with the ``λ_i ∈ [0, 2]`` bound we use
   for the distance normalisation.

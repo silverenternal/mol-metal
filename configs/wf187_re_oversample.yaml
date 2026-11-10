@@ -1,0 +1,67 @@
+# configs/wf187_re_oversample.yaml — AGENTS.md §5.11 COHORT DECLARATION for the Wf-187
+# "7/25 remaining runs" (Re cohort: seeds 0, 1, 2, 3, 4).
+#
+# WHAT THIS FILE IS: the reviewed statement of WHAT the Re arm of
+# run_wf187_remaining.sh runs — which metal, which seeds, and every
+# hyperparameter, with the exact values the pre-migration wrapper passed.
+# It is the human-facing protocol declaration for the arm.
+#
+# WHAT THIS FILE IS NOT: the launch surface.  The trainer sweeps
+# `args.metals` x `args.seeds` INSIDE one process
+# (train_metal_lomo_v2.py:2030/:2031), so a launcher that starts ONE process
+# per (metal, seed) tuple cannot use a per-metal config: the cohort would be
+# trained in EVERY process.  The launch surface is therefore one static
+# per-tuple file per pair:
+#   configs/wf187_oversample_Re_seed0.yaml
+#   configs/wf187_oversample_Re_seed1.yaml
+#   configs/wf187_oversample_Re_seed2.yaml
+#   configs/wf187_oversample_Re_seed3.yaml
+#   configs/wf187_oversample_Re_seed4.yaml
+# Each per-pair file carries exactly the leaves below (with its own single
+# seed and its own --out-dir); the wrapper asserts that agreement before the
+# first invocation, so this declaration cannot drift away from the files the
+# trainer actually reads.
+#
+# PRE-MIGRATION ARGV (run_wf187_remaining.sh, before 2026-11-04), one
+# process per seed, all sharing the same hyper-parameters:
+#   --model v3 --metals Re --seeds <n> --epochs 2 --device cpu
+#   --no-bf16 --wasserstein-weight 0 --oversample-positives --pos-weight 10
+#   --batch-size 64 --out-dir molmetal/reports/wf187_p3_rh_oversample_fix/Re_seed<n> --quick
+#
+# DEST-NAME TRAPS + the DECLARED-INERT / list-valued notes: see
+# configs/wf187_oversample_Re_seed0.yaml (identical notes, same trainer, same arm).
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+
+train:
+  model: v3
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  epochs: 2
+  batch_size: 64
+  lr: 0.001
+  wasserstein_weight: 0
+  oversample_positives: true
+  pos_weight: 10
+  bf16: false
+  quick: true
+
+data:
+  metals:
+    - Re
+
+compute:
+  device: cpu
+
+output:
+  out_dir: molmetal/reports/wf187_p3_rh_oversample_fix
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_v2.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_v2.py --config {yaml_path} --out-dir {out_dir}"

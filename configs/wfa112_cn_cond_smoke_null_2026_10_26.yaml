@@ -143,8 +143,10 @@ directives:
   time_budget: 30m
   user_ok_required: false
   user_ok_granted: "Wf-A112 CN-conditioning smoke (2026-10-26), CPU, 64 clouds x 7 epochs"
-  pre_flight_gates_required:
-  - p1_pytorch_cuda_available
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
+  pre_flight_gates_required: []
 
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py

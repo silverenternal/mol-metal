@@ -51,7 +51,7 @@ Cross-references
 * TODO/completed/220_wf219_nci60_9cell_acceptance.md — §6.4 doc
 * molmetal/reports/wf310c_temporal_split/sweep_summary_smoke.json — smoke MEASURED (5/5)
 * molmetal/reports/wf310c_nci60_9cell/sweep_summary_smoke.json — smoke MEASURED (9/9)
-* molmetal/scripts/launch_wf310c_todo220_gpu.sh — GPU wrapper (USER_OK-gated)
+* scripts/launch_wf310c_todo220_gpu.sh — GPU wrapper (USER_OK-gated)
 * scripts/gpu_pipeline_master.sh — Phase 3 integration
 """
 
@@ -62,12 +62,16 @@ import re
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 TEMPORAL_SMOKE = (
     ROOT / "molmetal/reports/wf310c_temporal_split/sweep_summary_smoke.json"
 )
 NCI60_SMOKE = ROOT / "molmetal/reports/wf310c_nci60_9cell/sweep_summary_smoke.json"
-GPU_WRAPPER = ROOT / "molmetal/scripts/launch_wf310c_todo220_gpu.sh"
+GPU_WRAPPER = (
+    Path(__file__).resolve().parents[2]
+    / "scripts"
+    / "launch_wf310c_todo220_gpu.sh"
+)
 GPU_PIPELINE = ROOT / "scripts/gpu_pipeline_master.sh"
 SEC_6_3_DOC = ROOT / "TODO/completed/220_wf220_temporal_split_acceptance.md"
 SEC_6_4_DOC = ROOT / "TODO/completed/220_wf219_nci60_9cell_acceptance.md"

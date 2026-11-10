@@ -52,7 +52,7 @@ FIXTURE_SMILES = [
 ]
 
 DEVICE = torch.device("cpu")
-REPORT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf327f8_dmpnn_cache")
+REPORT_DIR = Path(__file__).resolve().parents[2] / "molmetal" / "reports" / "wf327f8_dmpnn_cache"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 

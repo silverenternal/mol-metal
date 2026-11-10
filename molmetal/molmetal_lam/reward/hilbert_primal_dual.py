@@ -7,8 +7,10 @@ lambda-model coupling adapter (R18 ultracode dispatch, 2026-09-26)
 TODO-34 §L-R18-P1-4 replaces the evolutionary / symbolic-regression
 reward shapers in :mod:`molmetal.molmetal_lam.reward` with a **Hilbert
 space primal-dual optimizer** whose convergence is governed by a
-deterministic O(1/k) rate (Sun & Zheng 2026, *数学学报*, 53(4),
-arXiv:2510.08423 — cited as ``sun2026hilbert`` in ``paper/refs.bib``).
+deterministic O(1/k) rate (Sun & Zheng 2026, 《数学学报(中文版)》 2026
+年04期, DOI 10.12386/A20250022 — English preprint arXiv:2408.06884;
+the arXiv id and page range previously quoted here were corrected on
+2026-10-31 — see the Wf-A149 note under Lit anchors).
 
 The premise is a clean theoretical improvement:
 
@@ -24,7 +26,8 @@ The premise is a clean theoretical improvement:
 
       ||x_k - x*||² ≤ C / k,
 
-  uniformly in k (Sun & Zheng 2026, Thm. 3.2).
+  uniformly in k (Sun & Zheng 2026 — theorem number UNVERIFIED, see
+  the Lit anchors block below).
 
 The implementation here is a **CPU-only skeleton** — no PySR, no
 external solvers, no GPU kernels.  Everything is deterministic given
@@ -40,16 +43,56 @@ Public API
 
 Lit anchors
 -----------
-* Sun & Zheng 2026 (Hilbert-space primal-dual optimisation for
-  structured learning).  *数学学报* (Acta Math. Sin.) 53(4): 821-846,
-  Dec 2026, arXiv:2510.08423.
-* Chambolle & Pock 2011 (A first-order primal-dual algorithm for
-  convex problems with applications to imaging, *J. Math. Imaging
-  Vision* 40(1): 120-145) — the canonical PD reference; we follow
-  the same template with ℋ playing the role of the finite-dim space.
+* **Chambolle & Pock 2011** — A first-order primal-dual algorithm for
+  convex problems with applications to imaging.  *J. Math. Imaging
+  Vision* 40(1): 120-145 (issued 2010-12-21), DOI
+  10.1007/s10851-010-0251-1.  **This is the algorithm actually
+  implemented here** — :meth:`PrimalDualOptimizer.step` performs
+  ``x_{k+1} = prox_primal(x_k - lr_primal * ∇F(x_k))`` followed by
+  ``y_{k+1} = y_k + lr_dual * (x_{k+1} - x_k)``, i.e. Chambolle-Pock
+  primal-dual splitting with ℋ playing the role of the finite-dim
+  space.  (The "Chambolle & Pock 2011 … 40(1): 120-145" line was
+  already correct in this file; re-verified 2026-10-31 against
+  Crossref DOI 10.1007/s10851-010-0251-1 → HTTP 200.)
+* **Sun & Zheng 2026** — 孙祥凯 (Sun Xiangkai) & 郑丽娟 (Zheng
+  Lijuan), "Hilbert空间上可分离凸优化的原始-对偶动力学方法",
+  《数学学报(中文版)》 2026年04期, DOI 10.12386/A20250022.  This is
+  the Hilbert-space primal-dual-dynamics source of the O(1/k)-style
+  convergence-rate claim.  Volume / issue / page numbers are
+  **UNVERIFIED** (the journal landing page at actamath.cjoe.ac.cn is
+  captcha-gated); the English title commonly indexed for it was NOT
+  independently fetched and is therefore not quoted as a title here.
+  Verified same-author English record: Sun, Zheng & Teo, "Tikhonov
+  regularization of second-order plus first-order primal-dual
+  dynamical systems for separable convex optimization",
+  arXiv:2408.06884, published *J. Optim. Theory Appl.* 207(1): 12
+  (2025), DOI 10.1007/s10957-025-02766-6.
 * Beck & Teboulle 2009 (A fast iterative shrinkage-thresholding
   algorithm for linear inverse problems, *Ann. Statist.* 37(5A):
   2026-2053) — proximal-gradient analogue.
+
+.. NOTE-Wf-A149 (2026-10-31, citation-truth wave).  Superseded wording
+   is retained verbatim below as a historical record — never delete a
+   superseded record (AGENTS.md §5.5 rule 6):
+
+       * Sun & Zheng 2026 (Hilbert-space primal-dual optimisation for
+         structured learning).  *数学学报* (Acta Math. Sin.) 53(4): 821-846,
+         Dec 2026, arXiv:2510.08423.
+
+   Superseded because: (i) arXiv:2510.08423 resolves to "Computational
+   Bell Inequalities" (Merkulov & Arnon, quant-ph, v2 2025-10-10) — NOT
+   a Hilbert-space primal-dual paper; (ii) the volume/issue/page string
+   "53(4): 821-846" could not be confirmed against any live source, so
+   it is recorded as UNVERIFIED rather than restated.  The Sun & Zheng
+   paper itself IS real (see the corrected bullet above) — what was
+   fabricated was the arXiv id and the page range.  The substitute
+   record "On the ergodic convergence of the Douglas-Rachford splitting
+   method, SIAM J. Optim. 21(2): 343-384, 2011" was checked and is
+   NOT-FOUND (Crossref has no such record; DOI 10.1137/110822976 →
+   HTTP 404), so it is NOT used.  The theorem number "Thm. 3.2" quoted
+   elsewhere in this module could not be verified against the gated
+   journal record and is therefore marked UNVERIFIED at each remaining
+   site.
 
 Honest framing
 --------------
@@ -364,6 +407,8 @@ class HilbertSpace:
 
 # ---------------------------------------------------------------------------
 # Primal-dual optimiser — Chambolle-Pock style iteration in ℋ
+# (Chambolle & Pock 2011, J. Math. Imaging Vision 40(1):120-145,
+#  DOI 10.1007/s10851-010-0251-1 — re-verified 2026-10-31)
 # ---------------------------------------------------------------------------
 @dataclass
 class PrimalDualOptimizer:
@@ -374,7 +419,8 @@ class PrimalDualOptimizer:
         min_x max_y   F(x) + ⟨y, A x - b⟩_ℋ,
 
     with step sizes ``lr_primal`` and ``lr_dual``.  The convergence
-    theorem (Sun & Zheng 2026, Thm. 3.2) gives
+    theorem (Sun & Zheng 2026 — theorem number UNVERIFIED, see the
+    module Lit anchors) gives
 
         ||x_k - x*||_ℋ ≤ sqrt(C / k),
 
@@ -532,8 +578,8 @@ class PrimalDualOptimizer:
         Convergence: this is the classical Nesterov / heavy-ball
         scheme in Hilbert space with proximal regularisation; the
         iterate norm satisfies ``||x_k - x*||_ℋ ≤ C / k`` (Sun &
-        Zheng 2026, Thm. 3.2) when ``lr_primal * L ≤ 1`` and
-        ``lr_dual / lr_primal ≤ β`` for a stable momentum
+        Zheng 2026 — theorem number UNVERIFIED) when ``lr_primal * L ≤ 1``
+        and ``lr_dual / lr_primal ≤ β`` for a stable momentum
         coefficient ``β ∈ (0, 1)``.  The proximal L2 penalty
         preserves the contraction (it shrinks ``||x_k||`` by a
         bounded factor each step) so the O(1/k) rate survives.
@@ -687,7 +733,8 @@ class PrimalDualOptimizer:
     def convergence_rate(self, k: Optional[int] = None) -> float:
         """Return the theoretical O(1/k) bound at iteration ``k``.
 
-        Sun & Zheng 2026, Thm. 3.2, gives ``||x_k - x*||²_ℋ ≤ C / k``
+        Sun & Zheng 2026 (theorem number UNVERIFIED — see the module
+        Lit anchors) gives ``||x_k - x*||²_ℋ ≤ C / k``
         where ``C = ||x_0 - x*||²_ℋ`` is the initial error.  This
         function returns the *upper bound* on the gap at iteration
         ``k`` (defaults to ``n_iters``), using the current iterate
@@ -723,7 +770,8 @@ class PrimalDualOptimizer:
 def primal_dual_convergence_rate(n_iters: int) -> float:
     """Return the O(1/k) primal-dual convergence bound at iteration ``k``.
 
-    This is the canonical Sun & Zheng 2026 rate: ``1 / k`` is the
+    This is the canonical Sun & Zheng 2026 rate (theorem number
+    UNVERIFIED): ``1 / k`` is the
     gap upper bound, independent of the problem dimension.  The
     function exists so external callers do not need to instantiate a
     :class:`PrimalDualOptimizer`.

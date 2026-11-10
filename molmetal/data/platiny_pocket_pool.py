@@ -106,7 +106,12 @@ PLATINY_POOL_CSV = Path(__file__).resolve().parent / "platiny_pocket_pool.csv"
 PLATINY_POCKETS_ROOT = Path(
     os.environ.get(
         "MOLMETAL_PLATINY_POCKETS_ROOT",
-        "/home/hugo/codes/mol-metal/.data/molmetal/platiny_pockets",
+        str(
+            Path(__file__).resolve().parents[2]
+            / ".data"
+            / "molmetal"
+            / "platiny_pockets"
+        ),
     )
 )
 

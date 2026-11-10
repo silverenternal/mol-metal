@@ -16,19 +16,64 @@ Pt atoms in the synthetic clouds (Pt with 5+ bonds).
 
 The YuelBond decoder head is a small message-passing GNN that maps
 ``(positions, atomic_numbers) -> per-pair bond logits``.  Wang &
-Dokholyan 2025 (bioRxiv 10.1101/2025.05.06.652517) show F1=92.7 % on
-distorted molecules where RDKit's ``DetermineConnectivity`` fails on
-783/1000 cases.  When wired with a **valence-aware bond-order
+Dokholyan (2026, J. Chem. Inf. Model. 66(2) 1003-1012) report F1=92.7 %
+on the CDG set (Gaussian noise sigma = 0.2 A) — their **worst case**;
+on standard 3-D structures they report F1 = 98.4 %.  The RDKit baseline
+they benchmark is ``DetermineBonds``, which the paper describes as
+"internally … leveraging the xyz2mol program"; on the same 1,000 CDGs
+the paper attributes the 217-processed / 783-failed split to RDKit
+itself (it prints that integer split, never a percentage).
+``DetermineConnectivity`` is the connectivity-only step that
+``DetermineBonds`` calls internally before assigning bond orders — the
+two are not independent siblings.  (VERIFIED 2026-10-31 against the
+RDKit 2026.03.6 source file
+``Code/GraphMol/DetermineBonds/DetermineBonds.cpp``: L543 calls
+``determineConnectivity(...)``, then L544 calls ``determineBondOrders(...)``.)
+Called on its own, ``DetermineConnectivity`` assigns no bond orders at all
+(MEASURED locally: every bond it emits is SINGLE); the paper compares
+against ``DetermineBonds``, which additionally assigns bond orders.
+When wired with a **valence-aware bond-order
 selector** (greedy assignment that respects per-atom max-valence), the
 YuelBond head produces RDKit-sanitizable ``Mol`` objects in a
 deterministic, CPU-friendly path (~5k params, K=3 layers).
 
 Lit anchors
 -----------
-* Wang, S., Dokholyan, P. (2025). *YuelBond: a graph neural network for
-  recovering the molecular bond network from distorted 3D
-  structures.*  bioRxiv 10.1101/2025.05.06.652517.  F1=92.7 % on
-  distorted molecules.
+* Wang, J.; Dokholyan, N. V. (2026). *Multimodal Bond Reconstruction
+  toward Generative Molecular Design.*  J. Chem. Inf. Model. 66(2),
+  1003-1012.  DOI 10.1021/acs.jcim.5c03052  (preprint: bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11).  F1 = 92.7 % on the CDG set
+  (worst case, sigma = 0.2 A); F1 = 98.4 % on standard 3-D.
+  (Citation corrected 2026-10-31, Wf-A143 — this bullet previously
+  printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  See
+  `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
+  Attribution corrected 2026-10-31 (Wf-A146) — this bullet previously
+  read "The RDKit baseline they benchmark is ``DetermineBonds``; on the
+  same 1,000 CDGs ``xyz2mol`` processed 217 (=> 783 failures)."  The
+  paper attributes the 217/783 split to **RDKit** itself and prints that
+  integer split, never a percentage; ``xyz2mol`` is the program
+  ``DetermineBonds`` "internally … leverages".  Superseded wording
+  preserved verbatim per AGENTS.md §5.5 rule #6; see
+  `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
+  Relation corrected 2026-10-31 (Wf-A148) — the ``DetermineConnectivity``
+  paragraph above previously read:
+
+      ``DetermineConnectivity`` is the
+      connectivity-only sibling and assigns no bond orders at all (MEASURED
+      locally: every bond it emits is SINGLE), so it is not the function the
+      paper compares against.
+
+  The "sibling" relation is wrong: ``DetermineBonds`` calls
+  ``DetermineConnectivity`` internally (RDKit 2026.03.6,
+  ``Code/GraphMol/DetermineBonds/DetermineBonds.cpp`` L543) and then assigns
+  bond orders on top (L544), so ``DetermineConnectivity`` is the
+  connectivity-only STEP INSIDE ``DetermineBonds``, not an independent
+  sibling of it.  The "MEASURED locally: every bond it emits is SINGLE"
+  observation stands; it is now scoped to ``DetermineConnectivity`` called on
+  its own.  Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+  #6.  (Catalog entry pending — this wave does not own
+  ``docs/HONEST_NEGATIVE_CATALOG.md``.)
+
 * Liu, Z., et al. (2025). *NExT-Mol: 1D SELFIES + 3D conformer
   decoupling for molecular generation.*  ICLR 2025,
   arXiv:2502.12638.  Learned bond topology > covalent-radius
@@ -53,7 +98,7 @@ that follows in Wf-124 P1.3.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import torch
@@ -254,6 +299,86 @@ def _endpoint_valence_cost(
     return _CLASS_VALENCE_COST.get(int(order), 1.0)
 
 
+#: Wf-A155 (2026-11-01) — RDKit's own default valence per element.
+#:
+#: The decode graph is HYDROGEN-FREE (the cloud carries no H), so an atom's
+#: "target valence" in the heavy-atom graph is not the covalent-valence CAP
+#: (which is a ceiling: S 6, P 5) but the valence RDKit will complete with
+#: implicit hydrogens.  RDKit's periodic table is the authority for that, and
+#: this wrapper is the ONE place it is read.
+#:
+#: MEASURED: read live from RDKit's periodic table, not from a table of our
+#: own; 0 for an element RDKit has no default valence for (every metal).
+_DEFAULT_VALENCE_CACHE: Dict[int, float] = {}
+
+
+def _rdkit_default_valence(z: int) -> float:
+    """RDKit's default valence for element ``z``; 0.0 when it has none.
+
+    MEASURED: the value comes from ``Chem.GetPeriodicTable()`` at call
+    time (cached per element).  0.0 is returned for an element RDKit does
+    not know and for every transition metal — RDKit carries no default
+    valence for a metal, which is exactly why a metal's coordination cap
+    (see :data:`_COVALENT_VALENCE`) is its valence target instead.
+
+    PROJECTED: nothing here is a claim about a decoded pool.
+    """
+    zi = int(z)
+    cached = _DEFAULT_VALENCE_CACHE.get(zi)
+    if cached is not None:
+        return cached
+    val = 0.0
+    try:
+        from rdkit import Chem
+
+        val = float(Chem.GetPeriodicTable().GetDefaultValence(zi))
+    except Exception:
+        val = 0.0
+    _DEFAULT_VALENCE_CACHE[zi] = val
+    return val
+
+
+def _replay_remaining_budget(
+    bond_orders: Sequence[Tuple[int, int, int]],
+    z_list: Sequence[int],
+    caps: Sequence[float],
+    is_metal: Callable[[int], bool],
+) -> Tuple[List[float], List[int]]:
+    """Replay the selector's own valence accounting over a bond list.
+
+    Returns ``(remaining, arom_kept)`` — the per-atom valence budget left
+    after every bond in ``bond_orders``, and the per-atom count of aromatic
+    bonds charged so far (which ``_endpoint_valence_cost`` needs for its
+    aromatic-heteroatom and fusion-carbon rules).
+
+    Wf-A133 (2026-10-31) — this block used to be written out TWICE: once
+    in ``_select_bonds`` (which charges as it goes) and once in
+    ``_bridge_components`` (which replays what the selector already
+    charged).  The forced completion stage needs the same replay, and a
+    THIRD hand-copied version is exactly how the T77/T78 accounting bugs
+    happened — one fix landing in one copy and not in the others.  One
+    function, two callers, no third copy.
+
+    The accounting is deliberately IDENTICAL to the selector's: same
+    per-endpoint cost, same ``arom_kept`` increment order.  A stage that
+    used a different accounting could authorise a bond the selector would
+    have refused as overvalent, and RDKit would then reject the molecule.
+    """
+    remaining: List[float] = [float(c) for c in caps]
+    arom_kept: List[int] = [0] * len(caps)
+    for i, j, order in bond_orders:
+        remaining[i] -= _endpoint_valence_cost(
+            order, int(z_list[i]), int(z_list[j]), is_metal, arom_kept[i]
+        )
+        remaining[j] -= _endpoint_valence_cost(
+            order, int(z_list[j]), int(z_list[i]), is_metal, arom_kept[j]
+        )
+        if int(order) == BOND_AROMATIC:
+            arom_kept[i] += 1
+            arom_kept[j] += 1
+    return remaining, arom_kept
+
+
 _COVALENT_VALENCE: Dict[int, int] = {
     1: 1,  # H
     6: 4,  # C
@@ -305,13 +430,33 @@ _COVALENT_VALENCE: Dict[int, int] = {
     # values below are the corpus p99, the same rule
     # ``TMQM_MEASURED_METAL_CAPS`` already uses for the loss-side barrier.
     #
-    # Pt stays at 4 as a chemistry choice, not a statistic: 81.8% of the Pt
-    # corpus is four-coordinate and the project targets Pt(II).  Pt(IV)/5-coord
-    # (17.7%) is a measured, documented limitation, not an oversight.
+    # Wf-A113 (T88, 2026-10-29) — Pt used to stay at 4 as a "chemistry choice,
+    # not a statistic": 81.8% of the Pt corpus is four-coordinate and the
+    # project targets Pt(II).  That exception was the last survivor of the
+    # defect T72 removed for the other five metals, and it cost more than all
+    # of them together.  MEASURED (tmqm_parsed.csv, 8,275 Pt rows): 1,465
+    # complexes (17.7%) exceed 4 and 2,714 metal bonds are stranded, against
+    # 0.2-0.9% and 10-105 bonds for Ru/Rh/Ir/Os/Re.  The artifact that
+    # justified T72 recorded this and nobody read the column: Pt showed
+    # ``frac_metal_bonds_unrepresentable = 0.0813`` in 18.6% of clouds while
+    # every other metal was at 0
+    # (``metrics/by_metric/wfa113_t72_valence_cap.json``).
+    #
+    # The "six-coordinate ceiling lets the decoder build Pt(IV) on a Pt(II)
+    # prior" objection does not survive either half: (a) RDKit carries no
+    # default valence for Pt, so a high cap cannot lose a decode (verified:
+    # [Pt] with six single bonds sanitises); (b) the cap is a PERMISSION, not
+    # a compulsion -- it only bounds what the selector may keep of what the
+    # head already proposed, so it cannot add a bond; (c) Pt(IV) octahedral
+    # prodrugs are a first-class anticancer class (satraplatin, the first oral
+    # Pt drug to reach the clinic; ormaplatin, iproplatin; the 2025-2026
+    # literature is largely Pt(IV) prodrug design), so excluding them excludes
+    # target chemistry, not noise.  Pt now takes the same p99 rule as the
+    # other five.
     #
     # Zn/Cu/Au/Pd/Fe/Ni are outside the six-metal cohort and keep their
     # chemistry-first values.
-    78: 4,  # Pt_II  (p50 4, p99 6 — pinned to square-planar; see above)
+    78: 6,  # Pt  (p50 4, p99 6)
     44: 10,  # Ru   (p99 10)
     30: 4,  # Zn_II
     77: 9,  # Ir_III (p99 9)
@@ -368,109 +513,6 @@ from molmetal.molmetal_lam.priors.metal_geometry import (  # noqa: E402,F401
     _TETRAHEDRAL,
     _geometry_constraint_for_z,
 )
-
-
-# ---------------------------------------------------------------------------
-# Wf-A55 W7-P5 — 4n+2 反芳香 (anti-aromatic) helper
-# ---------------------------------------------------------------------------
-def _is_anti_aromatic(ring_size: int) -> bool:
-    """Hückel anti-aromaticity: ring_size % 4 == 0 AND ring_size >= 4.
-
-    4n rings (4, 8, 12, ...) are anti-aromatic when planar-aromatic; 4n+2
-    rings (6, 10, 14, ...) are aromatic.  Ring sizes 5 and 7 are 4n+1 / 4n+3
-    — neither rule fires.
-
-    Wf-A55 W7-P5 — added 2026-10-16.  Backwards-compat note: a real
-    cyclooctatetraene (8 π electrons, non-planar tub) behaves as a
-    polyene, NOT anti-aromatic.  We have no planarity probe at decode
-    time, so we conservatively mark ALL 4n aromatic rings for demotion.
-    The geometric refinement (planarity check) is a future Wf.
-    """
-    if ring_size < 4:
-        return False
-    return ring_size % 4 == 0
-
-
-def _detect_and_demote_anti_aromatic(
-    bond_orders: List[Tuple[int, int, int]],
-) -> int:
-    """Walk the bond graph and demote 4n all-aromatic cycles to alternating single.
-
-    Algorithm: DFS from every node, bounded to ring size 8 (covers the
-    canonical 4n rings — 4 and 8).  When a cycle of size ``n % 4 == 0``
-    closes back to the start, and every bond on the cycle is
-    ``BOND_AROMATIC``, every other bond in the cycle is downgraded to
-    ``BOND_SINGLE`` and a ``[wfA55-anti-aromatic] HONEST-NEGATIVE`` line
-    is emitted to stdout.
-
-    Returns the number of distinct rings demoted.
-
-    Wf-A55 W7-P5 — added 2026-10-16.  MUTATES ``bond_orders`` in place
-    (the caller is the selector loop, which owns the list).
-    """
-    if not bond_orders:
-        return 0
-    # Find max atom index from bond_orders (cheap; bonds << atoms in dense graphs).
-    n_atoms = 0
-    for a, b, _ in bond_orders:
-        if a > n_atoms:
-            n_atoms = a
-        if b > n_atoms:
-            n_atoms = b
-    n_atoms += 1
-    # Build adjacency list: node -> list of (neighbor, bond_index)
-    adj: Dict[int, List[Tuple[int, int]]] = {}
-    for k, (a, b, _o) in enumerate(bond_orders):
-        adj.setdefault(a, []).append((b, k))
-        adj.setdefault(b, []).append((a, k))
-    demoted_rings: set = set()
-    for start in range(n_atoms):
-        if start not in adj:
-            continue
-        # Each stack entry: (current_node, path_nodes, path_edge_indices).
-        stack: List[Tuple[int, List[int], List[int]]] = [
-            (start, [start], [])
-        ]
-        while stack:
-            node, path_nodes, path_edges = stack.pop()
-            if len(path_nodes) > 8:
-                continue
-            for neighbor, edge_idx in adj.get(node, []):
-                # Skip the edge we just traversed (would close a 2-cycle).
-                if path_edges and edge_idx == path_edges[-1]:
-                    continue
-                if neighbor == start and len(path_nodes) >= 4:
-                    ring_key = frozenset(path_nodes)
-                    if ring_key in demoted_rings:
-                        continue
-                    ring_size = len(path_nodes)
-                    if not _is_anti_aromatic(ring_size):
-                        continue
-                    # All bonds in the ring must be aromatic.
-                    if all(
-                        bond_orders[bi][2] == BOND_AROMATIC
-                        for bi in path_edges
-                    ):
-                        demoted_rings.add(ring_key)
-                        # Demote alternating bonds to BOND_SINGLE.
-                        # We toggle along the cycle's edge order; an even
-                        # index gets demoted, the next stays aromatic.
-                        # RDKit treats both choices identically.
-                        for idx, bi in enumerate(path_edges):
-                            if idx % 2 == 0:
-                                a, b, _ = bond_orders[bi]
-                                bond_orders[bi] = (a, b, BOND_SINGLE)
-                        print(
-                            f"[wfA55-anti-aromatic] HONEST-NEGATIVE ring_size={ring_size} "
-                            f"detected, demoted to alternating single (4n anti-aromatic)"
-                        )
-                elif neighbor not in path_nodes:
-                    stack.append(
-                        (neighbor, path_nodes + [neighbor], path_edges + [edge_idx])
-                    )
-    return len(demoted_rings)
-
-
 
 
 def _demote_aromatic_outside_rings(mol):
@@ -531,7 +573,7 @@ def _demote_aromatic_outside_rings(mol):
     return mol
 
 
-def _demote_small_ring_aromatic(mol, min_size: int = 5):
+def _demote_small_ring_aromatic(mol, min_size: int = 4):
     """Demote aromatic bonds inside rings SMALLER than `min_size`; return mol.
 
     Wf-A83 (2026-10-18).  Companion to `_demote_aromatic_outside_rings`, and
@@ -543,14 +585,13 @@ def _demote_small_ring_aromatic(mol, min_size: int = 5):
     three atoms, one ring, aromatic bonds.  Wf-A79 cannot help there because
     the bond IS in a ring.
 
-    RDKit's smallest aromatic ring in this chemistry is 5 (furan/pyrrole/
-    thiophene); 3- and 4-membered aromatic rings require exotic charged
-    systems that this corpus does not contain (MEASURED: 0.5% 3-rings real).
-    Demoting their bonds to SINGLE turns a lost molecule into a valid, if
-    chemically implausible, one -- the same trade-off Wf-A79 makes, and the
-    same caveat: this is a DECODE-side repair, not a ring-size fix.  The
-    generator still makes 3-rings; this only stops losing them at the
-    kekulizer.
+    Wf-A113 (T87, 2026-10-29) — ``min_size`` was 5, which also demoted
+    FOUR-membered rings.  MEASURED on RDKit 2026.03.6: a 4-membered
+    all-aromatic ring kekulizes (``C1=CC=C1``), and so does a bicyclic
+    4+4 system; only the 3-membered ring fails.  Demoting 4-rings therefore
+    turned a molecule RDKit accepts into cyclobutane and threw away the
+    unsaturation the head had predicted.  The threshold is now 4, so only
+    rings RDKit actually refuses are touched.
 
     Only bonds whose BOTH endpoints lie in a small ring are touched, so a
     fused aromatic system keeps its 6-ring bonds.  No-op when ring
@@ -810,6 +851,36 @@ def _demote_all_aromatic(mol):
 # Result container
 # ---------------------------------------------------------------------------
 @dataclass
+class _ConnectivityCompletion:
+    """What the FORCED connectivity completion did (Wf-A133, 2026-10-31).
+
+    Attributes
+    ----------
+    bonds_added : int
+        Bonds the completion ADDED to join two heavy-atom components.
+    bonds_demoted : int
+        Bond ORDERS the completion LOWERED to free valence budget for one
+        of those bonds.  No edge is ever deleted: the published repair is
+        "lower the bond order, never delete an edge" (arXiv:2609.08333,
+        App. C.2 step 8).
+    reasons : Dict[str, int]
+        Why a candidate was REFUSED, as a count map.  These are the
+        residual: the guarantee could not be met for those pairs.
+    components_after : int
+        Heavy-atom components left after the completion.
+    stranded_atoms : int
+        Heavy atoms left OUTSIDE the largest component — the atoms the
+        decoder could not rescue.
+    """
+
+    bonds_added: int = 0
+    bonds_demoted: int = 0
+    reasons: Dict[str, int] = field(default_factory=dict)
+    components_after: int = 0
+    stranded_atoms: int = 0
+
+
+@dataclass
 class YuelBondDecodeResult:
     """Output of :meth:`YuelBondBondDecoder.decode`.
 
@@ -850,6 +921,71 @@ class YuelBondDecodeResult:
     #: here rather than left on the head so a generated pool can record the
     #: effect of the rule instead of asserting it worked.
     clash_rejected_pairs: int = 0
+    #: Wf-A128 (2026-10-31) — bonds RDKit REFUSED while the molecule was
+    #: assembled, i.e. the number of predicted bonds that never made it into
+    #: the ``RWMol``.  A dropped bond is a SPLIT: the two atoms it would have
+    #: joined end up in different fragments, and nothing in the decode said
+    #: so.  Before this field the count did not exist anywhere — the
+    #: ``except`` in ``_assemble_mol`` was a bare ``continue`` — while every
+    #: other fragmentation quantity in the repo (``n_fragments``,
+    #: ``largest_fragment_frac``, ``n_frags_raw``, the clash counters) IS
+    #: measured in 6+ places.
+    #:
+    #: 0 means "every predicted bond was accepted", which is the only state
+    #: in which the decode's fragment count can be read as the bond head's
+    #: intent.  Non-zero means the decode is a FRAGMENTATION of the head's
+    #: output, and the reader needs to know that before quoting the fragment
+    #: count.
+    bonds_dropped_rdkit: int = 0
+    #: Wf-A128 — the exception TYPE behind each dropped bond, as a count map
+    #: (e.g. ``{"RuntimeError": 2}``).  RDKit 2026.03.6 raises
+    #: ``RuntimeError`` for a duplicate bond, an out-of-range atom index and
+    #: a self-bond, and ``OverflowError`` for a negative atom index (measured
+    #: on a constructed duplicate-bond case).  The map is here so a reader can
+    #: tell "RDKit refused a duplicate" from "the decoder produced a
+    #: nonsensical index" without re-deriving it.
+    bonds_dropped_rdkit_reasons: Dict[str, int] = field(default_factory=dict)
+    #: Wf-A133 (2026-10-31) — how many of the ``bonds_added_connectivity``
+    #: bonds came from the FORCED completion stage (the one that runs after
+    #: the logit-floored pass left the graph fragmented), as opposed to the
+    #: logit-floored pass itself.  ``bonds_added_connectivity`` is the total;
+    #: this is the split, so a reader can tell how much of the prior's work
+    #: was the head's own confidence and how much was the geometry's.
+    connectivity_forced_bonds: int = 0
+    #: Wf-A133 — bond ORDERS the forced completion LOWERED to free valence
+    #: budget for a bridge.  No edge was deleted, so this is a chemistry
+    #: change (a double becomes a single) and not a graph change; it is
+    #: counted because it is invisible in the bond COUNTS.
+    connectivity_bonds_demoted: int = 0
+    #: Wf-A133 — why the forced completion could not use a candidate, as a
+    #: count map.  A non-empty map is the honest report of the residual:
+    #: ``below_force_min_logit`` (the head refused the pair), ``budget_*``
+    #: (no bond order could be lowered to free the budget), ``ring_prior``
+    #: (the bridge would have closed a ring the caller refused).
+    connectivity_forced_reasons: Dict[str, int] = field(default_factory=dict)
+    #: Wf-A133 — heavy-atom components left after the forced completion.
+    #: 1 means the guarantee held; > 1 means it did not.  0 means the
+    #: completion did not run (the connectivity prior was off, or the cloud
+    #: had fewer than two heavy atoms).
+    connectivity_components_after: int = 0
+    #: Wf-A133 — heavy atoms left OUTSIDE the largest component after the
+    #: forced completion.  These are the atoms the decoder could NOT rescue:
+    #: either no candidate pair existed inside the head's 3.5 A window
+    #: (irreducible without changing the sampler or the cutoff) or every
+    #: candidate was refused.
+    connectivity_stranded_atoms: int = 0
+    #: Wf-A155 (2026-11-01) — how many bonds the VALENCE-DEFICIT PROMOTION
+    #: added on this decode.  Zero unless the caller turned the stage on
+    #: (``valence_deficit_promotion=True``), which is the default, so a
+    #: reader can tell "the promotion did nothing" from "the promotion did
+    #: not run".  A bond added here RAISES an under-valent atom's valence;
+    #: it never deletes an edge and never lowers a bond order, so it is
+    #: additive on top of ``bonds_accepted``.
+    #:
+    #: PROJECTED: what this stage does to the pool's fragmentation rate is
+    #: **PROJECTED, NOT MEASURED** — Wf-A155 is CPU-only and no re-decode
+    #: was run.
+    bonds_added_valence_deficit: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -871,11 +1007,22 @@ class YuelBondBondDecoder:
     hidden_dim : int, default 64
         Width of the message-passing hidden state.
     n_layers : int, default 3
-        Number of message-passing iterations (Wang & Dokholyan 2025
-        recommend K=3 for drug-like ligands).
+        Number of message-passing iterations.  K=3 is **this repo's** own
+        choice — the published paper states no layer count, so it is not
+        a figure taken from the paper.  (Corrected 2026-10-31, Wf-A143 —
+        this line previously read "Wang & Dokholyan 2025 recommend K=3 for
+        drug-like ligands"; see
+        `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
     distance_cutoff : float, default 3.5 Å
         Pairs further apart than this are immediately classified as
         ``NO_BOND`` (the head's own cutoff; not configurable per-call).
+
+        **Declared deviation from the paper (2026-10-31, Wf-A143).** The
+        published YuelBond paper uses a **3 Å** candidate-edge cutoff;
+        this repo uses **3.5 Å**.  Left unchanged on purpose — it is a
+        decode-behaviour parameter and re-validating it needs a GPU run,
+        which the current CPU-only mandate forbids.  See
+        `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
     valence_cap : dict, optional
         Per-atom covalent-valence cap ``{Z: max_bond_order}``.  When
         ``None`` uses :func:`covalent_valence_table`'s default.
@@ -912,6 +1059,39 @@ class YuelBondBondDecoder:
         class_logit_bias: Optional[Sequence[float]] = None,
         connectivity_prior: bool = True,
         connectivity_prior_min_logit: float = 0.0,
+        # Wf-A133 (2026-10-31) — the FORCED completion of the connectivity
+        # prior, and the floor it uses.
+        #
+        # `_bridge_components` bridges a cross-component pair only when the
+        # head's strongest non-NO_BOND logit clears
+        # `connectivity_prior_min_logit` (0.0) AND both endpoints still have
+        # valence budget.  Those two gates are INDEPENDENT and each one on
+        # its own leaves the molecule fragmented — MEASURED on CPU by the
+        # Wf-A133 audit (/tmp/wfa133/a2-bridge-veto-audit.md, §2.2): a head
+        # that calls the cross pair NO_BOND bridges 0; a head that calls it
+        # SINGLE but whose endpoints are valence-saturated also bridges 0.
+        # A pair the head ARGMaxes as NO_BOND has, by construction, all four
+        # bond-class logits below the NO_BOND logit, so with a 0.0 floor the
+        # prior can only ever resurrect a bond the head already proposed and
+        # the selector dropped — it is a budget-recovery pass, not a prior
+        # over connectivity.
+        #
+        # The forced stage runs AFTER that pass, on the molecules it left
+        # fragmented, and it is the only part of the decoder that gives a
+        # GUARANTEE: one heavy-atom component whenever the geometry permits
+        # it.  See `_force_connectivity` for exactly what it may and may not
+        # do — it draws its candidates from the head's OWN post-veto
+        # `edge_index`, so it can never bridge a steric collapse and can
+        # never invent a pair outside the 3.5 A window.
+        #
+        # `connectivity_force_min_logit` is the floor for the forced stage
+        # and is SEPARATE from `connectivity_prior_min_logit` on purpose:
+        # moving the latter would change the meaning of the existing knob
+        # (51 configs pin it at 0.0).  -2.0 is the value the audit proposed
+        # for the widened floor; it is a PRIOR, not a tuned value, and it is
+        # a knob so the A/B can move it.
+        connectivity_force: bool = True,
+        connectivity_force_min_logit: float = -2.0,
         # Wf-A111 (MOD4) — ring-size prior at decode.  Default OFF: the
         # shipped decode rule is unchanged unless a caller asks for it.
         #
@@ -953,6 +1133,35 @@ class YuelBondBondDecoder:
         # now agree.  See
         # ``metrics/by_metric/wfa94_tmqm_dative_calibration.json``.
         dative_max_distance: float = 2.6,
+        # Wf-A155 (2026-11-01) — the VALENCE-DEFICIT PROMOTION, default OFF.
+        #
+        # The rule: when an atom is UNDER-VALENT after the current bond
+        # assignment, promote an eligible CANDIDATE bond so the atom's
+        # valence rises toward its target.  It is the mirror image of the
+        # forced-completion stage (`_force_connectivity`), which LOWERS a
+        # bond order to free budget; this one RAISES an atom's valence by
+        # ADDING a bond.
+        #
+        # WHY IT IS OPT-IN: it can promote a candidate the head called
+        # NO_BOND, so it overrides the model's own refusal.  That is a
+        # hypothesis about the fragmentation failure mode, and this wave is
+        # CPU-only (no re-decode), so the default path must stay
+        # bit-identical and the effect must be labelled PROJECTED.
+        #
+        # `valence_deficit_min_logit` is the same kind of deference knob as
+        # `connectivity_force_min_logit`: a candidate whose strongest
+        # bond-class logit is below this floor is left alone.  -2.0 is the
+        # forced stage's value, reused so the two stages defer to the head
+        # by the same amount; it is a PRIOR, not a tuned value.
+        #
+        # `valence_deficit_max_promotions_per_atom` bounds how many bonds a
+        # single under-valent atom may gain (default 1).  One bond is enough
+        # to attach a stranded atom; a metal with a larger coordination
+        # deficit would want more, and that is a decision the caller has to
+        # make explicitly rather than inherit.
+        valence_deficit_promotion: bool = False,
+        valence_deficit_min_logit: float = -2.0,
+        valence_deficit_max_promotions_per_atom: int = 1,
     ) -> None:
         self._decoder = YuelBondDecoder(
             head=head,
@@ -1057,6 +1266,23 @@ class YuelBondBondDecoder:
         #: makes the prior defer to the head's confidence; it is a PRIOR, not
         #: a tuned value, and the flag is the honest control.
         self.connectivity_prior_min_logit = float(connectivity_prior_min_logit)
+        # Wf-A133 — the forced completion stage and its floor.  It runs only
+        # when `connectivity_prior` is ON, so `connectivity_prior=False`
+        # still reproduces the pre-D2 decode bit-exactly.
+        self.connectivity_force = bool(connectivity_force)
+        self.connectivity_force_min_logit = float(connectivity_force_min_logit)
+        # Wf-A155 (2026-11-01) — the valence-deficit promotion and its two
+        # knobs.  Default OFF: the decode is bit-identical to the pre-Wf-A155
+        # path unless the caller asks for it.
+        self.valence_deficit_promotion = bool(valence_deficit_promotion)
+        self.valence_deficit_min_logit = float(valence_deficit_min_logit)
+        self.valence_deficit_max_promotions_per_atom = max(
+            0, int(valence_deficit_max_promotions_per_atom)
+        )
+        #: Wf-A155 — how many bonds the valence-deficit promotion added on
+        #: the LAST decode.  Read by :meth:`decode` into
+        #: :attr:`YuelBondDecodeResult.bonds_added_valence_deficit`.
+        self.last_valence_deficit_promoted: int = 0
         # Wf-A111 (MOD4) — ring-size prior.  ``None`` when off, so the accept
         # loop pays one attribute test and nothing else.
         self.ring_prior = (
@@ -1074,6 +1300,14 @@ class YuelBondBondDecoder:
         #: The last decode's ring-prior counters, so a caller can report what
         #: the prior did rather than only its effect on the final metric.
         self.last_ring_prior_stats: Dict[str, object] = {}
+        #: Wf-A128 (2026-10-31) — the last decode's RDKit bond-drop count and
+        #: the exception types behind it.  Set by :meth:`_assemble_mol` and
+        #: read (once) by :meth:`decode` to populate
+        #: :attr:`YuelBondDecodeResult.bonds_dropped_rdkit`.  Initialised here
+        #: so a decode that never reaches the assembler reads 0, not an
+        #: AttributeError.
+        self._last_bonds_dropped: int = 0
+        self._last_bonds_dropped_reasons: Dict[str, int] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -1098,6 +1332,26 @@ class YuelBondBondDecoder:
             cloud,
             yres,
         )
+        # Step 2a (Wf-A155, 2026-11-01): the VALENCE-DEFICIT PROMOTION.
+        #
+        # It runs right after the selector and BEFORE the connectivity prior,
+        # because it changes the valence accounting the prior then reads: an
+        # atom that the promotion attached is no longer stranded, so the
+        # prior sees one fewer fragment to bridge.  Running it first also
+        # matches the direction of the rule — a STRANDED atom is exactly the
+        # case the promotion exists to rescue, and the prior would otherwise
+        # reach it by adding a bond the head declined.
+        #
+        # No-op when `valence_deficit_promotion` is False (the default), so
+        # the pre-Wf-A155 decode is reproduced bit-exactly.
+        n_valence_promotions = 0
+        if self.valence_deficit_promotion:
+            n_valence_promotions = self._promote_valence_deficit_bonds(
+                cloud,
+                yres,
+                bond_orders,
+                dative_bonds,
+            )
         # Step 2b (Round-3 D2): connectivity prior — POSTPROCESS, after bond
         # selection and before assembly.  No-op when `connectivity_prior` is
         # False, so the pre-D2 decode is reproduced bit-exactly.
@@ -1120,6 +1374,36 @@ class YuelBondBondDecoder:
                 bond_orders,
                 dative_bonds,
             )
+        # Step 2c (Wf-A133, 2026-10-31): the FORCED completion of the
+        # connectivity prior.  It runs AFTER the logit-floored pass above,
+        # and only on the molecules that pass left fragmented.
+        #
+        # WHY A SECOND STAGE AND NOT A WIDER FLOOR: the two gates of
+        # `_bridge_components` (the head's logit floor and the per-atom
+        # valence budget) are INDEPENDENT, so widening only the floor still
+        # leaves every molecule whose endpoints are valence-saturated
+        # fragmented.  MEASURED on CPU by the Wf-A133 audit (§2.2, cases B
+        # and C): one gate opened, one gate closed, two fragmented molecules
+        # out of two.  This stage is the only part of the decoder that
+        # states a GUARANTEE, and it states it over the reachable set: it
+        # never leaves a molecule fragmented while a candidate pair exists
+        # inside the head's own 3.5 A window.
+        #
+        # WHY IT IS SAFE: it draws its candidates from the head's OWN
+        # post-veto `edge_index`, so (i) it can never bridge a pair the
+        # steric-collapse rule rejected, and (ii) it can never invent a
+        # pair outside the head's 3.5 A candidate window.  It only ADDS
+        # bonds, and the only bonds it ever alters are ones it lowers in
+        # ORDER (never deletes) to free valence budget.
+        forced = _ConnectivityCompletion()
+        if self.connectivity_prior and self.connectivity_force:
+            forced = self._force_connectivity(
+                cloud,
+                yres,
+                bond_orders,
+                dative_bonds,
+            )
+            n_bridges += forced.bonds_added
         # Step 3: assemble into an RDKit Mol.
         # Wf-A92 — say HOW the dative flags were decided.  A decode whose
         # ``dative_source`` is ``"z_rule"`` is reporting a guess; only
@@ -1137,19 +1421,43 @@ class YuelBondBondDecoder:
         return YuelBondDecodeResult(
             decoded=decoded,
             yuelbond_result=yres,
-            bonds_accepted=n_kept + n_bridges,
+            bonds_accepted=n_kept + n_bridges + n_valence_promotions,
             bonds_rejected_overvalent=n_overvalent,
             bonds_added_connectivity=n_bridges,
+            # Wf-A155 — the bonds the valence-deficit promotion added.  Zero
+            # on the default path (the stage is OFF), so the rest of the
+            # result is bit-identical to the pre-Wf-A155 decode.
+            bonds_added_valence_deficit=int(n_valence_promotions),
             # Wf-A113 — read from the head that produced yres.  A head that
             # does not implement the rule reports 0, which is the truth for a
             # pre-A113 checkpoint loaded with clash_reject off.
-            clash_rejected_pairs=int(
-                getattr(
-                    getattr(self._decoder, "head", None),
-                    "last_clash_rejected_pairs",
-                    0,
-                )
-            ),
+            #
+            # Wf-A128 (2026-10-31) — the count now comes from the RESULT
+            # (``yres.clash_rejected_pairs``), which :meth:`featurise` read
+            # off the head IMMEDIATELY after the forward that produced THIS
+            # decode.  The old read went to the head's mutable
+            # ``last_clash_rejected_pairs`` attribute, so a decode whose
+            # forward returned early (or never wrote the attribute) reported
+            # whatever the PREVIOUS decode had left there.  MEASURED before
+            # this change: a 5-atom cloud with 1 rejection followed by a
+            # 1-atom cloud reported ``clash_rejected_pairs == 1`` for the
+            # 1-atom cloud, which had zero rejections.
+            clash_rejected_pairs=int(getattr(yres, "clash_rejected_pairs", 0) or 0),
+            # Wf-A128 — how many of the predicted bonds RDKit refused while
+            # the molecule was assembled.  Non-zero means the decode is a
+            # FRAGMENTATION of the head's output: the bonds the head voted
+            # for and the selector accepted under the valence budget did not
+            # all survive assembly.
+            bonds_dropped_rdkit=int(self._last_bonds_dropped),
+            bonds_dropped_rdkit_reasons=dict(self._last_bonds_dropped_reasons),
+            # Wf-A133 — the split of the connectivity prior's work: the
+            # logit-floored pass vs the forced completion, plus the honest
+            # report of what the forced completion could not reach.
+            connectivity_forced_bonds=int(forced.bonds_added),
+            connectivity_bonds_demoted=int(forced.bonds_demoted),
+            connectivity_forced_reasons=dict(forced.reasons),
+            connectivity_components_after=int(forced.components_after),
+            connectivity_stranded_atoms=int(forced.stranded_atoms),
         )
 
     # ------------------------------------------------------------------
@@ -1352,14 +1660,21 @@ class YuelBondBondDecoder:
                 arom_kept[i] += 1
                 arom_kept[j] += 1
             n_kept += 1
-            # Wf-A55 W7-P5 — anti-aromatic ring probe.  Only fires on
-            # aromatic bonds (the cost of a BFS cycle search is wasted on
-            # single/double/triple bonds because 4n all-aromatic cycles
-            # never contain non-aromatic edges).  The probe MUTATES
-            # ``bond_orders`` in place to demote alternating bonds when a
-            # 4n aromatic ring is detected.
-            if order == BOND_AROMATIC:
-                _detect_and_demote_anti_aromatic(bond_orders)
+            # Wf-A113 (T86, 2026-10-29) — the Wf-A55 anti-aromatic demotion
+            # that used to run here has been REMOVED.  It demoted every other
+            # bond of a ``ring_size % 4 == 0`` all-aromatic ring to SINGLE,
+            # on the premise that RDKit cannot kekulize a 4n ring.  MEASURED
+            # on RDKit 2026.03.6: 4-, 8-, 10- and 12-membered all-aromatic
+            # monocycles all kekulize (C1=CC=C1, C1=CC=CC=CC=C1, ...); only
+            # ODD sizes fail, and the rule never touched those.  It also
+            # mutated ``bond_orders`` in place, which is the list returned to
+            # the caller, and did not credit ``remaining[]`` for the 0.5 it
+            # gave back per demoted bond -- so a later real bond could be
+            # refused.  The six-metal cohort contains 0 complexes with a 4n
+            # all-aromatic ring in its true bond graph, so the rule only ever
+            # fired on a head hallucination, where it made the reported bond
+            # composition disagree with what the head predicted.
+            # (metrics/by_metric/wfa113_t83_truth_roundtrip.json)
             # Dative flag — same convention as BondAwareDecoder.
             # (``zi`` / ``zj`` were resolved above, when the metal's bond was
             # charged at unit cost.)
@@ -1471,30 +1786,19 @@ class YuelBondBondDecoder:
         # ``list[float]`` to match the ``_select_bonds`` budget and
         # avoid mixed int/float arithmetic.  See ``_select_bonds`` for
         # the per-aromatic-bond rationale.
-        remaining: List[float] = [
-            self._cap_for_z(int(z)) for z in z_list
-        ]
+        #
         # Wf-A113 (T81) — replay in the selector's own acceptance order so the
         # per-atom aromatic counter reproduces what the selector charged.
-        arom_kept: List[int] = [0] * n_atoms
-        for i, j, order in bond_orders:
-            # Wf-A113 (T77/T78/T79) — replay with the SAME per-endpoint cost the
-            # selector used.  Sharing ``_endpoint_valence_cost`` is the point:
-            # this replay used to charge the class cost at a heteroatom's
-            # aromatic bond (1.5) while the selector charged 1.0, so the prior
-            # believed every N/O in a ring had less budget than it did and
-            # refused bridges the selector would have allowed.
-            remaining[i] -= _endpoint_valence_cost(
-                order, int(z_list[i]), int(z_list[j]), self._is_metal_z,
-                arom_kept[i],
-            )
-            remaining[j] -= _endpoint_valence_cost(
-                order, int(z_list[j]), int(z_list[i]), self._is_metal_z,
-                arom_kept[j],
-            )
-            if int(order) == BOND_AROMATIC:
-                arom_kept[i] += 1
-                arom_kept[j] += 1
+        #
+        # Wf-A133 (2026-10-31) — the replay itself now lives in
+        # ``_replay_remaining_budget``, shared with the forced completion
+        # stage.  It used to be written out here a second time, and the
+        # T77/T78 accounting bugs are what a second copy costs: the fix
+        # landed in one copy and not the other.
+        caps = [self._cap_for_z(int(z)) for z in z_list]
+        remaining, _arom_kept = _replay_remaining_budget(
+            bond_orders, z_list, caps, self._is_metal_z
+        )
 
         # --- candidate bridging edges, scored by the head's own logit -------
         # `max(logits[:, 1:])` is the same confidence the selector uses, so
@@ -1564,6 +1868,561 @@ class YuelBondBondDecoder:
         return bond_orders, dative_bonds, n_added
 
     # ------------------------------------------------------------------
+    # Wf-A133 — the FORCED completion of the connectivity prior.
+    # ------------------------------------------------------------------
+    def _force_connectivity(
+        self,
+        cloud: AtomCloud,
+        yres: YuelBondResult,
+        bond_orders: List[Tuple[int, int, int]],
+        dative_bonds: List[Tuple[int, int]],
+    ) -> _ConnectivityCompletion:
+        """Join the heavy-atom components the logit-floored prior left apart.
+
+        Why this exists
+        ---------------
+        MEASURED on CPU by the Wf-A133 decode-path audit
+        (``/tmp/wfa133/a2-bridge-veto-audit.md`` §2.2): two carbon fragments
+        2.9 A apart, one cross-component candidate pair, and a random-init
+        decoder.
+
+        ==========  ==========================================  ==========
+        head says   result                                     gate
+        ==========  ==========================================  ==========
+        SINGLE      1 bridge, 1 component                       —
+        NO_BOND     0 bridges, 2 components                     logit floor
+        SINGLE,     0 bridges, 2 components                     valence budget
+        saturated
+        ==========  ==========================================  ==========
+
+        The two gates are INDEPENDENT, so widening one leaves the other
+        standing, and a connectivity prior that can still hand back a
+        fragmented molecule is a budget-recovery pass with a connectivity
+        name.  This stage is the part of the decoder that states a
+        guarantee, and the guarantee is deliberately narrow:
+
+        **One heavy-atom component, whenever the geometry permits it.**
+
+        The carve-out is the same one the training-side connectivity loss
+        states in its own docstring
+        (``assemble_connectivity.py``: "The head only emits candidate pairs
+        within ``cutoff`` (3.5 A).  An atom with no candidate edge at all
+        ... has an all-zero adjacency row, so its penalty is a constant and
+        its gradient is exactly zero"): an atom with NO candidate pair
+        inside the head's 3.5 A window cannot be reached by ANY decode-side
+        change.  Those atoms are counted in
+        :attr:`YuelBondDecodeResult.connectivity_stranded_atoms` rather
+        than silently dropped.
+
+        What it may do
+        --------------
+        * ADD a ``BOND_SINGLE`` between two heavy atoms in DIFFERENT
+          components.  Nothing is ever deleted — no bond the selector kept
+          disappears, and no edge is removed to make room.
+        * LOWER the ORDER of one existing bond (double -> single, triple ->
+          double) to free exactly 1.0 of valence budget at an endpoint
+          that has none.  This is the published repair: "bond orders are
+          lowered one level at a time ... No edge is deleted" (arXiv:
+          2609.08333, App. C.2 step 8).  The number of lowered bonds is
+          reported in :attr:`connectivity_bonds_demoted` because a lowered
+          order is invisible in the bond counts.
+
+        What it may NOT do
+        ------------------
+        * It may not bridge a pair the steric-collapse rule rejected.  Its
+          candidate pool IS the head's post-veto ``edge_index``, so the
+          clash veto stays a hard veto over every bond this decoder
+          creates.  The veto is deliberately NOT reordered or scoped away:
+          the audit MEASURED that it denies the bridge almost nothing (12 of
+          16 fragmented clouds had their closest inter-component pair in
+          the post-veto pool) and that it fires at 0.93-1.79 A against a
+          MEDIAN closest inter-component distance of 2.75 A, i.e. it
+          vetoes only pairs that are collapsed, which are exactly the pairs
+          that must not become bonds.  Reordering it would buy nothing and
+          would remove a real safety check.
+        * It may not invent geometry.  Every candidate pair came from the
+          head's own 3.5 A window.
+        * It may not use a pair the head is CONFIDENT about.  The floor
+          ``connectivity_force_min_logit`` (-2.0) keeps a head that ranks
+          every bond class far below NO_BOND in charge of its own refusal,
+          so the deference knob of the prior still works.
+        * It may not close a ring.  Every forced bridge joins two DIFFERENT
+          components, so the endpoints have no path between them and the
+          bond closes nothing.  The ring-size prior is a gate on a bond
+          INSIDE a growing component, which is the selector's case; this
+          stage's bridges are structurally ring-free.
+
+        Which pair is chosen
+        --------------------
+        The CLOSEST cross-component pair, with the head's logit breaking
+        ties.  The head's logit is the prior's ranking because it is the
+        model's ranking, but it is NOT used as the primary key here: the
+        forced stage exists precisely for the pairs the head DECLINED to
+        propose, and for those the head's opinion is not a connectivity
+        signal (the Wf-A133 causal audit ranked the head's bond placement
+        as a DOMINANT cause of the fragmentation, R2).  Physical proximity
+        is the remaining evidence, and picking the closest pair also
+        minimises the length of the bond that gets added.
+        """
+        stats = _ConnectivityCompletion()
+        z_list = [int(z) for z in cloud.atomic_numbers.tolist()]
+        n_atoms = len(z_list)
+        # Heavy atoms only: H is a valence detail, not a fragment.
+        heavy = [i for i in range(n_atoms) if z_list[i] != 1]
+        if len(heavy) < 2:
+            return stats
+
+        # --- union-find over the bonds produced so far ---------------------
+        parent = list(range(n_atoms))
+
+        def _find(a: int) -> int:
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        def _union(a: int, b: int) -> bool:
+            ra, rb = _find(a), _find(b)
+            if ra == rb:
+                return False
+            parent[rb] = ra
+            return True
+
+        have = set()
+        for i, j, _o in bond_orders:
+            have.add((i, j) if i < j else (j, i))
+            _union(i, j)
+        n_components = len({_find(i) for i in heavy})
+
+        def _census() -> Tuple[int, int]:
+            """(components, atoms outside the largest component)."""
+            groups: Dict[int, int] = {}
+            for i in heavy:
+                root = _find(i)
+                groups[root] = groups.get(root, 0) + 1
+            if not groups:
+                return 0, 0
+            largest = max(groups.values())
+            return len(groups), len(heavy) - largest
+
+        if n_components <= 1:
+            stats.components_after, stats.stranded_atoms = _census()
+            return stats
+
+        edge_index = yres.edge_index
+        if edge_index.shape[1] == 0:
+            # The head scored nothing at all: there is no candidate pair to
+            # bridge with, and the molecule stays as fragmented as it is.
+            stats.components_after, stats.stranded_atoms = _census()
+            return stats
+
+        # --- candidate pairs, drawn from the head's OWN post-veto list ------
+        logits = yres.logits.detach()
+        best_logit = logits[:, 1:].max(dim=-1).values.tolist()
+        ei_all = edge_index[0].tolist()
+        ej_all = edge_index[1].tolist()
+        positions = cloud.positions.detach()
+        # The head's own confidence for every pair, so the demotion step can
+        # pick the bond the head was LEAST sure about.
+        pair_logit: Dict[Tuple[int, int], float] = {}
+        candidates: List[Tuple[float, float, int, int]] = []
+        n_below_floor = 0
+        for k in range(edge_index.shape[1]):
+            i = int(ei_all[k])
+            j = int(ej_all[k])
+            if i == j or i >= n_atoms or j >= n_atoms:
+                continue
+            if z_list[i] == 1 or z_list[j] == 1:
+                continue
+            key = (i, j) if i < j else (j, i)
+            score = float(best_logit[k])
+            pair_logit.setdefault(key, score)
+            if key in have:
+                continue
+            if score < self.connectivity_force_min_logit:
+                n_below_floor += 1
+                continue
+            try:
+                dist = float(torch.norm(positions[j] - positions[i]))
+            except Exception:
+                dist = float("inf")
+            # (distance asc, logit desc, i, j) -> the closest pair first,
+            # the head's logit breaking ties.
+            candidates.append((dist, -score, i, j))
+        if n_below_floor:
+            stats.reasons["below_force_min_logit"] = n_below_floor
+        candidates.sort()
+
+        # --- remaining valence budget ---------------------------------------
+        caps = [self._cap_for_z(int(z)) for z in z_list]
+        remaining, _arom_kept = _replay_remaining_budget(
+            bond_orders, z_list, caps, self._is_metal_z
+        )
+        # Wf-A111 (MOD4) — the ring gate does NOT apply here, and cannot:
+        # every forced bridge joins two DIFFERENT components, so the two
+        # endpoints have no path between them and the bond closes no ring.
+        # (The ring-size prior is a gate on a bond INSIDE a growing
+        # component, which is the selector's case; the prior's bridges and
+        # these forced bridges are structurally ring-free.)
+        #
+        # Wf-A92 — same truth-first dative rule as `_select_bonds`.
+        dative_truth = _dative_truth_pairs(cloud)
+
+        n_added = 0
+        n_demoted = 0
+        for _dist, _neg_score, i, j in candidates:
+            if n_components <= 1:
+                break
+            if _find(i) == _find(j):
+                continue
+            # A bridge is always added as BOND_SINGLE, so the same
+            # per-endpoint rule applies: the ligand side of a metal bond
+            # needs no budget, the metal side needs one.
+            need_i = _endpoint_valence_cost(
+                BOND_SINGLE, z_list[i], z_list[j], self._is_metal_z
+            )
+            need_j = _endpoint_valence_cost(
+                BOND_SINGLE, z_list[j], z_list[i], self._is_metal_z
+            )
+            if remaining[i] < need_i:
+                if self._demote_one_order(
+                    bond_orders, i, z_list, pair_logit
+                ) is None:
+                    stats.reasons["budget_endpoint_i"] = (
+                        stats.reasons.get("budget_endpoint_i", 0) + 1
+                    )
+                    continue
+                n_demoted += 1
+                remaining, _arom_kept = _replay_remaining_budget(
+                    bond_orders, z_list, caps, self._is_metal_z
+                )
+            if remaining[j] < need_j:
+                if self._demote_one_order(
+                    bond_orders, j, z_list, pair_logit
+                ) is None:
+                    stats.reasons["budget_endpoint_j"] = (
+                        stats.reasons.get("budget_endpoint_j", 0) + 1
+                    )
+                    continue
+                n_demoted += 1
+                remaining, _arom_kept = _replay_remaining_budget(
+                    bond_orders, z_list, caps, self._is_metal_z
+                )
+            bond_orders.append((i, j, BOND_SINGLE))
+            remaining[i] -= need_i
+            remaining[j] -= need_j
+            have.add((i, j) if i < j else (j, i))
+            # Mirror `_select_bonds`' dative convention for a metal-donor pair.
+            if self._is_dative_pair_at(
+                cloud, i, j, z_list[i], z_list[j], dative_truth
+            ):
+                if self._is_metal_z(z_list[i]) and not self._is_metal_z(z_list[j]):
+                    dative_bonds.append((j, i))
+                else:
+                    dative_bonds.append((i, j))
+            if _union(i, j):
+                n_components -= 1
+                n_added += 1
+        stats.bonds_added = n_added
+        stats.bonds_demoted = n_demoted
+        stats.components_after, stats.stranded_atoms = _census()
+        return stats
+
+    # ------------------------------------------------------------------
+    # Wf-A155 (2026-11-01) — the VALENCE-DEFICIT PROMOTION
+    # ------------------------------------------------------------------
+    def _valence_deficit(
+        self,
+        z: int,
+        assigned: float,
+        cap: float,
+        n_bonds: int,
+    ) -> float:
+        """``target - assigned`` for one atom.  ``> 0`` means UNDER-VALENT.
+
+        The target is NOT the covalent-valence cap, because the decode graph
+        is HYDROGEN-FREE (the cloud carries no H) and RDKit completes a
+        neutral atom's valence with implicit hydrogens:
+
+        * **A metal** takes no implicit hydrogen, so its coordination cap IS
+          its valence target: ``deficit = cap - assigned``.  This is the
+          metal's coordination deficit (frontier option D, the metal's
+          coordination sphere).
+        * **Any other atom** that already carries at least one bond is
+          complete as far as the heavy-atom graph is concerned: RDKit's
+          default valence ``V`` minus the assigned valence is exactly the
+          hydrogen count RDKit will add, so ``deficit = V - h - assigned`` is
+          ``0`` whenever ``assigned <= V``.  Such an atom is never
+          under-valent, and the rule must not touch it — a plain CH3 carbon
+          is "1.0 under" its cap of 4, and that 1.0 is the implicit hydrogen.
+        * **A stranded atom** (no bond at all) is the exception: it is
+          attached to NOTHING, so the hydrogens RDKit would place on it are
+          a fiction — RDKit would turn a lone carbon into methane, a second
+          fragment.  Its hydrogen allowance is therefore 0 and its deficit is
+          its whole default valence.
+
+        MEASURED: ``_rdkit_default_valence`` reads RDKit's own periodic
+        table; the rest is arithmetic over the decoder's own bond list.
+
+        PROJECTED: whether closing these deficits reduces the fragmentation
+        rate is UNMEASURED under the 0-GPU mandate of this wave.
+        """
+        if self._is_metal_z(z):
+            # A metal takes no implicit hydrogen (RDKit carries no default
+            # valence for one), so the coordination cap is its target.
+            return float(cap) - float(assigned)
+        v = _rdkit_default_valence(z)
+        if n_bonds <= 0:
+            h = 0.0
+        else:
+            h = max(0.0, v - float(assigned))
+        return (v - h) - float(assigned)
+
+    def _promote_valence_deficit_bonds(
+        self,
+        cloud: AtomCloud,
+        yres: YuelBondResult,
+        bond_orders: List[Tuple[int, int, int]],
+        dative_bonds: List[Tuple[int, int]],
+    ) -> int:
+        """Promote candidate bonds so UNDER-VALENT atoms reach their target.
+
+        The rule, in one sentence: **when an atom is under-valent after the
+        current bond assignment, promote an eligible candidate bond to raise
+        it.**
+
+        It is the mirror image of the forced-completion stage
+        (:meth:`_force_connectivity`), which LOWERS a bond order to free
+        valence budget.  This one RAISES an atom's valence by ADDING a bond.
+        Like that stage, it never DELETES an edge: it only appends.
+
+        Eligibility of a candidate pair
+        -------------------------------
+        A pair is eligible when ALL of the following hold:
+
+        1. it is in the head's OWN post-veto ``edge_index`` — so it is
+           inside the head's own candidate window and survived the
+           steric-collapse veto, and no geometry is invented;
+        2. neither endpoint is hydrogen;
+        3. the pair is not already a bond;
+        4. the head's strongest bond-class logit for the pair clears
+           ``valence_deficit_min_logit`` (the same deference knob, and the
+           same value, as ``connectivity_force_min_logit``);
+        5. both endpoints have the valence budget for one more SINGLE bond,
+           as the DECODER's own model charges it.
+
+        Which bond is promoted
+        -----------------------
+        The CLOSEST eligible candidate incident to the under-valent atom, with
+        the head's logit breaking ties.  The same ordering
+        :meth:`_force_connectivity` uses, and for the same reason: this stage
+        exists precisely for the pairs the head DECLINED to propose, and for
+        those the head's opinion is not a connectivity signal — physical
+        proximity is the remaining evidence.
+
+        Valence accounting
+        ------------------
+        Every charge here comes from :func:`_endpoint_valence_cost`, the
+        decoder's own model.  That means **a metal bond does not cost the
+        ligand any valence** (Wf-A113 T79): the donor's budget is untouched
+        by its metal bond, exactly as the selector and the forced stage
+        already charge it.  A promotion that would raise a ligand's valence
+        by way of a metal bond therefore CANNOT close that ligand's
+        deficit — the only exception is a STRANDED ligand, whose problem is
+        that it is attached to nothing at all, and where attaching it to the
+        metal is the whole point.
+
+        MEASURED: the deficits, the eligibility list and the charges are
+        computed from the decode's own inputs and are exercised on synthetic
+        molecules by ``molmetal/tests/test_wfa155_decoder_bond_candidacy.py``.
+
+        PROJECTED: the effect of this stage on the fragmentation rate is
+        **PROJECTED, NOT MEASURED** — this wave is CPU-only and no re-decode
+        was run.  The stage is OFF by default.
+        """
+        self.last_valence_deficit_promoted = 0
+        z_list = [int(z) for z in cloud.atomic_numbers.tolist()]
+        n_atoms = len(z_list)
+        max_per_atom = self.valence_deficit_max_promotions_per_atom
+        if n_atoms < 2 or max_per_atom <= 0:
+            return 0
+        edge_index = yres.edge_index
+        if edge_index.shape[1] == 0:
+            return 0
+
+        caps = [self._cap_for_z(z) for z in z_list]
+        remaining, _arom_kept = _replay_remaining_budget(
+            bond_orders, z_list, caps, self._is_metal_z
+        )
+        have: Set[Tuple[int, int]] = set()
+        n_bonds = [0] * n_atoms
+        for i, j, _o in bond_orders:
+            have.add((i, j) if i < j else (j, i))
+            n_bonds[i] += 1
+            n_bonds[j] += 1
+
+        # --- candidate pool: the head's OWN post-veto edge list -------------
+        logits = yres.logits.detach()
+        best_logit = logits[:, 1:].max(dim=-1).values.tolist()
+        ei = edge_index[0].tolist()
+        ej = edge_index[1].tolist()
+        positions = cloud.positions.detach()
+        cands: List[Tuple[float, float, int, int]] = []
+        for k in range(len(ei)):
+            i = int(ei[k])
+            j = int(ej[k])
+            if i == j or i >= n_atoms or j >= n_atoms:
+                continue
+            if z_list[i] == 1 or z_list[j] == 1:
+                continue
+            key = (i, j) if i < j else (j, i)
+            if key in have:
+                continue
+            score = float(best_logit[k])
+            if score < self.valence_deficit_min_logit:
+                continue
+            try:
+                dist = float(torch.norm(positions[j] - positions[i]))
+            except Exception:
+                dist = float("inf")
+            # (distance asc, logit desc) -> the closest pair first.
+            cands.append((dist, -score, i, j))
+        cands.sort()
+        if not cands:
+            return 0
+
+        dative_truth = _dative_truth_pairs(cloud)
+        n_promoted = 0
+        used: Set[int] = set()
+
+        # --- the under-valent atoms, most deficient first -------------------
+        deficits: List[Tuple[float, int]] = []
+        for a in range(n_atoms):
+            assigned = caps[a] - remaining[a]
+            d = self._valence_deficit(z_list[a], assigned, caps[a], n_bonds[a])
+            if d > 1e-9:
+                deficits.append((d, a))
+        deficits.sort(key=lambda t: (-t[0], t[1]))
+
+        for _deficit, a in deficits:
+            promoted_here = 0
+            while promoted_here < max_per_atom:
+                assigned = caps[a] - remaining[a]
+                deficit = self._valence_deficit(
+                    z_list[a], assigned, caps[a], n_bonds[a]
+                )
+                if deficit <= 1e-9:
+                    break
+                chosen: Optional[Tuple[int, int, int, float, float]] = None
+                for idx, (_dist, _neg, i, j) in enumerate(cands):
+                    if idx in used:
+                        continue
+                    if a != i and a != j:
+                        continue
+                    other = j if i == a else i
+                    cost_a = _endpoint_valence_cost(
+                        BOND_SINGLE, z_list[a], z_list[other], self._is_metal_z
+                    )
+                    # A metal bond costs the LIGAND nothing (Wf-A113 T79), so
+                    # it cannot RAISE a non-stranded ligand's valence.  It is
+                    # still allowed for a STRANDED atom, whose problem is
+                    # that it is attached to nothing at all.
+                    if cost_a <= 0.0 and n_bonds[a] > 0:
+                        continue
+                    cost_other = _endpoint_valence_cost(
+                        BOND_SINGLE, z_list[other], z_list[a], self._is_metal_z
+                    )
+                    if remaining[a] < cost_a or remaining[other] < cost_other:
+                        continue
+                    chosen = (idx, i, j, cost_a, cost_other)
+                    break
+                if chosen is None:
+                    break
+                idx, i, j, cost_a, cost_other = chosen
+                other = j if i == a else i
+                used.add(idx)
+                bond_orders.append((a, other, BOND_SINGLE))
+                remaining[a] -= cost_a
+                remaining[other] -= cost_other
+                n_bonds[a] += 1
+                n_bonds[other] += 1
+                have.add((a, other) if a < other else (other, a))
+                # Mirror `_select_bonds` / `_force_connectivity`'s dative
+                # convention for a metal-donor pair.
+                if self._is_dative_pair_at(
+                    cloud, a, other, z_list[a], z_list[other], dative_truth
+                ):
+                    if self._is_metal_z(z_list[a]) and not self._is_metal_z(
+                        z_list[other]
+                    ):
+                        dative_bonds.append((other, a))
+                    else:
+                        dative_bonds.append((a, other))
+                promoted_here += 1
+                n_promoted += 1
+        self.last_valence_deficit_promoted = n_promoted
+        return n_promoted
+
+    def _demote_one_order(
+        self,
+        bond_orders: List[Tuple[int, int, int]],
+        endpoint: int,
+        z_list: Sequence[int],
+        pair_logit: Dict[Tuple[int, int], float],
+    ) -> Optional[int]:
+        """Lower ONE bond order at ``endpoint`` to free 1.0 of valence budget.
+
+        Returns the new bond order (``BOND_DOUBLE`` for a triple,
+        ``BOND_SINGLE`` for a double) or ``None`` when no bond at that
+        endpoint can be lowered.
+
+        Which bonds are eligible, and why the others are not
+        ------------------------------------------------------
+        * ``BOND_DOUBLE`` and ``BOND_TRIPLE`` only.  Lowering an AROMATIC
+          bond inside a ring leaves a ring RDKit cannot kekulize, and the
+          repository's own fallback then strips the AROMATICITY of the WHOLE
+          molecule (``_demote_all_aromatic``) — a far larger chemistry
+          change than this stage is allowed to make, and one that would
+          quietly rewrite every ring in the pool.
+        * Both endpoints must be NON-metals.  A metal's budget is a BOND
+          COUNT, so lowering the order of one of its bonds frees nothing
+          (Wf-A113 T77); and a ligand's budget does not pay for its metal
+          bond at all (Wf-A113 T79), so lowering that bond frees nothing
+          either.
+        * A bond whose endpoints are both saturated with SINGLE bonds has
+          no order left to lower, and lowering one would mean DELETING an
+          edge — which the published repair forbids and which this
+          repository measures as a silent split (``bonds_dropped_rdkit``).
+          Such an endpoint is reported as ``budget_endpoint_*`` instead.
+
+        Among the eligible bonds, the one the head was LEAST sure about is
+        chosen (the lowest bond-class logit), because lowering that one
+        disturbs the head's own output the least.  Ties break on the list
+        index, so the choice is deterministic.
+        """
+        best: Optional[Tuple[Tuple[float, int], int, int, int]] = None
+        for idx, (i, j, order) in enumerate(bond_orders):
+            if endpoint != i and endpoint != j:
+                continue
+            if int(order) not in (BOND_DOUBLE, BOND_TRIPLE):
+                continue
+            other = j if i == endpoint else i
+            if self._is_metal_z(int(z_list[endpoint])) or self._is_metal_z(
+                int(z_list[other])
+            ):
+                continue
+            key = (i, j) if i < j else (j, i)
+            rank = (float(pair_logit.get(key, 0.0)), int(idx))
+            if best is None or rank < best[0]:
+                best = (rank, int(idx), int(i), int(j))
+        if best is None:
+            return None
+        _rank, idx, i, j = best
+        new_order = BOND_DOUBLE if int(bond_orders[idx][2]) == BOND_TRIPLE else BOND_SINGLE
+        bond_orders[idx] = (i, j, new_order)
+        return int(new_order)
+
+    # ------------------------------------------------------------------
     # RDKit assembly (mirrors BondAwareDecoder._assemble_mol contract)
     # ------------------------------------------------------------------
     def _assemble_mol(
@@ -1583,6 +2442,12 @@ class YuelBondBondDecoder:
         the production decoder bit-exactly.
         """
         from rdkit import Chem
+
+        # Wf-A128 — reset the drop counters at the TOP so that a decode which
+        # returns early (before the bond loop) can never inherit the PREVIOUS
+        # decode's count.
+        self._last_bonds_dropped = 0
+        self._last_bonds_dropped_reasons: Dict[str, int] = {}
 
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
@@ -1613,23 +2478,59 @@ class YuelBondBondDecoder:
             BOND_TRIPLE: Chem.BondType.TRIPLE,
             BOND_AROMATIC: Chem.BondType.AROMATIC,
         }
+        # Wf-A128 (2026-10-31) — COUNT the bonds RDKit refuses.
+        #
+        # A dropped bond is not a cosmetic event: it is the ONE place in the
+        # decode path where the decode itself can split one molecule into
+        # two.  The bond was predicted, the head voted for it, the selector
+        # accepted it under the valence budget, and then the assembler threw
+        # it away — leaving two fragments where the head meant one molecule.
+        # Before this change the ``except`` was a bare ``continue``: no
+        # counter, no log, no field, no trace anywhere.
+        #
+        # The catch is DELIBERATELY LEFT WIDE.  Measured on RDKit 2026.03.6
+        # (see molmetal/tests/test_wfa128_decode_bond_drop_counter.py):
+        # a duplicate bond, an out-of-range atom index and a self-bond all
+        # raise ``RuntimeError``; a NEGATIVE atom index raises
+        # ``OverflowError`` (Python's int -> unsigned conversion, not
+        # RDKit).  Narrowing the catch to ``(RuntimeError, OverflowError)``
+        # would therefore change behaviour: ``int(src)`` on a non-numeric
+        # value raises ``ValueError``/``TypeError``, which the wide catch
+        # swallows (the bond is dropped) and a narrow catch would PROPAGATE
+        # (the whole decode raises).  A narrowed catch that starts
+        # propagating a previously-swallowed error IS a behaviour change, so
+        # the wide catch stays and the exception TYPE is recorded instead —
+        # which is strictly more information than the old ``continue`` gave.
+        n_bonds_dropped = 0
+        dropped_reasons: Dict[str, int] = {}
         for src, dst, order in bond_orders:
             bt = bt_map.get(int(order), Chem.BondType.SINGLE)
             try:
                 rw.AddBond(int(src), int(dst), bt)
-            except Exception:
+            except Exception as exc:
                 # Skip invalid bonds (RDKit raises on duplicate or
                 # out-of-range atoms).
+                n_bonds_dropped += 1
+                _exc_name = type(exc).__name__
+                dropped_reasons[_exc_name] = dropped_reasons.get(_exc_name, 0) + 1
                 continue
+        # Stashed on the decoder so ``decode()`` can put the count on the
+        # result.  Reset at the TOP of the method (not here) so a decode that
+        # returns early can never inherit the previous decode's count.
+        self._last_bonds_dropped = n_bonds_dropped
+        self._last_bonds_dropped_reasons = dropped_reasons
         try:
             mol = rw.GetMol()
         except Exception as exc:
-            return DecodedMol(
+            _dropped = DecodedMol(
                 error=f"RWMol.GetMol failed: {exc}",
                 n_atoms=cloud.positions.shape[0],
                 dative_source=dative_source,
                 dative_manufactured=int(dative_manufactured),
             )
+            if n_bonds_dropped:
+                _dropped.warnings.append(f"bonds_dropped_rdkit:{n_bonds_dropped}")
+            return _dropped
         # 2026-10-13 (BLK-C-L3 / instrument-fix) — SanitizeMol branch must
         # populate ``DecodedMol.error`` so the rejection reason reaches the
         # caller.  Pre-fix the branch swallowed the exception and set
@@ -1752,7 +2653,7 @@ class YuelBondBondDecoder:
                         repair = "kekulize_demoted_all"
                     else:
                         sanitize_error = err
-        return DecodedMol(
+        _decoded = DecodedMol(
             mol=mol,
             smiles=smiles,
             bond_orders=list(bond_orders),
@@ -1765,6 +2666,14 @@ class YuelBondBondDecoder:
             dative_source=dative_source,
             dative_manufactured=int(dative_manufactured),
         )
+        # Wf-A128 (2026-10-31) — the PER-MOLECULE decode record carries the
+        # drop count as a ``key:value`` warning, the same convention the
+        # trainer already uses for ``dative_source:<src>``.  The count also
+        # rides on :attr:`YuelBondDecodeResult.bonds_dropped_rdkit`; this
+        # copy is on the object a per-molecule consumer already holds.
+        if n_bonds_dropped:
+            _decoded.warnings.append(f"bonds_dropped_rdkit:{n_bonds_dropped}")
+        return _decoded
 
     def _empty_decoded(
         self,
@@ -1815,13 +2724,15 @@ class YuelBondBondDecoder:
             # edge list, so it lands here with ``decode_succeeded=False`` and
             # ``reason="empty_or_failed"``.  Reporting 0 there would hide the
             # rule exactly where it fired hardest.
-            clash_rejected_pairs=int(
-                getattr(
-                    getattr(self._decoder, "head", None),
-                    "last_clash_rejected_pairs",
-                    0,
-                )
-            ),
+            #
+            # Wf-A128 (2026-10-31) — read from the RESULT, not from the
+            # head's mutable attribute (see the note in ``decode``).
+            clash_rejected_pairs=int(getattr(yres, "clash_rejected_pairs", 0) or 0),
+            # Wf-A128 — no molecule was assembled on this path, so no bond
+            # could have been dropped by RDKit.  Stated explicitly so a
+            # reader does not have to know which branch produced the result.
+            bonds_dropped_rdkit=0,
+            bonds_dropped_rdkit_reasons={},
         )
 
     # ------------------------------------------------------------------

@@ -27,6 +27,19 @@ fixes wired into COMMON_ARGS / CONFIRMED_FLAGS.
 
 ## §2 G6 in-flight status (MEASURED, 2026-09-29 15:13 CST)
 
+> ⚠️ **SUPERSEDED 2026-10-31 (Wf-A124) — this account is PRESERVED VERBATIM
+> below per AGENTS.md §5.5 rule #6, but it is REFUTED by the artifacts.**
+> MEASURED 2026-10-31: the G6 tree holds **24 completed runs** (4 cohorts ×
+> {Ru, Rh} × 3 seeds), not `OK 2 / FAILED 28 / RUNNING 1 / PENDING 29`; the
+> on-disk `master.log` is **266 lines**, mtime **2026-10-27 02:03:33** — not
+> the "66 lines, mtime 15:03:52" snapshot quoted below; and
+> `no_multi_task/Ru/seed2/run.log` **does not exist** — the G6 tree contains
+> **no `run.log` at any path in git HEAD** (MEASURED:
+> `git ls-tree -r HEAD --name-only -- results/wf124_p3_per_innovation_ablation_g6/ | grep -c 'run\.log'`
+> → **0**).  The `status=ALL_SEEDS_FAILED (CUDAGraphs RuntimeError)` claim is
+> the **origin** of a claim that `docs/HONEST_NEGATIVE_CATALOG.md` §6.222
+> refutes; this account is catalog §6.216's "Account D".  See §6.216 / §6.222.
+
 `results/wf124_p3_per_innovation_ablation_g6/master.log` snapshot at Wf-337-G1
 task time (66 lines, last entry `=== 15:03:52 START no_kendall/Ru/seed=0 ===`):
 

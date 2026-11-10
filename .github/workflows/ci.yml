@@ -153,10 +153,35 @@ jobs:
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE"
+          # Wf-A269 wave-28 (2026-11-06) — `molmetal/tests/test_rocm_lipman.py`
+          # WAS DELETED in commit 09c2202a ("…rocm cleanup"; it is not in
+          # `git ls-tree HEAD`).
+          #
+          # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5
+          # rule #6 — the sentence below was TRUE at HEAD and is FALSE in
+          # this working tree:
+          #   "…and this step still named it ⇒ pytest exits
+          #    4 (usage error: file not found) ⇒ THE STEP COULD NEVER PASS, on
+          #    the one job that is allowed to touch the GPU box."
+          #
+          # CORRECTION (MEASURED 2026-11-09, Wf-A269 runner-coverage wave):
+          # the argv BELOW no longer names `test_rocm_lipman.py` — that line
+          # was removed — so this step names only files that exist and pytest
+          # no longer exits 4.  The quoted rendering above is a DATED
+          # 2026-11-06 reading of HEAD, not of this tree.
+          # `molmetal/tests/test_rocm_egnn.py` still exists and is NOT
+          # substituted: this step is the Lipman/pocket suite, and adding a
+          # different file to it would change what the job MEASURES.
+          # The guards that pin this class live in
+          # molmetal/tests/test_wfa269_wave28_published_number_guards.py
+          # (group F: every `molmetal/tests/*.py` named by this file must
+          # exist on disk) and in
+          # molmetal/tests/test_wfa269_runner_coverage_gate.py (a runner that
+          # names a path which does not exist is a DEAD INVOCATION and fails
+          # the gate); both run in CI job 4e.
           "$UV_PROJECT_ENVIRONMENT"/bin/python -m pytest \
               molmetal/tests/test_lipman_spatial_contract.py \
               molmetal/tests/test_pocket_conditioned_lipman.py \
-              molmetal/tests/test_rocm_lipman.py \
               molmetal/tests/test_synflownet_env.py \
               -q --tb=short --no-header \
               | tee blackwell_pytest.log
@@ -195,9 +220,18 @@ jobs:
           set -euo pipefail
           cd "$GITHUB_WORKSPACE"
           $UV_PROJECT_ENVIRONMENT/bin/python molmetal/scripts/wf_pitfall_guard/check_all.py | tee pitfall_check.log
-          # The runner prints a 'PASS=7 FAIL=0 SKIP=0' footer; the
-          # regex tolerates leading whitespace and extra digits.
-          grep -E "^\s*PASS=7\s+FAIL=0\s+SKIP=0\s*$" pitfall_check.log
+          # The runner's real footer is 'PASS=7 FAIL=0 SKIP=0 MISS=0'
+          # (molmetal/scripts/wf_pitfall_guard/check_all.py::_format_table).
+          # The regex must match that shape exactly — a loose 'contains
+          # PASS=7' would also accept a FAIL/MISS footer, and dropping the
+          # trailing MISS counter made the pattern unmatchable in the
+          # first place.
+          # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+          #   grep -E "^\s*PASS=7\s+FAIL=0\s+SKIP=0\s*$" pitfall_check.log
+          # (omitted the trailing 'MISS=0' counter the producer always
+          #  emits, so this step could never pass — the job was red for
+          #  a reason unrelated to the code under test.)
+          grep -E "^\s*PASS=7\s+FAIL=0\s+SKIP=0\s+MISS=0\s*$" pitfall_check.log
 
       - name: Upload pitfall guard log
         if: always()
@@ -428,18 +462,195 @@ jobs:
           retention-days: 14
 
   # ----------------------------------------------------------------------
+  # Job 4d — Wf-A167 command-prefix census guard (CPU-only drift gate)
+  #   Runs ONLY molmetal/tests/test_wfa167_command_prefix_guard.py with the
+  #   GPU hidden.  The guard's module imports no torch and never shells out
+  #   to nvidia-smi (the file's own tests assert both), so this job needs
+  #   pytest and nothing else — no torch/rdkit wheel, no data lake.
+  #   WHY THIS JOB EXISTS: no runner executed this test file, so the census
+  #   could drift silently (AGENTS.md 6.269.29 class — "a guard that no
+  #   runner executes").  The job is deliberately SEPARATE from the two
+  #   jobs that carry their own hard pass-count gates (mechanism-smoke's
+  #   ">=217 passed" and pitfall-pytest's own): this file is not added to
+  #   either of their pytest lists.
+  #   The failure message names the drifting file(s) (census sha vs live
+  #   sha) instead of a bare count delta, and the posture step prints the
+  #   checkout's own census so a red run says WHICH tree it measured.
+  # ----------------------------------------------------------------------
+  wfa167-command-prefix-guard:
+    name: "[4d] Wf-A167 command-prefix census guard (CPU-only)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
+      CUDA_VISIBLE_DEVICES: ""
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+
+      - name: Install pytest (CPU-only; the guard needs nothing else)
+        run: |
+          set -euo pipefail
+          uv venv "$UV_PROJECT_ENVIRONMENT" --python 3.12
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" pytest
+
+      - name: Run Wf-A167 command-prefix census guard tests
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -m pytest \
+              molmetal/tests/test_wfa167_command_prefix_guard.py \
+              -q --tb=short --no-header \
+              | tee wfa167_command_prefix_guard.log
+
+      - name: Census posture of THIS checkout (attribution + live-axis verdict)
+        if: always()
+        run: |
+          set -uo pipefail
+          cd "$GITHUB_WORKSPACE"
+          # Wf-A269 wave-28 (2026-11-06) — THE REAL EXIT CODE IS NOW
+          # EXERCISED IN CI.  It never was: the step passed --advisory,
+          # which short-circuits the verdict to 0, so a defect in the
+          # guard's exit PREDICATE could never show up here (the guard
+          # itself used to exit 1 for ever — a gate that cannot PASS).
+          #
+          # THE STEP STILL DOES NOT FAIL ON THE LIVE COUNT, and that is
+          # deliberate and MEASURED, not lazy.  The live count is a
+          # property of the TREE, not of the guard.  MEASURED 2026-11-06
+          # by replaying HEAD's blobs through the guard's own scanner:
+          #   HEAD    : 113 tracked *.sh, 44 LIVE real defeaters, 12 archived
+          #   WORKTREE:                    0 LIVE real defeaters,  3 archived
+          # ⇒ a CI checkout of HEAD would be RED here for reasons that have
+          # nothing to do with this job, and the commit that carries the
+          # lock-preserving repairs is USER-gated (AGENTS.md §6.269.23.12:
+          # "the commit is load-bearing, not cosmetic").  Shipping a
+          # red-by-construction CI job is the very defect class this step
+          # exists to expose (§6.269.17), so the count is REPORTED, not
+          # enforced, until the commit lands.
+          #
+          # WHAT IS ENFORCED: that the exit code TRACKS the selected axis
+          # (the guard can fail AND can pass) — pinned by job 4e, group D
+          # of molmetal/tests/test_wfa269_wave28_published_number_guards.py.
+          "$UV_PROJECT_ENVIRONMENT/bin/python" \
+              molmetal/scripts/wfa167_command_prefix_guard.py \
+              --repo-root . --json > wfa167_census.json
+          live_rc=$?
+          echo "live_axis_exit_code=${live_rc}"
+          "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PYEOF'
+          import json
+          counts = json.load(open("wfa167_census.json"))["counts"]
+          print("live_axis_defeaters  =", counts["real_defeaters_live"])
+          print("archived_defeaters   =", counts["real_defeaters_archived"])
+          print("total_real_defeaters =", counts["real_defeaters"])
+          PYEOF
+          # The human rendering is kept for the artifact (attribution).
+          "$UV_PROJECT_ENVIRONMENT/bin/python" \
+              molmetal/scripts/wfa167_command_prefix_guard.py \
+              --repo-root . --advisory > wfa167_census_posture.txt
+
+      - name: Upload guard test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfa167-command-prefix-guard-log
+          path: |
+            wfa167_command_prefix_guard.log
+            wfa167_census_posture.txt
+            wfa167_census.json
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 4e — Wf-A269 wave-28 published-number guards (CPU-only)
+  #   Runs ONLY molmetal/tests/test_wfa269_wave28_published_number_guards.py
+  #   with the GPU hidden.  That file is stdlib-only (ast / importlib.util /
+  #   json / re / pathlib) and every producer it loads is stdlib-only at
+  #   IMPORT time ⇒ this job needs pytest and nothing else — no torch/rdkit
+  #   wheel, no data lake.
+  #   WHY THIS JOB EXISTS: the wave-28 repairs — the Wf-299 wrapper's byte
+  #   count measured at RUN TIME; the PROBE/evaluator label; the audit's
+  #   MEASURED canonical probe count; the guard's LIVE verdict axis; the
+  #   trainer's documented failure taxonomy; the CI's own dangling test
+  #   path — are guarded by that file, and a guard that no runner executes
+  #   is the §6.269.29 class (it can be green while it watches nothing).
+  #   IT IS ALSO WHAT ENFORCES the part job 4d deliberately only REPORTS:
+  #   that the guard's exit code TRACKS its selected axis, i.e. "the gate can
+  #   fail AND can pass".
+  #   NB: job 4d's own pytest step could not run AT ALL until this wave
+  #   fixed the repo's conftest — an unguarded module-level `import torch`
+  #   killed every torch-less pytest session.  Five earlier waves NAMED that
+  #   closure path and never executed it (TODO/completed/420a3_wave_a_launch
+  #   .md:122, 394a1:99, 394a3:235, 356b1:154, 384a1:82, 414a3:193).
+  # ----------------------------------------------------------------------
+  wave28-published-number-guards:
+    name: "[4e] Wf-A269 wave-28 published-number guards (CPU-only)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
+      CUDA_VISIBLE_DEVICES: ""
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+
+      - name: Install pytest (CPU-only; the guards need nothing else)
+        run: |
+          set -euo pipefail
+          uv venv "$UV_PROJECT_ENVIRONMENT" --python 3.12
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" pytest
+
+      - name: Run Wf-A269 wave-28 published-number guards
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          # Wf-A269 runner-coverage wave (2026-11-09) — the second file
+          # below is the runner-coverage gate's own test.  It is listed
+          # HERE, on an executing runner's pytest argv, because a guard
+          # that no runner executes is invisible (AGENTS.md section 6.269.29
+          # class).  The gate makes the "test file on no executing runner"
+          # class VISIBLE without running the whole suite: it enumerates
+          # the population, enumerates the executed set from the SAME axis,
+          # and fails when a new test file is added that no runner names.
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -m pytest \
+              molmetal/tests/test_wfa269_wave28_published_number_guards.py \
+              molmetal/tests/test_wfa269_runner_coverage_gate.py \
+              -q --tb=short --no-header \
+              | tee wave28_published_number_guards.log
+
+      - name: Upload guard test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave28-published-number-guards-log
+          path: wave28_published_number_guards.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
   # Job 5 — summary (always succeeds; surfaces a single badge-style status)
   # ----------------------------------------------------------------------
   ci-summary:
     name: "ci-summary"
     runs-on: [self-hosted, linux, x64, mol-metal]
-    needs: [evaluator-sanity, pitfall-runner, pitfall-pytest, mechanism-smoke, r18-train-scripts-master-verify, hook-install-gate]
+    needs: [evaluator-sanity, pitfall-runner, pitfall-pytest, mechanism-smoke, r18-train-scripts-master-verify, hook-install-gate, wfa167-command-prefix-guard, wave28-published-number-guards]
     if: always()
     steps:
       - name: Emit summary
         run: |
           echo "## Mol-Metal CI summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          for job in evaluator-sanity pitfall-runner pitfall-pytest mechanism-smoke r18-train-scripts-master-verify hook-install-gate; do
+          for job in evaluator-sanity pitfall-runner pitfall-pytest mechanism-smoke r18-train-scripts-master-verify hook-install-gate wfa167-command-prefix-guard wave28-published-number-guards; do
             echo "- $job: ${{ needs.$job.result }}" >> "$GITHUB_STEP_SUMMARY"
           done

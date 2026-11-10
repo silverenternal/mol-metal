@@ -1,0 +1,13 @@
+{
+    "wrapper": "launch_wf119_p1_4_chemprop_v3_lomo.sh",
+    "wf_origin": "wf119",
+    "mode": "dry-run",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_chemprop_v2_v3.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "out_dir": "results/wf119_p1_4_chemprop_v3_lomo",
+    "args": ["--dry-run"],
+    "expected_cohort": {"ablations": 4, "seeds": 1, "epochs": 3},
+    "estimated_wall": "~2 hr on PRO 6000 cuda:0",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}

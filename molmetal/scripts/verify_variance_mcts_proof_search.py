@@ -48,6 +48,7 @@ import os
 import random
 import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 # Allow ``python -m molmetal.scripts.verify_variance_mcts_proof_search``
@@ -56,9 +57,9 @@ from typing import Any, Dict, List, Tuple
 # When invoked directly we add the project root to ``sys.path`` and
 # fall back to the same absolute imports.
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 try:
     from molmetal_lam.binding.types import BindingSite
@@ -371,9 +372,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--report-path",
         type=str,
-        default=(
-            "/home/hugo/codes/mol-metal/molmetal/reports/"
-            "wf36_variance_mcts/variance_bench.json"
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf36_variance_mcts"
+            / "variance_bench.json"
         ),
         help="Path to write the JSON report.",
     )

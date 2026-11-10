@@ -25,16 +25,37 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
+# Wf-A269 wave-3 (2026-11-02) — two of the six launchers were archived by
+# the Wf-437 simplification wave.  Their contract is still checked, against
+# the archived copy, which carries the SAME wf343c3 wire-up and the SAME
+# launcher-specific out-dir the deleted entries asserted.
+ARCHIVE = ROOT / "TODO" / "archive" / "wf437_simplify"
 
 # The 6 launchers covered by Wf-356-A1 (Wf-347-B3 retry scope)
+# Wf-A269 wave-3 (2026-11-02) — RESTORED: wave-3 deleted the two archived
+# launchers' entries (6 -> 4) while every "6" claim in this file stood.
+# That was a silent deletion (AGENTS.md §5.5 rule #6).  The entries are
+# restored, pointing at the archived copies, which carry the exact wire-up
+# the deleted entries asserted:
+#   TODO/archive/wf437_simplify/launch_wf124_p3_g4.sh:95
+#       --out-dir molmetal/reports/wf124_p3_g4_data_quality
+#   TODO/archive/wf437_simplify/launch_wf300_cfm_main.sh:91
+#       --out-dir molmetal/reports/wf300_cfm_main_data_quality
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+#   LAUNCHER_PATHS = [
+#       SCRIPTS / "launch_wf124_p3_g5.sh",
+#       SCRIPTS / "launch_wf124_p3_g6.sh",
+#       SCRIPTS / "launch_wf310b_g6_final.sh",
+#       SCRIPTS / "retry_g5_missing_pairs.sh",
+#   ]
 LAUNCHER_PATHS = [
-    SCRIPTS / "launch_wf124_p3_g4.sh",
+    ARCHIVE / "launch_wf124_p3_g4.sh",
     SCRIPTS / "launch_wf124_p3_g5.sh",
     SCRIPTS / "launch_wf124_p3_g6.sh",
     SCRIPTS / "launch_wf310b_g6_final.sh",
-    SCRIPTS / "launch_wf300_cfm_main.sh",
+    ARCHIVE / "launch_wf300_cfm_main.sh",
     SCRIPTS / "retry_g5_missing_pairs.sh",
 ]
 

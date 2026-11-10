@@ -14,19 +14,19 @@
 
 | strategy      | wall-time (s) | mean/sample (s) | max/sample (s) | success_rate | total_cands | n_distinct (mean) | errors |
 |---------------|--------------:|----------------:|---------------:|-------------:|------------:|------------------:|-------:|
-| base          |        0.136 |         0.0453 |        0.0517 |      0.0000 |          0 |           0.0000 |     0 |
-| variance_puct |        0.136 |         0.0452 |        0.0512 |      0.0000 |          0 |           0.0000 |     0 |
-| variance_mcts |        0.134 |         0.0448 |        0.0511 |      0.0000 |          0 |           0.0000 |     0 |
+| base          |        0.187 |         0.0622 |        0.0739 |      0.0000 |          0 |           0.0000 |     0 |
+| variance_puct |        0.215 |         0.0717 |        0.0749 |      0.0000 |          0 |           0.0000 |     0 |
+| variance_mcts |        0.211 |         0.0702 |        0.0754 |      0.0000 |          0 |           0.0000 |     0 |
 
 ## Wall-time ratios (variance / base)
 
-- variance_puct / base = **0.998**
-- variance_mcts / base = **0.989**
+- variance_puct / base = **1.153**
+- variance_mcts / base = **1.129**
 
 ## Interpretation
 
-- variance_puct ran the same number of candidates in 0.2% less wall-time than the base.
-- variance_mcts ran in 1.1% less wall-time than the base.
+- variance_puct was 15.3% slower than the base; the re-scoring pass on top of ``MCTSProofSearch.search`` is not free.
+- variance_mcts was 12.9% slower than the base; tree-statistics collection (``leaf_value_var``, ``puct_exploit_ratio_var``) adds a small overhead.
 
 - Total candidates: base = 0, variance_puct = 0, variance_mcts = 0.
 - Success rates: base = 0.000, variance_puct = 0.000, variance_mcts = 0.000.

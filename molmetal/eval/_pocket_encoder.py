@@ -79,8 +79,9 @@ def build_pocket_encoder(
     use_pocket_encoder : bool
         When ``True``, attempt to instantiate :class:`PocketGenEncoder`
         from :mod:`molmetal.adapters.pocketgen`.  When ``False`` (the
-        default — the §5.11 bit-exact path), return immediately with
-        ``(False, None, 0)`` and no warning.
+        default — the ~~§5.11 bit-exact path~~
+        → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31), return immediately
+        with ``(False, None, 0)`` and no warning.
     ckpt_state : dict, optional
         The full checkpoint state dict (the return value of
         :func:`molmetal.eval.cross_dataset._load_pretrained_checkpoint`).
@@ -115,7 +116,8 @@ def build_pocket_encoder(
     imports.  So at this helper level we never touch those deps.
     """
     if not use_pocket_encoder:
-        # §5.11 bit-exact default — short-circuit before any import.
+        # ~~§5.11 bit-exact default~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
+        # — short-circuit before any import.
         return (False, None, 0)
     try:
         from molmetal.adapters.pocketgen import PocketGenEncoder

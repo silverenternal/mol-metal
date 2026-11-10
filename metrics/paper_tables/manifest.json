@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-19T16:57:15Z",
+  "generated_utc": "2026-10-30T18:45:58Z",
   "tables": [
     {
       "id": "T1_main_predictive",
@@ -222,11 +222,11 @@
     }
   ],
   "sources": {
-    "cfm_generation_metrics.json": "435a50b1e21b282fe3cb235603522ce3adff891c80139657d76ffa781dd7bb29",
-    "cfm_sa_guided.json": "a61f62ded049b299e7b22e609d71770d3db15301dce0dcd94a36d8a69b216948",
-    "metal_lomo_auc_wasserstein.json": "0a3d3cae45b526679613ee64768d76becb9a309ed4fc37917d09d0a29fb6ceb9",
+    "cfm_generation_metrics.json": "2487151810d6530e06ea16e6fa6cf8276983ca8a5aebd6861c2d9462c69d3eeb",
+    "cfm_sa_guided.json": "ba655c098d5dee7762a475caf3719eef9008601da2938a86ac8a1e3be7be4400",
+    "metal_lomo_auc_wasserstein.json": "90a9c0c095605fbe20e49a2dfb830a6a890b961b9204330d6cc234bdb6d4aa74",
     "msrs_calibration.json": "80f752b603bf5e1316fabcfa2076703a194ee380f5e2d5215fe39ba774babb29",
-    "msrs_data_card.json": "e5ede80810c1c8c0823c8da3c6b7d72e63f25bd9d9d7d5d2f47a703b76169e19",
+    "msrs_data_card.json": "8efc13c9bd45a4fd35256f08ec582d03ad319478fd759f192a247077e4005b31",
     "msrs_decision_curve.json": "9bbcb4c105013ecf0edfb061ac994f4aafd43d8fde05d785c4d15b45a3ab47e1",
     "msrs_delta_direct.json": "212f53ad01c41ab816bc314d58aa3721f775315c3855fb941b72487959100616",
     "msrs_delta_metrics.json": "3178ca6e3dba0e76b69723ca9e4aa91616cdfb87b2185faa59abf8585edcd530",

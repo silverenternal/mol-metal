@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional
 
 # Wf-A49 (2026-10-16) — thread the ECE cite into Table 1's footnote row.
@@ -47,7 +48,9 @@ class TableCell:
 class PaperTable:
     def __init__(
         self,
-        metrics_dir: str = "/home/hugo/codes/mol-metal/metrics/by_metric",
+        metrics_dir: str = str(
+            Path(__file__).resolve().parents[3] / "metrics" / "by_metric"
+        ),
         baseline_dir: Optional[str] = None,
     ) -> None:
         self.metrics_dir = metrics_dir

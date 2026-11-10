@@ -33,7 +33,7 @@ from rdkit import Chem  # noqa: E402
 from molmetal.molmetal_lam.lam_chem import data_diversity as dd  # noqa: E402
 
 
-REPO_ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 KNOWN_PT_CSV = REPO_ROOT / "molmetal" / "data" / "known_pt_drugs.csv"
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "r4_lambda_only_run.py"
 

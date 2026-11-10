@@ -1,0 +1,1375 @@
+{
+  "metric": "wfa155_posebusters_validity",
+  "tag": "MEASURED",
+  "date": "2026-11-01",
+  "wave": "Wf-A155",
+  "branch": "POSE",
+  "purpose": "PoseBusters ('mol' config) validity rate over the published CFM decode pool -- the frontier option (c) of the Wf-A155 wave: we had NO PoseBusters column at all before this artifact.",
+  "generated_at_utc": "2026-10-31T17:47:33.938577+00:00",
+  "source_pool": {
+    "path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+    "sha256": "4b3f7687b1ad3a9af71525b815922a34b0ccb2b4edc87a041871900837bb5e46",
+    "n_data_rows": 2112,
+    "columns": [
+      "epoch",
+      "smiles",
+      "n_frags_raw",
+      "largest_frag_frac"
+    ],
+    "pool_kind": "post_hoc_decode_pool_3_epochs_1_checkpoint",
+    "composition": {
+      "n_rows_parsed_by_rdkit": 2112,
+      "n_rows_with_at_least_one_metal_atom": 2112,
+      "fraction_rows_with_a_metal_atom": 1.0,
+      "total_metal_atoms": 2112,
+      "metal_element_counts": {
+        "Ir": 177,
+        "Os": 114,
+        "Pt": 225,
+        "Re": 456,
+        "Rh": 45,
+        "Ru": 1095
+      },
+      "n_rows_with_an_explicit_hydrogen_atom_in_the_smiles": 0,
+      "explicit_hydrogen_note": "0 means the pool SMILES carry IMPLICIT hydrogens only; RDKit AddHs is applied inside the runner's embedding step. The frontier dataset carries explicit hydrogens, which is one of the four comparability breaks.",
+      "metal_definition": "atomic number in the metal set (all elements except B, C, N, O, F, Si, P, S, Cl, Ge, As, Se, Br, Te, I, Xe, At, Rn)"
+    },
+    "epoch_column_distribution": {
+      "0": 704,
+      "1": 704,
+      "2": 704
+    },
+    "n_distinct_epochs": 3,
+    "pool_structure_note": "MEASURED 2026-11-01 from the pool's own columns: the pool is THREE epoch-wise decodes of ONE checkpoint (epoch 0/1/2, 704 rows each = 2112; the run directory carries only cfm_yuelbond_wasserstein_seed0). It is NOT a single decode, and it carries no checkpoint-to-checkpoint variance.",
+    "pool_caveat": "THREE epoch-wise decodes of ONE checkpoint (704 rows each, 6 seeds per epoch), not a training-set-distribution sampling and not a 10,000-15,000-draw benchmark. The frontier band is over 10,000-15,000 such draws, so even a like-for-like metric would not be a like-for-like population."
+  },
+  "protocol": {
+    "n_conformers": 5,
+    "embed_method": "ETKDGv3",
+    "optimize_method": "MMFF94",
+    "posebusters_config": "mol",
+    "backend_module": "molmetal.validation.posebusters_runner.check_posebusters",
+    "embed_random_seed": 42,
+    "embed_random_seed_source": "molmetal/validation/posebusters_runner.py::_embed_conformers (params.randomSeed = 42, hard-coded in the existing runner)",
+    "runner_fails_closed": "a check the runner could not compute (None) counts as a failure -- this is the existing module's semantics and is NOT changed here",
+    "wall_seconds": 1579.2717657770263,
+    "n_workers": 16,
+    "execution": "one isolated child process per pool row (ThreadPoolExecutor driving subprocess.run), CPU-only",
+    "row_timeout_s": 45.0,
+    "row_timeout_policy": "a row whose PoseBusters call exceeds row_timeout_s is KILLED and recorded with status 'timeout'. A timeout is a CENSORING event, not a chemistry verdict: it counts as NOT pb_valid in the strict rate, and the counts block reports n_timeout and a completed-only rate so the censoring is visible.",
+    "row_timeout_rationale": "MEASURED 2026-11-01: the three longest pool SMILES took 86.7 s / 60.5 s / 0.1 s on a single molecule-level check_posebusters call, and an in-process pool blocks indefinitely on such a row. The child-process cap is what makes a FULL-POOL run terminate.",
+    "longest_pool_smiles_call_seconds": [
+      86.7,
+      60.5,
+      0.1
+    ],
+    "longest_pool_smiles_call_seconds_provenance": {
+      "measured_on_pool_path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+      "measured_on_pool_sha256": "4b3f7687b1ad3a9af71525b815922a34b0ccb2b4edc87a041871900837bb5e46",
+      "measurement_date": "2026-11-01",
+      "measurement_record_path": "molmetal/reports/wfa164_posebusters_narrative/default_pool_bounded_original.json",
+      "measurement_record_field": "protocol.row_timeout_rationale",
+      "measurement_tool": "molmetal.validation.posebusters_runner.check_posebusters",
+      "measurement_scope": "the three LONGEST SMILES of that pool, ONE molecule-level check_posebusters call each",
+      "certification_rule": "these three numbers are a MEASUREMENT OF THE POOL NAMED ABOVE and may be certified for that pool only; for any other pool this block reports that they do not apply and the numbers are not emitted",
+      "applicable_to_this_pool": true,
+      "seconds": [
+        86.7,
+        60.5,
+        0.1
+      ]
+    },
+    "device": "CPU"
+  },
+  "scope": {
+    "kind": "full_pool",
+    "n_selected": 2112,
+    "n_pool": 2112,
+    "sampling": null,
+    "is_subset": false,
+    "pool_sha256_at_run_time": "4b3f7687b1ad3a9af71525b815922a34b0ccb2b4edc87a041871900837bb5e46",
+    "label": "FULL POOL -- every row of the pool was checked"
+  },
+  "tool_versions": {
+    "rdkit": "2026.3.6",
+    "posebusters": "0.6.5",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5"
+  },
+  "counts": {
+    "n_rows_in_scope": 2112,
+    "n_pb_valid": 29,
+    "n_pb_invalid": 1443,
+    "n_embed_failed": 525,
+    "n_unparseable": 0,
+    "n_skipped_posebusters_missing": 0,
+    "n_timeout": 115,
+    "n_scored": 1472,
+    "status_counts": {
+      "embed_failed": 525,
+      "pb_invalid": 1443,
+      "pb_valid": 29,
+      "timeout": 115
+    },
+    "pb_valid_rate_strict": 0.013731060606060606,
+    "pb_valid_rate_strict_via_repo_helper": 0.013731060606060606,
+    "strict_rate_cross_check": "pb_valid_rate_strict_via_repo_helper is the same number produced by molmetal.validation.posebusters_runner.pb_pass_rate() on runner-shaped result dicts -- the repo's own aggregation helper. It MUST equal pb_valid_rate_strict.",
+    "pb_valid_rate_scored": 0.01970108695652174,
+    "pb_valid_rate_scored_plus_embed_failed": 0.014521782674011016,
+    "denominators": {
+      "strict": {
+        "n": 2112,
+        "definition": "every row in scope; unparseable + embed_failed + skipped all count as NOT pb_valid"
+      },
+      "scored": {
+        "n": 1472,
+        "definition": "rows that produced a PoseBusters verdict (pb_valid + pb_invalid)"
+      },
+      "scored_plus_embed_failed": {
+        "n": 1997,
+        "definition": "scored rows plus embed-failed rows, with embed failure counting as NOT pb_valid; unparseable + skipped excluded",
+        "is_headline": false
+      },
+      "completed_only": {
+        "n": 1587,
+        "definition": "rows that produced a PoseBusters verdict plus rows that hit the per-row wall-clock cap; a timeout counts as NOT pb_valid. Reported so the censoring effect of the timeout policy is visible.",
+        "is_headline": false
+      }
+    },
+    "pb_valid_rate_completed_only": 0.018273471959672338,
+    "n_forcefield_parameterisation_failures": 1217,
+    "forcefield_parameterisation_note": "n_forcefield_parameterisation_failures counts the scored rows whose PoseBusters 'internal_energy' check came back MISSING (None) because neither MMFF94 nor UFF could parameterise the molecule -- this is the metal-coordination blind spot of the force field, and the runner fails closed on it, so those rows count as NOT pb_valid.",
+    "per_check_not_true_counts": {
+      "all_atoms_connected": 1065,
+      "bond_angles": 1184,
+      "bond_lengths": 1084,
+      "double_bond_flatness": 11,
+      "inchi_convertible": 1,
+      "internal_energy": 1217,
+      "internal_steric_clash": 1135,
+      "no_radicals": 6
+    },
+    "per_check_explicit_false_counts": {
+      "all_atoms_connected": 1065,
+      "bond_angles": 1184,
+      "bond_lengths": 1084,
+      "double_bond_flatness": 11,
+      "inchi_convertible": 1,
+      "internal_steric_clash": 1135,
+      "no_radicals": 6
+    },
+    "per_check_missing_counts": {
+      "internal_energy": 1217
+    },
+    "n_conformers_embedded_histogram": {
+      "1": 118,
+      "2": 94,
+      "3": 97,
+      "4": 108,
+      "5": 1055
+    },
+    "n_pb_rows_evaluated_histogram": {
+      "1": 1472
+    },
+    "n_rows_with_partial_embed": 417,
+    "sum_row_elapsed_s": 25025.679733794474,
+    "row_elapsed_s_percentiles": {
+      "p50": 7.752790435042698,
+      "p90": 28.310474915022496,
+      "p99": 45.633760970958974,
+      "max": 46.419374872988556
+    },
+    "row_timeout_s": 45.0,
+    "n_rows_at_or_above_90pct_of_timeout_cap": 132,
+    "by_pool_fragment_count": {
+      "single_fragment": {
+        "n_rows": 529,
+        "n_pb_valid": 29,
+        "n_pb_invalid": 378,
+        "n_embed_failed": 86,
+        "n_unparseable": 0,
+        "n_timeout": 36,
+        "n_scored": 407,
+        "pb_valid_rate_strict": 0.054820415879017016,
+        "pb_valid_rate_scored": 0.07125307125307126
+      },
+      "multi_fragment": {
+        "n_rows": 1583,
+        "n_pb_valid": 0,
+        "n_pb_invalid": 1065,
+        "n_embed_failed": 439,
+        "n_unparseable": 0,
+        "n_timeout": 79,
+        "n_scored": 1065,
+        "pb_valid_rate_strict": 0.0,
+        "pb_valid_rate_scored": 0.0
+      },
+      "fragment_count_unknown": {
+        "n_rows": 0,
+        "n_pb_valid": 0,
+        "n_pb_invalid": 0,
+        "n_embed_failed": 0,
+        "n_unparseable": 0,
+        "n_timeout": 0,
+        "n_scored": 0,
+        "pb_valid_rate_strict": 0.0,
+        "pb_valid_rate_scored": 0.0
+      },
+      "_why": "PoseBusters' 'all_atoms_connected' check is exactly the check a multi-fragment row cannot pass, so the pooled rate mixes a GEOMETRY question with a FRAGMENTATION question. The single_fragment group is the rate that speaks to 3D geometry alone.",
+      "_conditioning_variable": "the pool's own n_frags_raw column (2D graph-fragment count)"
+    },
+    "by_pool_epoch": {
+      "0": {
+        "n_rows": 704,
+        "n_pb_valid": 9,
+        "n_pb_invalid": 441,
+        "n_embed_failed": 210,
+        "n_unparseable": 0,
+        "n_timeout": 44,
+        "n_scored": 450,
+        "pb_valid_rate_strict": 0.01278409090909091,
+        "pb_valid_rate_scored": 0.02
+      },
+      "1": {
+        "n_rows": 704,
+        "n_pb_valid": 7,
+        "n_pb_invalid": 470,
+        "n_embed_failed": 195,
+        "n_unparseable": 0,
+        "n_timeout": 32,
+        "n_scored": 477,
+        "pb_valid_rate_strict": 0.009943181818181818,
+        "pb_valid_rate_scored": 0.014675052410901468
+      },
+      "2": {
+        "n_rows": 704,
+        "n_pb_valid": 13,
+        "n_pb_invalid": 532,
+        "n_embed_failed": 120,
+        "n_unparseable": 0,
+        "n_timeout": 39,
+        "n_scored": 545,
+        "pb_valid_rate_strict": 0.018465909090909092,
+        "pb_valid_rate_scored": 0.023853211009174313
+      },
+      "_why": "the published pool is THREE epoch-wise decodes of ONE checkpoint (704 rows each, 6 seeds per epoch), so this block shows the epoch-to-epoch spread of the same checkpoint's decode.",
+      "_conditioning_variable": "the pool's own epoch column"
+    }
+  },
+  "conformer_sensitivity_probe": {
+    "n_rows_probed": 25,
+    "n_comparable": 16,
+    "n_agree": 16,
+    "n_disagree": 0,
+    "agreement_rate": 1.0,
+    "n_embed_failed_on_either_arm": 7,
+    "disagreements": [],
+    "method": "the same molecule checked twice through the public runner surface: check_posebusters(n_conformers=1) vs check_posebusters(n_conformers=<protocol>), each under the same hard per-row wall-clock cap as the main pass",
+    "why": "PoseBusters' 'mol' config evaluates ONE conformer of the molecule (posebusters/config/mol.yml -> modules/distance_geometry.py uses mol.GetConformer()); the extra conformers are embedded and MMFF94-optimised but only one is judged.",
+    "sample_seed": 155,
+    "sample_method": "random.Random(probe_seed).sample(range(n_pool), probe_size)",
+    "wall_seconds": 91.7643239350291
+  },
+  "timeout_recheck": {
+    "n_timeouts_in_main_pass": 115,
+    "n_rechecked": 24,
+    "recheck_cap_s": 240.0,
+    "recheck_max_rows": 24,
+    "recheck_wall_seconds": 312.0644534320454,
+    "recheck_status_counts": {
+      "embed_failed": 2,
+      "pb_invalid": 9,
+      "pb_valid": 1,
+      "timeout": 12
+    },
+    "n_that_would_be_pb_valid": 1,
+    "n_that_would_be_pb_invalid": 9,
+    "n_still_embed_failed": 2,
+    "n_still_timed_out": 12,
+    "bias_direction": "the censored rows were counted as NOT pb_valid in the strict rate; if the re-check turns some of them into pb_valid rows, the strict rate is a LOWER bound on the pool rate, and the size of the effect is n_that_would_be_pb_valid",
+    "rows": [
+      {
+        "row_index": 49,
+        "smiles": "C.CCC(C)C(CC(CC)(CCl)C1CO1)C(C)C12C3C4C3C41N2C(C)(NC(N)[CH](C)[Re][CH3])C(C)CC.ONO",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.28500337904552
+      },
+      {
+        "row_index": 52,
+        "smiles": "C.C.CCCC(CC)CC(ON)[CH](NCNCC)[Re]12([NH2])([NH]C(COOC)C3C4C(CC(C)CC)N34)[CH2][CH]1[CH]2O.N",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.26773921999848
+      },
+      {
+        "row_index": 92,
+        "smiles": "CCCC(CC)C(C)NNC(CCC)C(C)(CC)[CH2][Ru]1([CH3])([CH2]C)([CH2]C)[C](CC)(C(CCC)CC(C)(C)CC)C23N4C5=C(Cl)C6=C7C(C752)C32N4[C]621.Cl",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.18804190598894
+      },
+      {
+        "row_index": 102,
+        "smiles": "CCCC1CC(C)C(C)C1C1C2C34C(CCC(N)CC)C13[C]21C4(C2CC2C)[C](C)(NC)[Re]1([CH3])([CH2]CC)([CH]1C2CC21)[N](CCC(C)CC)CN(C)P(C)CC.P",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.36186932696728
+      },
+      {
+        "row_index": 126,
+        "smiles": "CCCCCC1SN2N3P(S)C45C67C89SCCC%10%11C%12%13C%14(CC)C%15(C)C(=C8C6(C)C(CC)(CN)C6(C)C8%16C6%17C%108C%11%16%17)P(CC)C6C8C6C%146C([C](=[Ru]%10=[C](C%11S[C]8%10C%11CCP)C18CC8C)C1C(N8CC(CCC)C8CC)P19)(C61P6C18C6%12C%158%13)C47C51C45C26C32C64C251",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.21643043699441
+      },
+      {
+        "row_index": 173,
+        "smiles": "C.C.C=C(C)[C](C)(C)[Re]12([CH3])([CH2][CH]1CCC)[C]1=C3C(C(C(C)C(C)C(C)C)C(CC)C(C)CC)=C4C5P4C5(C1=C(CCC)[CH]2C(C)C)P3C",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.2916802779655
+      },
+      {
+        "row_index": 175,
+        "smiles": "CCCCC(C)C(C1C(C)C1CC)C12OC13C(C)(CC)C23N1[O][Re]([CH3])([CH2]C)([NH]C(C)CC)([CH](C(C)CC)C(C)CCP)[CH]2C(C(C)C3CP3)C21",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "bond_angles"
+        ],
+        "elapsed_s": 139.6631120320526
+      },
+      {
+        "row_index": 233,
+        "smiles": "C.C.CCOCC(CCONC(C)C(C(C)CC(C)C)C1[CH]2[C]34C1(C)C31[CH]3[N]1[Re]324[CH3])C(C)(N)SCN.O",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.35889272100758
+      },
+      {
+        "row_index": 248,
+        "smiles": "CC.CCC[CH2][Re]123([S][P]1P(C)SC(CC)(CC(C)(C)CCCP(C)C)C(C)C)[CH]1C[C]12[CH]3C(C)C(CC)CSCC",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_angles",
+          "internal_steric_clash"
+        ],
+        "elapsed_s": 21.52510914200684
+      },
+      {
+        "row_index": 254,
+        "smiles": "C.CC.CCCCC(C(C(CCl)CP1CC1)[CH]1[CH]2[CH](CC(C)C(CC)CC)[Re]123([Cl])[NH][CH]3CCC(C)C)C1CC2PC21C.N",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_angles",
+          "internal_steric_clash"
+        ],
+        "elapsed_s": 71.92621209297795
+      },
+      {
+        "row_index": 255,
+        "smiles": "C.CCCC(O)C(CC(C)C(CPC)CC(C)Cl)[CH]1[CH](C(CC)C(C)C(C(O)C(CC)CCCl)P(C)C(C)C)[Re]123([Cl])[CH]1[CH]2[CH]13",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_angles",
+          "internal_steric_clash"
+        ],
+        "elapsed_s": 21.78753842000151
+      },
+      {
+        "row_index": 269,
+        "smiles": "C.C.CCC(C)C(C)(C(C)C)C1C(CC(C)[P](C(C)C)[Ru]23([F])([P](CF)C45C6=CC(F)(NC64)C4C(C(C)N)C45)[CH2][C]2(C)[CH2]3)C1C(C)(C)F",
+        "status": "embed_failed",
+        "pb_valid": false,
+        "failures": [
+          "embed_failed"
+        ],
+        "elapsed_s": 131.09446486097295
+      },
+      {
+        "row_index": 290,
+        "smiles": "C.C.CCCCC(C(CO)C(C)C)C1C(CC)[C]12[C]1(C3(CCCC)CC34OP4N)[C]34[C]56C7[CH](C(C(CCC)C8C9C8P9C(C)CC)C8C(C)C8OC)[Re]2513[C]764",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.38604301202577
+      },
+      {
+        "row_index": 294,
+        "smiles": "C.CCNC(P(CC)C1CC1C1CC1C(C)C)[C](C)(C12C3(C4C(C)N4CC)C14C(CC)C342)[Re]1234[N]5C(C(C)CC)C(C(CC)C6C(C)C6C(C)C)[C]51P1[C]25[N]3[C]154",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.34617538901512
+      },
+      {
+        "row_index": 302,
+        "smiles": "BC(CC)OC1(C(CC)C(C)C)C2=[C]3[P]4[B]5[C](C(C(C(OC)C6CC6)C6C(CC(N)C(C)C)C6CC6C(C)C6C(C)NC)=C2CC2CC2)(C2(C)CC12CP(C)CCC)[Pt]534",
+        "status": "embed_failed",
+        "pb_valid": false,
+        "failures": [
+          "embed_failed"
+        ],
+        "elapsed_s": 96.20648024301045
+      },
+      {
+        "row_index": 304,
+        "smiles": "CCCCC(C)[N](NC(CC(C)C)C(C)C)[Ru]12([Cl])([Cl])[O][C]13C14C5(C(CCC)=C(C(C)C)C6C7C(=C(CCC)C(C)C8(CC)C9(C)C8%10CC9%10C51C(CCC)C(C)CC)C67)[C]432",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "bond_lengths",
+          "bond_angles",
+          "internal_energy"
+        ],
+        "elapsed_s": 23.234300470969174
+      },
+      {
+        "row_index": 316,
+        "smiles": "CCC1(NC(C2C3CC32)C2(C(N)N)C34OC3(C)C43[CH]4[C](C)(CC)[Ru]456([CH2]C)[C](N)(CC)C4(C)N7C4(CC)[C]54C58C9%10OC7%11C7%12C9%13N9N%14C%15%16OC%15%17C%14%16C7%14C7%15OC9(N9C7%14C97C5(C59C%14NC%14C%14C%16(C)C%142C%165C3(C9C)C2(C)C%11%13[C]276)C%1084)C%17%15%12)C(C)C1N",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.20618179498706
+      },
+      {
+        "row_index": 331,
+        "smiles": "CCC(O)C(OC(C)(C)O)C12C34OC31C42C(C)[CH](Cl)[Re][CH3].CCS.NN",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "internal_steric_clash",
+          "internal_energy"
+        ],
+        "elapsed_s": 109.3513079189579
+      },
+      {
+        "row_index": 344,
+        "smiles": "C.C.CCCC(C)(N)C(C)C12OC1(N(CO)COC)C2(CC)[CH]1[N]2[N]3[CH2][Re]132([CH3])[OH].CCO.N",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_angles",
+          "internal_steric_clash"
+        ],
+        "elapsed_s": 45.94461075600702
+      },
+      {
+        "row_index": 357,
+        "smiles": "C.C.CC.CCCC(N)(N[CH2][Re])C(CC)C(NC)C1C2C(C3C(CC)C3CC(CC)PC3CP3CN)C12",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.2144719819771
+      },
+      {
+        "row_index": 363,
+        "smiles": "CCC(C(CBr)C1C(C)C1C)C1C23C4(C([O][Re][CH3])C5CC5C5CO5)C5(C(C)(CC)N(NC(C)C)OC)C12C345",
+        "status": "timeout",
+        "pb_valid": false,
+        "failures": [
+          "row_timeout"
+        ],
+        "elapsed_s": 240.13450272701448
+      },
+      {
+        "row_index": 376,
+        "smiles": "CCCC(C(C)CC(C)CC)C(C(C(S)CCCS)C1C(C[CH2][Re])C1SC(C)(CC)C(CC)C(P)PC)P(C)CC",
+        "status": "pb_valid",
+        "pb_valid": true,
+        "failures": [],
+        "elapsed_s": 79.33364796300884
+      },
+      {
+        "row_index": 392,
+        "smiles": "CCCCC1C(C(CC(C)C)C(C)CC(C)CC)[CH]1[Ir]12([CH2]CC)([CH](C(C)CC)C(NC)C(C)C(C)C(C)CC)[CH]3[CH]1[CH]32.CN(C)C",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_lengths",
+          "bond_angles",
+          "internal_steric_clash",
+          "internal_energy"
+        ],
+        "elapsed_s": 37.56247569597326
+      },
+      {
+        "row_index": 395,
+        "smiles": "CCC(C)C(CC(C)C)C(C1CC1(C)C)[CH]1[NH][Ru]12([Cl])([C](C)(OC(C)CCl)C(N)C(C)CC)[CH](C(C)CC)[CH]2C(CC)OC(C)CN.O",
+        "status": "pb_invalid",
+        "pb_valid": false,
+        "failures": [
+          "all_atoms_connected",
+          "bond_lengths",
+          "bond_angles",
+          "internal_steric_clash",
+          "internal_energy"
+        ],
+        "elapsed_s": 38.227932993962895
+      }
+    ]
+  },
+  "headline": {
+    "pb_valid_rate_strict_denominator": 0.013731060606060606,
+    "pb_valid_rate_scored_denominator": 0.01970108695652174,
+    "n_pb_valid": 29,
+    "n_scored": 1472,
+    "n_rows_in_scope": 2112,
+    "n_embed_failed": 525,
+    "n_unparseable": 0,
+    "n_timeout": 115,
+    "n_forcefield_parameterisation_failures": 1217,
+    "strict_denominator_definition": "every row in scope, including rows that could not be parsed or embedded",
+    "scored_denominator_definition": "rows that produced a PoseBusters verdict",
+    "one_line": "29/2112 rows are PoseBusters-valid under the strict denominator; 29/1472 under the scored denominator.",
+    "pb_valid_rate_scored_single_fragment": 0.07125307125307126,
+    "pb_valid_rate_scored_multi_fragment": 0.0,
+    "single_fragment_note": "the single-fragment conditional rate is the number that speaks to 3D GEOMETRY alone: a multi-fragment row cannot pass PoseBusters' 'all_atoms_connected' check for reasons that belong to the fragmentation axis, not to the geometry."
+  },
+  "not_a_restatement_of": {
+    "the_8_51_pct_headline": "NOT a restatement of metrics/by_metric/cfm_fragmentation_audit.json -> /summary/generation_side/single_molecule_rate_end_to_end (median 0.08506944444444445). That is an END-TO-END single-molecule rate over 9 RUNS; this is a SINGLE-POOL GEOMETRY rate over ONE decode. Different quantity, different population.",
+    "the_25_05_pct_fragment_count": "NOT a restatement of the single-pool 'n_frags == 1' count (529/2112 = 25.05 %). That is a 2D graph-fragment count; this artifact is a 3D geometry verdict. NOTE that the single_fragment conditional rate reported under counts.by_pool_fragment_count is NOT the 25.05 % either: 25.05 % is the FRACTION of pool rows that are single-fragment, while the conditional rate is the PoseBusters-valid rate WITHIN the 529-row single-fragment subpopulation. Two different quantities over the same partition.",
+    "prior_posebusters_artifacts": "NOT a restatement of any earlier PoseBusters artifact. ~~metrics/by_metric/wf32_pb_valid.json was SKIPPED (posebusters not installed), wf32_pb_valid_summary.json is the same smoke's summary, wf32_pb_valid_verify.json measured ONE molecule (ethanol 'CCO'), and steric_clash_pb_dock*.json are DEFERRED / null. This is the first POOL-SCALE PoseBusters measurement in the repo.~~ **CORRECTED 2026-11-01 (same wave, BEFORE the artifact was written to disk): the superseded rendering above was INCOMPLETE (it listed 4 of the 9 PoseBusters-bearing artifacts in metrics/by_metric/) and, for one file, IMPRECISE (steric_clash_pb_dock_1h36.json is NOT 'DEFERRED / null'). The corrected enumeration, every item verified against the file on disk: (a) wf32_pb_valid.json -- 1 pocket (pdk1) x 1 candidate (cisplatin) x 2 pose modes = 2 evaluations, BOTH SKIPPED ('posebusters not installed'), pb_valid null, pass_rate 0.0; (b) wf32_pb_valid_summary.json -- the same 2-evaluation smoke; (c) wf32_pb_valid_verify.json + wf32_pb_valid_verify_summary.json -- ONE molecule ('CCO'), 'mol' mode, 12/12 checks pass, overall_pb_pass_rate 1.0; (d) pb_pass_rate.json -- the outer gate, best_measured_smoke 0.846 with n_samples 26 on a 1-pocket click_tile smoke, every larger cell UNDEFINED / search-bound / drive-aborted; (e) steric_clash_pb_dock.json and steric_clash_pb_dock_test_001.json -- status DEFERRED, value.rate null; (f) steric_clash_pb_dock_1h36.json -- status MEASURED_SMOKE (NOT 'DEFERRED / null'): 16 AutoDock-Vina poses on pocket 1h36, m8_full_pass_rate 0.0/16 with rate_protein_aware_subset 0.6875; (g) docked_pose_rmsd.json, r13_100x3_partial.json and metrics/by_metric/_audit/m5_real_per_metric.json -- all record 'PoseBusters validity SKIPPED graceful'; r13_100x3_partial.json carries pb_pass_rate_aggregate = null; (h) tier2_summary.json and vina_kcal_per_mol.json -- prose pointers only, no PoseBusters measurement. The LARGEST PoseBusters sample recorded anywhere in metrics/by_metric/ is n_samples = 26 (pb_pass_rate.json, a 1-pocket smoke). This artifact IS the first POOL-SCALE PoseBusters measurement in the repo: all 2112 rows of the published CFM decode pool.**"
+  },
+  "comparability_vs_frontier_band": {
+    "frontier_band": {
+      "band_connected_pct": [
+        92.7,
+        94.0
+      ],
+      "ef_talfm_arxiv_2609_08333": {
+        "connected_pct": 92.98,
+        "sanitized_pct": 98.25,
+        "unique_sanitized_pct": 98.21,
+        "novel_unique_sanitized_pct": 94.33,
+        "n_generated": 10000
+      },
+      "flowmol3_arxiv_2508_12629": {
+        "pct_valid": [
+          99.9,
+          0.1
+        ],
+        "pct_pb_valid": [
+          91.9,
+          0.7
+        ],
+        "venue": "Digital Discovery 2026, 5(5):2052-2066",
+        "dataset": "GEOM-Drugs with explicit hydrogens"
+      },
+      "frontier_denominator_draws": "10,000-15,000",
+      "frontier_denominator_draws_min": 10000,
+      "frontier_denominator_draws_max": 15000
+    },
+    "n_independent_comparability_breaks": 4,
+    "breaks": [
+      {
+        "id": 1,
+        "axis": "DENOMINATOR",
+        "frontier": "over 10,000-15,000 generated molecules drawn from a training-set-distribution sampling",
+        "ours": "ONE pool of 2112 rows spanning 3 epoch labels with 704 rows each, decoded from 1 checkpoint, with 6 decode seeds (molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv)",
+        "consequence": "different populations; the two rates are not exchangeable"
+      },
+      {
+        "id": 2,
+        "axis": "METRIC",
+        "frontier": "'connected' = the DECODER's own connectivity claim; 'valid' = RDKit sanitisation; '% PB-Valid' = PoseBusters geometry",
+        "ours": "'connected' = an RDKit fragment count of the emitted SMILES; 'pb_valid' = the PoseBusters 'mol' module verdict on an ETKDGv3/MMFF94 conformer ensemble",
+        "consequence": "the denominators are different events even before the population differs"
+      },
+      {
+        "id": 3,
+        "axis": "POST-PROCESSING",
+        "frontier": "under the `band_provenance` reading the published band names two cells that are RAW (post_processed: false in the band-provenance record), but whether the band AS A WHOLE is RAW is NOT settled on disk -- the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- the first under `band_provenance`, the second under `sources`.`EF-TALFM` -- and they do not even agree on the numerals",
+        "ours": "RAW -- no post-processing was applied to this pool",
+        "consequence": "post-processing is a THIRD, separate axis on top of the METRIC break, not the break itself: OUR arm is RAW, and whether the band's arm is RAW as a WHOLE is NOT settled on disk; the decisive break is that under BOTH readings the band is external, is NOT one homogeneous quantity, and is NOT on our scale (OUR number is a connected-component count on the RAW emitted SMILES, and nothing else)"
+      },
+      {
+        "id": 4,
+        "axis": "HYDROGENS",
+        "frontier": "the frontier dataset carries EXPLICIT hydrogens",
+        "ours": "our pool carries IMPLICIT hydrogens (RDKit AddHs is applied inside the embedding step, but the pool itself has no explicit-H atoms written into the SMILES)",
+        "consequence": "hydrogens change both sanitisation and geometry; this alone breaks the comparison"
+      }
+    ],
+    "statement": "Our % PB-Valid is NOT comparable to the frontier 91.9 +/- 0.7 % (% PB-Valid, FlowMol3 arXiv 2508.12629) or to the 92.7-94 % connected band. Four independent breaks (denominator, metric, post-processing, hydrogens) separate the two. Do NOT write 'our X % vs their 91.9 %' without this statement.",
+    "superseded_reading_2026_11_01": {
+      "date": "2026-11-01",
+      "wave": "Wf-A177",
+      "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "superseded": [
+        {
+          "id": 3,
+          "field": "frontier",
+          "text": "measured on the published POST-PROCESSED stream"
+        },
+        {
+          "id": 3,
+          "field": "consequence",
+          "text": "our number is not post-processed and theirs is"
+        }
+      ],
+      "why_superseded": "the published band-provenance claim asserted ONE of TWO competing readings as settled.  The repo holds two competing readings of the published 92.7-94 % band's source cells (frontier_matrix.json `band_provenance` vs `frontier_axis_mapping`), and they do not even agree on the numerals.  The corrected text asserts only the invariants that hold under BOTH readings: the band is EXTERNAL, is NOT one homogeneous quantity, and is NOT on our scale.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves (including the wall-clock-censored protocol.wall_seconds and counts.n_timeout) are UNCHANGED — the tool was NOT re-run, because a re-run would produce a NEW measurement, not a correction."
+    },
+    "superseded_reading_2026_11_01_wfa180": {
+      "date": "2026-11-01",
+      "wave": "Wf-A180",
+      "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "superseded": [
+        {
+          "id": 3,
+          "field": "frontier",
+          "text": "the published band's two endpoints are RAW (post_processed: false in the band-provenance record); which frontier cells the band names is NOT settled on disk -- the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- under `band_provenance` and under `frontier_axis_mapping` -- and they do not even agree on the numerals"
+        }
+      ],
+      "why_superseded": "the pointer `frontier_axis_mapping` is NOT a JSON key of molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json — a recursive key-walk finds that token only as a STRING VALUE, twice (inside band_provenance.competing_reading_and_what_this_does_not_settle.canonical_reading_safe_band_statement and inside ...readings[1].locator).  The record's OWN band_provenance.competing_reading_and_what_this_does_not_settle.line_number_note states: \"The ROBUST locators are the JSON PATHS -- `band_provenance` and `sources`.`EF-TALFM` -- not the line numbers.\"  The corrected string names the two REAL key paths.  The CLAIM is unchanged: two competing provenance readings, numerals disagree, invariants hold under BOTH.",
+      "note_on_the_wfa177_record": "the sibling key `superseded_reading_2026_11_01` (Wf-A177's own record) is preserved UNTOUCHED — including its `why_superseded` prose, which repeats the same defective pointer.  That defect is corrected ADDITIVELY here rather than by editing a dated record.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves (including the wall-clock-censored protocol.wall_seconds and counts.n_timeout) are UNCHANGED — the tool was NOT re-run, because a re-run would produce a NEW measurement, not a correction."
+    },
+    "superseded_reading_2026_11_01_wfa182": {
+      "date": "2026-11-01",
+      "wave": "Wf-A182",
+      "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "superseded": [
+        {
+          "id": 3,
+          "field": "frontier",
+          "text": "the published band's two endpoints are RAW (post_processed: false in the band-provenance record); which frontier cells the band names is NOT settled on disk -- the repo holds TWO competing provenance readings for it, both recorded in the frontier post-processing matrix record (`frontier_matrix.json`) -- the first under `band_provenance`, the second under `sources`.`EF-TALFM` -- and they do not even agree on the numerals"
+        },
+        {
+          "id": 3,
+          "field": "consequence",
+          "text": "post-processing is a THIRD, separate axis on top of the METRIC break, not the break itself: both arms are RAW, and the decisive break is that under BOTH readings the band is external, is NOT one homogeneous quantity, and is NOT on our scale (OUR number is a connected-component count on the RAW emitted SMILES, and nothing else)"
+        },
+        {
+          "id": 1,
+          "field": "ours",
+          "text": "ONE pool of 2112 rows from THREE epoch-wise decodes of ONE checkpoint (704 rows each, 6 seeds per epoch; molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv)"
+        }
+      ],
+      "why_superseded": "the POST-PROCESSING break asserted, WITHOUT qualification, that the published band's two endpoints are RAW and that both arms are RAW. That is FALSE under the SECOND competing provenance reading the frontier post-processing matrix record itself holds -- its `sources`.`EF-TALFM` path (EF-TALFM arXiv:2609.08333v4, Table 3(a)) pairs a RAW connectivity cell (`C.` = 92.98 %), counted BEFORE the largest-component retention, with a POST-PROCESSED companion cell (`N. & U. & S.` = 94.33 %), so the frontier arm is MIXED there. The blanket claim is the MIRROR of the blanket 'the band is POST-PROCESSED' claim that Wf-A175 already refuted. The corrected text scopes `post_processed: false` to the `band_provenance` reading and states that whether the band AS A WHOLE is RAW is NOT settled on disk; the invariants that hold under BOTH readings (the band is external, is NOT one homogeneous quantity, and is NOT on our scale) are untouched, and NO new numeral is introduced. The DENOMINATOR break's `ours` text is superseded for a different reason: the published rendering carried a HAND-WRITTEN description of the pool, and the producer's COMPUTED rendering replaces it -- the same pool and the same numbers, derived from the pool on disk instead of transcribed.",
+      "number_preserving": "TEXT-ONLY patch: this artefact's numeric leaves are UNCHANGED apart from the two values named in the D2 and D4 records — the tool was NOT re-run, because a re-run would produce a NEW measurement, not a correction."
+    }
+  },
+  "limitations": [
+    "PoseBusters has NO metal-coordination-sphere check. A % PB-Valid for this pool says NOTHING about whether the metal is coordinated correctly (oxidation state, coordination number, dative bonds, trans-effect). This metric is a MOLECULE-GEOMETRY check, not a coordination-chemistry check.",
+    "MMFF94 cannot parameterise most metal centres. The PoseBusters 'internal_energy' check then returns None (missing), and the runner fails CLOSED, so a metal-containing molecule is reported as PB-invalid for a force-field reason rather than a geometry reason. The per_check_missing_counts block quantifies this.",
+    "The pooled PB verdict is NOT dominated by 'bad 3D geometry' in the usual sense. Two check failures dominate and both are structural rather than geometry-quality failures: 'all_atoms_connected' (a multi-fragment row cannot pass it) and 'internal_energy' (missing, because neither MMFF94 nor UFF can parameterise the metal centre). Read the pooled rate together with counts.by_pool_fragment_count and counts.per_check_not_true_counts before interpreting it.",
+    "MEASURED 2026-11-01 (source_pool.composition): fraction_rows_with_a_metal_atom = 1.0 -- EVERY row of this pool carries a metal centre, so the force-field parameterisation shortfall above is not a corner case, it is the whole pool.",
+    "The pool carries IMPLICIT hydrogens; RDKit AddHs is applied inside the embedding step but the pool SMILES themselves have no explicit-H atoms. The frontier dataset has explicit hydrogens. This alone breaks the comparison. MEASURED 2026-11-01: source_pool.composition.n_rows_with_an_explicit_hydrogen_atom_in_the_smiles = 0 of 2112.",
+    "The pool is THREE epoch-wise decodes of ONE checkpoint (704 rows each, 6 seeds per epoch). It is not a training-set-distribution sampling, it carries no checkpoint-to-checkpoint variance, and it is 3x smaller than the frontier band's 10,000-15,000 draws.",
+    "The conformer ensemble is seeded (ETKDGv3 randomSeed = 42 in molmetal/validation/posebusters_runner.py), so the result is reproducible for a fixed RDKit/PoseBusters version pair but is not a seed-averaged statistic.",
+    "PoseBusters' 'mol' config evaluates ONE conformer per molecule (posebusters/config/mol.yml -> modules/distance_geometry.py reads mol.GetConformer()); the other embedded conformers are optimised but not judged. The conformer_sensitivity_probe block measures how often that choice changes the verdict.",
+    "Rows that fail to embed are counted and reported under BOTH denominators; they are not silently dropped.",
+    "A per-row wall-clock cap (protocol.row_timeout_s) kills any row whose PoseBusters call overruns it. A timeout is a CENSORING event, not a chemistry verdict: it counts as NOT pb_valid in the strict rate, and counts.n_timeout plus the completed-only rate expose the censoring. The rows that hit the cap are the pathological ETKDG geometries (MEASURED: the three longest pool SMILES took 86.7 s / 60.5 s / 0.1 s on one molecule-level call), so the censoring is NOT random with respect to molecule size.",
+    "2026-11-01 (additive): the censoring is MEASURED, not only asserted. The timeout_recheck block re-runs the timed-out rows under a longer per-row cap and reports what verdicts they would have produced, so the direction and size of the timeout bias is quantified rather than described."
+  ],
+  "examples": [
+    {
+      "row_index": 216,
+      "smiles": "CCCC(C)C(NOC)C(C)[CH]1[CH]2N[CH](CO)[Re]21([CH2]N)([CH2]CC)[O]NC(OC)C(O)NCC",
+      "status": "pb_valid",
+      "pb_valid": true,
+      "n_conformers": 5,
+      "failures": [],
+      "missing_checks": []
+    },
+    {
+      "row_index": 361,
+      "smiles": "CCC(CC(CCC(N)OC)[CH]1[C]2(CC)[O][Re]12([CH2]N)([NH]CCC(C)O)[S]C(C)CC(C)C)CN(C)CC",
+      "status": "pb_valid",
+      "pb_valid": true,
+      "n_conformers": 5,
+      "failures": [],
+      "missing_checks": []
+    },
+    {
+      "row_index": 458,
+      "smiles": "CCCC(CC(C)CCN(CC(NC)C(C)O[CH](C)[Re])C(C)O)n1os1",
+      "status": "pb_valid",
+      "pb_valid": true,
+      "n_conformers": 5,
+      "failures": [],
+      "missing_checks": []
+    },
+    {
+      "row_index": 459,
+      "smiles": "CCCC(C)C(CO)[CH](C(S)CC)[Re]([CH3])([CH3])([O]C)([CH](O)O)[N](Cl)CCN",
+      "status": "pb_valid",
+      "pb_valid": true,
+      "n_conformers": 5,
+      "failures": [],
+      "missing_checks": []
+    },
+    {
+      "row_index": 0,
+      "smiles": "CCC(C)C(CC)C(C)C(CC(C)C)SC(C)N(C)[CH2][Ru].Cl",
+      "status": "pb_invalid",
+      "pb_valid": false,
+      "n_conformers": 5,
+      "failures": [
+        "all_atoms_connected",
+        "bond_lengths",
+        "bond_angles",
+        "internal_steric_clash",
+        "internal_energy"
+      ],
+      "missing_checks": [
+        "internal_energy"
+      ]
+    },
+    {
+      "row_index": 1,
+      "smiles": "C.C.COC(C)C(NC(C)CCCOCO)[CH](C)[Pt]([CH3])([CH3])[CH3]",
+      "status": "pb_invalid",
+      "pb_valid": false,
+      "n_conformers": 5,
+      "failures": [
+        "all_atoms_connected",
+        "bond_lengths",
+        "internal_steric_clash",
+        "internal_energy"
+      ],
+      "missing_checks": [
+        "internal_energy"
+      ]
+    },
+    {
+      "row_index": 2,
+      "smiles": "CCC(C)[CH]1[CH](C)[Re]12([OH])([N]1CC1C)[CH](C(C)OO)[CH]2C1NC1CO",
+      "status": "pb_invalid",
+      "pb_valid": false,
+      "n_conformers": 5,
+      "failures": [
+        "bond_angles",
+        "internal_steric_clash"
+      ],
+      "missing_checks": []
+    },
+    {
+      "row_index": 3,
+      "smiles": "C.C[CH2][Ru]1([Cl])([Cl])([CH](C)C(C)(C)C)[CH2][C]1(C)CN(C)C(C)C(C)CN",
+      "status": "pb_invalid",
+      "pb_valid": false,
+      "n_conformers": 5,
+      "failures": [
+        "all_atoms_connected",
+        "bond_lengths",
+        "bond_angles",
+        "internal_steric_clash",
+        "internal_energy"
+      ],
+      "missing_checks": [
+        "internal_energy"
+      ]
+    },
+    {
+      "row_index": 24,
+      "smiles": "C.CCCC(O)(NC(C)CN)C(NC(C)C(C)C(O)O)NC(C(C)N)[CH](O)[Re]1([CH3])([CH3])([OH])[CH2][CH2]1",
+      "status": "embed_failed",
+      "pb_valid": false,
+      "n_conformers": 0,
+      "failures": [
+        "embed_failed"
+      ],
+      "missing_checks": []
+    },
+    {
+      "row_index": 54,
+      "smiles": "CCCC(C)C1=[C](CC(C)(C)CC(C)SOC(C)C)[Ru]2([CH3])([CH2]C)([CH2][CH]2C(CC)C(C)C)[C](CC)=C1CCOCC",
+      "status": "embed_failed",
+      "pb_valid": false,
+      "n_conformers": 0,
+      "failures": [
+        "embed_failed"
+      ],
+      "missing_checks": []
+    },
+    {
+      "row_index": 60,
+      "smiles": "CCC(CC)[CH](CC)[Os]([CH3])[CH]1C(Br)C1C(C(CC)C(CCP)[Si](C)(C)C(C)C)C1C(C2C(CC)C2CC)C1[Si]12CC1C2",
+      "status": "embed_failed",
+      "pb_valid": false,
+      "n_conformers": 0,
+      "failures": [
+        "embed_failed"
+      ],
+      "missing_checks": []
+    },
+    {
+      "row_index": 62,
+      "smiles": "C.C.CCC1C(C)C1CC(C1P(Cl)N(C(C)C2CC2C)P1Cl)C(C)([CH2][Re]12([CH3])[CH2][CH]1[CH2]2)C(C)CC(C)C1C(NC)C1C(C)C",
+      "status": "embed_failed",
+      "pb_valid": false,
+      "n_conformers": 0,
+      "failures": [
+        "embed_failed"
+      ],
+      "missing_checks": []
+    }
+  ],
+  "pb_valid_smiles_sample": [
+    "CCCC(C)C(NOC)C(C)[CH]1[CH]2N[CH](CO)[Re]21([CH2]N)([CH2]CC)[O]NC(OC)C(O)NCC",
+    "CCC(CC(CCC(N)OC)[CH]1[C]2(CC)[O][Re]12([CH2]N)([NH]CCC(C)O)[S]C(C)CC(C)C)CN(C)CC",
+    "CCCC(CC(C)CCN(CC(NC)C(C)O[CH](C)[Re])C(C)O)n1os1",
+    "CCCC(C)C(CO)[CH](C(S)CC)[Re]([CH3])([CH3])([O]C)([CH](O)O)[N](Cl)CCN",
+    "CNC(COC(C)C(CCCC(C)Cl)N(Cl)C(C)(C)NC)CC(N[CH2][Re])C(C)Cl",
+    "CCCC(C)C(CC(C)(COO)NC(O)C1NC1[CH]1[O][Re]1)C(C)C",
+    "COC(N)(S)C([CH2][Re][CH](C)O)C(NC(C)C)C(CC(N)CO)C(C)C",
+    "CCCN(C(C)C1CN1)[N](OC)[Re]([CH3])([Cl])([CH2]C(C)C(C)Cl)[CH2]C(Cl)(CC)CNC",
+    "CCOC(C(C)C)C(CC)[CH](CC)[Re]([OH])([NH]C(C)C)([CH](O)CN)[CH](CN)C(CN)C1CC1",
+    "CCC(CN(C)CCC(C)C(C)C(C[CH2][Re]([CH3])([CH3])([NH2])([OH])[Cl])C(C)(P)C(C)Cl)C(C)(O)CCC(C)C",
+    "CCC(C)(COC)C[C]([Re])(CC(C)O)C(C)C(N)C1(CN(C)N)OS1",
+    "CC[NH][Re]([CH3])([CH3])([CH3])([NH]CO)[CH](C(C)O)C(C)(N)C(C)(COCC)SC",
+    "CCCCC1CC1(C)CCC(O)C1(C(Cl)(CO)C(C)(C)CC)C(C)C(C(C)CCC(C)Cl)P1P1[CH2][Re]2([CH3])([CH3])[CH2][C]2=C1C(C)Cl",
+    "CCC(C)C(C)C(C=O)[C]12[P](C(C)(B3C4(C(C)C)CC34C(C)C(C)CCO)C3OC3CC)[Re]13([CH2]C)([CH](C(C)=PC)C1C4CC41O)[C](C)(CC)[C]23I",
+    "CCCC(CNC(C)C)[CH](CSC)[Re]12([NH2])([CH](C)SBr)[O]C(C)(CCC(C)NCNCN(C)NC)[CH]1[S]2",
+    "CCCC1(C2CC2C)CC1([CH2][Re]([CH3])([CH3])([CH3])([CH2]C=NCC1OC1(CC)CP(C)C)[C](C)(C)CC)C1C(C(C)C2CCP2CC)CC1(C)C(C)CC",
+    "CCC(CC(C)=O)C(CCC1C(CN(C)OC(C)CO)[N]1[Re])OC",
+    "CCC[CH](N)[Re]([CH3])([CH3])([CH](C)C)[N](C)CCN(C)OC(CCOO)SC",
+    "CCCC(C)C(CC1CC1NC)C(CC)C(C=NPCC)N[C](CCPC)=[Re]([CH3])=[C]=C(CC)NC1CC1",
+    "CCCP(C)C(C)(CC)CN(C)CC(C)CC(C)(C(CC)P(C)CN(C)C)[CH](CN(C)C)[Re]123([CH3])[CH2][N]1[CH]2[CH]3C(C)CC(C)CC(CC1CC1CC)C1CC1C",
+    "CCCC(N(CC)P[CH](CC)[Re]123([NH]C(C)C(OC)(OC)C(C)CCC)[CH2][CH]1[C]2(C)[P]3C)C1(C)CC1",
+    "CCC(C)(O)CC(C)(OC1(Cl)C(C)C1(CCC(C)N)OC)[S][Re]([CH3])([CH3])([CH3])([CH2]C)[CH](C)CBr",
+    "CCCC(C)(C)C(C)(CC)C1(C)SC1PCC(C)SC(C)S[CH2][Re]([CH3])([C](CC)=C(C)C)([CH](C)CC)[P]1CC1(C)PC",
+    "C=CC1(CC(=C)C2N(CC(C)CCCC)P2C)C([CH](C(C)C)[Re]([CH3])([CH3])([CH3])[CH2]C(CC(C)P(CC=O)CCCC(C)CCC)C(C)CC)C1(C)C",
+    "CCC(C)[N](C(CCCCl)C(C)(C)C)[Re]12([CH2]C)([C]3(C)CC3C)[O][C]1(CCC(C)(Cl)CC(C)(N)P)[O]2",
+    "CCC(C)[O][Re]([NH2])([NH2])([OH])([CH2]NCC(CO)CCC(C)(C)C(C)(C)C1(C=O)CS1)[N](C)CCOCO",
+    "CCCC(C)CSC(C)C(C)N(O)C(C)(CN(OC)C(C)C1CC1(C)C(C)C)N1OC1(C=[C]=[Re][NH2])CC",
+    "CCCC(C)[CH](CCC)[Re]([CH2]C)([CH2]NCC)([O]CN)([CH]1CN1)[CH](CC(C)COO)C(C)N",
+    "CC(C)N=[C]([Re])C(C)C1(C(Br)(NCNN(C)C(CCN)C2(SN)CC23SC3(C)C)C(O)C(C)C)CS1"
+  ],
+  "pb_valid_smiles_sample_truncated": false,
+  "end_to_end_headline": {
+    "source": "metrics/by_metric/cfm_fragmentation_audit.json",
+    "jsonpath": "/summary/generation_side/single_molecule_rate_end_to_end",
+    "present": true,
+    "median": 0.08506944444444445,
+    "median_pct": 8.506944444444445,
+    "median_pct_derivation": "DERIVED, not read from disk: this is the SAME machine field `median` expressed in PERCENT; the value read from disk is `median`",
+    "n_runs": 9,
+    "definition": "'one connected, parseable molecule per DRAWN sample', median over the generation-side runs"
+  },
+  "published_cross_check": {
+    "rule": "a published artifact is compared ONLY when its own source_pool names THIS pool; the comparison is computed, never asserted",
+    "this_pool_name": "cfm_c8_fullgen_2026_10_24",
+    "this_run_rate": 0.25047348484848486,
+    "this_run_n_single": 529,
+    "published_artifacts_considered": [
+      {
+        "metric": "wfa155_ligand_connected_rate",
+        "present": true,
+        "names_this_pool": true,
+        "source_pool": "molmetal/reports/cfm_c8_fullgen_2026_10_24/generated_smiles.csv",
+        "source_pool_name": "cfm_c8_fullgen_2026_10_24",
+        "published_rate": 0.25047348484848486,
+        "published_n_single": 529,
+        "applicability": "applies to THIS pool"
+      },
+      {
+        "metric": "cfm_fragmentation_postproc_arm",
+        "present": true,
+        "names_this_pool": false,
+        "source_pool": null,
+        "source_pool_name": null,
+        "published_rate": null,
+        "published_n_single": null,
+        "applicability": "NOT applicable -- this published artifact measures a different pool"
+      }
+    ],
+    "matches": [
+      {
+        "metric": "wfa155_ligand_connected_rate",
+        "published_rate": 0.25047348484848486,
+        "published_n_single": 529,
+        "this_run_rate": 0.25047348484848486,
+        "this_run_n_single": 529,
+        "abs_delta": 0.0,
+        "rate_identical": true,
+        "numerator_identical": true
+      }
+    ],
+    "n_matches": 1,
+    "verdict": "THIS RUN REPRODUCES the published rate for THIS pool exactly (bit-for-bit)"
+  },
+  "prior_posebusters_artifacts_measured": {
+    "rule": "the earlier PoseBusters artifacts are enumerated from DISK; this block was read on 2026-11-01, when the published artifact was patched additively (the emitter reads the same files at run time), and every file path, sample size and rate below was read from the file it names",
+    "n_candidates_scanned": 13,
+    "n_present": 13,
+    "n_mentioning_posebusters": 7,
+    "n_deferred": 2,
+    "largest_n_samples_among_posebusters_candidates": 26,
+    "largest_n_samples_file": "metrics/by_metric/pb_pass_rate.json",
+    "largest_n_samples_scope": "the largest sample size among the PoseBusters candidate files enumerated in `files`; a DEFERRED artifact is excluded because it carries the size it WOULD have measured. This is NOT a repo-wide maximum -- other, non-PoseBusters artifacts under metrics/by_metric/ report larger sample sizes",
+    "superseded_field_name_2026_11_01": {
+      "field": "largest_n_samples",
+      "value": 26,
+      "why_superseded": "the OLD name was UNSCOPED and read as a repo-wide maximum sample size, but it is scoped to the PoseBusters candidate files enumerated in the same block (a DEFERRED artifact is excluded because it carries the size it WOULD have measured). The value is unchanged and is preserved here verbatim (AGENTS.md §5.5 rule #6)"
+    },
+    "files": [
+      {
+        "file": "metrics/by_metric/wf32_pb_valid.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/wf32_pb_valid_summary.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/wf32_pb_valid_verify.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/wf32_pb_valid_verify_summary.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/pb_pass_rate.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": "pb_pass_rate",
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [
+          0,
+          1,
+          2,
+          26
+        ],
+        "largest_sample_size": 26,
+        "quoted_rates": {
+          "best_measured_smoke": 0.846
+        }
+      },
+      {
+        "file": "metrics/by_metric/steric_clash_pb_dock.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": "steric_clash_pb_dock",
+        "status": "DEFERRED",
+        "deferred": true,
+        "sample_sizes_present": [
+          100
+        ],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/steric_clash_pb_dock_test_001.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": "steric_clash_pb_dock",
+        "status": "DEFERRED",
+        "deferred": true,
+        "sample_sizes_present": [
+          0
+        ],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/steric_clash_pb_dock_1h36.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": "steric_clash_pb_dock",
+        "status": "MEASURED_SMOKE",
+        "deferred": false,
+        "sample_sizes_present": [
+          0
+        ],
+        "largest_sample_size": 0,
+        "quoted_rates": {
+          "rate_protein_aware_subset": 0.6875
+        }
+      },
+      {
+        "file": "metrics/by_metric/docked_pose_rmsd.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": "docked_pose_rmsd",
+        "status": "MEASURED_PARTIAL_GRID",
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/r13_100x3_partial.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": "r13_100x3_partial",
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/tier2_summary.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [
+          26
+        ],
+        "largest_sample_size": 26
+      },
+      {
+        "file": "metrics/by_metric/vina_kcal_per_mol.json",
+        "present": true,
+        "mentions_posebusters": false,
+        "metric": "vina_mean",
+        "status": "MEASURED_HONEST_NEGATIVE",
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      },
+      {
+        "file": "metrics/by_metric/_audit/m5_real_per_metric.json",
+        "present": true,
+        "mentions_posebusters": true,
+        "metric": null,
+        "status": null,
+        "deferred": false,
+        "sample_sizes_present": [],
+        "largest_sample_size": null
+      }
+    ]
+  },
+  "prose_backing_measurements": {
+    "rule": "the numbers this artifact's PROSE quotes are carried here as MACHINE fields, so that every number rendered in a narrative string is backed by a machine field of this same artifact -- a number in a `tag: MEASURED` narrative that nothing backs is a defect (Wf-A181)",
+    "single_fragment_fraction_pct_2dp": 25.05,
+    "n_single_fragment_rows": 529,
+    "end_to_end_headline": {
+      "source": "metrics/by_metric/cfm_fragmentation_audit.json",
+      "jsonpath": "/summary/generation_side/single_molecule_rate_end_to_end",
+      "median": 0.08506944444444445,
+      "n_runs": 9,
+      "definition": "'one connected, parseable molecule per DRAWN sample', median over the generation-side runs"
+    }
+  },
+  "wfa181_narrative_backing_repair_2026_11_01": {
+    "date": "2026-11-01",
+    "wave": "Wf-A181",
+    "rule": "AGENTS.md §5.5 rule #6 -- the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+    "what_was_added": [
+      "comparability_vs_frontier_band.frontier_band.frontier_denominator_draws",
+      "comparability_vs_frontier_band.frontier_band.frontier_denominator_draws_min",
+      "comparability_vs_frontier_band.frontier_band.frontier_denominator_draws_max",
+      "protocol.longest_pool_smiles_call_seconds",
+      "scope.label",
+      "end_to_end_headline",
+      "published_cross_check",
+      "prior_posebusters_artifacts_measured",
+      "prose_backing_measurements",
+      "narrative_self_consistency"
+    ],
+    "why": "the artifact carries its OWN narrative self-consistency guard (_narrative_self_consistency in the producer), and the published rendering FAILED it: six numerals were rendered in prose with no machine field of this same artifact behind them (0.846, 0.6875, 15,000, 60.5, 86.7, and the FlowMol3 arXiv id). The numerals are MEASURED quantities -- dropping them would destroy measured information -- so the repair is ADDITIVE machine fields that carry the same values, not a deletion",
+    "the_arxiv_id": "the FlowMol3 arXiv id (the digits are deliberately NOT repeated here, so that the id is masked by the guard's identifier rule rather than accidentally backed by this record: a genuine measurement with the same shape must still be caught) is an IDENTIFIER, not a measurement. The producer's guard now MASKS arXiv ids before the number scan -- the versioned form everywhere, the bare form only when the text marks it as an arXiv reference -- so the id is no longer reported as an unbacked number, while a genuine measurement that merely has that shape is still checked",
+    "no_existing_leaf_changed": "TEXT-ONLY-plus-machine-fields patch: every leaf that was present before this patch is present afterwards with the SAME value; the leaves listed under what_was_added are NEW. The tool was NOT re-run -- a re-run would produce a NEW measurement, not a correction -- so every numeric leaf of the published run is UNCHANGED",
+    "values_are_the_prose_values": "every value added is LITERALLY the number the prose already renders (86.7, 60.5, 0.1, 15000, 0.846, 0.6875) or a number read from disk at patch time (the end-to-end median and run count, the prior-artifact rates and sample sizes). Nothing was rounded, re-derived or invented",
+    "disclosure_2026_11_01_wfa182": {
+      "date": "2026-11-01",
+      "wave": "Wf-A182",
+      "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+      "what": "the `published_cross_check` field listed in `what_was_added` above was added with the value `null`, while the producer's own `_published_cross_check()` computes a POPULATED block for this pool",
+      "why": "a `null` field is what made the `published_cross_check.*` narrative paths vacuously satisfied under the guard's null-parent rule, so the published field was doing guard-work while being FALSE. Wf-A182 replaces the `null` with the producer's COMPUTED block — the `null` is preserved verbatim under `published_cross_check_superseded_2026_11_01` — and the computed block ALSO passes the guard, so the repair does not weaken it"
+    }
+  },
+  "narrative_self_consistency": {
+    "rule": "every number rendered in a narrative string must be backed by a machine field of the same artifact -- as a standalone number inside a machine string, or equal (to the token's own decimal count) to a machine number; every repo path quoted in a narrative must appear in a machine string field; every string leaf must be classified as narrative, identifier or dated provenance; and every designated narrative path must resolve to at least one leaf (a path whose parent is an explicit null is vacuously satisfied)",
+    "narrative_paths": [
+      "purpose",
+      "source_pool.composition.explicit_hydrogen_note",
+      "source_pool.composition.metal_definition",
+      "source_pool.pool_structure_note",
+      "source_pool.pool_caveat",
+      "protocol.runner_fails_closed",
+      "protocol.execution",
+      "protocol.row_timeout_policy",
+      "protocol.row_timeout_rationale",
+      "scope.sampling.method",
+      "scope.sampling.population",
+      "scope.label",
+      "counts.strict_rate_cross_check",
+      "counts.forcefield_parameterisation_note",
+      "counts.denominators.strict.definition",
+      "counts.denominators.scored.definition",
+      "counts.denominators.scored_plus_embed_failed.definition",
+      "counts.denominators.completed_only.definition",
+      "counts.by_pool_fragment_count._why",
+      "counts.by_pool_fragment_count._conditioning_variable",
+      "counts.by_pool_epoch._why",
+      "counts.by_pool_epoch._conditioning_variable",
+      "conformer_sensitivity_probe.method",
+      "conformer_sensitivity_probe.why",
+      "conformer_sensitivity_probe.sample_method",
+      "timeout_recheck.bias_direction",
+      "headline.strict_denominator_definition",
+      "headline.scored_denominator_definition",
+      "headline.one_line",
+      "headline.single_fragment_note",
+      "not_a_restatement_of.end_to_end_median_headline",
+      "not_a_restatement_of.single_pool_fragment_count",
+      "not_a_restatement_of.prior_posebusters_artifacts",
+      "published_cross_check.rule",
+      "published_cross_check.verdict",
+      "end_to_end_headline.definition",
+      "end_to_end_headline.median_pct_derivation",
+      "comparability_vs_frontier_band.statement",
+      "comparability_vs_frontier_band.breaks",
+      "limitations"
+    ],
+    "narrative_path_aliases": {
+      "not_a_restatement_of.end_to_end_median_headline": "not_a_restatement_of.the_8_51_pct_headline",
+      "not_a_restatement_of.single_pool_fragment_count": "not_a_restatement_of.the_25_05_pct_fragment_count"
+    },
+    "identifier_paths": [
+      "metric",
+      "tag",
+      "date",
+      "wave",
+      "branch",
+      "script",
+      "generated_at_utc",
+      "status",
+      "failure",
+      "source_pool.path",
+      "source_pool.sha256",
+      "source_pool.columns",
+      "source_pool.pool_kind",
+      "source_pool.measured_profile",
+      "protocol.embed_method",
+      "protocol.optimize_method",
+      "protocol.posebusters_config",
+      "protocol.backend_module",
+      "protocol.embed_random_seed_source",
+      "protocol.device",
+      "scope.kind",
+      "scope.pool_sha256_at_run_time",
+      "tool_versions",
+      "conformer_sensitivity_probe.disagreements",
+      "timeout_recheck.rows",
+      "published_cross_check.published_artifacts_considered",
+      "published_cross_check.matches",
+      "published_cross_check.this_pool_name",
+      "protocol.longest_pool_smiles_call_seconds_provenance",
+      "end_to_end_headline.source",
+      "end_to_end_headline.jsonpath",
+      "prior_posebusters_artifacts_measured",
+      "prose_backing_measurements",
+      "comparability_vs_frontier_band.frontier_band",
+      "examples",
+      "pb_valid_smiles_sample",
+      "narrative_self_consistency"
+    ],
+    "provenance_paths": [
+      "comparability_vs_frontier_band.superseded_reading_2026_11_01",
+      "comparability_vs_frontier_band.superseded_reading_2026_11_01_wfa180",
+      "comparability_vs_frontier_band.superseded_reading_2026_11_01_wfa182",
+      "published_cross_check_superseded_2026_11_01",
+      "wfa181_narrative_backing_repair_2026_11_01",
+      "wfa182_residual_defect_repair_2026_11_01"
+    ],
+    "n_prose_leaves": 67,
+    "n_prose_numbers": 89,
+    "n_machine_leaves": 907,
+    "n_machine_numbers": 307,
+    "n_machine_strings": 481,
+    "n_unclassified_string_leaves": 0,
+    "unresolved_narrative_paths": [],
+    "unbacked_numbers": {},
+    "stale_paths": {},
+    "unclassified_leaves": {},
+    "pass": true,
+    "superseded_2026_11_01_wfa182": {
+      "rule": "every number rendered in a narrative string must be backed by a machine field of the same artifact -- as a standalone number inside a machine string, or equal (to the token's own decimal count) to a machine number; every repo path quoted in a narrative must appear in a machine string field; every string leaf must be classified as narrative, identifier or dated provenance; and every designated narrative path must resolve to at least one leaf (a path whose parent is an explicit null is vacuously satisfied)",
+      "narrative_paths": [
+        "purpose",
+        "source_pool.composition.explicit_hydrogen_note",
+        "source_pool.composition.metal_definition",
+        "source_pool.pool_structure_note",
+        "source_pool.pool_caveat",
+        "protocol.runner_fails_closed",
+        "protocol.execution",
+        "protocol.row_timeout_policy",
+        "protocol.row_timeout_rationale",
+        "scope.sampling.method",
+        "scope.sampling.population",
+        "scope.label",
+        "counts.strict_rate_cross_check",
+        "counts.forcefield_parameterisation_note",
+        "counts.denominators.strict.definition",
+        "counts.denominators.scored.definition",
+        "counts.denominators.scored_plus_embed_failed.definition",
+        "counts.denominators.completed_only.definition",
+        "counts.by_pool_fragment_count._why",
+        "counts.by_pool_fragment_count._conditioning_variable",
+        "counts.by_pool_epoch._why",
+        "counts.by_pool_epoch._conditioning_variable",
+        "conformer_sensitivity_probe.method",
+        "conformer_sensitivity_probe.why",
+        "conformer_sensitivity_probe.sample_method",
+        "timeout_recheck.bias_direction",
+        "headline.strict_denominator_definition",
+        "headline.scored_denominator_definition",
+        "headline.one_line",
+        "headline.single_fragment_note",
+        "not_a_restatement_of.end_to_end_median_headline",
+        "not_a_restatement_of.single_pool_fragment_count",
+        "not_a_restatement_of.prior_posebusters_artifacts",
+        "published_cross_check.rule",
+        "published_cross_check.verdict",
+        "end_to_end_headline.definition",
+        "comparability_vs_frontier_band.statement",
+        "comparability_vs_frontier_band.breaks",
+        "limitations"
+      ],
+      "narrative_path_aliases": {
+        "not_a_restatement_of.end_to_end_median_headline": "not_a_restatement_of.the_8_51_pct_headline",
+        "not_a_restatement_of.single_pool_fragment_count": "not_a_restatement_of.the_25_05_pct_fragment_count"
+      },
+      "identifier_paths": [
+        "metric",
+        "tag",
+        "date",
+        "wave",
+        "branch",
+        "script",
+        "generated_at_utc",
+        "status",
+        "failure",
+        "source_pool.path",
+        "source_pool.sha256",
+        "source_pool.columns",
+        "source_pool.pool_kind",
+        "source_pool.measured_profile",
+        "protocol.embed_method",
+        "protocol.optimize_method",
+        "protocol.posebusters_config",
+        "protocol.backend_module",
+        "protocol.embed_random_seed_source",
+        "protocol.device",
+        "scope.kind",
+        "scope.pool_sha256_at_run_time",
+        "tool_versions",
+        "conformer_sensitivity_probe.disagreements",
+        "timeout_recheck.rows",
+        "published_cross_check.published_artifacts_considered",
+        "published_cross_check.matches",
+        "published_cross_check.this_pool_name",
+        "end_to_end_headline.source",
+        "end_to_end_headline.jsonpath",
+        "prior_posebusters_artifacts_measured",
+        "prose_backing_measurements",
+        "comparability_vs_frontier_band.frontier_band",
+        "examples",
+        "pb_valid_smiles_sample",
+        "narrative_self_consistency"
+      ],
+      "provenance_paths": [
+        "comparability_vs_frontier_band.superseded_reading_2026_11_01",
+        "comparability_vs_frontier_band.superseded_reading_2026_11_01_wfa180",
+        "wfa181_narrative_backing_repair_2026_11_01"
+      ],
+      "n_prose_leaves": 64,
+      "n_prose_numbers": 87,
+      "n_machine_leaves": 734,
+      "n_machine_numbers": 284,
+      "n_machine_strings": 343,
+      "n_unclassified_string_leaves": 0,
+      "unresolved_narrative_paths": [],
+      "unbacked_numbers": {},
+      "stale_paths": {},
+      "unclassified_leaves": {},
+      "pass": true
+    }
+  },
+  "published_cross_check_superseded_2026_11_01": {
+    "date": "2026-11-01",
+    "wave": "Wf-A182",
+    "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+    "superseded": {
+      "published_cross_check": null
+    },
+    "why_superseded": "the field was published as `null`, while the producer's own `_published_cross_check()` computes a POPULATED block for this pool. The `null` is also what made the `published_cross_check.*` narrative paths vacuously satisfied under the guard's null-parent rule, so a field that was FALSE was doing guard-work. Wf-A182 replaces it with the producer's COMPUTED block.",
+    "replaced_by": "the block the producer computes for this pool, reproduced verbatim in `published_cross_check`: one published artifact names THIS pool and its published rate is reproduced bit-for-bit",
+    "number_preserving": "the block is COMPUTED from the published artifacts on disk — `metrics/by_metric/wfa155_ligand_connected_rate.json` and `metrics/by_metric/cfm_fragmentation_postproc_arm.json` — and NOT re-measured: the tool was NOT re-run."
+  },
+  "wfa182_residual_defect_repair_2026_11_01": {
+    "date": "2026-11-01",
+    "wave": "Wf-A182",
+    "rule": "AGENTS.md §5.5 rule #6 — the superseded rendering is preserved VERBATIM and the correction is additive + dated",
+    "what_was_repaired": [
+      "D1 — the three longest-pool-SMILES call seconds were a module CONSTANT that certified a measurement for whatever pool the artifact names; they now carry a provenance binding (the pool path and sha256 they were measured on, the measurement date, the measurement record and the measurement tool) and are emitted ONLY for the pool they were measured on",
+      "D2 — `published_cross_check` was published as `null` while the producer computes a populated block; it now carries the producer's computed block, with the `null` preserved verbatim",
+      "D3 — `end_to_end_headline.median_pct` is a unit conversion of `end_to_end_headline.median`, not a value read from disk; it is now labelled as derived, in the machine field `end_to_end_headline.median_pct_derivation`",
+      "D4 — `prior_posebusters_artifacts_measured.largest_n_samples` was an unscoped name for a PoseBusters-candidate-scoped value; it is renamed `largest_n_samples_among_posebusters_candidates`, the scope is carried in `largest_n_samples_scope`, and the old name and value are preserved verbatim",
+      "D5 — the Wf-A181 record's `what_was_added` listed `published_cross_check` as added without disclosing that the value was `null`; the disclosure is appended under `wfa181_narrative_backing_repair_2026_11_01.disclosure_2026_11_01_wfa182`",
+      "C1 — the POST-PROCESSING comparability break asserted that the published band's two endpoints are RAW and that both arms are RAW; the claim is now scoped to the `band_provenance` reading and states that whether the band AS A WHOLE is RAW is NOT settled on disk"
+    ],
+    "why": "the adversarial verify of wave Wf-A181 found five residual defects in this artifact and its producer, two of them MATERIAL: a hard-coded constant that certified a measurement (D1) and a published machine field that was FALSE while doing guard-work (D2). The remaining three (D3, D4, D5) and the POST-PROCESSING break's blanket RAW claim (C1) were MINOR but each is a claim a `tag: MEASURED` artifact must not make without the evidence for it.",
+    "number_preserving": "no numeric leaf of the MEASUREMENT moved: the three longest-pool-SMILES call seconds keep their values, the end-to-end median and its derived percent keep their values, the counts block is untouched, and the tool was NOT re-run — a re-run would produce a NEW measurement, not a correction. The numeric leaves that DID change are the two named in D2 and D4 (both old values preserved verbatim in their dated records) and the guard block's OWN counters (`n_prose_leaves`, `n_prose_numbers`, `n_machine_leaves`, `n_machine_numbers`, `n_machine_strings`), which describe the guard's view of this very artifact; the guard block as published before this patch is preserved verbatim under `narrative_self_consistency.superseded_2026_11_01_wfa182`."
+  }
+}

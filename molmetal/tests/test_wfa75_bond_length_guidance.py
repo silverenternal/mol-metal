@@ -1,6 +1,7 @@
 """Wf-A75 (2026-10-18) — bond-length guidance regression tests.
 
-Background: per Vignac et al. 2023 (MolDiff, arXiv:2305.07508),
+Background: per Peng, Guan, Liu & Ma 2023 (MolDiff, ICML 2023,
+arXiv:2305.07508),
 Cartesian-coordinate diffusion on metal complexes suffers from
 "atom-bond inconsistency": bonded pairs drift past ~3 Å during
 denoising and the output graph is topologically fragmented

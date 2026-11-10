@@ -19,10 +19,17 @@ TODO-21 Lambda × CFM coupling:
 
 This wrapper is the **GPU launch surface** that connects the three
 shipped pieces end-to-end on a CUDA device.  It does **NOT** execute
-the GPU retrain by itself — it is the CLI + factory that the Wf-333-G2
-GPU launch script (``launch_wf333g1_lambda_cfm_gpu.sh``) will invoke
-when the upstream ``mol-metal-cfm-training`` decode_ratio > 0 gate is
-unblocked.
+the CLI + factory that the Wf-333-G2 GPU launch script
+  (``launch_wf333g1_lambda_cfm_gpu.sh``) will invoke
+  when the upstream ``mol-metal-cfm-training`` decode_ratio > 0 gate is
+  unblocked.
+
+
+  MEASURED 2026-11-02 (Wf-A269 wave-3, L1-F8): that launcher does NOT
+  exist anywhere in the repo — ``git ls-files | grep wf333g1`` returns
+  only this wrapper and its test.  It is a PLANNED script, not a
+  shipped one; the paragraph above is preserved VERBATIM per AGENTS.md
+  §5.5 rule #6 so the history of the claim survives.
 
 The wrapper honors AGENTS.md §5.1 **kill_then_adapt** + §5.3 (no paper
 work without authorization) + the Wf-331-R6 reconciliation doc:

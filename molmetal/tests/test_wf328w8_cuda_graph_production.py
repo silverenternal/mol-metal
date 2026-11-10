@@ -40,11 +40,16 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 import torch
 
 from molmetal.baselines.cuda_graph_capture import CudaGraphDMPNNWrapper
+
+# Repo root derived from this file's own location (molmetal/tests/X.py ->
+# parents[2]) so the tracked-module import below resolves on any checkout.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # Stub MPNNConfig to avoid the ``molmetal/models/__init__`` triton import.
@@ -78,7 +83,7 @@ def _load_pyg_module():
         return sys.modules["molmetal.models.dmpnn_pyg"]
     spec = importlib.util.spec_from_file_location(
         "molmetal.models.dmpnn_pyg",
-        "/home/hugo/codes/mol-metal/molmetal/models/dmpnn_pyg.py",
+        REPO_ROOT / "molmetal" / "models" / "dmpnn_pyg.py",
     )
     if spec is None or spec.loader is None:
         raise ImportError("cannot load dmpnn_pyg.py via importlib")
@@ -89,7 +94,7 @@ def _load_pyg_module():
         import types
 
         parent_pkg = types.ModuleType("molmetal.models")
-        parent_pkg.__path__ = ["/home/hugo/codes/mol-metal/molmetal/models"]
+        parent_pkg.__path__ = [str(REPO_ROOT / "molmetal" / "models")]
         sys.modules["molmetal.models"] = parent_pkg
     sys.modules["molmetal.models.dmpnn_pyg"] = mod
     spec.loader.exec_module(mod)

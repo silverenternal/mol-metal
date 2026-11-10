@@ -64,6 +64,7 @@ runtime" failure mode observed across R17 close-out.
 
 from __future__ import annotations
 
+import json
 import os
 import random
 import subprocess
@@ -88,7 +89,7 @@ import torch
 # were migrated onto the single canonical venv (AGENTS.md §5.9), which left the
 # tuple holding the same path twice. Collapsed to one entry rather than keeping
 # a duplicate that looks like a fallback chain but is not one.
-_VENV_BIN_CANDIDATES = (Path("/home/hugo/codes/mol-metal/.venv/bin"),)
+_VENV_BIN_CANDIDATES = (Path(__file__).resolve().parents[2] / ".venv" / "bin",)
 for _candidate in _VENV_BIN_CANDIDATES:
     if _candidate.is_dir():
         bin_path = str(_candidate)
@@ -287,12 +288,20 @@ def _ensure_vina_pdb() -> Path:
     candidates = [
         TEST_PDB,
         Path(
-            "/home/hugo/codes/mol-metal/molmetal/references/targetdiff/"
-            "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "references"
+            / "targetdiff"
+            / "examples"
+            / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
         ),
         Path(
-            "/home/hugo/codes/try_triton_on_rocm/molmetal/references/targetdiff/"
-            "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "references"
+            / "targetdiff"
+            / "examples"
+            / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
         ),
         Path(
             "/home/hugo/codes/pocket/new/external_baselines/TargetDiff/"
@@ -731,6 +740,26 @@ def test_004_mle_matrix_click_compat() -> None:
 # ---------------------------------------------------------------------------
 # test_005 — End-to-end pipeline smoke (metallo_drug_smoke_retrain as module)
 # ---------------------------------------------------------------------------
+def _cpu_subprocess_env() -> dict:
+    """The environment for a subprocess that must NOT touch the GPU.
+
+    Wf-A122 FIX 6 found the same defect class twice more: the smoke script
+    resolves ``device = "cuda" if torch.cuda.is_available() else "cpu"`` with no
+    override, so any test that launches it without an explicit CPU contract
+    allocates GPU VRAM on a GPU host.  MEASURED 2026-10-31: a full
+    ``pytest molmetal/tests`` run held 1444 MiB (pytest) + 2218 MiB (the smoke
+    child) of GPU 0 VRAM, in breach of the standing no-GPU directive.
+
+    ``CUDA_VISIBLE_DEVICES=""`` makes ``torch.cuda.is_available()`` False, so the
+    script resolves ``cpu`` on its own; ``MOLMETAL_SMOKE_DEVICE=cpu`` makes the
+    choice explicit and survives a host whose driver ignores the mask.
+    """
+    env = dict(os.environ)
+    env["CUDA_VISIBLE_DEVICES"] = ""
+    env["MOLMETAL_SMOKE_DEVICE"] = "cpu"
+    return env
+
+
 @_timeout_marker(150)
 def test_005_end_to_end_smoke(tmp_path: Path) -> None:
     """Invoke ``metallo_drug_smoke_retrain.py`` as a subprocess; assert ckpt saved.
@@ -744,9 +773,14 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
        Output dir = ``tmp_path / 'smoke_out'``.
     3. Assert exit code 0, ``final.json`` written, ``ckpt.pt`` saved
        (and finite).
-    4. Wall-budget guard: assert the run completes in < 120 seconds
-       (CPU).  If the host is faster we still hit the gate; the guard
-       is one-sided.
+    4. Wall-budget guard: assert the run completes in < 150 seconds.
+       MEASURED 2026-10-31 on CPU (the contract this test always claimed,
+       but which was previously never honoured — the script auto-selected
+       CUDA on a GPU host): 11.7 s wall for the whole pytest test on an
+       idle machine, 122.3 s for the 100 param steps alone when the host
+       was concurrently loaded by other work.  The guard is one-sided and
+       the assertion (150 s) is the real one; the "< 120 s" figure this
+       docstring used to quote was never measured on CPU.
 
     Honest framing
     --------------
@@ -791,6 +825,7 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
         text=True,
         timeout=140,  # leave 10s headroom for pytest-level timeout=150
         cwd=str(PROJECT_ROOT),
+        env=_cpu_subprocess_env(),
     )
     elapsed = time.time() - t0
 
@@ -807,6 +842,21 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
     assert final_json.is_file(), (
         f"smoke script did not write {final_json}; "
         f"stdout tail: {proc.stdout[-500:]}"
+    )
+
+    # --- 3b'. The run really was on CPU (not "it happened to be idle") ---
+    # Wf-A122: the device is resolved from torch.cuda.is_available(), so this
+    # assertion is what makes the "CPU" in the wall-budget guard MEASURED
+    # rather than asserted.
+    _final = json.loads(final_json.read_text())
+    _cfg = _final.get("config", {})
+    assert _cfg.get("device") == "cpu", (
+        f"smoke ran on device={_cfg.get('device')!r}, expected 'cpu'; "
+        f"the GPU contract of this test was not honoured"
+    )
+    assert _cfg.get("cuda_available") is False, (
+        f"smoke reported cuda_available={_cfg.get('cuda_available')!r}; "
+        f"this test must never touch the GPU"
     )
 
     # --- 3c. ckpt.pt saved (and finite) --------------------------------

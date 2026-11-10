@@ -33,13 +33,14 @@ Source: Wf-358-A1 closeout + Wf-357-A1 root-cause finding.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
-VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VENV_PY = Path(sys.executable)
 
 
 @pytest.mark.skipif(not VENV_PY.exists(), reason="vlm venv not on disk")

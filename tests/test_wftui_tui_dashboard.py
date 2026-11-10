@@ -47,7 +47,7 @@ import pytest
 # Repo root (2 levels up from tests/).
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TUI_SCRIPT = REPO_ROOT / "scripts" / "_tui_dashboard.py"
-VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VENV_PY = Path(sys.executable)
 
 
 def _run_tui(args: list[str], timeout: float = 30.0) -> str:

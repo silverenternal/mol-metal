@@ -103,3 +103,22 @@
 - GPU: 不强需,PLL 可在 CPU 上跑;MCTS + EGNN 需要 GPU
 - 数据: PDBbind v2007/v2013/v2016 (PLL benchmark); CrossDocked pocket-1 (MCTS smoke)
 - 文档: `TODO/13_lambda_clickchem/{plan,molecular_lambda_calculus}.md`, `references/SynFlowNet/`
+
+---
+
+## Citation verification note (2026-10-31, Wf-A149)
+
+The PLL reference recorded in this (superseded) history file was
+checked against the live record on 2026-10-31 and is **correct as written**:
+DOI `10.1021/acs.jcim.6c02460` (Crossref HTTP 200) resolves to Liu, J.;
+Feng, H. "Persistent Local Laplacian Prediction of Protein–Ligand Binding
+Affinities", *J. Chem. Inf. Model.* **66 (18), 11767-11777** (online
+2026-09-04, print 2026-09-28), and arXiv `2603.21503` (2026-03-23)
+carries the same title and the same authors (Jian Liu, Hongsong Feng).
+This file records the venue as "*J. Chem. Inf. Model.*, 2026" with no
+volume / issue / pages, so there is **no wrong value here to correct**;
+the full venue record is written into this note for traceability only.
+**The historical lines above are preserved verbatim** (AGENTS.md §5.5
+rule #6) — this file is a HISTORY file and its wording was not rewritten.
+For traceability: the sibling Track-B files that carried the venue as
+"66 (3), 1024-1037" were corrected in place on 2026-10-31 (Wf-A149).

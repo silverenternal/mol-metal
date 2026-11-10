@@ -1,0 +1,365 @@
+{
+  "created_at_utc": "2026-11-10T15:55:00.728255+00:00",
+  "status": "completed",
+  "limitations": "Historical references to deleted diagnostic checkpoints and duplicate report paths can become unresolved; metrics and logs were not deleted. Checkpoint ranking across all research lines remains incomplete.",
+  "items": [
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "0be725911234bf9a97ec351cda8ba2695ca0d2b932b339932b3228ba9f58339b",
+      "bytes": 297515,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "bb1d67ab68401b7f70b394626e228d12adf782471be8d1f0abf723aad7280ac5",
+      "bytes": 297665,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "sha256": "bb1d67ab68401b7f70b394626e228d12adf782471be8d1f0abf723aad7280ac5",
+      "bytes": 297665,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "9fea80b5dd7426ab66d85f61885cc781419f6178cef3f8c500597d4d1af2a169",
+      "bytes": 297659,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "sha256": "9fea80b5dd7426ab66d85f61885cc781419f6178cef3f8c500597d4d1af2a169",
+      "bytes": 297659,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "088a008ffd295aa307b2e832e24ac5655c93220b10f98520a86b4de95d4b13a9",
+      "bytes": 5964858,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "e22e9d3ff3eff3bf90d246c45242af599c82af59921cde093c78ead852921d1e",
+      "bytes": 5964887,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_498e955ceb_g0.pt",
+      "sha256": "cc481781bb98b3b9ff9fdb03c6f67db4f47fb7009795de381b6d70b23879f259",
+      "bytes": 115659,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_cec34dd110_g0.pt",
+      "sha256": "815e22adbce7ea8bf10eb3760257891d7c99c30a2a162d6fecfae02088d29dc4",
+      "bytes": 116799,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_498e955ceb_g402_o64_n32.pt",
+      "sha256": "890c6f26ba3e30da3337dd3da138726bde85d14b1c30e129889eb92d5e20b0d2",
+      "bytes": 62502,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_cec34dd110_g402_o64_n32.pt",
+      "sha256": "ad48a5691e8f0aa949de719608159bfb8243dbbaa734e5ad44759871ced28194",
+      "bytes": 63203,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_19c92f799a_g402_o64_n32.pt",
+      "sha256": "157c6434ba606d247991f78900d8cd8d7257c869ab779c8f55d757657e469711",
+      "bytes": 65387,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_5bc69b6690_g402_o64_n32.pt",
+      "sha256": "22ae7cefe0d0b2101f2eb06c8d6807ebaa5ff0e95a7db34588f1ba1f6aeaecd2",
+      "bytes": 66473,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_6da53ccb28_g0_o0_n32.pt",
+      "sha256": "ba02744f3509eead1b93a2a3a39caf37a3f78b40c01e3451e4fc88660ca7f637",
+      "bytes": 64825,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_5d4f07c521_g0_o0_n32.pt",
+      "sha256": "cfbd82cd6922c589ca69e7eb483e4a0dd9d8ee99c0b3124bd65aeffd18f46694",
+      "bytes": 65783,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_vector_channels_a0de950682_g0_o0_n32.pt",
+      "sha256": "c8adf7ca819068dd4b18fb71ac6936c09622c4dab10aad91c5911f35db6d8939",
+      "bytes": 66473,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "11b20170a31111a71fbd33a117cfe77da32d4ee47736290ec0dd7eac134c62b3",
+      "bytes": 9413186,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "40bb8858f0c9e133931efc8ea792182615ba9d7db129a4b2c59ff8d071e378fb",
+      "bytes": 9413215,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "03e0eff5ea10d8b23c8909fffa65772622979f3869c0fba7cee7e15d2f04b67c",
+      "bytes": 9413253,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "5af96b80f5c9202ea9e11b07748f913d249045ba1b91db7d429c7b1aa7f0a35b",
+      "bytes": 9413224,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "aab12ace7610b68e4207496dfe434446a70a400cb216a22ed8572d41914e931b",
+      "bytes": 8392868,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "aab12ace7610b68e4207496dfe434446a70a400cb216a22ed8572d41914e931b",
+      "bytes": 8392868,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa108l_geom_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "5ad1ee56ebf041cb2a4f4704ac603400b8cf218cbd97f3c9f1cfb14dd7ceee07",
+      "bytes": 8552909,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa108l_geom_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "143ba816dbdbe85a82bb25a35b7f35b68ef9241b4c3bf9f80b3ba2c965b3c55e",
+      "bytes": 8552909,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "c7397956abd422cf2830f6e44bab5e58d09d81ea38a2a85429b622109b8abf30",
+      "bytes": 8616299,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "b648a7aefefb3b291f54c8ef42469fa813e740e1abc6a5aa5a1c5b3f3de12c28",
+      "bytes": 8616299,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke8/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "c8e1c2c4be931d7604229601739a85f5750782d88a98e14ee8f3861d47522429",
+      "bytes": 8616304,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke8/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "a5e130e5537f1d90209bb67e9591098426f904c9abfe81d15d4498584b090a41",
+      "bytes": 8616304,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_7ep_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "c8dc02667b385aba127937e33e40d6ca03b850a24d2e8a38c4eafa0fcd802058",
+      "bytes": 8617078,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_7ep_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "9b8dbdbde2b937ad8c64e970a8b02195361f764df419bbc288b3f242301ba2d9",
+      "bytes": 8617078,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "79b77ddeb98cdfe4ea8c43568d0e0bfb53e60f2647bdad5915cc201945746a87",
+      "bytes": 8616398,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "79b77ddeb98cdfe4ea8c43568d0e0bfb53e60f2647bdad5915cc201945746a87",
+      "bytes": 8616398,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "d2b9c60628e7d337db639aafe0c3e97ebdabd65c62e3f6f4948c00c75a7b1717",
+      "bytes": 8553975,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "3096799e806194842bbec7816bf77fff3a5459b28f56ff7915e553de59eb134a",
+      "bytes": 8553975,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_null_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "c0022291f2d10593c52efbcfcb09dfad07c498aec9c31aa69977691da695704d",
+      "bytes": 8574834,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_null_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "5797b968590ce71d0fbf3976f895941d7f16b0b1a6c7d97ed86eda0aec5ae021",
+      "bytes": 8574834,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "21971c815e5f5babd9eb5ec25e82124b67f2c69bb61fbd6b35ea1519d6086314",
+      "bytes": 8575182,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "0af068323fb0a6fb8e6041274419a2b5b75997d9d29868a02c8eacf39b22e34b",
+      "bytes": 8575182,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "fed00651c795a2f78841d702161c3301dffe9927b63945aa600c42bac477c51a",
+      "bytes": 8407800,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "sha256": "fed00651c795a2f78841d702161c3301dffe9927b63945aa600c42bac477c51a",
+      "bytes": 8407800,
+      "kind": "obsolete_diagnostic_or_smoke",
+      "reason": "Early radial/head-swap diagnostic, scratch output, or low-budget smoke checkpoint. Metrics and logs remain.",
+      "deleted_verified": true
+    },
+    {
+      "path": "molmetal/reports/wf146_chemprop_lomo/data_quality/summary.md",
+      "sha256": "2b0009219d3bfa91ab88043078a3592dedde8aa0e1f485d57e7496ab88cffe8e",
+      "bytes": 641,
+      "kind": "duplicate_report_markdown",
+      "retained": "molmetal/reports/wf343c3_data_quality/summary.md",
+      "reason": "Byte-identical generated report; one copy retained.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "path": "molmetal/reports/wf299_cfm_main/wf343c3_data_quality/summary.md",
+      "sha256": "2b0009219d3bfa91ab88043078a3592dedde8aa0e1f485d57e7496ab88cffe8e",
+      "bytes": 641,
+      "kind": "duplicate_report_markdown",
+      "retained": "molmetal/reports/wf343c3_data_quality/summary.md",
+      "reason": "Byte-identical generated report; one copy retained.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "path": "molmetal/reports/wfa175_dead_gate_wiring/refutation/_refutation_payload.md",
+      "sha256": "87c851951b36b6e94dff742173e788ac0595e6e26cf8ce9ea75669d0b86c5bc6",
+      "bytes": 12748,
+      "kind": "duplicate_report_markdown",
+      "retained": "molmetal/reports/wfa175_dead_gate_wiring/refutation/refutation.md",
+      "reason": "Byte-identical generated report; one copy retained.",
+      "deleted_verified": true,
+      "retained_verified": true
+    }
+  ],
+  "summary": {
+    "deleted_files": 43,
+    "deleted_logical_bytes": 222819214,
+    "by_kind": {
+      "obsolete_diagnostic_or_smoke": 40,
+      "duplicate_report_markdown": 3
+    }
+  }
+}

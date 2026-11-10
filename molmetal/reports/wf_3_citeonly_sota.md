@@ -30,9 +30,9 @@ priority order:
    Diversity def, # seeds, # pockets, Metal-aware?) and the 7 protocol-mismatch
    flags.
 3. **Web-cached / paper-text-published numbers** for the docks that are not in
-   Group A: MolDiff (Chen et al. AAAI 2023, arXiv 2305.07545, Vina −7.55,
-   success 29.1% per the AAAI 2023 main table — cite-only, not re-run by
-   Mol-Metal); DiffDock (Corso 2022 ICML, arXiv 2210.01776, RMSD<2Å top-1
+   Group A: MolDiff (Peng et al. ICML 2023, arXiv 2305.07508, Vina −7.55,
+   success 29.1% per the ICML 2023 main table — cite-only, not re-run by
+   Mol-Metal); DiffDock (Corso 2023 ICLR, arXiv 2210.01776, RMSD<2Å top-1
    38.2% on PDBbind time-split 363); RoseTTAFold-AA (Krishna et al., Nat Methods
    2024, structure-only — no SBDD metrics, not directly comparable).
 
@@ -179,7 +179,7 @@ The framing is what the paper should say when reporting the corresponding
 number; it is not a sales pitch.
 
 ### DiffSBDD (CITED-ONLY)
-Schneuing et al. 2023 (ICML, arXiv 2210.13695). Vina −7.62 kcal/mol and
+Schneuing et al. 2024 (Nat. Comput. Sci., arXiv 2210.13695). Vina −7.62 kcal/mol and
 SA 2.81 are taken from the CrossDocked100 Luo-2021 split, single seed,
 QVina exhaustiveness 8. Success rate 24.6% follows the paper's
 "High-Affinity" definition (Vina < co-crystal reference). **Not re-run by
@@ -202,13 +202,13 @@ split. **Not re-run by Mol-Metal.** The strict / relaxed split on TargetDiff's
 success rate is itself a protocol-mismatch artifact within the paper.
 
 ### MolDiff (CITED-ONLY)
-Chen et al. 2023 (AAAI, arXiv 2305.07545). Vina −7.55, SA 2.71, QED 0.51,
+Peng et al. 2023 (ICML, arXiv 2305.07508). Vina −7.55, SA 2.71, QED 0.51,
 High-Affinity success 29.1%. QVina exh=8. Single seed. CrossDocked100
 Luo-2021 split. **Not re-run by Mol-Metal.** Same engine family as DiffSBDD /
 DecompDiff; Vina mean sits 0.1 kcal/mol above DiffSBDD.
 
 ### DecompDiff (CITED-ONLY)
-Guan et al. 2024 (ICLR, arXiv 2303.10120). Vina −8.39, SA 2.71, success 39.0%
+Guan et al. 2023 (ICML, arXiv 2403.07902). Vina −8.39, SA 2.71, success 39.0%
 (some tables 24.5%). QVina exh=8. Single seed. CrossDocked100 Luo-2021 split.
 **Not re-run by Mol-Metal.** The 24.5% vs 39.0% success-rate discrepancy in
 the paper itself is a flag for the round-10 audit.
@@ -221,8 +221,8 @@ denominators are different. FLOWr's test set is SPINDR-curated
 CrossDocked100, not the Luo-2021 split. **Not re-run by Mol-Metal.**
 
 ### DiffDock (CITED-ONLY, RMSD not Vina)
-Corso et al. 2022 (ICML, arXiv 2210.01776) and DiffDock-L 2024 (ICLR,
-arXiv 2403.05784). The reported 38.2% RMSD<2 Å top-1 on PDBbind
+Corso et al. 2023 (ICLR, arXiv 2210.01776) and DiffDock-L 2024 (ICLR,
+arXiv 2402.18396). The reported 38.2% RMSD<2 Å top-1 on PDBbind
 time-split 363 is a **docking / RMSD** metric, not a Vina kcal/mol.
 10 × 20 = 200 samples per pocket. **Not re-run by Mol-Metal.** Comparing
 DiffDock's RMSD<2 Å to the geometric-SBDD Vina mean is a category error
@@ -319,3 +319,56 @@ is live and the proxy is replaced by real Vina on a 100-pocket sweep.
   cite-only table; not modified)
 - All Lambda / CFM / round-trip / metal-seed / BNF code paths
 - Any historical checkpoint or pretrain weights
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 — DecompDiff identifier + venue-year.** Superseded:
+  `Guan et al. 2024 (ICLR, arXiv 2303.10120).` Corrected to:
+  `Guan et al. 2023 (ICML, arXiv 2403.07902).`
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → "DecompDiff: Diffusion Models with
+  Decomposed Priors for Structure-Based Drug Design" (Guan et al.), ICML 2023
+  (PMLR 202:11827-11846). Superseded id `2303.10120` = unrelated ASME Riccati-filter paper.
+- **F-12 (adjacent) — DiffSBDD venue-year.** Superseded:
+  `Schneuing et al. 2023 (ICML, arXiv 2210.13695).` Corrected to:
+  `Schneuing et al. 2024 (Nat. Comput. Sci., arXiv 2210.13695).`
+  Verified 2026-10-31: Crossref `10.1038/s43588-024-00737-x` → *Nature Computational Science*
+  4(12):899-909 (issued 2024-12-09); arXiv `2210.13695` carries no venue comment and is not in
+  PMLR v202 / v235. First author **Arne Schneuing** (arXiv API).
+- **DiffDock venue + year.** Superseded: `DiffDock (Corso 2022 ICML, arXiv 2210.01776,` and
+  `Corso et al. 2022 (ICML, arXiv 2210.01776) and DiffDock-L 2024 (ICLR,`.
+  Corrected to: `DiffDock (Corso 2023 ICLR, arXiv 2210.01776,` and
+  `Corso et al. 2023 (ICLR, arXiv 2210.01776) and DiffDock-L 2024 (ICLR,`.
+  Verified 2026-10-31: arXiv API `id_list=2210.01776` → "DiffDock: Diffusion Steps, Twists,
+  and Turns for Molecular Docking" (Corso et al.), comment "International Conference on
+  Learning Representations (ICLR 2023)". The 38.2 % RMSD<2 Å figure and the "10 × 20 = 200"
+  sampling description are performance values and are **unchanged**.
+- **DiffDock-L arXiv identifier.** Superseded: `arXiv 2403.05784`. Corrected to:
+  `arXiv 2402.18396`. Verified 2026-10-31: `id_list=2403.05784` → "Kiri-Spoon: A Soft
+  Shape-Changing Utensil for Robot-Assisted Feeding" (unrelated robotics paper);
+  `id_list=2402.18396` → "Deep Confident Steps to New Pockets: Strategies for Docking
+  Generalization" (Corso et al.), journal_ref "International Conference on Learning
+  Representations 2024".
+- **MolDiff identifier + venue + first author.** Superseded: `MolDiff (Chen et al. AAAI 2023,
+  arXiv 2305.07545,`, `success 29.1% per the AAAI 2023 main table`, and
+  `Chen et al. 2023 (AAAI, arXiv 2305.07545).`
+  Corrected to: `MolDiff (Peng et al. ICML 2023, arXiv 2305.07508,`,
+  `success 29.1% per the ICML 2023 main table`, and `Peng et al. 2023 (ICML, arXiv 2305.07508).`
+  Verified 2026-10-31: arXiv API `id_list=2305.07545` → "KmerCo: A lightweight K-mer counting
+  technique with a tiny memory footprint" (Nayak, Bhattacharya) — an unrelated paper;
+  `id_list=2305.07508` → "MolDiff: Addressing the Atom-Bond Inconsistency Problem in 3D
+  Molecule Diffusion Generation" (Xingang Peng, Jiaqi Guan, Qiang Liu, Jianzhu Ma), listed in
+  PMLR v202 as ICML 2023, PMLR 202:27611-27629. The **only** arXiv paper titled "MolDiff" is
+  2305.07508. **The Vina −7.55 / SA 2.71 / QED 0.51 / 29.1 % figures were NOT changed** —
+  this wave fixes identifiers only; whether those four figures belong to MolDiff at all is a
+  separate open question, logged in the wave closeout as an honest-negative (public
+  comparison tables attribute −7.55 to TargetDiff).

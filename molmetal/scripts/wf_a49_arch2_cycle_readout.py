@@ -98,12 +98,23 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--ckpt",
-        default="/home/hugo/codes/mol-metal/molmetal/checkpoints/cfm_yuelbond_wasserstein_seed0.smoke_stub.pt",
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "checkpoints"
+            / "cfm_yuelbond_wasserstein_seed0.smoke_stub.pt"
+        ),
         help="Path to the YuelBond smoke_stub checkpoint.",
     )
     p.add_argument(
         "--out",
-        default="/home/hugo/codes/mol-metal/molmetal/reports/wf_a49_arch2_cycle_readout/last.json",
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf_a49_arch2_cycle_readout"
+            / "last.json"
+        ),
         help="Output JSON path.",
     )
     p.add_argument(

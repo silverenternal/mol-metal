@@ -14,7 +14,7 @@
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
-| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。成分均值 22.17→**3.45**（语料 3.34），但第二成分是单原子的占 **60.5%**（语料 1.5%）、第二成分均 **1.98** 原子（语料 12.09）。键密度 1.137（语料 1.069），3 元环 **67.5%** vs 语料 **0.01%**。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。键头 teacher-forced `bond_f1` 0.173→0.605，但重建池只有 **1.35/1.49** 个成分（语料 3.34）。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/reference`；`.../per_epoch/17`；`.../head_on_real_geometries`；`.../bond_head_trajectory`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
+| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，池文件跨 18 epoch（被记录的运行 4..17），SA≤4.5 = **0.4% [0.31,0.52]**（全语料层三池 60/14,846），低于 256 样本的 0.69%；联合闸 0/10,190；判定不变——0.4% 与单池的 0.28% 都远低于任何可用的可合成率） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch**（池文件跨 epoch 0..17；被记录的运行只跑了 **4..17**，epoch 0..3 属于同目录里被杀的 pre-resume 尝试）× 704 = **12,668** 可打分 / 10,190 唯一 SMILES；本行仍按**池文件**口径，未按 4..17 重算——重算是 §6.206c 记录的仍待办动作）：SA 6.99、QED 0.124；SA≤4.5 按**全语料层三池**计 = **0.4% [0.31,0.52]**（60/14,846），单池 `cfm_c7_fullgen_2026_10_20` 自身为 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（16/2,330）。成分均值 22.17→**3.45**（语料 3.34），但第二成分是单原子的占 **60.5%**（语料 1.5%）、第二成分均 **1.98** 原子（语料 12.09）。键密度 1.137（语料 1.069），3 元环 **67.5%** vs 语料 **0.01%**。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。键头 teacher-forced `bond_f1` 0.173→0.605（**轨迹只覆盖 epoch 4..17**，epochs 0..3 属于同目录里被杀的 pre-resume 尝试），但重建池只有 **1.35/1.49** 个成分（语料 3.34）。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/full_corpus/n_sa_le_gate`；`.../by_tier/full_corpus/n_scored`；`.../by_tier/small/rate_sa_le_gate`；`.../by_tier/small/wilson_ci95`；`.../by_tier/small/n_sa_le_gate`；`.../by_tier/small/n_scored`；`.../tiers_missing`；`c7_scale_matched_pools.json:/pools[0]/sa_counts_at_or_below/4.5`（36）；`.../pools[0]/n_scored`（12,668）；`.../pools[0]/sa_mean`（6.9905）；`.../pools[0]/qed_mean`（0.1238）；`.../pools[0]/joint_gate`（n=10,190；n_sa_and_novel=0；mean_novelty_of_sa_subset=0.8587）；（pools[0] = pool `cfm_c7_fullgen_2026_10_20`）；`c7_fullgen_pool_quality.json:/reference`；`.../per_epoch/17`；`.../head_on_real_geometries`；`.../bond_head_trajectory`；`.../bond_head_trajectory_meta`；`cfm_fragmentation_audit.json:/runs[3]/pool_population_composition`（run=cfm_c7_fullgen_2026_10_20）；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
 | C8 | 跨金属外推失败的主因是结构（排序）不迁移，不是水平估不准 | **SUPPORTED** | offset 占平方误差 0.045–0.100，scale 0.198–0.272，**shape 0.653–0.757**；完美水平只值 +0.078 R² 且 4/5 金属仍为负 | `msrs_lomo_error_decomposition.json:/dominant_term`；`.../mechanism`；`msrs_metal_descriptor_level.json:/counterfactual_summary` |
 | C9 | 公开语料里不存在独立的跨金属外部 cohort | **SUPPORTED**（领域事实） | IrCytoToxDB 与 MSRS 的 DOI 重叠 221/222 = 99.55%，仅 1 个新 DOI；匹配的 653 个 (DOI,细胞系) 格里 89.4% 数值相同（\|Δ\|<0.01），中位 \|Δ\|=0.0，r=0.9611 | `msrs_external_cohort_probe.json:/ircytotoxdb/doi_overlap_share`；`.../ircytotoxdb/row_agreement` |
 | C10 | 给新金属少量测量后校准，可以让模型可用 | **NOT SUPPORTED**（且校准使结果变差） | ligand-disjoint 切分上 k=50 时 R²≥0 的金属 **0/5**；k=5 时"比零样本更差"的重复占 55–95% | `msrs_kshot_calibration.json:/endpoints/potency/splits/metal_out_ligand_disjoint/verdict_at_gate_k` |
@@ -110,9 +110,11 @@ offset / scale / shape 三项后，**shape 占 0.653–0.757，offset 只占 0.0
 ## C7 — 生成
 
 **能写**：「全语料的自由生成池现在存在（`cfm_c7_fullgen_2026_10_20`，n_train=26,715，
-**18/18 个 epoch** × 704 = 12,669 行 / 12,668 个可打分、10,190 个唯一 SMILES，SA 6.99、
-QED 0.124）。它的 SA≤4.5 是 **0.28% [0.21,0.39]**（36/12,668），**低于** n_train=256 池的
-0.69% [0.42,1.11]（n=2,330）：把语料放大到全量**没有**改善可合成性。
+**18/18 个 epoch**（池文件跨 epoch 0..17；被记录的运行只跑了 **4..17**，epoch 0..3 属于
+同目录里被杀的 pre-resume 尝试）× 704 = 12,669 行 / 12,668 个可打分、10,190 个唯一
+SMILES，SA 6.99、QED 0.124）。它的 SA≤4.5 单池是 **0.28% [0.21,0.39]**（36/12,668），
+按**全语料层三池**计是 **0.4% [0.31,0.52]**（60/14,846），**低于** n_train=256 池的
+0.69% [0.42,1.11]（16/2,330）：把语料放大到全量**没有**改善可合成性。
 联合闸（SA≤4.5 且 novelty≥0.90）是 **0/10,190**，SA 通过子集的平均新颖度只有 0.8587，
 低于 0.90——通过 SA 的 36 个分子都是训练集的近亲。
 成分数会收敛、成分大小不会：语料的金属是单独一个 component（训练集 69.1% 是 3 个
@@ -122,7 +124,7 @@ component，均值 3.34，单一 component 只占 0.07%），所以「单片段�
 是一个融合大块加零散原子，不是几个配体。
 键密度到 epoch 17 已达 1.137 键/重原子（真实语料 1.069），但 3 元环占比 **67.5%**，
 真实语料只有 **0.01%**（6 元环 2.8% vs 87.5%）：模型学到的是键的**数量**，不是键的**拓扑**。
-键头在真实几何上 teacher-forced 反而在变好（`bond_f1` 0.173→0.605），但同样过连接：
+键头在真实几何上 teacher-forced 反而在变好（`bond_f1` 0.173→0.605；**这条轨迹只覆盖 epoch 4..17**——epochs 0..3 属于同目录里被杀的 pre-resume 尝试，census 判定 `class_b_resume_prehistory`、被记录的运行 `done_event_n_epochs_run`=14），但同样过连接：
 两个重建池平均只有 **1.35 / 1.49** 个成分（语料 3.34），说明过度成键从键头就开始了，
 不能只归咎于采样器。
 Wf-A107 的 5-epoch 方向测试把「拓扑没修好」钉在环先验上：环模板先验（OPT-5）在
@@ -141,7 +143,7 @@ p=0.065）；但同一检查在键头自己的图上全部为 null（3 元环 +0
 **不能**说键头学会了局部闭环——效应只出现在解码之后，机制未解释。」
 
 **不能写**：「生成器做不出可合成的金属配合物」——虽然现在有 **18/18 个 epoch**（`exit=0`，
-wall 11,232 s），仍**没有**证据说这是收敛值或天花板；也**不能**写「全语料 SA≤4.5 可达
+wall 11,232 s；池文件跨 epoch 0..17，被记录的运行只跑了 **4..17**），仍**没有**证据说这是收敛值或天花板；也**不能**写「全语料 SA≤4.5 可达
 33.7%」——那是重建池的数字，v1.0 已撤回；也不能用 `gen_validity=1.0` 当质量证据——该池
 `sa_scored`=0，1.0 是松散原子假象。**也不能再把单片段率当质量趋势**——它在这个数据集里
 既不表示「在学会成键」也不表示「连通性变差」，两种读法都已撤回。

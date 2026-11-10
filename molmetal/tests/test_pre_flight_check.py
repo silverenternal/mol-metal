@@ -21,13 +21,19 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 # Match v2 doc §8.1 schema fields we expect on every report.
 REQUIRED_TOP_KEYS = {"timestamp", "pipeline", "summary", "gates"}
-REQUIRED_SUMMARY_KEYS = {"pass", "fail", "skip", "total_wall_sec"}
+# Wf-A127 (2026-10-31): "warn" was added to the summary by Wf-A125 G11
+# (a WARN gate used to be counted in NO bucket, so the summary was
+# internally inconsistent).  It is now a first-class summary key and is
+# part of the identity below.  The historical text of this contract is
+# preserved verbatim in the docstring above; the four lines below are the
+# Wf-A127 re-sync (catalog §6.237).
+REQUIRED_SUMMARY_KEYS = {"pass", "fail", "skip", "warn", "total_wall_sec"}
 REQUIRED_GATE_KEYS = {"name", "priority", "pipeline", "status", "evidence", "wall_sec"}
-ALLOWED_STATUS = {"PASS", "FAIL", "SKIP"}
+ALLOWED_STATUS = {"PASS", "FAIL", "SKIP", "WARN"}
 ALLOWED_PRIORITY = {"P0", "P1", "P2", "P3"}
 
 
@@ -102,9 +108,13 @@ def test_json_schema() -> None:
         assert gate["priority"] in ALLOWED_PRIORITY, f"bad priority {gate['priority']}"
         assert isinstance(gate["wall_sec"], (int, float)), "wall_sec must be numeric"
         assert isinstance(gate["evidence"], str), "evidence must be string"
-    # n_pass + n_fail + n_skip must equal len(gates).
+    # n_pass + n_fail + n_skip + n_warn must equal len(gates).
+    # Wf-A127 (2026-10-31): "warn" was added to this identity by Wf-A125
+    # G11, which made WARN a first-class status in the code; the test
+    # contract still forbade it, so the repo held two contradictory
+    # identities at once (catalog §6.237).
     s = data["summary"]
-    assert s["pass"] + s["fail"] + s["skip"] == len(
+    assert s["pass"] + s["fail"] + s["skip"] + s["warn"] == len(
         data["gates"]
     ), f"summary.totals don't match gates list: {s}"
 

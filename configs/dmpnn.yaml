@@ -114,7 +114,32 @@ data:
   # The general hazard: deleting a CLI literal can delete the ONLY copy of a
   # value. The value belongs in the yaml; the literal should never have.
   csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
-  # Lists are ALWAYS YAML-wins per the loader's list special case.
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   # Lists are ALWAYS YAML-wins per the loader's list special case.
+  # CORRECTION (2026-11-04, MEASURED on this tree): the superseded sentence
+  # above is FALSE. The loader's precedence is explicit CLI > YAML > argparse
+  # default for LIST dests as well — an explicitly-passed CLI list WINS over
+  # the YAML list.
+  #   molmetal/scripts/wfA2_config_loader.py: the list special case at
+  #   apply_yaml_overrides() line 835-838 is
+  #       if isinstance(value, list) and isinstance(cur, list):
+  #           if not _user_supplied(dest, cur, dft):   # <-- the guard
+  #               setattr(args, dest, value)
+  #   and `_user_supplied` (line 779) asks `_explicit_cli_dests` ->
+  #   `_supplied_dests`, i.e. the REAL argv probe (argparse defaults swapped to
+  #   argparse.SUPPRESS), so the YAML list is written ONLY when the caller
+  #   passed no CLI list for that dest.
+  # MEASURED 2026-11-04 — trainer's own parse_args + the real loader,
+  # CUDA_VISIBLE_DEVICES="" /home/hugo/codes/mol-metal/.venv/bin/python:
+  #   --config configs/dmpnn.yaml              -> metals == ['auto']
+  #   --config configs/dmpnn.yaml --metals Ru  -> metals == ['Ru']   (CLI wins)
+  # Unambiguous variant (a /tmp copy of this file with data.metals: [Ir]):
+  #   YAML only                                -> metals == ['Ir']
+  #   YAML [Ir] + --metals Ru                 -> metals == ['Ru']  (CLI wins)
+  # REPRODUCE: import molmetal/scripts/train_dmpnn_multitask_wasserstein.py,
+  # set sys.argv = ["trainer", "--config", "configs/dmpnn.yaml", "--metals",
+  # "Ru"], then print(parse_args(sys.argv[1:]).metals) -> ['Ru'].
+  # The YAML value below therefore lands ONLY when no CLI list was passed.
   metals:
     - auto
   seeds:
@@ -180,7 +205,20 @@ compute:
 #     `epochs` under `protocol:` would silently override `train.epochs`
 #     depending on file order.
 # `seeds` is restated with the identical value it has under `data:` — the
-# loader treats list dests as YAML-wins, so both writes land the same list.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   # loader treats list dests as YAML-wins, so both writes land the same list.
+# CORRECTION (2026-11-04, MEASURED): the mechanism in the superseded sentence
+# above is FALSE — list dests are NOT YAML-wins over an explicit CLI list. The
+# true mechanism is LAST-KEY-WINS WITHIN THE YAML: `data.seeds` and
+# `protocol.seeds` both resolve to the dest `seeds`, so the two writes land on
+# the same dest and the last one in file order wins. When the caller DOES pass
+# a CLI list for that dest, the loader's list special case
+# (wfA2_config_loader.py:835-838) writes NEITHER YAML list — the CLI list
+# wins over both. MEASURED 2026-11-04:
+#   --config configs/dmpnn.yaml --seeds 0 1  -> seeds == [0, 1]   (CLI wins)
+#   --config configs/dmpnn.yaml              -> seeds == [0, 1, 2, 3, 4]
+# (both YAML writes carry the identical cohort, so the observable outcome here
+# is unchanged when no CLI list is passed — the CLAIM was what was wrong).
 protocol:
   seeds:
     - 0
@@ -203,6 +241,15 @@ entry:
   # hyperparameter lives above. `--seeds` is NOT passed — `data.seeds` /
   # `protocol.seeds` already declare the cohort and the loader writes it, so a
   # CLI list would be redundant (and list dests are YAML-wins per Wf-R27 FIX 4).
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   # CLI list would be redundant (and list dests are YAML-wins per Wf-R27 FIX 4).
+  # CORRECTION (2026-11-04, MEASURED): the parenthetical in the superseded
+  # sentence above is FALSE — list dests are NOT YAML-wins over an explicit CLI
+  # list (see the CORRECTION under `data.metals:` above for the measurement and
+  # the reproduction). The redundancy claim itself still holds for THIS wrapper:
+  # no CLI list is passed for `seeds`, so `data.seeds` / `protocol.seeds` are what
+  # the trainer reads. MEASURED 2026-11-04:
+  #   --config configs/dmpnn.yaml -> seeds == [0, 1, 2, 3, 4].
   #
   # `--csv` AND `--data-csv` are both required and both a literal, not a
   # placeholder — the two flags feed different loaders (trainer lines 2959 /

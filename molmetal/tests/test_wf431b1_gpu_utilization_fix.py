@@ -25,6 +25,7 @@ monotone non-increasing loss curve.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -87,7 +88,7 @@ def _invoke_trainer(extra_flags: list[str], capture_metrics: bool = True):
     shutil.rmtree(SMOKE_OUT_DIR, ignore_errors=True)
 
     cmd = [
-        "/home/hugo/codes/mol-metal/.venv/bin/python",
+        sys.executable,
         TRAINER_PATH,
         *SMOKE_FLAGS_BASE,
         *extra_flags,

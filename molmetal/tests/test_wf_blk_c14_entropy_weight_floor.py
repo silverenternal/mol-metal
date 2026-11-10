@@ -20,7 +20,7 @@ What this file asserts:
     fraction and the measured band (fails loudly if someone deletes the print);
   * the warning is a warning, not a behaviour change — the loss value is
     unchanged, so DEFAULT-OFF and small-weight runs stay bit-for-bit
-    compatible (AGENTS.md §5.11);
+    compatible (~~AGENTS.md §5.11~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-11-01);
   * weight 0.0 (the shipped default) and weight >= floor do NOT warn.
 
 MEASURED sources cited in the assertions:
@@ -202,9 +202,10 @@ def test_weight_below_floor_does_not_change_the_loss_value():
     """A sub-threshold weight must still reach the loss sum unchanged.
 
     The guard prints; it does not clamp, coerce or fail. If a future edit made
-    it rewrite the weight, DEFAULT-OFF compatibility (§5.11) and the ability to
-    A/B a small weight would both be gone, and the guard would be deciding
-    experimental results rather than reporting them.
+    it rewrite the weight, DEFAULT-OFF compatibility (~~§5.11~~ → AGENTS.md §3.3
+    audit-ledger; corrected 2026-11-01) and the ability to A/B a small weight
+    would both be gone, and the guard would be deciding experimental results
+    rather than reporting them.
     """
     import torch
     import torch.nn.functional as F
@@ -223,7 +224,8 @@ def test_weight_below_floor_does_not_change_the_loss_value():
     assert below != 0.0, "0.01 must still contribute — the guard is a warning"
     assert at_floor != 0.0
     assert abs(at_floor) > abs(below), "the term must scale with the weight"
-    # weight 0.0 is an EXACT zero — the §5.11 bit-for-bit default-off contract
+    # weight 0.0 is an EXACT zero — the ~~§5.11 bit-for-bit default-off contract~~
+    # → AGENTS.md §3.3 audit-ledger; corrected 2026-11-01
     assert entropy_component(0.0) == 0.0
 
 

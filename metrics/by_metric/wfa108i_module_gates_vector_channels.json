@@ -1,0 +1,457 @@
+{
+  "metric": "wfa108i_module_gates",
+  "tag": "MEASURED",
+  "date": "2026-10-25",
+  "generated_at_unix": 1792862571,
+  "what": "The ten module gates from cfm_todo.json v9.0, executed against one checkpoint. Each gate measures one module's own function; the seam gates (M1, M8) measure the join between two modules.",
+  "checkpoint": "/home/hugo/codes/mol-metal/results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "checkpoint_sha256": "5f644314da679834441e9b131613aa419482b1d4b50dc2c731775dc5974e439c",
+  "ckpt_epoch": 4,
+  "velocity_head": "vector_channels",
+  "prediction_target": "velocity",
+  "t_embedding_dim": 0,
+  "radial_centroid_masked": false,
+  "dataset": "csv",
+  "run_dir": "results/wfa108_vector_channels",
+  "device": "cpu",
+  "n_clouds": 8,
+  "n_atoms": 405,
+  "seed": 0,
+  "legacy_vel_migration": {},
+  "gates": [
+    {
+      "id": "M1",
+      "module": "data entry",
+      "status": "PASS",
+      "checks": {
+        "identity_residual_lt_1e-5": true,
+        "boundary_t0_exact": true,
+        "boundary_t1_exact": true,
+        "sigma_within_10pct": true,
+        "per_cloud_t": true
+      },
+      "measured": {
+        "identity_residual": 5.960464477539062e-07,
+        "boundary_t0": 0.0,
+        "boundary_t1": 0.0,
+        "fm_noise_sigma": 2.485,
+        "sigma_measured": 2.5251951217651367,
+        "sigma_measured_per_atom": 2.5238139629364014,
+        "cohort_coord_std": 2.086984157562256,
+        "sigma_ratio_prior_over_data": 1.190713399043074,
+        "fm_t_per_cloud": 1,
+        "n_atoms": 405
+      },
+      "detail": null,
+      "wall_time_s": 0.0
+    },
+    {
+      "id": "M2",
+      "module": "conditioning path",
+      "status": "FAIL",
+      "checks": {
+        "metal_swap_gt_1e-2": true,
+        "t_shift_gt_1e-2": false,
+        "atom_type_swap_gt_1e-2": false
+      },
+      "measured": {
+        "relative_change_metal_swap": 0.0301553366818129,
+        "relative_change_t_shift_0p25": 0.0057528866543488325,
+        "relative_change_atom_type_swap": 0.005002663791203809,
+        "n_metal_atoms": 8,
+        "metal_swap_pairs": {
+          "Ir": "Rh",
+          "Ru": "Pt",
+          "Rh": "Ir"
+        },
+        "threshold": 0.01,
+        "base_norm": 2.8437583446502686
+      },
+      "detail": null,
+      "wall_time_s": 1.92
+    },
+    {
+      "id": "M3",
+      "module": "velocity head capacity",
+      "status": "PASS",
+      "checks": {
+        "final_mse_le_10pct_of_v0": true
+      },
+      "measured": {
+        "steps": 2000,
+        "final_train_mse": 0.2288791537284851,
+        "zero_baseline_mse": 11.760530471801758,
+        "final_over_zero": 0.01946163519386043,
+        "radial_ceiling_mse": 6.317902565002441,
+        "verdict_harness": "FITS_ONE_BATCH",
+        "velocity_head": "vector_channels",
+        "n_clouds": 8,
+        "n_atoms": 405
+      },
+      "detail": null,
+      "wall_time_s": 1606.91
+    },
+    {
+      "id": "M4",
+      "module": "output scale",
+      "status": "FAIL",
+      "checks": {
+        "ratio_and_slope_in_band_all_t": false
+      },
+      "measured": {
+        "per_t": [
+          {
+            "t": 0.05,
+            "mean_v_norm": 0.11524330079555511,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.02112311208991455,
+            "slope_origin": 0.009038228541612625,
+            "slope_with_intercept": 0.009042120538651943,
+            "cosine": 0.4278833866119385
+          },
+          {
+            "t": 0.25,
+            "mean_v_norm": 0.12669536471366882,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.023299415950010807,
+            "slope_origin": 0.006213539279997349,
+            "slope_with_intercept": 0.0062015727162361145,
+            "cosine": 0.2666822373867035
+          },
+          {
+            "t": 0.5,
+            "mean_v_norm": 0.1345224827528,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.02460417432527896,
+            "slope_origin": 0.004673993214964867,
+            "slope_with_intercept": 0.004677144344896078,
+            "cosine": 0.18996751308441162
+          },
+          {
+            "t": 0.75,
+            "mean_v_norm": 0.12526412308216095,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.022934471859285793,
+            "slope_origin": -0.0012260404182597995,
+            "slope_with_intercept": -0.0012340055545791984,
+            "cosine": -0.053458407521247864
+          },
+          {
+            "t": 0.95,
+            "mean_v_norm": 0.12422703951597214,
+            "mean_target_norm": 5.3252387046813965,
+            "ratio": 0.02288021840113859,
+            "slope_origin": -0.005329600535333157,
+            "slope_with_intercept": -0.005339589901268482,
+            "cosine": -0.2329348623752594
+          }
+        ],
+        "ratio_min": 0.02112311208991455,
+        "ratio_max": 0.02460417432527896,
+        "slope_min": -0.005329600535333157,
+        "slope_max": 0.009038228541612625
+      },
+      "detail": null,
+      "wall_time_s": 1.9
+    },
+    {
+      "id": "M5",
+      "module": "gradient path",
+      "status": "FAIL",
+      "checks": {
+        "no_block_zero_grad": false,
+        "spread_le_100x": false
+      },
+      "measured": {
+        "blocks": {
+          "vel_field": {
+            "grad_norm": 5.129221728423055,
+            "n_params": 62,
+            "n_with_nonzero_grad": 54
+          },
+          "head": {
+            "grad_norm": 0.0,
+            "n_params": 30,
+            "n_with_nonzero_grad": 0
+          },
+          "pocket_encoder": {
+            "grad_norm": 0.0,
+            "n_params": 13,
+            "n_with_nonzero_grad": 0
+          }
+        },
+        "spread_max_over_min": null,
+        "fm_loss": 11.707257270812988,
+        "note": "head.* is trained by bond_ce, not by fm_term; a zero here means 'the FM objective does not reach it', which is expected, not a defect. The gate text does not distinguish the two, so this gate reports the number rather than assuming the intent."
+      },
+      "detail": null,
+      "wall_time_s": 1.17
+    },
+    {
+      "id": "M6",
+      "module": "time resolution",
+      "status": "FAIL",
+      "checks": {
+        "relative_change_gt_0p1": false,
+        "smoothness_lt_0p25": true
+      },
+      "measured": {
+        "relative_change_endpoints": 0.023099959787349234,
+        "smoothness": 2.137568854539606e-06,
+        "mean_v_norm": 2.9658241271972656,
+        "v_norm_at_t0": 2.9677584171295166,
+        "v_norm_at_t1": 2.9641506671905518,
+        "norm_ratio_t1_over_t0": 0.9987843632698059,
+        "min_adjacent_cosine": 0.9999996423721313,
+        "mean_adjacent_cosine": 1.0,
+        "n_t_points": 101
+      },
+      "detail": null,
+      "wall_time_s": 26.15
+    },
+    {
+      "id": "M7",
+      "module": "warm start",
+      "status": "PASS",
+      "checks": {
+        "no_critical_param_missing": true
+      },
+      "measured": {
+        "tmqm_init_path": "/home/hugo/codes/mol-metal/models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+        "n_source_tensors": 12,
+        "n_own_tensors": 62,
+        "n_bridged": 58,
+        "n_missing": 4,
+        "missing_keys": [
+          "cross_attn.in_proj_weight",
+          "vc_layers.0.update_mlp.0.weight",
+          "vc_layers.1.update_mlp.0.weight",
+          "vc_layers.2.update_mlp.0.weight"
+        ],
+        "critical_missing_keys": []
+      },
+      "detail": null,
+      "wall_time_s": 0.0
+    },
+    {
+      "id": "M8",
+      "module": "train / sample seam",
+      "status": "PASS",
+      "checks": {
+        "max_abs_diff_eq_zero": true
+      },
+      "measured": {
+        "max_abs_diff": 0.0,
+        "norm_sampler": 2.821436643600464,
+        "norm_train": 2.821436643600464,
+        "n_clouds": 8,
+        "pad_width": 116,
+        "fm_batch_chunk_ratio": 0.0
+      },
+      "detail": null,
+      "wall_time_s": 0.48
+    },
+    {
+      "id": "M9",
+      "module": "objective balance",
+      "status": "FAIL",
+      "checks": {
+        "no_term_above_90pct": true,
+        "all_declared_weights_observable": false
+      },
+      "measured": {
+        "path": "/home/hugo/codes/mol-metal/results/wfa108_vector_channels/per_epoch_metrics.json",
+        "source": "flat_keys",
+        "n_epochs": 5,
+        "per_epoch": [
+          {
+            "epoch": 0,
+            "source": "flat_keys",
+            "terms": {
+              "bond_ce_loss": 1.027773561477661,
+              "wasserstein_loss": 0.7904410672187805,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 12.172040977478026
+            },
+            "shares": {
+              "bond_ce_loss": 0.07346352993179502,
+              "wasserstein_loss": 0.056499401402639614,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 0.8700370686655654
+            },
+            "total": 13.990255606174468
+          },
+          {
+            "epoch": 1,
+            "source": "flat_keys",
+            "terms": {
+              "bond_ce_loss": 1.0047542691230773,
+              "wasserstein_loss": 0.794120900630951,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 12.171412200927735
+            },
+            "shares": {
+              "bond_ce_loss": 0.07192080180338083,
+              "wasserstein_loss": 0.05684356230906917,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 0.87123563588755
+            },
+            "total": 13.970287370681763
+          },
+          {
+            "epoch": 2,
+            "source": "flat_keys",
+            "terms": {
+              "bond_ce_loss": 0.9511664938926697,
+              "wasserstein_loss": 0.7954598975181579,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 12.457333946228028
+            },
+            "shares": {
+              "bond_ce_loss": 0.06696487960278151,
+              "wasserstein_loss": 0.05600268366071686,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 0.8770324367365016
+            },
+            "total": 14.203960337638856
+          },
+          {
+            "epoch": 3,
+            "source": "flat_keys",
+            "terms": {
+              "bond_ce_loss": 0.8873009705543518,
+              "wasserstein_loss": 0.7881392478942871,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 12.27043426513672
+            },
+            "shares": {
+              "bond_ce_loss": 0.06362462042797869,
+              "wasserstein_loss": 0.05651415039063679,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 0.8798612291813845
+            },
+            "total": 13.945874483585358
+          },
+          {
+            "epoch": 4,
+            "source": "flat_keys",
+            "terms": {
+              "bond_ce_loss": 0.7989863324165344,
+              "wasserstein_loss": 0.7760493922233581,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 12.277088432312011
+            },
+            "shares": {
+              "bond_ce_loss": 0.05767969759465018,
+              "wasserstein_loss": 0.05602385478431376,
+              "bond_aux_mse_term": 0.0,
+              "ring_prior_term": 0.0,
+              "fm_term": 0.8862964476210361
+            },
+            "total": 13.852124156951904
+          }
+        ],
+        "max_share_by_term": {
+          "bond_ce_loss": 0.07346352993179502,
+          "wasserstein_loss": 0.05684356230906917,
+          "bond_aux_mse_term": 0.0,
+          "ring_prior_term": 0.0,
+          "fm_term": 0.8862964476210361
+        },
+        "worst_term": "fm_term",
+        "worst_share": 0.8862964476210361,
+        "declared_nonzero_weights": {
+          "bond_aux_mse_weight": 0.1,
+          "bond_loss_weight": 1.0,
+          "energy_conservation_weight": 0.05,
+          "entropy_reg_weight": 0.1,
+          "fm_ode_term_weight": 0.05,
+          "fm_weight": 1.0,
+          "fragment_loss_weight": 0.05,
+          "lambda_cfm_coupling_weight": 0.1,
+          "molecule_loss_weight": 0.05,
+          "property_loss_weight": 0.05,
+          "qed_loss_weight": 0.05,
+          "sboo3_term_weight": 0.05,
+          "so3_average_weight": 0.1,
+          "stereo_loss_weight": 0.05,
+          "wasserstein_weight": 0.1
+        },
+        "unobservable_weights": [
+          "bond_aux_mse_weight",
+          "energy_conservation_weight",
+          "entropy_reg_weight",
+          "fm_ode_term_weight",
+          "fragment_loss_weight",
+          "lambda_cfm_coupling_weight",
+          "molecule_loss_weight",
+          "property_loss_weight",
+          "qed_loss_weight",
+          "sboo3_term_weight",
+          "so3_average_weight",
+          "stereo_loss_weight"
+        ],
+        "weights_with_no_exported_term": [
+          "lambda_cfm_coupling_weight"
+        ],
+        "weights_whose_term_is_zero": [
+          "bond_aux_mse_weight"
+        ]
+      },
+      "detail": null,
+      "wall_time_s": 0.0
+    },
+    {
+      "id": "M10",
+      "module": "metric chain",
+      "status": "FAIL",
+      "checks": {
+        "checkpoint_on_disk": true,
+        "artifact_names_a_checkpoint": false,
+        "named_checkpoint_exists": false,
+        "hash_recorded_and_matches": false,
+        "split_fingerprint_recorded": false
+      },
+      "measured": {
+        "path": "/home/hugo/codes/mol-metal/results/wfa108_vector_channels/per_epoch_metrics.json",
+        "checkpoint_sha256": "5f644314da679834441e9b131613aa419482b1d4b50dc2c731775dc5974e439c",
+        "artifact_keys_found": [],
+        "artifact_named_checkpoint": null,
+        "named_checkpoint_sha256": null,
+        "declared_hash": null,
+        "split_fingerprint": null
+      },
+      "detail": null,
+      "wall_time_s": 0.0
+    }
+  ],
+  "summary": {
+    "pass": 4,
+    "fail": 6,
+    "skip": 0,
+    "failing": [
+      "M2",
+      "M4",
+      "M5",
+      "M6",
+      "M9",
+      "M10"
+    ],
+    "passing": [
+      "M1",
+      "M3",
+      "M7",
+      "M8"
+    ]
+  },
+  "wall_time_s": 1643.3
+}

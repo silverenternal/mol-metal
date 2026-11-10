@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 RUNS_DIR = ROOT / "molmetal/reports/wf131_p3_deferred_runs"
 METRICS_JSON = ROOT / "metrics/by_metric/metal_lomo_auc.json"
 

@@ -24,15 +24,82 @@
 #   - This wrapper SHIPS the joint retrain launcher (USER_OK-gated). Actual launch
 #     is BLOCKED on:
 #       (a) USER_OK=1 explicit user authorization per §5.1;
-#       (b) R² architectural floor empirical re-verification post Wf-348-B1 lift.
+#       (b) R² architectural floor empirical re-verification post Wf-348-B1 lift;
+#       (c) THE TRAINER INTERFACE DOES NOT EXIST — the `joint_tmqm_platinai`
+#           mode and the --use-multiph-pll / --per-cell-w2-out /
+#           --per-metal-w2-out / --per-wave-convergence-out flags are NOT
+#           declared by train_dmpnn_multitask_wasserstein.py.  MEASURED
+#           2026-11-02 by molmetal/scripts/wf_argv_capability_check.py: 12 of
+#           the 20 argv flags this launcher passes are undeclared (see
+#           molmetal/reports/wf355a3_r20_p5_tmqm_plat/argv_capability.txt).
+#           That count is NOT a literal in the plan record: the plan.json this
+#           wrapper emits PARSES the same report at run time, so the number it
+#           publishes is derived from the checker, not asserted here.  The
+#           figure quoted in this header is a MEASURED snapshot of that report
+#           on the date above, cited for the reader.
 #   - Wall: ~3 GPU-hr (PROJECTED) for 2-seed × 50-epoch smoke + ~12 GPU-hr
 #     (PROJECTED) for 5-seed × 50-epoch full sweep.
 #   - Per-cell breakdown (MCF7 / A549 / A2780 / A2780cis) + per-metal W₂
 #     pIC50 regression output written to molmetal/reports/wf355a3_r20_p5_tmqm_plat/
+#   - Phase 4 outcome: NOT RUN — there is NO MEASURED Phase 4 result for this
+#     wrapper.  MEASURED 2026-11-02: TODO/completed/339d2_lambda_roadmap_audit.md:166
+#     records "§5 Phase 4 … ⏸️ NOT LAUNCHED (USER_OK-gated)".  The acceptance
+#     GATE is chemprop v2 hidden=300 depth=3 cross-dataset R² ≥ +0.70
+#     (R20_BIG_DATASET_FULL_RETRAIN_PLAN.md:192) — that gate has never run, so
+#     the R² ≥ +0.70 figure is a PROJECTED TARGET, not a measurement.
+#   - The R² reading that DOES exist is a CROSS-DATASET macro figure and it is
+#     NOT this launcher's cohort.  MEASURED 2026-11-02 by reading
+#     metrics/by_metric/tmqm_combined_r2.json:
+#       * cross_dataset_macro_r2_mean = 0.12475146687654443 — a macro over 38
+#         cohorts in 3 datasets (platinai_4cell 4 + metalcytotox_5metal 5 +
+#         tmqm_dblock 29; source artifact
+#         molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json);
+#       * the PlatinAI-4-cell cohort THIS launcher trains on has its own
+#         per-dataset macro R² = 0.0034405282483466974 (same JSON,
+#         cross_dataset.per_dataset_macro_r2_mean.platinai_4cell).
+#     It is also NOT an "F5_RDKIT_2D Ridge baseline" reading.  PROJECTED:
+#     chemprop v2 + Wf-348-B1 augmentation may lift toward the +0.70 target.
+#
+# Wf-A269 wave-11 (2026-11-02) - REPAIR (DEFECT C): the header used to assert
+# "Phase 4 outcome MEASURED = … current macro R² = +0.1248 (MEASURED,
+# F5_RDKIT_2D Ridge baseline)" with no cohort label, and described a gate that
+# NEVER RAN as a MEASURED outcome — while the plan.json in the SAME file
+# (acceptance_gates.cross_dataset_r2_origin) already carried the correct
+# disambiguation.  The two renderings of the same file contradicted each
+# other.  The header now says what the plan.json says, and the never-run
+# Phase 4 outcome is labelled NOT RUN / PROJECTED.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
 #   - Phase 4 outcome MEASURED = chemprop v2 hidden=300 depth=3 cross-dataset R²
 #     ≥ +0.70 (gate from R20_BIG_DATASET_FULL_RETRAIN_PLAN.md §5.3); current
 #     macro R² = +0.1248 (MEASURED, F5_RDKIT_2D Ridge baseline); PROJECTED
 #     chemprop v2 + Wf-348-B1 augmentation may lift toward +0.70 target.
+#
+# Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — AGENTS.md §5.11 MIGRATION.
+# ADDITIVE, DATED correction to the HONEST FRAMING block above, which is
+# preserved VERBATIM per AGENTS.md §5.5 rule #6.
+#   * The launcher no longer passes the 20-flag argv quoted above.  §5.11 lets
+#     a wrapper hand a trainer only --config / --out-dir / --ckpt-dir, so
+#     every flag the trainer DECLARES now travels in
+#     configs/wfa269_c3_dmpnn_r20p5_seed<SEED>.yaml — one file per seed,
+#     because the trainer sweeps args.seeds INTERNALLY and this launcher runs
+#     ONE process per (cell, seed) tuple.  The per-iteration output path
+#     stays --out-dir (it selects WHERE the run writes, not WHAT it trains).
+#   * The 12 UNDECLARED flags of that argv (--mode joint_tmqm_platinai,
+#     --tmqm-csv, --platinai-csv, --cells, --tmqm-metals, --use-multiph-pll,
+#     --multiph-fourier-bins, --pll-signature-dim, --w2-weight,
+#     --per-cell-w2-out, --per-metal-w2-out, --per-wave-convergence-out) have
+#     NO argparse dest, so they have NO YAML counterpart either and are NOT
+#     passed any more.  The pre-migration argv is preserved VERBATIM in
+#     molmetal/reports/wfa269_yaml_migration/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.before.sh
+#     and the flag->dest map is in the header of every per-seed config.
+#   * CONSEQUENCE, stated plainly instead of hidden: with those 12 flags gone
+#     the trainer would START instead of exiting rc=2 on the unrecognised
+#     arguments, and it would train the MetalCytoTox 5-metal multi-task
+#     corpus named by the config's data.csv — NOT the planned tmQM +
+#     PlatinAI 4-cell joint sweep.  That is exactly why this wrapper keeps a
+#     fail-closed joint-interface gate (JOINT_INTERFACE_STATUS below): the
+#     real launch path still refuses for the same reason it refused before,
+#     and the plan record still reads BLOCKED_CAPABILITY.
 #
 # Usage:
 #   USER_OK=1 bash scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh --dry-run
@@ -96,7 +163,26 @@ TRAINER="${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py"
 # Precedence: explicit CLI flag > YAML > argparse default.
 # Absolute: this wrapper has no top-level `cd`, so a relative path would
 # resolve against the caller's cwd.
-DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
+#
+# Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — §5.11: the hyperparameters
+# this launcher used to pass on the trainer command line live in a per-seed
+# YAML under configs/ (configs/wfa269_c3_dmpnn_r20p5_seed<SEED>.yaml).
+#
+# WHY PER SEED AND NOT ONE FILE FOR THE SWEEP: the trainer sweeps
+# args.seeds INTERNALLY (train_dmpnn_multitask_wasserstein.py:4352-4356), and
+# this launcher runs ONE trainer process per (cell, seed) tuple — the
+# per-pair wall budget in this file's own header depends on that.  A
+# per-tuple process therefore needs a config that declares exactly ONE seed.
+# §5.11 forbids any other CLI flag, and this wave's contract forbids
+# generating a YAML at launch time, so the seed is pinned in a static file,
+# one per seed.  The cell coordinate is NOT swept by the trainer (there is no
+# cell dest), so the cell loop keeps its per-iteration --out-dir.
+#
+# THE OLD DMPNN_CONFIG OVERRIDE IS GONE: configs/dmpnn.yaml is SHARED by 8
+# launchers and cannot carry this sweep's per-seed cohort.  The override that
+# replaces it is DMPNN_CONFIG_TEMPLATE, the per-seed file PREFIX.
+DMPNN_CONFIG_DIR="${DMPNN_CONFIG_DIR:-${PROJECT_ROOT}/configs}"
+DMPNN_CONFIG_TEMPLATE="${DMPNN_CONFIG_TEMPLATE:-${DMPNN_CONFIG_DIR}/wfa269_c3_dmpnn_r20p5_seed}"
 
 # Per-cell PlatinAI (MCF7, A549, A2780, A2780cis per platinai_4cell.meta.json)
 CELLS=(MCF7 A549 A2780 A2780cis)
@@ -110,11 +196,25 @@ SEEDS_SMOKE=(0 1)              # 2-seed × 50-epoch smoke
 EPOCHS=50
 WALL_BUDGET_HR=12              # 12 hr upper bound on 5-seed full sweep
 WALL_BUDGET_SMOKE_HR=3         # 3 hr upper bound on 2-seed smoke
+# Wf-A269 wave-10 (2026-11-02): the SESSION cap (AGENTS.md §5.1 + Wf-294B
+# kill_then_adapt).  This is the number the wave's projected wall is measured
+# AGAINST — the wave budget above is what the wave is EXPECTED to cost, and
+# the two are not the same quantity.
+SESSION_CAP_HR=10
 GPU="cuda:0"                   # RTX PRO 6000 Blackwell 98GB GPU-0
 HIDDEN=300
 DEPTH=3
 
 mkdir -p "${REPORTS_DIR}"
+
+# Die helper — MOVED UP to before its first call (Wf-A269 repair 2, 2026-11-02).
+# Bash executes a script line-by-line, so a function definition that appears
+# LATER in the file is not yet in scope at an earlier call site — the call then
+# dies with "die: command not found" (rc=127) and the intended FATAL message
+# + rc=1 are both lost. ${C_RED:-}/${C_RST:-} keep the early call site safe
+# (C_RED is initialised further down); `mkdir -p` keeps the FATAL message
+# deliverable when the reports dir does not exist yet.
+die()  { mkdir -p "${REPORTS_DIR}" 2>/dev/null || true; printf '%s[FATAL]%s %s\n' "${C_RED:-}" "${C_RST:-}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
 
 # Wf-363-A1: source the shared DRY_RUN.log helper (consistent per-pair schema)
 DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
@@ -158,10 +258,45 @@ else
 fi
 
 log()  { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
-die()  { printf '%s[FATAL]%s %s\n' "${C_RED}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
 ok()   { printf '%s[OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 warn() { printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 info() { printf '%s[INFO]%s %s\n' "${C_BLU}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+
+# Wf-A269 wave-9 (2026-11-02): JSON array emitters.  The plan record used to
+# build its arrays with `printf '[%s]' "$(IFS=,; echo "${A[*]}" | tr ' ' ',')`,
+# which produced UNQUOTED tokens - `"cells": [MCF7,A549,A2780,A2780cis]` - so
+# plan.json was not parseable by ANY JSON reader (MEASURED: json.load raised
+# "Expecting value: line 11 column 19").  Nothing caught it because the only
+# guard on this file was a substring match on the raw text, and no code
+# consumer parses it (only TODO docs reference it).
+json_array() {
+    local _out="" _e
+    for _e in "$@"; do
+        _out="${_out}\"${_e}\","
+    done
+    printf '%s' "${_out%,}"
+}
+json_num_array() {
+    local _out="" _e
+    for _e in "$@"; do
+        _out="${_out}${_e},"
+    done
+    printf '%s' "${_out%,}"
+}
+# Wf-A269 wave-10 (2026-11-02): JSON string escaper for a FREE-FORM detail
+# string (the gate verdicts quote a reason that comes from a report file, so
+# it can contain quotes, backslashes or newlines).  Without this, one quote in
+# a reason would make plan.json unparseable — the same defect the array
+# emitters above had.
+json_escape() {
+    local s="${1-}"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/ }"
+    s="${s//$'\r'/ }"
+    s="${s//$'\t'/ }"
+    printf '%s' "${s}"
+}
 
 # -----------------------------------------------------------------------------
 # STATUS_HOLD architectural-floor warning (Wf-316A)
@@ -203,20 +338,216 @@ STATUS_HOLD_MSG="[STATUS_HOLD] 12-d RDKit 2D signal floor caps R² at ~0.004 (Wf
 # failure path itself failed with "die: command not found" and the launcher
 # carried on.
 CAPABILITY_CHECK="${SCRIPTS_DIR}/wf_argv_capability_check.py"
-LAUNCH_ARGV_FLAGS="--mode --tmqm-csv --platinai-csv --cells --tmqm-metals \
---seeds --epochs --hidden --depth --use-multiph-pll --multiph-fourier-bins \
---pll-signature-dim --w2-weight --w2-gradient-mode --cpu-num-workers \
---out-dir --per-cell-w2-out --per-metal-w2-out --per-wave-convergence-out \
---device"
-if [ -f "${CAPABILITY_CHECK}" ]; then
-    if ! "${PY}" "${CAPABILITY_CHECK}" --trainer "${TRAINER}" \
-            --flags "${LAUNCH_ARGV_FLAGS}" > "${REPORTS_DIR}/argv_capability.txt" 2>&1; then
-        cat "${REPORTS_DIR}/argv_capability.txt" >&2
-        die "trainer does not declare this launcher's argv (see ${REPORTS_DIR}/argv_capability.txt). The joint_tmqm_platinai interface is not implemented in ${TRAINER}; refusing to launch tuples that can only exit rc=2."
+# Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — §5.11: the launcher hands the
+# trainer only --config and --out-dir, so the capability checker is pointed at
+# the flags the launcher ACTUALLY passes.  The 20-flag pre-migration argv is
+# preserved VERBATIM in the SUPERSEDED block below, in the per-seed config
+# headers, and in the .before.sh artefact.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     LAUNCH_ARGV_FLAGS="--mode --tmqm-csv --platinai-csv --cells --tmqm-metals \
+#     --seeds --epochs --hidden --depth --use-multiph-pll --multiph-fourier-bins \
+#     --pll-signature-dim --w2-weight --w2-gradient-mode --cpu-num-workers \
+#     --out-dir --per-cell-w2-out --per-metal-w2-out --per-wave-convergence-out \
+#     --device"
+LAUNCH_ARGV_FLAGS="--config --out-dir"
+# Wf-A269 wave-9 (2026-11-02) - REPAIR: the gate is scoped to the LAUNCH path.
+# It used to run BEFORE the DRY_RUN block and called die(), so a --dry-run could
+# never reach its own DRY_RUN.log emission: the wrapper exited 1 and the ONLY
+# DRY_RUN.log left on disk stayed the stale 2026-10-27 full-sweep artefact
+# (budget 12 hr, mode full_5seed, 20 pairs).  That stale file is what
+# molmetal/tests/test_wf363a1_dry_run_log.py::test_budget_within_session_cap
+# read, so the cap assertion failed on a budget the test never asked the
+# wrapper to produce.  A dry run launches NOTHING, and the gate's own stated
+# purpose ("refusing to launch tuples that can only exit rc=2") does not apply
+# to it - so the gate now RECORDS the verdict and the dry run proceeds to emit
+# a plan that states it.  On the real launch path the gate is UNCHANGED: it
+# still die()s before a single trainer process starts.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     if ! "${PY}" "${CAPABILITY_CHECK}" --trainer "${TRAINER}" \
+#             --flags "${LAUNCH_ARGV_FLAGS}" > "${REPORTS_DIR}/argv_capability.txt" 2>&1; then
+#         cat "${REPORTS_DIR}/argv_capability.txt" >&2
+#         die "trainer does not declare this launcher's argv (see ${REPORTS_DIR}/argv_capability.txt). The joint_tmqm_platinai interface is not implemented in ${TRAINER}; refusing to launch tuples that can only exit rc=2."
+#     fi
+CAPABILITY_FILE="${REPORTS_DIR}/argv_capability.txt"
+#
+# Wf-A269 wave-11 (2026-11-02) - REPAIR (DEFECT A): the gate mapped EVERY
+# non-zero exit of the checker to the single status BLOCKED, and the plan
+# record then asserted a HARDCODED flag count ("12").  MEASURED: the checker
+# has four exits — 0 = PASS, 1 = trainer-not-found OR N-flags-missing,
+# 2 = the trainer has no importable parse_args.  Exit 2 means UNVERIFIED
+# ("we could not measure"), which is NOT the same as "we measured a defect",
+# so it now gets its own status.  Every count below is PARSED out of the
+# report the checker wrote (${CAPABILITY_FILE}); no number here is a literal.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     CAPABILITY_STATUS="UNVERIFIED"
+#     if [ -f "${CAPABILITY_CHECK}" ]; then
+#         if "${PY}" "${CAPABILITY_CHECK}" --trainer "${TRAINER}" \
+#                 --flags "${LAUNCH_ARGV_FLAGS}" > "${REPORTS_DIR}/argv_capability.txt" 2>&1; then
+#             CAPABILITY_STATUS="OK"
+#             ok "trainer declares every flag this launcher passes"
+#         else
+#             cat "${REPORTS_DIR}/argv_capability.txt" >&2
+#             CAPABILITY_STATUS="BLOCKED"
+#             if [ "${DRY_RUN}" = "1" ]; then
+#                 warn "trainer does NOT declare this launcher's argv (see ${REPORTS_DIR}/argv_capability.txt)."
+#                 warn "DRY-RUN only: the joint_tmqm_platinai interface is not implemented in ${TRAINER}, so the plan below CANNOT be launched as written."
+#                 warn "The real launch path is unchanged and still fails closed before any trainer process starts."
+#             else
+#                 die "trainer does not declare this launcher's argv (see ${REPORTS_DIR}/argv_capability.txt). The joint_tmqm_platinai interface is not implemented in ${TRAINER}; refusing to launch tuples that can only exit rc=2."
+#             fi
+#         fi
+#     else
+#         warn "capability checker missing: ${CAPABILITY_CHECK}; argv not verified"
+#     fi
+CAPABILITY_STATUS="UNVERIFIED"
+CAPABILITY_RC=""
+CAPABILITY_MISSING_COUNT=""
+CAPABILITY_TOTAL_COUNT=""
+CAPABILITY_MISSING_LINES=""
+CAPABILITY_COUNT_TEXT=""
+CAPABILITY_COUNT_PHRASE=""
+CAPABILITY_COUNT_CLAUSE="no flag count was produced — the capability was NOT measured"
+
+# Parse the counts out of the checker's OWN report.  Its last summary line is
+# either "PASS — all N flag(s) are declared ..." or
+# "FAIL — N of M flag(s) are not declared ...", and every undeclared flag is
+# also listed on its own "MISSING <flag>" line.
+capability_derive_counts() {
+    local summary="" pair=""
+    CAPABILITY_MISSING_COUNT=""
+    CAPABILITY_TOTAL_COUNT=""
+    CAPABILITY_COUNT_TEXT=""
+    [ -f "${CAPABILITY_FILE}" ] || return 0
+    summary="$(grep -E 'flag\(s\)' "${CAPABILITY_FILE}" 2>/dev/null | tail -n 1 || true)"
+    [ -n "${summary}" ] || return 0
+    pair="$(printf '%s\n' "${summary}" | grep -oE '[0-9]+ of [0-9]+ flag' | head -n 1 || true)"
+    if [ -n "${pair}" ]; then
+        CAPABILITY_MISSING_COUNT="${pair%% of *}"
+        CAPABILITY_TOTAL_COUNT="${pair##* of }"
+        CAPABILITY_TOTAL_COUNT="${CAPABILITY_TOTAL_COUNT%% flag*}"
+    else
+        pair="$(printf '%s\n' "${summary}" | grep -oE 'all [0-9]+ flag' | head -n 1 || true)"
+        if [ -n "${pair}" ]; then
+            CAPABILITY_MISSING_COUNT="0"
+            CAPABILITY_TOTAL_COUNT="${pair#all }"
+            CAPABILITY_TOTAL_COUNT="${CAPABILITY_TOTAL_COUNT%% flag*}"
+        fi
     fi
-    ok "trainer declares every flag this launcher passes"
+    if [ -n "${CAPABILITY_MISSING_COUNT}" ] && [ -n "${CAPABILITY_TOTAL_COUNT}" ]; then
+        CAPABILITY_COUNT_TEXT="${CAPABILITY_MISSING_COUNT} of ${CAPABILITY_TOTAL_COUNT}"
+    fi
+}
+
+if [ -f "${CAPABILITY_CHECK}" ]; then
+    CAPABILITY_RC=0
+    "${PY}" "${CAPABILITY_CHECK}" --trainer "${TRAINER}" \
+        --flags "${LAUNCH_ARGV_FLAGS}" > "${CAPABILITY_FILE}" 2>&1 || CAPABILITY_RC=$?
+    case "${CAPABILITY_RC}" in
+        0) CAPABILITY_STATUS="OK" ;;
+        1) CAPABILITY_STATUS="BLOCKED" ;;
+        # 2 = the trainer has no importable parse_args => UNVERIFIED, not a
+        # measured defect.  Any other exit code is likewise "not measured".
+        *) CAPABILITY_STATUS="UNVERIFIED" ;;
+    esac
+    capability_derive_counts
+    # Cross-check the parsed count against the checker's own MISSING lines: if
+    # the summary line and the flag list disagree, the report is not trusted
+    # and the capability degrades to UNVERIFIED rather than asserting a number.
+    if [ -n "${CAPABILITY_MISSING_COUNT}" ]; then
+        CAPABILITY_MISSING_LINES="$(grep -c '^MISSING ' "${CAPABILITY_FILE}" 2>/dev/null || true)"
+        if [ "${CAPABILITY_MISSING_LINES}" != "${CAPABILITY_MISSING_COUNT}" ]; then
+            warn "argv-capability cross-check FAILED: the summary says ${CAPABILITY_MISSING_COUNT} undeclared flag(s) but the report lists ${CAPABILITY_MISSING_LINES} MISSING line(s); treating the capability as UNVERIFIED."
+            CAPABILITY_STATUS="UNVERIFIED"
+            CAPABILITY_MISSING_COUNT=""
+            CAPABILITY_TOTAL_COUNT=""
+            CAPABILITY_COUNT_TEXT=""
+        fi
+    fi
+    # A PASS whose report carries no parsable count cannot be corroborated:
+    # do not assert "0 of N undeclared" from a report we could not read.
+    if [ "${CAPABILITY_STATUS}" = "OK" ] && [ -z "${CAPABILITY_TOTAL_COUNT}" ]; then
+        warn "argv-capability report carries no parsable flag count although the checker exited 0; treating the capability as UNVERIFIED rather than asserting a count."
+        CAPABILITY_STATUS="UNVERIFIED"
+    fi
+    case "${CAPABILITY_STATUS}" in
+        OK)
+            ok "trainer declares every flag this launcher passes (MEASURED: 0 of ${CAPABILITY_TOTAL_COUNT} undeclared; see ${CAPABILITY_FILE})"
+            CAPABILITY_COUNT_CLAUSE="0 of ${CAPABILITY_TOTAL_COUNT} of the launcher's argv flags are undeclared (MEASURED)"
+            CAPABILITY_COUNT_PHRASE="declares every flag this launcher passes"
+            ;;
+        BLOCKED)
+            cat "${CAPABILITY_FILE}" >&2
+            if [ -n "${CAPABILITY_COUNT_TEXT}" ]; then
+                CAPABILITY_COUNT_CLAUSE="${CAPABILITY_COUNT_TEXT} of the launcher's argv flags are NOT declared by the trainer (MEASURED)"
+                CAPABILITY_COUNT_PHRASE="does not declare ${CAPABILITY_COUNT_TEXT} of this launcher's argv flags"
+            else
+                CAPABILITY_COUNT_CLAUSE="the checker's report carries no parsable flag count — the trainer does NOT accept this launcher's argv (MEASURED from the checker's report, but no per-flag count could be derived)"
+                CAPABILITY_COUNT_PHRASE="does not accept this launcher's argv (the checker's report carries no parsable flag count)"
+            fi
+            if [ "${DRY_RUN}" = "1" ]; then
+                warn "trainer ${CAPABILITY_COUNT_PHRASE} (see ${CAPABILITY_FILE})."
+                warn "DRY-RUN only: the joint_tmqm_platinai interface is not implemented in ${TRAINER}, so the plan below CANNOT be launched as written."
+                warn "The real launch path is unchanged and still fails closed before any trainer process starts."
+            else
+                die "trainer ${CAPABILITY_COUNT_PHRASE} (see ${CAPABILITY_FILE}). The joint_tmqm_platinai interface is not implemented in ${TRAINER}; refusing to launch tuples that can only exit rc=2."
+            fi
+            ;;
+        *)
+            cat "${CAPABILITY_FILE}" >&2
+            CAPABILITY_COUNT_CLAUSE="no flag count was produced — the capability was NOT measured (the checker exited ${CAPABILITY_RC})"
+            CAPABILITY_COUNT_PHRASE="could not be verified (the checker exited ${CAPABILITY_RC})"
+            if [ "${DRY_RUN}" = "1" ]; then
+                warn "argv capability UNVERIFIED (the checker exited ${CAPABILITY_RC}; see ${CAPABILITY_FILE}): the trainer's parse_args could not be exercised, so this is NOT a measured defect."
+                warn "DRY-RUN only: the plan below records the capability as UNVERIFIED, and the real launch path still refuses before any trainer process starts."
+            else
+                die "argv capability UNVERIFIED (the checker exited ${CAPABILITY_RC}; see ${CAPABILITY_FILE}): the trainer's parse_args could not be exercised, so this launcher's argv could not be verified. Refusing to launch."
+            fi
+            ;;
+    esac
 else
     warn "capability checker missing: ${CAPABILITY_CHECK}; argv not verified"
+    CAPABILITY_STATUS="UNVERIFIED"
+    CAPABILITY_COUNT_CLAUSE="no flag count was produced — the capability was NOT measured (the checker itself is missing)"
+    CAPABILITY_COUNT_PHRASE="could not be verified (the checker itself is missing)"
+fi
+
+# -----------------------------------------------------------------------------
+# Joint-interface gate (Wf-A269 cohort c3_dmpnn_r20p5, 2026-11-03)
+# -----------------------------------------------------------------------------
+# The §5.11 migration moved every DECLARED flag into the YAML, so the
+# argv-capability gate above now reports OK — the trainer does declare the two
+# flags this launcher passes.  That is TRUE, and it is NOT the same as "this
+# launcher can run its experiment": the 12 flags that carried the EXPERIMENT
+# (--mode joint_tmqm_platinai, --tmqm-csv, --platinai-csv, --cells,
+# --tmqm-metals, --use-multiph-pll, --multiph-fourier-bins,
+# --pll-signature-dim, --w2-weight, --per-cell-w2-out, --per-metal-w2-out,
+# --per-wave-convergence-out) have NO argparse dest, so they have no YAML
+# counterpart either.  The trainer therefore cannot do the tmQM + PlatinAI
+# 4-cell joint experiment this wrapper plans: what it WOULD train is the
+# MetalCytoTox 5-metal multi-task corpus named by the config's data.csv.
+#
+# The pre-migration wrapper failed closed here (the argv-capability gate died
+# before a single tuple started).  After the migration the argv is legal, so
+# this gate takes over that duty: it MEASURES whether the trainer implements
+# the joint interface at all, and the real launch path refuses when it does
+# not.  The measurement is a grep over the trainer for the two identifiers the
+# interface would have to carry — the same evidence the pre-migration header
+# cited ("grep for joint_tmqm_platinai or per_cell_w2_out returns nothing").
+JOINT_INTERFACE_STATUS="BLOCKED"
+if grep -q "joint_tmqm_platinai" "${TRAINER}" 2>/dev/null \
+   && grep -q "per_cell_w2_out" "${TRAINER}" 2>/dev/null; then
+    JOINT_INTERFACE_STATUS="OK"
+fi
+if [ "${JOINT_INTERFACE_STATUS}" = "BLOCKED" ]; then
+    if [ "${DRY_RUN}" = "1" ]; then
+        warn "the joint_tmqm_platinai interface is NOT implemented in ${TRAINER} (MEASURED: neither 'joint_tmqm_platinai' nor 'per_cell_w2_out' appears in the trainer)."
+        warn "DRY-RUN only: the §5.11 migration moved every DECLARED flag into the YAML, so the argv is now legal — but the 12 experiment flags have no argparse dest and therefore no YAML counterpart."
+        warn "DRY-RUN only: a real launch would train the corpus named by the config's data.csv (MetalCytoTox 5-metal multi-task), NOT the tmQM + PlatinAI 4-cell joint sweep this wrapper plans."
+        warn "The real launch path is unchanged and still fails closed before any trainer process starts."
+    else
+        die "the joint_tmqm_platinai interface is NOT implemented in ${TRAINER} (MEASURED: neither 'joint_tmqm_platinai' nor 'per_cell_w2_out' appears in the trainer). The §5.11 migration cannot create it: --mode, --tmqm-csv, --platinai-csv, --cells, --tmqm-metals, --use-multiph-pll, --multiph-fourier-bins, --pll-signature-dim, --w2-weight and the three --per-*-out flags have no argparse dest, so they have no YAML counterpart. Refusing to launch tuples that would train the wrong corpus."
+    fi
 fi
 
 log "Wf-355-A3 R20 §5 tmQM d-block + PlatinAI 4-cell joint retrain wrapper — USER_OK=1 confirmed"
@@ -232,63 +563,211 @@ log "  smoke_only=${SMOKE_ONLY}"
 log "  dry_run=${DRY_RUN}"
 
 # -----------------------------------------------------------------------------
-# Per-wave checklist (Wf-262 §10.1)
+# Pre-launch gates — Wf-A269 wave-10 REPAIR (2026-11-02)
 # -----------------------------------------------------------------------------
-log "STEP 1/4: per-wave checklist (wf-262 §10.1)"
-if [ -f "${PROJECT_ROOT}/molmetal/scripts/per_wave_checklist.py" ]; then
-    if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/per_wave_checklist.py" \
-            --wave tmqm_plat 2>&1 | tee -a "${REPORTS_DIR}/launch.log" \
-            | grep -q '"status": "PASS"\|PASS'; then
-        ok "per-wave checklist PASS"
-    else
-        warn "per-wave checklist emit non-PASS (continuing; non-fatal at dry-run)"
-    fi
+# Wf-A269 wave-10 (2026-11-02) — REPAIR: all three pre-launch gates below were
+# DEAD GATES — checks that could not fail:
+#
+#   * the pre-flight was called with `--skip-anchor-guard`, a flag the tool
+#     does NOT define -> argparse exit 2, no gate ever ran;
+#   * its success branch grepped the LAST 5 stdout lines for the literal
+#     "62 PASS" — a Wf-328-SYN baseline that no longer matches the gate count
+#     — while the report's `summary` block sits at the TOP of the JSON, so
+#     `tail -5` could never see it even if the tool had run;
+#   * the per-wave checklist was grepped for '"status": "PASS"\|PASS' on
+#     stdout, but the tool prints NOTHING on stdout: its verdict is in the
+#     JSON it writes via --out;
+#   * the wave budget tracker was called with `--cfm-yuelbond-not-required`,
+#     a flag the tool does NOT define (only `--cfm-yuelbond-required`
+#     exists) -> argparse exit 1, and the tool prints NOTHING on stdout
+#     either: its verdict is in the JSON it writes via --report-json.
+#
+# Because every broken flag made its tool exit INSTANTLY, the dry-run looked
+# clean and the wrapper looked ready to launch although it had never run a
+# pre-flight at all.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/per_wave_checklist.py" \
+#             --wave tmqm_plat 2>&1 | tee -a "${REPORTS_DIR}/launch.log" \
+#             | grep -q '"status": "PASS"\|PASS'; then
+#     if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" \
+#             --pipeline all --skip-anchor-guard 2>&1 | tee -a "${REPORTS_DIR}/launch.log" \
+#             | tail -5 | grep -q "62 PASS"; then
+#     if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py" \
+#             --budget-hr "${BUDGET}" --cfm-yuelbond-not-required --no-enforce-budget 2>&1 \
+#             | tee -a "${REPORTS_DIR}/launch.log" \
+#             | tail -3 | grep -q "PASS\|OK\|STATUS"; then
+#
+# The repair: every gate calls its tool with flags the tool DEFINES, reads the
+# verdict out of that tool's own JSON report through the shared checker
+# (molmetal/scripts/wf_launch_gate_verdict.py), and records the verdict in the
+# plan record + the DRY_RUN.log.  A dry-run never prints a verdict it did not
+# measure: the live gates are SKIPPED there and their verdict stays
+# UNVERIFIED.  The sibling launcher
+# (scripts/launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh) skips the live
+# gates in dry-run for the same reason — the real pre-flight takes ~400 s on
+# this repo (MEASURED), which is longer than the dry-run test budgets allow.
+
+GATE_VERDICT_CHECKER="${PROJECT_ROOT}/molmetal/scripts/wf_launch_gate_verdict.py"
+[ -f "${GATE_VERDICT_CHECKER}" ] || die "launch-gate verdict checker missing: ${GATE_VERDICT_CHECKER}"
+
+PRE_FLIGHT_JSON="${REPORTS_DIR}/pre_flight.json"
+CHECKLIST_JSON="${REPORTS_DIR}/per_wave_checklist.json"
+BUDGET_JSON="${REPORTS_DIR}/wave_budget.json"
+
+# UNVERIFIED until a gate has actually measured something (AGENTS.md §5.2:
+# a number that was not measured must not be presented as one).
+PRE_FLIGHT_VERDICT="UNVERIFIED"
+CHECKLIST_VERDICT="UNVERIFIED"
+BUDGET_VERDICT="UNVERIFIED"
+PRE_FLIGHT_DETAIL="not run"
+CHECKLIST_DETAIL="not run"
+BUDGET_DETAIL="not run"
+
+# The wave's grid + projected wall, needed by the checklist and the budget
+# tracker.  (SEEDS_TO_USE is derived again further down for the plan record.)
+if [ "${SMOKE_ONLY}" = "1" ]; then
+    GATE_SEEDS=("${SEEDS_SMOKE[@]}")
+    BUDGET="${WALL_BUDGET_SMOKE_HR}"
 else
-    warn "per_wave_checklist.py missing — skipping (non-fatal at dry-run)"
+    GATE_SEEDS=("${SEEDS_FULL[@]}")
+    BUDGET="${WALL_BUDGET_HR}"
 fi
 
-# -----------------------------------------------------------------------------
-# Pre-flight v3 62/62 PASS gate (TODO-207; Wf-328-SYN baseline PRESERVED)
-# -----------------------------------------------------------------------------
-log "STEP 2/4: pre_flight_check.py --pipeline launch (62/62 PASS target per Wf-328-SYN)"
-if [ -f "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" ]; then
-    if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" \
-            --pipeline all --skip-anchor-guard 2>&1 | tee -a "${REPORTS_DIR}/launch.log" \
-            | tail -5 | grep -q "62 PASS"; then
-        ok "pre_flight_check.py 62 PASS confirmed"
+# Run the shared checker and echo back its verdict (PASS / FAIL / SKIP).
+# The reason is written next to the gate's report so the plan can quote it.
+run_gate_check() {
+    local kind="$1" report="$2" wave="${3:-}" rc=0 out=""
+    if [ -n "${wave}" ]; then
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" \
+            --wave "${wave}" 2>&1)" || rc=$?
     else
-        warn "pre_flight_check.py non-PASS (continuing; non-fatal at dry-run per Wf-291D)"
+        out="$("${PY}" "${GATE_VERDICT_CHECKER}" "${kind}" --report "${report}" 2>&1)" || rc=$?
+    fi
+    printf '%s\n' "${out}" > "${REPORTS_DIR}/gate_${kind}.verdict.txt"
+    case "${rc}" in
+        0) printf 'PASS' ;;
+        1) printf 'FAIL' ;;
+        *) printf 'SKIP' ;;
+    esac
+}
+
+gate_detail() {
+    head -1 "${REPORTS_DIR}/gate_$1.verdict.txt" 2>/dev/null || printf ''
+}
+
+# -----------------------------------------------------------------------------
+# STEP 1/4 — pre-flight v3 gate (TODO-207; AGENTS.md §1.4 + §4)
+# -----------------------------------------------------------------------------
+log "STEP 1/4: pre_flight_check.py --pipeline all (TODO-207 v3 gate)"
+if [ "${DRY_RUN}" = "1" ]; then
+    warn "DRY-RUN: skipping the live pre-flight (plan only — verdict stays UNVERIFIED)"
+    PRE_FLIGHT_DETAIL="not run: dry-run skips the live pre-flight (the real run takes ~400 s, MEASURED)"
+elif [ -f "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" ]; then
+    # The report is written BEFORE the tool returns its exit code, so the
+    # verdict can be read from it even when the tool exits 1 (FAIL gates).
+    # Wf-A269 wave-17 (2026-11-03): rm the PREVIOUS report first.  A crashed
+    # or killed pre-flight must not leave the last run's PASS report on disk
+    # for the consumer to read — "stale is treated as missing".
+    rm -f "${PRE_FLIGHT_JSON}"
+    "${PY}" "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" \
+        --pipeline all --json "${PRE_FLIGHT_JSON}" \
+        >> "${REPORTS_DIR}/launch.log" 2>&1 || true
+    PRE_FLIGHT_VERDICT="$(run_gate_check preflight "${PRE_FLIGHT_JSON}")"
+    PRE_FLIGHT_DETAIL="$(gate_detail preflight)"
+    if [ "${PRE_FLIGHT_VERDICT}" = "PASS" ]; then
+        ok "pre_flight_check.py PASS (${PRE_FLIGHT_DETAIL})"
+    else
+        warn "pre_flight_check.py ${PRE_FLIGHT_VERDICT} (${PRE_FLIGHT_DETAIL})"
+        # AGENTS.md §4: the pre-flight PASS gate blocks a retrain.  A gate that
+        # cannot fail is the defect this wave is repairing, so a FAIL here
+        # refuses the launch instead of warning past it.
+        die "pre_flight_check ${PRE_FLIGHT_VERDICT} — refusing to launch (report: ${PRE_FLIGHT_JSON})"
     fi
 else
     warn "pre_flight_check.py missing — skipping (non-fatal at dry-run)"
+    # Wf-A269 wave-10 (2026-11-02) - REPAIR: this branch used the verdict
+    # token "SKIPPED", so the plan record carried a FOURTH vocabulary value
+    # (PASS / FAIL / SKIPPED / UNVERIFIED) that no consumer and no gate
+    # checker knows.  AGENTS.md §5.2: a gate that was not verified says
+    # UNVERIFIED, never PASS.  The dry-run branch above already uses
+    # UNVERIFIED for the same condition, so the two branches disagreed about
+    # what "not measured" looks like.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     PRE_FLIGHT_VERDICT="SKIPPED"
+    PRE_FLIGHT_VERDICT="UNVERIFIED"
+    PRE_FLIGHT_DETAIL="not run: pre_flight_check.py is missing from the tree"
 fi
 
 # -----------------------------------------------------------------------------
-# Wave budget tracker (Wf-262/291D)
+# STEP 2/4 — per-wave checklist (Wf-262 §10.1)
 # -----------------------------------------------------------------------------
-log "STEP 3/4: wave_budget_tracker.py --budget-hr ${WALL_BUDGET_HR}"
-if [ -f "${PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py" ]; then
-    if [ "${SMOKE_ONLY}" = "1" ]; then
-        BUDGET="${WALL_BUDGET_SMOKE_HR}"
+log "STEP 2/4: per-wave checklist (wf-262 §10.1)"
+if [ "${DRY_RUN}" = "1" ]; then
+    warn "DRY-RUN: skipping the per-wave checklist (its input is the skipped pre-flight — verdict stays UNVERIFIED)"
+    CHECKLIST_DETAIL="not run: dry-run skips the checklist (it reads the pre-flight report)"
+elif [ -f "${PROJECT_ROOT}/molmetal/scripts/per_wave_checklist.py" ]; then
+    # The tool prints NOTHING on stdout: its verdict is the JSON it writes
+    # via --out.  --preflight points it at THIS run's pre-flight report.
+    "${PY}" "${PROJECT_ROOT}/molmetal/scripts/per_wave_checklist.py" \
+        --wave tmqm_plat \
+        --preflight "${PRE_FLIGHT_JSON}" \
+        --out "${CHECKLIST_JSON}" \
+        --out-md "${REPORTS_DIR}/per_wave_checklist.md" \
+        --pairs-metals "$(IFS=,; echo "${CELLS[*]}")" \
+        --pairs-seeds "$(IFS=,; echo "${GATE_SEEDS[*]}")" \
+        >> "${REPORTS_DIR}/launch.log" 2>&1 || true
+    CHECKLIST_VERDICT="$(run_gate_check checklist "${CHECKLIST_JSON}")"
+    CHECKLIST_DETAIL="$(gate_detail checklist)"
+    if [ "${CHECKLIST_VERDICT}" = "PASS" ]; then
+        ok "per-wave checklist PASS (${CHECKLIST_DETAIL})"
     else
-        BUDGET="${WALL_BUDGET_HR}"
+        warn "per-wave checklist ${CHECKLIST_VERDICT} (${CHECKLIST_DETAIL})"
     fi
-    if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py" \
-            --budget-hr "${BUDGET}" --cfm-yuelbond-not-required --no-enforce-budget 2>&1 \
-            | tee -a "${REPORTS_DIR}/launch.log" \
-            | tail -3 | grep -q "PASS\|OK\|STATUS"; then
-        ok "wave_budget_tracker.py PASS (budget=${BUDGET} hr)"
+else
+    warn "per_wave_checklist.py missing — skipping (non-fatal at dry-run)"
+    # Wf-A269 wave-10 (2026-11-02) - REPAIR: same vocabulary defect as the
+    # pre-flight branch above — "SKIPPED" was a fourth verdict token.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     CHECKLIST_VERDICT="SKIPPED"
+    CHECKLIST_VERDICT="UNVERIFIED"
+    CHECKLIST_DETAIL="not run: per_wave_checklist.py is missing from the tree"
+fi
+
+# -----------------------------------------------------------------------------
+# STEP 3/4 — wave budget tracker (Wf-262/291D)
+# -----------------------------------------------------------------------------
+log "STEP 3/4: wave_budget_tracker.py --budget-hr ${SESSION_CAP_HR} (session cap; wave projects ${BUDGET} hr)"
+if [ -f "${PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py" ]; then
+    # The tool prints NOTHING on stdout and its exit code is ALWAYS 0 on a
+    # successful run: the verdict is in the JSON it writes via --report-json.
+    # --waves names THIS wave with its projected wall, so the tracker measures
+    # this launch instead of auto-discovering eight unrelated waves.
+    "${PY}" "${PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py" \
+        --budget-hr "${SESSION_CAP_HR}" \
+        --waves "tmqm_plat:${BUDGET}" \
+        --report-json "${BUDGET_JSON}" \
+        >> "${REPORTS_DIR}/launch.log" 2>&1 || true
+    BUDGET_VERDICT="$(run_gate_check budget "${BUDGET_JSON}" tmqm_plat)"
+    BUDGET_DETAIL="$(gate_detail budget)"
+    if [ "${BUDGET_VERDICT}" = "PASS" ]; then
+        ok "wave_budget_tracker.py PASS (${BUDGET_DETAIL})"
     else
-        warn "wave_budget_tracker.py emit non-PASS (continuing)"
+        warn "wave_budget_tracker.py ${BUDGET_VERDICT} (${BUDGET_DETAIL})"
     fi
 else
     warn "wave_budget_tracker.py missing — skipping"
+    BUDGET_VERDICT="SKIPPED"
+    BUDGET_DETAIL="not run: wave_budget_tracker.py is missing from the tree"
 fi
 
 # -----------------------------------------------------------------------------
 # Data quality checks (BLOCKER before any GPU work — tmQM d-block + PlatinAI 4-cell)
 # -----------------------------------------------------------------------------
 log "STEP 4/4: data quality (tmQM d-block + PlatinAI 4-cell)"
+# Wf-A269 wave-9 (2026-11-02): the 4-cell check verdict is recorded in the
+# plan JSON, so it must carry a value even when the data check is skipped.
+PLAT_4CELL_STATUS="SKIPPED"
 if [ "${SKIP_DATA_CHECK}" != "1" ]; then
     # tmQM d-block
     if [ -f "${TMQM_CSV}" ]; then
@@ -297,7 +776,18 @@ if [ "${SKIP_DATA_CHECK}" != "1" ]; then
             die "tmQM CSV too small (${TMQM_N} lines; expected >= 100)"
         fi
         # Verify d-block metals present
-        TMQM_DBLOCK_HITS=$(grep -cE "(Cr|Mn|Fe|Co|Ni|Cu|Zn|Ru|Rh|Pd|Ag|Os|Ir|Pt|Au)" "${TMQM_CSV}" 2>/dev/null || echo 0)
+        # Wf-A269 wave-9 (2026-11-02) - REPAIR: `grep -c` prints "0" AND exits 1
+        # when nothing matches, so the `|| echo 0` fallback appended a SECOND
+        # "0" and the captured value became "0\n0".  `[ "0\n0" -lt 50 ]` then
+        # raised "integer expression expected" and returned FALSE, so the LOW
+        # branch was unreachable and a broken d-block filter printed as a
+        # PASS.  `|| true` keeps grep's own "0" and discards only the exit
+        # status; the `:-0` default covers a file that vanished between the
+        # `-f` test above and this line.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     TMQM_DBLOCK_HITS=$(grep -cE "(Cr|Mn|Fe|Co|Ni|Cu|Zn|Ru|Rh|Pd|Ag|Os|Ir|Pt|Au)" "${TMQM_CSV}" 2>/dev/null || echo 0)
+        TMQM_DBLOCK_HITS=$(grep -cE "(Cr|Mn|Fe|Co|Ni|Cu|Zn|Ru|Rh|Pd|Ag|Os|Ir|Pt|Au)" "${TMQM_CSV}" 2>/dev/null || true)
+        TMQM_DBLOCK_HITS=${TMQM_DBLOCK_HITS:-0}
         if [ "${TMQM_DBLOCK_HITS}" -lt 50 ]; then
             warn "tmQM d-block metals hits low (${TMQM_DBLOCK_HITS}); check filter"
         else
@@ -314,15 +804,58 @@ if [ "${SKIP_DATA_CHECK}" != "1" ]; then
             die "PlatinAI 4-cell CSV too small (${PLAT_N} lines; expected >= 1000)"
         fi
         # Verify 4 cell lines present
-        for CELL in "${CELLS[@]}"; do
-            CELL_N=$(grep -c "\"${CELL}\"" "${PLAT_4CELL_CSV}" 2>/dev/null || echo 0)
-            if [ "${CELL_N}" -lt 50 ]; then
-                warn "PlatinAI cell ${CELL} hits low (${CELL_N}); check filter"
+        # Wf-A269 wave-9 (2026-11-02) - REPAIR: the 4-cell check was a ZOMBIE
+        # GATE - it could not fail.  It grepped for a quoted UPPERCASE cell
+        # name ("MCF7") in a WIDE csv whose columns are lowercase
+        # (pIC50_mcf7 / pIC50_a549 / pIC50_a2780 / pIC50_a2780cis), so no row
+        # can ever contain that string and the count was always 0; and
+        # because `grep -c` prints "0" AND exits 1 on no match, the
+        # `|| echo 0` fallback appended a SECOND "0", making the captured
+        # value "0\n0".  The test `[ "0\n0" -lt 50 ]` then errored ("integer
+        # expression expected") and returned FALSE, so the LOW branch was
+        # unreachable, control fell through to the PASS branch, and the
+        # wrapper printed "4-cell verified" for a check that verified
+        # NOTHING about the 4 cells.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     for CELL in "${CELLS[@]}"; do
+        #         CELL_N=$(grep -c "\"${CELL}\"" "${PLAT_4CELL_CSV}" 2>/dev/null || echo 0)
+        #         if [ "${CELL_N}" -lt 50 ]; then
+        #             warn "PlatinAI cell ${CELL} hits low (${CELL_N}); check filter"
+        #         else
+        #             info "PlatinAI cell ${CELL}: ${CELL_N} rows"
+        #         fi
+        #     done
+        #     ok "PlatinAI 4-cell verified: ${PLAT_N} lines / 4 cells"
+        # The replacement asks the CSV with a real CSV parser, uses the
+        # dataset builder's own "active" definition (pIC50 >= 5.0, i.e.
+        # IC50 <= 10 uM; build_platinai_4cell_csv.py:345), and cross-checks
+        # the counts against PLAT_4CELL_META - which was DEFINED at line 87
+        # and never READ before this repair.
+        PLAT_4CELL_CHECK="${SCRIPTS_DIR}/wf_platinai_4cell_check.py"
+        PLAT_4CELL_REPORT="${REPORTS_DIR}/platinai_4cell_check.txt"
+        PLAT_4CELL_STATUS="UNVERIFIED"
+        if [ -f "${PLAT_4CELL_CHECK}" ]; then
+            PLAT_4CELL_RC=0
+            "${PY}" "${PLAT_4CELL_CHECK}" \
+                --csv "${PLAT_4CELL_CSV}" \
+                --meta "${PLAT_4CELL_META}" \
+                --min-active 50 > "${PLAT_4CELL_REPORT}" 2>&1 || PLAT_4CELL_RC=$?
+            sed 's/^/    /' "${PLAT_4CELL_REPORT}" | tee -a "${REPORTS_DIR}/launch.log" >/dev/null
+            if [ "${PLAT_4CELL_RC}" -eq 0 ]; then
+                PLAT_4CELL_STATUS="PASS"
+                ok "PlatinAI 4-cell verified: ${PLAT_N} lines / 4 cells (active rows per cell line MEASURED; see ${PLAT_4CELL_REPORT})"
+                # A low active count is the severity the dead branch intended:
+                # a warning, not a block.
+                while IFS= read -r _plat_warn; do
+                    warn "PlatinAI ${_plat_warn#*FINDING [WARN]: }"
+                done < <(grep -F "FINDING [WARN]" "${PLAT_4CELL_REPORT}" || true)
             else
-                info "PlatinAI cell ${CELL}: ${CELL_N} rows"
+                PLAT_4CELL_STATUS="FAIL"
+                die "PlatinAI 4-cell check FAILED (rc=${PLAT_4CELL_RC}; see ${PLAT_4CELL_REPORT}); refusing to launch on data that does not carry the 4 cell lines."
             fi
-        done
-        ok "PlatinAI 4-cell verified: ${PLAT_N} lines / 4 cells"
+        else
+            die "PlatinAI 4-cell checker missing: ${PLAT_4CELL_CHECK}"
+        fi
     else
         die "PlatinAI 4-cell CSV missing: ${PLAT_4CELL_CSV}"
     fi
@@ -364,6 +897,136 @@ else
     MODE_LABEL="full_5seed"
 fi
 
+# -----------------------------------------------------------------------------
+# Per-seed config gate (Wf-A269 cohort c3_dmpnn_r20p5, 2026-11-03)
+# -----------------------------------------------------------------------------
+# §5.11 moved the hyperparameters out of this file and into the per-seed YAML.
+# The values this wrapper still keeps (EPOCHS / HIDDEN / DEPTH) now describe
+# the PLAN RECORD only — the run takes them from the YAML.  Two copies of a
+# number drift, so the two are compared here, before a single trainer process
+# starts, and the launch is refused when they disagree.  This is the same
+# fail-closed discipline as the joint-interface gate above: a config that does
+# not carry the pinned value aborts the launch instead of quietly training
+# something the plan does not describe.
+#
+# The check reads the config the trainer will actually be handed
+# (${DMPNN_CONFIG_TEMPLATE}<seed>.yaml), not a base config: the config is a
+# file on disk and this wrapper does not generate one at launch time.
+verify_seed_configs() {
+    "${PY}" - "${DMPNN_CONFIG_TEMPLATE}" "${EPOCHS}" "${HIDDEN}" "${DEPTH}" "${SEEDS_TO_USE[@]}" <<'PYEOF'
+import sys
+import yaml
+
+template = sys.argv[1]
+epochs, hidden, depth = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+seeds = [int(s) for s in sys.argv[5:]]
+
+# The pre-migration invocation's literals, MEASURED from the .before.sh argv.
+PINNED = [
+    ("train", "epochs", epochs),
+    ("model", "hidden", hidden),
+    ("model", "depth", depth),
+    ("eval", "w2_gradient_mode", "sort"),
+    ("compute", "cpu_num_workers", 8),
+    ("compute", "device", "cuda:0"),
+]
+
+for seed in seeds:
+    path = f"{template}{seed}.yaml"
+    try:
+        with open(path, encoding="utf-8") as fh:
+            cfg = yaml.safe_load(fh)
+    except OSError as exc:
+        raise SystemExit(f"REFUSED: cannot read per-seed config {path}: {exc}")
+    if not isinstance(cfg, dict):
+        raise SystemExit(f"REFUSED: {path} is not a mapping")
+    for section, key, expected in PINNED:
+        block = cfg.get(section) or {}
+        if key not in block:
+            raise SystemExit(
+                f"REFUSED: {path} carries no {section}.{key} - the 5.11 migration "
+                "would drop a hyperparameter the wrapper used to pass."
+            )
+        value = block[key]
+        if value != expected or type(value) is not type(expected):
+            raise SystemExit(
+                f"REFUSED: {path} carries {section}.{key}={value!r} "
+                f"({type(value).__name__}), expected {expected!r} "
+                f"({type(expected).__name__})."
+            )
+    for section in ("data", "protocol"):
+        block = cfg.get(section) or {}
+        if block.get("seeds") != [seed]:
+            raise SystemExit(
+                f"REFUSED: {path} carries {section}.seeds={block.get('seeds')!r}, "
+                f"expected [{seed}] - the trainer sweeps args.seeds internally, so a "
+                "per-tuple process needs a config that declares exactly one seed."
+            )
+    if not (cfg.get("data") or {}).get("csv"):
+        raise SystemExit(f"REFUSED: {path} names no corpus (data.csv) - a config "
+                         "without a dataset would silently train on the loader default.")
+    print(f"per-seed config OK: {path}")
+PYEOF
+}
+
+SEED_CONFIG_CHECK="FAIL"
+if verify_seed_configs; then
+    SEED_CONFIG_CHECK="PASS"
+else
+    die "per-seed config check FAILED - the 5.11 migration would run a different configuration than the one this plan describes; refusing to launch."
+fi
+
+# Wf-A269 wave-9 (2026-11-02) - REPAIR: the plan record claimed "wrapper ready"
+# and "READY_TO_RUN" unconditionally, and its multiph_pll_augmentation line
+# claimed the `--use-multiph-pll` CLI flag was "wired into trainer".  MEASURED:
+# the trainer declares 70 argparse flags (71 parser actions minus the
+# auto-added help action) and `--use-multiph-pll` is NOT one of them (nor
+# does the string occur anywhere under molmetal/ or configs/).  The strings
+# below are derived from the MEASURED gate verdict instead of being asserted.
+#
+# Wf-A269 wave-11 (2026-11-02) - REPAIR (DEFECT A): the flag count in the
+# BLOCKED string was a SHELL LITERAL ("12"), not derived from the gate's own
+# report, so the plan kept claiming 12 even if the trainer's interface
+# changed.  The count and the verdict are now taken from the capability gate's
+# MEASURED output (${CAPABILITY_FILE}); the string is assembled from those
+# variables.  The UNVERIFIED case is a third branch of its own: "the checker
+# could not measure" is not "the checker measured a defect".
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the trainer does not declare 12 of this launcher's argv flags (MEASURED via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt); the joint_tmqm_platinai interface was never implemented in the trainer; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; Multi-PH + PLL 32-bin Fourier + 128-d PLL augmentation module importable (the CLI flag that would reach the trainer does not exist)"
+#     PLAN_STATUS="BLOCKED_CAPABILITY"
+# Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — the branch order changed so
+# that the three PRE-EXISTING outcomes keep their exact status strings, and
+# the new joint-interface branch is consulted only when the argv itself is
+# accepted.  Before the §5.11 migration the argv was REJECTED (12 undeclared
+# flags), so the plan read BLOCKED_CAPABILITY; after it the argv is accepted
+# and the joint-interface gate carries the refusal, so the plan STILL reads
+# BLOCKED_CAPABILITY.  The status string of this plan is UNCHANGED.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     if [ "${CAPABILITY_STATUS}" = "OK" ]; then
+#         PLAN_MEASURED_TODAY="wrapper ready; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; the trainer declares every flag this launcher passes (MEASURED: 0 of ${CAPABILITY_TOTAL_COUNT} undeclared, via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt)"
+#         PLAN_STATUS="READY_TO_RUN"
+#     elif [ "${CAPABILITY_STATUS}" = "BLOCKED" ]; then
+#         PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the trainer ${CAPABILITY_COUNT_PHRASE} (MEASURED via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt); the joint_tmqm_platinai interface was never implemented in the trainer; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; Multi-PH + PLL 32-bin Fourier + 128-d PLL augmentation module importable (the CLI flag that would reach the trainer does not exist)"
+#         PLAN_STATUS="BLOCKED_CAPABILITY"
+#     else
+#         PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the argv capability is UNVERIFIED, NOT a measured defect (the checker exited ${CAPABILITY_RC} and produced no flag count; see argv_capability.txt); the trainer's parse_args could not be exercised, so this launcher's argv could not be verified; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted"
+#         PLAN_STATUS="BLOCKED_CAPABILITY_UNVERIFIED"
+#     fi
+if [ "${CAPABILITY_STATUS}" = "UNVERIFIED" ]; then
+    PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the argv capability is UNVERIFIED, NOT a measured defect (the checker exited ${CAPABILITY_RC} and produced no flag count; see argv_capability.txt); the trainer's parse_args could not be exercised, so this launcher's argv could not be verified; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted"
+    PLAN_STATUS="BLOCKED_CAPABILITY_UNVERIFIED"
+elif [ "${CAPABILITY_STATUS}" = "BLOCKED" ]; then
+    PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the trainer ${CAPABILITY_COUNT_PHRASE} (MEASURED via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt); the joint_tmqm_platinai interface was never implemented in the trainer; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; Multi-PH + PLL 32-bin Fourier + 128-d PLL augmentation module importable (the CLI flag that would reach the trainer does not exist)"
+    PLAN_STATUS="BLOCKED_CAPABILITY"
+elif [ "${JOINT_INTERFACE_STATUS}" = "BLOCKED" ]; then
+    PLAN_MEASURED_TODAY="wrapper NOT launchable as written: the trainer's argv is accepted (MEASURED: 0 of ${CAPABILITY_TOTAL_COUNT} undeclared after the §5.11 migration, via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt), BUT the joint_tmqm_platinai interface is still not implemented in the trainer (MEASURED: neither 'joint_tmqm_platinai' nor 'per_cell_w2_out' appears in ${TRAINER}); the 12 experiment flags have no argparse dest and therefore no YAML counterpart, so a launch would train the MetalCytoTox 5-metal multi-task corpus named by the config's data.csv instead of the planned tmQM + PlatinAI 4-cell joint sweep; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; Multi-PH + PLL 32-bin Fourier + 128-d PLL augmentation module importable (the CLI flag that would reach the trainer does not exist)"
+    PLAN_STATUS="BLOCKED_CAPABILITY"
+else
+    PLAN_MEASURED_TODAY="wrapper ready; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; the trainer declares every flag this launcher passes (MEASURED: 0 of ${CAPABILITY_TOTAL_COUNT} undeclared, via molmetal/scripts/wf_argv_capability_check.py; see argv_capability.txt)"
+    PLAN_STATUS="READY_TO_RUN"
+fi
+
 PLAN_JSON="${REPORTS_DIR}/plan.json"
 {
     printf '{\n'
@@ -376,11 +1039,16 @@ PLAN_JSON="${REPORTS_DIR}/plan.json"
     printf '  "smoke_only": %s,\n' "${SMOKE_ONLY}"
     printf '  "mode": "%s",\n' "${MODE_LABEL}"
     printf '  "tmqm_csv": "%s",\n' "${TMQM_CSV}"
-    printf '  "tmqm_metals": [%s],\n' "$(IFS=,; echo "${TMQM_METALS[*]}" | tr ' ' ',')"
+    printf '  "tmqm_metals": [%s],\n' "$(json_array "${TMQM_METALS[@]}")"
     printf '  "platinai_4cell_csv": "%s",\n' "${PLAT_4CELL_CSV}"
     printf '  "platinai_4cell_meta": "%s",\n' "${PLAT_4CELL_META}"
-    printf '  "cells": [%s],\n' "$(IFS=,; echo "${CELLS[*]}" | tr ' ' ',')"
-    printf '  "seeds": [%s],\n' "$(IFS=,; echo "${SEEDS_TO_USE[*]}" | tr ' ' ',')"
+    # Wf-A269 wave-9 (2026-11-02): the MEASURED verdict of the 4-cell data
+    # check.  Before the repair this check was a zombie gate that could not
+    # fail and always printed "verified".
+    printf '  "platinai_4cell_check": "%s",\n' "${PLAT_4CELL_STATUS}"
+    printf '  "platinai_4cell_check_detail": "verdict of molmetal/scripts/wf_platinai_4cell_check.py over the 4 cell-line columns (pIC50_mcf7 / pIC50_a549 / pIC50_a2780 / pIC50_a2780cis), active = pIC50 >= 5.0 (IC50 <= 10 uM), cross-checked against platinai_4cell.meta.json n_active_per_line within the round(x,4) boundary band; PASS = the CSV carries all 4 cell lines, FAIL = a declared column is absent / a label is not numeric / the meta and the CSV disagree, SKIPPED = the data check was skipped",\n'
+    printf '  "cells": [%s],\n' "$(json_array "${CELLS[@]}")"
+    printf '  "seeds": [%s],\n' "$(json_num_array "${SEEDS_TO_USE[@]}")"
     printf '  "epochs": %d,\n' "${EPOCHS}"
     printf '  "hidden": %d,\n' "${HIDDEN}"
     printf '  "depth": %d,\n' "${DEPTH}"
@@ -389,7 +1057,43 @@ PLAN_JSON="${REPORTS_DIR}/plan.json"
     printf '  "wall_budget_hr": %d,\n' "${BUDGET_HR}"
     printf '  "wall_budget_label": "PROJECTED (%d GPU-hr on RTX PRO 6000 Blackwell sm_120 per Wf-328-SYN speedup ~3-4× multiplicative; PROJECTED joint ceiling ~10-15× end-to-end)",\n' "${BUDGET_HR}"
     printf '  "trainer": "%s",\n' "${TRAINER}"
-    printf '  "multiph_pll_augmentation": "Wf-348-B1 SHIPPED — 32-bin Fourier + 128-d PLL feature augmentation; --use-multiph-pll CLI flag wired into trainer",\n'
+    # Wf-A269 wave-11 (2026-11-02) - REPAIR (DEFECT A): the capability field
+    # and its counts are DERIVED from the report the checker wrote
+    # (${CAPABILITY_FILE}); no count here is a literal.  "capability" keeps the
+    # bare verdict token (the same vocabulary the DRY_RUN.log's `capability:`
+    # field uses — OK / BLOCKED / UNVERIFIED, asserted by
+    # molmetal/tests/test_wf363a1_dry_run_log.py::VALID_CAPABILITY), and the
+    # derived NUMBERS live in the two sibling fields below (null = the checker
+    # produced no count, e.g. its exit-2 "no importable parse_args" case).
+    printf '  "capability": "%s",\n' "${CAPABILITY_STATUS}"
+    printf '  "capability_flags_undeclared": %s,\n' "${CAPABILITY_MISSING_COUNT:-null}"
+    printf '  "capability_flags_total": %s,\n' "${CAPABILITY_TOTAL_COUNT:-null}"
+    printf '  "capability_detail": "argv-capability gate verdict (MEASURED, derived from %s): %s; OK = the trainer declares every flag this launcher passes; BLOCKED = it does not, and the real launch path refuses before any trainer process starts; UNVERIFIED = the checker could not exercise the trainer parse_args (exit 2), which is NOT a measured defect",\n' "${CAPABILITY_FILE}" "${CAPABILITY_COUNT_CLAUSE}"
+    # Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — the §5.11 migration makes
+    # the argv legal (the trainer declares --config and --out-dir), so the
+    # argv verdict alone no longer says whether the EXPERIMENT can run.  This
+    # field carries the second, independent measurement.
+    printf '  "joint_interface": "%s",\n' "${JOINT_INTERFACE_STATUS}"
+    printf '  "joint_interface_detail": "MEASURED by grep over %s: BLOCKED = neither '"'"'joint_tmqm_platinai'"'"' nor '"'"'per_cell_w2_out'"'"' appears in the trainer, so the 12 experiment flags of the pre-migration argv have no argparse dest and no YAML counterpart, and a launch would train the corpus named by the config data.csv (MetalCytoTox 5-metal multi-task) instead of the planned tmQM + PlatinAI 4-cell joint sweep; the real launch path refuses in that case",\n' "${TRAINER}"
+    printf '  "seed_config_check": "%s",\n' "${SEED_CONFIG_CHECK}"
+    printf '  "seed_config_check_detail": "MEASURED by reading every per-seed config this sweep hands the trainer (${DMPNN_CONFIG_TEMPLATE}<seed>.yaml): each must carry train.epochs / model.hidden / model.depth / eval.w2_gradient_mode / compute.cpu_num_workers / compute.device with the value AND the TYPE the pre-migration argv passed, must declare exactly the one seed it is named for, and must name a corpus; a mismatch aborts the launch instead of training something this plan does not describe",\n'
+    # Wf-A269 wave-10 (2026-11-02): the MEASURED verdict of each pre-launch
+    # gate.  Before the repair these three gates could not fail (see the
+    # block comment above), so the plan said nothing about them and the
+    # wrapper looked launchable without ever having run a pre-flight.
+    # UNVERIFIED means "not measured" (the dry-run skips the live gates) —
+    # it is deliberately NOT spelled PASS.
+    printf '  "preflight_verdict": "%s",\n' "${PRE_FLIGHT_VERDICT}"
+    printf '  "preflight_verdict_detail": "%s",\n' "$(json_escape "${PRE_FLIGHT_DETAIL}")"
+    printf '  "preflight_report": "%s",\n' "${PRE_FLIGHT_JSON}"
+    printf '  "checklist_verdict": "%s",\n' "${CHECKLIST_VERDICT}"
+    printf '  "checklist_verdict_detail": "%s",\n' "$(json_escape "${CHECKLIST_DETAIL}")"
+    printf '  "checklist_report": "%s",\n' "${CHECKLIST_JSON}"
+    printf '  "budget_verdict": "%s",\n' "${BUDGET_VERDICT}"
+    printf '  "budget_verdict_detail": "%s",\n' "$(json_escape "${BUDGET_DETAIL}")"
+    printf '  "budget_report": "%s",\n' "${BUDGET_JSON}"
+    printf '  "session_cap_hr": %d,\n' "${SESSION_CAP_HR}"
+    printf '  "multiph_pll_augmentation": "Wf-348-B1 SHIPPED — 32-bin Fourier + 128-d PLL feature augmentation module (molmetal/molmetal_lam/reward/multiph_pll_feature.py) IS importable and the wrapper checks that at launch; but the --use-multiph-pll CLI flag that would carry it into the trainer is NOT declared by the trainer (MEASURED: absent from its 70 argparse flags and from every file under molmetal/ and configs/), so this augmentation is NOT reachable from this launcher",\n'
     printf '  "out_dir": "%s",\n' "${REPORTS_DIR}"
     printf '  "per_wave_convergence_json": "%s",\n' "${REPORTS_DIR}/per_wave_convergence.json"
     printf '  "per_cell_w2_json": "%s",\n' "${REPORTS_DIR}/per_cell_w2.json"
@@ -401,36 +1105,87 @@ PLAN_JSON="${REPORTS_DIR}/plan.json"
     printf '    "per_cell_min_rows": 50,\n'
     printf '    "min_tests_pass": 4,\n'
     printf '    "cross_dataset_r2_min": 0.70,\n'
-    printf '    "cross_dataset_r2_origin": "R20_BIG_DATASET_FULL_RETRAIN_PLAN.md §5.3 target; current macro R² +0.1248 (MEASURED F5_RDKIT_2D Ridge baseline)"\n'
+    # Wf-A269 wave-9 (2026-11-02) - REPAIR: the +0.1248 was labelled "F5_RDKIT_2D
+    # Ridge baseline" and left un-scoped, which is the flattering direction:
+    # it is the CROSS-DATASET macro R² over 38 cohorts in 3 datasets
+    # (platinai_4cell 4 + metalcytotox_5metal 5 + tmqm_dblock 29), NOT the
+    # PlatinAI-4-cell cohort this launcher trains on.  The 4-cell cohort's own
+    # per-dataset macro R² is 0.00344.  MEASURED source:
+    # metrics/by_metric/tmqm_combined_r2.json::cross_dataset_macro_r2_mean
+    # = 0.12475146687654443, source artifact
+    # molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json.
+    printf '    "cross_dataset_r2_origin": "R20_BIG_DATASET_FULL_RETRAIN_PLAN.md §5.3 target R² >= 0.70. CURRENT READING (MEASURED) = +0.12475 cross-dataset macro R² over 38 cohorts in 3 datasets (platinai_4cell 4 cohorts + metalcytotox_5metal 5 + tmqm_dblock 29) — NOT the PlatinAI-4-cell cohort this launcher trains on, whose own per-dataset macro R² is 0.00344. Source: metrics/by_metric/tmqm_combined_r2.json::cross_dataset_macro_r2_mean (0.12475146687654443) + molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json. It is NOT an F5_RDKIT_2D-Ridge-only baseline."\n'
     printf '  },\n'
     printf '  "honest_framing": {\n'
-    printf '    "MEASURED_today": "wrapper ready; USER_OK gate enforced; pre-flight + per-wave + data quality wired; STATUS_HOLD warning emitted; Multi-PH + PLL 32-bin Fourier + 128-d PLL augmentation importable check wired",\n'
+    printf '    "MEASURED_today": "%s",\n' "${PLAN_MEASURED_TODAY}"
     printf '    "PROJECTED": " 5-seed full sweep ~12 GPU-hr; cross-dataset R² ≥ +0.70; Wf-348-B1 architectural lift may unblock 12-d signal floor",\n'
-    printf '    "STATUS_HOLD": "12-d RDKit 2D signal floor caps R² at ~0.004 (Wf-316A + Wf-122 P3 R² = -5.66 ± 1.36); W₂ regularization cannot lift R² above this ceiling; Wf-348-B1 32-bin Fourier + 128-d PLL augmentation is the architectural fix path",\n'
+    # Wf-A269 wave-9 (2026-11-02) - REPAIR: the 0.004 was stated as a cap
+    # ("caps R² at ~0.004") with no source, and the artifact it was attributed
+    # to (molmetal/reports/wf127_l5_hilbert_diagnostic/) DOES NOT EXIST on
+    # disk (MEASURED: `ls -d` → no such path).  The 0.0043 is a DERIVED
+    # UPPER BOUND, not a measured R²: every F5_RDKIT_2D feature has
+    # |rho| <= 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit), so a linear
+    # model caps at 0.019^2 * 12 = 0.0043.  Source:
+    # TODO/03_plans/LAMBDA_ROADMAP.md:296 + TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md.
+    printf '    "STATUS_HOLD": "12-d RDKit 2D signal floor: DERIVED UPPER BOUND (not a measured R²) R² <= 0.019^2 x 12 = 0.0043, from |rho| <= 0.019 per F5_RDKIT_2D feature on PlatinAI pIC50 (Wf-49 Cause 2 audit; source TODO/03_plans/LAMBDA_ROADMAP.md:296 + TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md). MEASURED companion: Wf-122 P3 combined R² = -5.66 +/- 1.36 and Wf-129 P3 Multi-PH + PLL guarded R² = -0.0780 +/- 0.0148. NOTE: molmetal/reports/wf127_l5_hilbert_diagnostic/ does NOT exist on disk (MEASURED 2026-11-02), so it is NOT a source for any number here. W₂ regularization cannot lift R² above the derived ceiling; Wf-348-B1 32-bin Fourier + 128-d PLL augmentation is the architectural fix path",\n'
     printf '    "kill_then_adapt_directive": "> 1 hr wall; USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0"\n'
     printf '  },\n'
-    printf '  "status": "%s"\n' "$( [ "${DRY_RUN}" = "1" ] && echo PLAN_ONLY || echo READY_TO_RUN )"
+    # Wf-A269 wave-11 (2026-11-02) - REPAIR (DEFECT B): the dry-run path
+    # FORCED "PLAN_ONLY", overriding PLAN_STATUS="BLOCKED_CAPABILITY" — so a
+    # plan that CANNOT be launched reported PLAN_ONLY, and the dashboard's
+    # BLOCKED arm (scripts/gpu_launch_dashboard.sh `case BLOCKED*`) was DEAD
+    # CODE on every dry-run plan.  PLAN_ONLY is now emitted only when the plan
+    # really is launchable (capability OK); a blocked plan keeps its real
+    # status so the dashboard reports BLOCKED.  The dashboard's existing
+    # PLAN_ONLY / READY_TO_RUN / STALE arms are untouched.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     printf '  "status": "%s"\n' "$( [ "${DRY_RUN}" = "1" ] && echo PLAN_ONLY || echo "${PLAN_STATUS}" )"
+    if [ "${DRY_RUN}" = "1" ] && [ "${PLAN_STATUS}" = "READY_TO_RUN" ]; then
+        PLAN_JSON_STATUS="PLAN_ONLY"
+    else
+        PLAN_JSON_STATUS="${PLAN_STATUS}"
+    fi
+    printf '  "status": "%s"\n' "${PLAN_JSON_STATUS}"
     printf '}\n'
 } > "${PLAN_JSON}"
+# Wf-A269 wave-9 (2026-11-02): the plan record was single-path, so a smoke
+# dry-run DESTROYED the full-sweep plan (mode full_5seed, 12 hr, 20 pairs).
+# §5.5 rule #6 requires the superseded rendering to SURVIVE, so a MODE-SPECIFIC
+# durable copy is written beside the canonical one.  The canonical path is
+# kept because the dashboard and the aggregators read it by exact name.
+PLAN_JSON_MODE="${PLAN_JSON%.json}.${MODE_LABEL}.json"
+cp -f "${PLAN_JSON}" "${PLAN_JSON_MODE}"
 ok "plan emitted → ${PLAN_JSON}"
+ok "plan mode record → ${PLAN_JSON_MODE} (durable; not overwritten by another mode)"
 
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK was still required)"
     log "DRY-RUN: actual invocation would be:"
+    # Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — §5.11: every
+    # hyperparameter travels in the per-seed YAML; the trainer receives
+    # --config and --out-dir only.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     log "    CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
+    #     log "      --mode joint_tmqm_platinai \\"
+    #     log "      --tmqm-csv ${TMQM_CSV} \\"
+    #     log "      --platinai-csv ${PLAT_4CELL_CSV} \\"
+    #     log "      --cells ${CELLS[*]} \\"
+    #     log "      --tmqm-metals ${TMQM_METALS[*]} \\"
+    #     log "      --seeds ${SEEDS_TO_USE[*]} \\"
+    #     log "      --epochs ${EPOCHS} \\"
+    #     log "      --hidden ${HIDDEN} --depth ${DEPTH} \\"
+    #     log "      --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \\"
+    #     log "      --w2-weight 0.05 --w2-gradient-mode sort \\"
+    #     log "      --cpu-num-workers 8 \\"
+    #     log "      --out-dir ${REPORTS_DIR}/per_seed_results \\"
+    #     log "      --device=cuda:0"
     log "    CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
-    log "      --mode joint_tmqm_platinai \\"
-    log "      --tmqm-csv ${TMQM_CSV} \\"
-    log "      --platinai-csv ${PLAT_4CELL_CSV} \\"
-    log "      --cells ${CELLS[*]} \\"
-    log "      --tmqm-metals ${TMQM_METALS[*]} \\"
-    log "      --seeds ${SEEDS_TO_USE[*]} \\"
-    log "      --epochs ${EPOCHS} \\"
-    log "      --hidden ${HIDDEN} --depth ${DEPTH} \\"
-    log "      --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \\"
-    log "      --w2-weight 0.05 --w2-gradient-mode sort \\"
-    log "      --cpu-num-workers 8 \\"
-    log "      --out-dir ${REPORTS_DIR}/per_seed_results \\"
-    log "      --device=cuda:0"
+    log "      --config ${DMPNN_CONFIG_TEMPLATE}<seed>.yaml \\"
+    log "      --out-dir ${REPORTS_DIR}/<cell>/seed<seed>"
+    log ""
+    log "DRY-RUN: every hyperparameter lives in the per-seed YAML on disk (§5.11); the config is NOT generated at launch time"
+    log "DRY-RUN: the 12 flags the trainer does not declare (--mode, --tmqm-csv, --platinai-csv, --cells, --tmqm-metals, --use-multiph-pll, --multiph-fourier-bins, --pll-signature-dim, --w2-weight, --per-cell-w2-out, --per-metal-w2-out, --per-wave-convergence-out) have no argparse dest, so they have no YAML counterpart and are not passed (see the wrapper header)"
     log ""
     log "DRY-RUN: total runs = ${#CELLS[@]} cells × ${#SEEDS_TO_USE[@]} seeds = $(( ${#CELLS[@]} * ${#SEEDS_TO_USE[@]} )) (metal,cell,seed) tuples"
     log "DRY-RUN: per-cell W₂ regression output → ${REPORTS_DIR}/per_cell_w2.json"
@@ -447,18 +1202,58 @@ if [ "${DRY_RUN}" = "1" ]; then
         done
     done
     N_PAIRS=$(( ${#CELLS[@]} * ${#SEEDS_TO_USE[@]} ))
-    # shellcheck disable=SC2068
-    emit_dry_run_log "${REPORTS_DIR}/DRY_RUN.log" \
-        --title "Wf-355-A3 R20 §5 tmQM + PlatinAI 4-cell joint retrain (STATUS_HOLD; ${MODE_LABEL})" \
-        --wrapper "$(basename "$0")" \
-        --mode "${MODE_LABEL}" \
-        --trainer "${TRAINER}" \
-        --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --out-dir ${REPORTS_DIR}/per_seed_results --device=cuda:0" \
-        --gpu "${GPU}" \
-        --budget-hr "${BUDGET_HR}" \
-        --user-ok "REQUIRED_STATUS_HOLD" \
-        ${pair_args[@]+"${pair_args[@]}"}
-    ok "DRY_RUN.log emitted → ${REPORTS_DIR}/DRY_RUN.log (${N_PAIRS} (cell, seed) pairs)"
+    # Wf-A269 wave-9 (2026-11-02) - REPAIR: the 10 hr session cap (AGENTS.md
+    # §5.1 + Wf-294B kill_then_adapt) bounds a single LAUNCH.  This wrapper
+    # launches N_PAIRS tuples SEQUENTIALLY, one trainer process per tuple, so
+    # the per-LAUNCH wall is BUDGET_HR / N_PAIRS while the sweep TOTAL is
+    # BUDGET_HR.  The PRODUCER is the only party that knows both numbers, so
+    # the producer DECLARES the wall policy and the per-pair budget here and
+    # the schema test VERIFIES the declaration (it does not divide, and it
+    # does not trust a free-text label).  Previously the consumer divided
+    # 12 hr / 20 pairs itself and gated the exception on the log's own
+    # self-signed `user_ok:` field.
+    PER_PAIR_BUDGET_HR="$(awk -v b="${BUDGET_HR}" -v n="${N_PAIRS}" 'BEGIN{ if (n>0) printf "%.4f", b/n; else printf "0.0000" }')"
+    # Wf-A269 wave-9 (2026-11-02) - REPAIR: the DRY_RUN.log path was
+    # single-path, so a smoke dry-run OVERWROTE the full-sweep record (mode
+    # full_5seed, budget 12 hr, 20 pairs) with the smoke one (budget 3 hr, 8
+    # pairs).  Two dry runs of the same wrapper with different modes left
+    # exactly ONE record, and which one survived depended on run order.
+    # §5.5 rule #6 (append-only + dated) requires the superseded rendering to
+    # SURVIVE.  The canonical path is kept (the aggregators and the dashboard
+    # read it by exact name) and a MODE-SPECIFIC durable record is written
+    # beside it, so no mode's record can destroy another's.
+    DRY_RUN_LOG_CANON="${REPORTS_DIR}/DRY_RUN.log"
+    DRY_RUN_LOG_MODE="${REPORTS_DIR}/DRY_RUN.${MODE_LABEL}.log"
+    for _dry_log_path in "${DRY_RUN_LOG_CANON}" "${DRY_RUN_LOG_MODE}"; do
+        # Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — §5.11: the trainer
+        # receives --config and --out-dir only.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --out-dir ${REPORTS_DIR}/per_seed_results --device=cuda:0" \
+        # NOTE: this comment block sits ABOVE the call, not inside the
+        # backslash continuation.  A comment INSIDE a continuation TERMINATES
+        # the command in bash (MEASURED 2026-11-03: `f a \` + a `#` line +
+        # `b` runs `f a` and then tries to run `b` as a command), so the
+        # --flags argument was silently dropped and the dry-run died with
+        # "[FATAL] emit_dry_run_log: --flags required".
+        # shellcheck disable=SC2068
+        emit_dry_run_log "${_dry_log_path}" \
+            --title "Wf-355-A3 R20 §5 tmQM + PlatinAI 4-cell joint retrain (STATUS_HOLD; ${MODE_LABEL})" \
+            --wrapper "$(basename "$0")" \
+            --mode "${MODE_LABEL}" \
+            --trainer "${TRAINER}" \
+            --flags "--config ${DMPNN_CONFIG_TEMPLATE}<seed>.yaml --out-dir ${REPORTS_DIR}/per_seed_results" \
+            --gpu "${GPU}" \
+            --budget-hr "${BUDGET_HR}" \
+            --budget-label "PROJECTED" \
+            --wall-policy "whole_sweep_sequential" \
+            --per-pair-budget-hr "${PER_PAIR_BUDGET_HR}" \
+            --user-ok "REQUIRED_STATUS_HOLD" \
+            --capability "${CAPABILITY_STATUS}" \
+            --gate-verdict "preflight=${PRE_FLIGHT_VERDICT} checklist=${CHECKLIST_VERDICT} budget=${BUDGET_VERDICT}" \
+            ${pair_args[@]+"${pair_args[@]}"}
+    done
+    ok "DRY_RUN.log emitted → ${DRY_RUN_LOG_CANON} (${N_PAIRS} (cell, seed) pairs; per-pair budget ${PER_PAIR_BUDGET_HR} hr)"
+    ok "DRY_RUN.log mode record → ${DRY_RUN_LOG_MODE} (durable; not overwritten by another mode)"
     exit 0
 fi
 
@@ -491,24 +1286,40 @@ for CELL in "${CELLS[@]}"; do
         # survives the invoking shell, and the `if` still tests the trainer's
         # own exit status. Bare `setsid` may fork and return 0 immediately,
         # which would make the failure branch unreachable.
-        if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" "${TRAINER}" \
-                --config "${DMPNN_CONFIG}" \
-                --mode joint_tmqm_platinai \
-                --tmqm-csv "${TMQM_CSV}" \
-                --platinai-csv "${PLAT_4CELL_CSV}" \
-                --cells "${CELL}" \
-                --tmqm-metals "${TMQM_METALS[@]}" \
-                --seeds "${SEED}" \
-                --epochs "${EPOCHS}" \
-                --hidden "${HIDDEN}" --depth "${DEPTH}" \
-                --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \
-                --w2-weight 0.05 --w2-gradient-mode sort \
-                --cpu-num-workers 8 \
+        # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+        # Wf-A269 cohort c3_dmpnn_r20p5 (2026-11-03) — §5.11: the trainer
+        # takes --config and --out-dir only.  Every hyperparameter of the
+        # pre-migration argv that the trainer DECLARES now lives in the
+        # per-seed YAML; the 12 it does NOT declare have no argparse dest and
+        # therefore no YAML counterpart (they are enumerated in this file's
+        # header and in every per-seed config's header).
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait "${PY}" "${TRAINER}" \
+        #             --config "${DMPNN_CONFIG}" \
+        #             --mode joint_tmqm_platinai \
+        #             --tmqm-csv "${TMQM_CSV}" \
+        #             --platinai-csv "${PLAT_4CELL_CSV}" \
+        #             --cells "${CELL}" \
+        #             --tmqm-metals "${TMQM_METALS[@]}" \
+        #             --seeds "${SEED}" \
+        #             --epochs "${EPOCHS}" \
+        #             --hidden "${HIDDEN}" --depth "${DEPTH}" \
+        #             --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 \
+        #             --w2-weight 0.05 --w2-gradient-mode sort \
+        #             --cpu-num-workers 8 \
+        #             --out-dir "${REPORTS_DIR}/${CELL}/seed${SEED}" \
+        #             --per-cell-w2-out "${REPORTS_DIR}/per_cell_w2.json" \
+        #             --per-metal-w2-out "${REPORTS_DIR}/per_metal_w2.json" \
+        #             --per-wave-convergence-out "${REPORTS_DIR}/per_wave_convergence.json" \
+        #             --device cuda:0 \
+        #             >> "${RUN_LOG}" 2>&1; then
+        SEED_CONFIG="${DMPNN_CONFIG_TEMPLATE}${SEED}.yaml"
+        if [ ! -f "${SEED_CONFIG}" ]; then
+            die "per-seed config not found: ${SEED_CONFIG} — after the §5.11 migration every hyperparameter lives in that file, so the tuple cannot run"
+        fi
+        if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait "${PY}" "${TRAINER}" \
+                --config "${SEED_CONFIG}" \
                 --out-dir "${REPORTS_DIR}/${CELL}/seed${SEED}" \
-                --per-cell-w2-out "${REPORTS_DIR}/per_cell_w2.json" \
-                --per-metal-w2-out "${REPORTS_DIR}/per_metal_w2.json" \
-                --per-wave-convergence-out "${REPORTS_DIR}/per_wave_convergence.json" \
-                --device cuda:0 \
                 >> "${RUN_LOG}" 2>&1; then
             ok "cell=${CELL} seed=${SEED} completed"
         else

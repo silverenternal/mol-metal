@@ -6,7 +6,12 @@ import json
 import statistics
 from pathlib import Path
 
-OUT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf170_permetal_singletask")
+OUT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf170_permetal_singletask"
+)
 METALS = ("Ru", "Ir", "Os", "Rh", "Re")
 SEEDS = (0, 1, 2, 3, 4)
 

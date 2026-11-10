@@ -9,6 +9,22 @@
 # Wf-A69 YAML keys to non-default values:
 #   flow.bond_candidate_source: radius_graph   (W1 Fix 1: disaster area)
 #   flow.subsample_neg_ratio: 4                (W1: PepForge/GraViti 4:1)
+#
+# 2026-11-04 (Wf-A269 wave-20) — the two lines above are the PRE-REPAIR
+# rendering and are preserved VERBATIM per AGENTS.md §5.5 rule #6, but they
+# are now SUPERSEDED: the trainer CANNOT honour them.  MEASURED:
+# `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:16160-16173` raises
+# `SystemExit` at start-up for any non-default bond-candidate trio, because
+# this trainer's model is `CFMJointModel` and it never calls
+# `LipmanFlowMatchingAdapter.train_step`, where the trio was wired
+# (Wf-A113 T70, 2026-10-28).  So this config could not launch the trainer
+# at all, and it made 2 of the repo's OWN tests RED
+# (`molmetal/tests/test_wfA50_bond_decision_yaml7.py` — the §6.55g
+# bond-decision wire-in guard).  The trio has NO consumer here, so the
+# request was a no-op in intent and a crash in effect; the values are now
+# the trainer's documented inert defaults, which is what the run actually
+# did.  The live knobs are `flow.edge_cutoff` and
+# `flow.bond_sample_balance`.
 #   flow.bond_head_kind: split                 (W2 Fix 3: calibrated marginal)
 #   flow.bond_class_weights: false             (W2 Fix 4: drop inverse-freq)
 #   flow.bond_z_metal_set: all7                (W2 Fix 5: metal-aware)
@@ -87,11 +103,21 @@ flow:
   # === Wf-A69 W1 Fix 1 (DISASTER AREA — candidate source) ===
   # Distance-cutoff candidates + truth labelling; NO_BOND pairs get
   # label 0 so the head sees the negative class.
-  bond_candidate_source: radius_graph
+  #
+  # 2026-11-04 (Wf-A269 wave-20) — the two values below are the PRE-REPAIR
+  # rendering and are preserved VERBATIM per AGENTS.md §5.5 rule #6; they
+  # are now SUPERSEDED because the trainer has NO consumer for them
+  # (`train_cfm_yuelbond_wasserstein.py:16160-16173` raises SystemExit for
+  # any non-default value — see the header note).  MEASURED over the config
+  # population: 55 configs declare this trio, 54 declare it at these inert
+  # defaults, and this one was the only outlier.
+  #   bond_candidate_source: radius_graph     -> truth_only
+  #   subsample_neg_ratio: 4                  -> 0
+  bond_candidate_source: truth_only
   bond_candidate_cutoff: 2.4
   # === Wf-A69 W1 — subsample negatives to 4:1 ===
   # PepForge bioRxiv 2026 + GraViti arXiv 2605.16668 4:1 recipe.
-  subsample_neg_ratio: 4
+  subsample_neg_ratio: 0
   subsample_neg_seed: epoch
   # === Wf-A69 W2 Fix 2 (documentation only) ===
   head_class: YuelBondDecoderHead
@@ -145,8 +171,10 @@ directives:
   time_budget: 30m
   user_ok_required: false
   user_ok_granted: user_2026_10_17 "抽少量真实数据训练一下cfm吧，用gpu0"
-  pre_flight_gates_required:
-  - p1_pytorch_cuda_available
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
+  pre_flight_gates_required: []
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
   command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}

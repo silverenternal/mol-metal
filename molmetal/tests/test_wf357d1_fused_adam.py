@@ -115,7 +115,7 @@ def test_fused_adam_cli_flag_wired() -> None:
 
     cfm_probe = subprocess.run(
         [
-            "/home/hugo/codes/mol-metal/.venv/bin/python",
+            sys.executable,
             "-c",
             (
                 "import sys, argparse\n"
@@ -126,7 +126,7 @@ def test_fused_adam_cli_flag_wired() -> None:
             ),
         ],
         cwd=str(PROJECT_ROOT),
-        env={"PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"},
+        env={"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"},
         capture_output=True,
         text=True,
         timeout=60,

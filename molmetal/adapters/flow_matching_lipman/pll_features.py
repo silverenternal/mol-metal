@@ -29,8 +29,14 @@ Public surface
 References
 ----------
 * Liu J., Feng H. (2026) "Persistent Local Laplacian Prediction of
-  Protein–Ligand Binding Affinities".  *J. Chem. Inf. Model.* 66 (3),
-  1024-1037.  DOI: 10.1021/acs.jcim.6c02460.
+  Protein–Ligand Binding Affinities".  *J. Chem. Inf. Model.* 66 (18),
+  11767-11777.  DOI: 10.1021/acs.jcim.6c02460.
+  [CITATION CORRECTED 2026-10-31, Wf-A149 — the volume/issue/pages above
+  previously read "66 (3), 1024-1037"; the Crossref record for
+  DOI 10.1021/acs.jcim.6c02460 (MEASURED 2026-10-31, HTTP 200) gives
+  volume 66, issue 18, pages 11767-11777 (online 2026-09-04, print
+  2026-09-28).  The DOI and the year 2026 were already correct and
+  are unchanged.]
 * Belkin M. (2018) "Persistent Laplacian".  *Proc. ICML* 80:1752-1761.
 * von Luxburg U. (2007) "A Tutorial on Spectral Clustering".
   *Stat. Comput.* 17:395-416.

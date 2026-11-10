@@ -55,8 +55,11 @@ Lit anchors
   trigonal-bipyramidal transition state).
 * Reedijk 1987 — Pt(II) aquation kinetics.
 * Comba-Hambley 2009 — d-block coordination modeling.
-* Wang & Dokholyan 2025 (bioRxiv 10.1101/2025.05.06.645) — YuelBond
-  decoder head.
+* Wang & Dokholyan 2026 (J. Chem. Inf. Model. 66(2) 1003-1012, DOI
+  10.1021/acs.jcim.5c03052; preprint bioRxiv 10.1101/2025.05.06.652517) —
+  YuelBond decoder head.  (DOI corrected 2026-10-31, Wf-A143: the DOI
+  here was truncated to "10.1101/2025.05.06.645"; see
+  `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
 * Wf-269C MEASURED Δ = −1.000 (no_yuelbond vs full) — YuelBond is
   load-bearing on the real cohort.
 """

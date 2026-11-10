@@ -209,9 +209,12 @@ def main() -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path(
-            "/home/hugo/codes/try_triton_on_rocm/molmetal/references/REINVENT4/configs/stage1_scoring.toml"
-        ),
+        default=Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "references"
+        / "REINVENT4"
+        / "configs"
+        / "stage1_scoring.toml",
         help="REINVENT4 scoring TOML config.",
     )
     parser.add_argument(

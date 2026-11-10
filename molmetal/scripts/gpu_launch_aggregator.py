@@ -52,7 +52,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROJECT_ROOT = "/home/hugo/codes/mol-metal"
+PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 DASHBOARD_OUTPUT = f"{PROJECT_ROOT}/molmetal/reports/gpu_launch_dashboard.json"
 
 # Wf-363-B2: per-session budget cap (per Wf-262 §7.1 budget discipline;
@@ -310,6 +310,31 @@ def launcher_status(root: str) -> str:
             ps = (d.get("status") or "").upper()
             if ps in ("COMPLETED", "DRY_RUN_OK", "PLAN_ONLY", "FAILED"):
                 return ps
+            # Wf-A269 wave-9 (2026-11-02) — REPAIRED IN THE SHELL TWIN, NOT
+            # HERE, UNTIL Wf-A269 wave-16 (2026-11-03).
+            #
+            # The shell twin (scripts/gpu_launch_dashboard.sh, the
+            # embedded-Python arm) carries the BLOCKED*/READY_TO_RUN* arms.
+            # THIS MODULE DID NOT: an unrecognised status token fell
+            # through to the launch.log fallback and was reported as
+            # "READY".  plan.json's `status` is BLOCKED_CAPABILITY whenever
+            # the argv-capability gate says the trainer does not declare
+            # this launcher's flags — i.e. the plan CANNOT be launched.
+            # Reporting that as READY states the opposite of the record it
+            # is reading.
+            #
+            # The defect is a SHARED-PATH defect: BOTH implementations write
+            # the SAME molmetal/reports/gpu_launch_dashboard.json (this
+            # module at :56, the shell at :801), so whichever runs LAST
+            # decides what the dashboard says — and the Python twin was the
+            # one that turned a BLOCKED plan into READY.
+            #
+            # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+            #   (no BLOCKED*/READY_TO_RUN* arms existed here before this repair)
+            if ps.startswith("BLOCKED"):
+                return "BLOCKED"
+            if ps.startswith("READY_TO_RUN"):
+                return "READY"
         except Exception:
             pass
     summary = Path(root) / "training_summary.json"

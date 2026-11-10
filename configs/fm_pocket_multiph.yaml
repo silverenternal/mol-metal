@@ -53,8 +53,10 @@ directives:
   kill_then_adapt: True
   time_budget: "2h"
   user_ok_required: True
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
   pre_flight_gates_required:
-    - p1_pytorch_cuda_available
     - p3_wf343c4_anchor_freshness_24h
 
 output:

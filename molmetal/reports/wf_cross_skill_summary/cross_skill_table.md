@@ -62,7 +62,29 @@
 | **How to use** | Data spine: MetalCytoToxDB (4.8 MB / 26801 rows) + tmQM (300 MB / 100849 rows) + NCI-60 (420 MB / 4.85M rows) + PlatinAI/MBFinder (500-mol MaxMin subset pre-shipped); D-MPNN 5-metal multi-task; kNN oracle with `PlatinAIDataset` (NOT wet-lab ground truth); always cite Rusanov 2025 when reporting. |
 | **Examples** | (1) Score cisplatin via `KNNEvaluator(ds, k=5, fp_radius=2, fp_bits=2048).predict([smiles])` → cite Rusanov 2025. (2) m17 + m21 metric pair: `train_drugood --splits assay scaffold size --seeds 0 1 2` + `train_nci60_10cell --cells MCF7 A549 A2780 ...`. |
 | **Cross-ref** | ← S1 (MLC β-NF = scored candidates) · ← S2 (CFM-decoded conformers) · ← S3 (click rules = which candidates exist) · → S5 (M9, M18-M21 owned here) · ← S8. |
-| **R18 mechanism ref** | **M25** Hilbert primal-dual (replaces F5/LambdaASTSR evolutionary SR with Chambolle-Pock 2011; affects m1 + wall-time) · **M26** Score-Repellent MC (variance-controlled PUCT; ≥30% MCTS var reduction) · **M43** Bergman kernel (d-orbital occupancy; RBFE ΔG 1.8→1.2 kcal/mol). Cite: `sun2026hilbert` + `score_repellent_mc_icml2026` + `ma_xiaonan2025bergman_kernel`. |
+| **R18 mechanism ref** | **M25** Hilbert primal-dual (replaces F5/LambdaASTSR evolutionary SR with Chambolle-Pock 2011 — *J. Math. Imaging Vision* 40(1): 120-145, issued 2010-12-21, DOI 10.1007/s10851-010-0251-1 — the primal-dual splitting actually implemented in `molmetal/molmetal_lam/reward/hilbert_primal_dual.py`; Hilbert-space primal-dual dynamics: Sun & Zheng 2026, 孙祥凯 (Sun Xiangkai) & 郑丽娟 (Zheng Lijuan), 《数学学报(中文版)》 2026年04期, DOI 10.12386/A20250022, English preprint arXiv:2408.06884 (*J. Optim. Theory Appl.* 207(1): 12, 2025, DOI 10.1007/s10957-025-02766-6) — volume / issue / pages UNVERIFIED; affects m1 + wall-time) · **M26** Score-Repellent MC (variance-controlled PUCT; ≥30% MCTS var reduction) · **M43** Bergman kernel (d-orbital occupancy; RBFE ΔG 1.8→1.2 kcal/mol). Cite: Chambolle & Pock 2011 (DOI 10.1007/s10851-010-0251-1) + Sun & Zheng 2026 (DOI 10.12386/A20250022 / arXiv:2408.06884) + `score_repellent_mc_icml2026` + `ma_xiaonan2025bergman_kernel`. (No `sun2026hilbert` entry exists in `paper/refs.bib` — 0 hits across its 100 entries — so that key is replaced by the verified inline anchors; see the Wf-A149 note below.) |
+
+> **NOTE-Wf-A149 (2026-10-31, citation-truth wave)** — the superseded
+> wording of the M25 mechanism row is retained verbatim below as a
+> historical record (never delete a superseded record — AGENTS.md §5.5
+> rule 6):
+>
+>     **M25** Hilbert primal-dual (replaces F5/LambdaASTSR evolutionary SR with Chambolle-Pock 2011; affects m1 + wall-time) · **M26** Score-Repellent MC (variance-controlled PUCT; ≥30% MCTS var reduction) · **M43** Bergman kernel (d-orbital occupancy; RBFE ΔG 1.8→1.2 kcal/mol). Cite: `sun2026hilbert` + `score_repellent_mc_icml2026` + `ma_xiaonan2025bergman_kernel`.
+>
+> Superseded because `sun2026hilbert` named a fabricated record: its
+> arXiv id `arXiv:2510.08423` resolves to "Computational Bell
+> Inequalities" (Merkulov & Arnon, quant-ph, v2 2025-10-10) — NOT a
+> Hilbert-space paper — and no `sun2026hilbert` entry exists in
+> `paper/refs.bib` (0 hits across its 100 entries).  The Sun & Zheng
+> paper itself IS real (孙祥凯 / 郑丽娟, 《数学学报(中文版)》 2026年04期,
+> DOI 10.12386/A20250022; English preprint arXiv:2408.06884), so the
+> citation was re-pointed at the verified record rather than deleted.
+> The algorithm actually implemented is Chambolle–Pock (verified on
+> disk: `hilbert_primal_dual.py` — `x_{k+1} = prox(x_k − lr∇F(x_k))`,
+> `y_{k+1} = y_k + lr_dual·(x_{k+1} − x_k)`), so that is the honest
+> mechanism anchor.  The Douglas-Rachford substitute proposed for the
+> Hilbert anchor is NOT-FOUND (Crossref has no such record; DOI
+> 10.1137/110822976 → HTTP 404) and is NOT used.
 
 ### S5 — `mol-metal-mechanism-mapping`
 

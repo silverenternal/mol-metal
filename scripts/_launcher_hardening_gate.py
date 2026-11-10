@@ -49,6 +49,7 @@ presence-based marker cannot see.
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 from pathlib import Path
@@ -108,6 +109,123 @@ _NON_COMMAND = re.compile(
 #: A single-line `/* ... */` comment. `[^/]` before the closer rejects `/*/`,
 #: which is a `case` glob (`/*) ;;`) rather than a comment terminator.
 _BLOCK_COMMENT = re.compile(r"(?:(?<=\s)|(?<=^))/\*.*?\*/(?![*/])")
+
+
+# ---------------------------------------------------------------------------
+# `-c` snippet analysis (AGENTS.md §5.9)
+# ---------------------------------------------------------------------------
+#
+# `python3 -c "<snippet>"` is a shell-side helper in this repo's wrappers
+# (JSON parsing in the dashboard, an inline import probe). The exemption that
+# covered it used to be UNCONDITIONAL: the comment claimed "no project trainer
+# involved", but no code ever checked that claim, so a snippet importing a
+# NON-STDLIB module (`torch`, `pandas`, `rdkit`, a repo module) under the
+# SYSTEM interpreter -- the exact failure §5.9 exists to prevent ("the system
+# interpreter has no torch/pandas and the trainer dies at import") -- was
+# invisible to the gate. The exemption is now CONDITIONAL on the claim: the
+# snippet must be STDLIB-ONLY, and every failure to prove that fails CLOSED
+# (the line falls through and is flagged).
+
+#: The stdlib module names (Python 3.10+). `None` on an older interpreter, and
+#: a `-c` snippet is then treated as NOT exempt (fail closed toward flagging).
+_STDLIB_MODULE_NAMES = getattr(sys, "stdlib_module_names", None)
+
+#: A `-c` option token: `-c` at the end of the word, or `-c` followed by a
+#: quote or whitespace. `-config` is not the `-c` option.
+_DASH_C_OPTION = re.compile(r"^-c(?=$|[\s'\"])")
+
+#: Sentinel for a RELATIVE import (`from . import x`): it names no top-level
+#: module and is repo-local by construction, so it is never stdlib.
+_RELATIVE_IMPORT = "<relative>"
+
+#: A dynamic import inside a snippet names no module at parse time, so the
+#: import census below cannot see it. Treated as NOT stdlib-only.
+_DYNAMIC_IMPORT = re.compile(r"\b(?:__import__|import_module)\s*\(")
+
+
+def _extract_dash_c_snippet(rest: str) -> str | None:
+    """The Python source of a `python3 -c` snippet, or None if not extractable.
+
+    `rest` is the text that follows the `python3` token on the line. The
+    snippet may be glued to the option (`-c"..."`, `-c'...'`) or a separate
+    word (`-c "..."`). Only a QUOTED word is recognised: an unquoted snippet
+    is shell-interpreted before Python sees it, so its source cannot be
+    recovered faithfully => None => the caller fails closed (flags the line).
+    """
+    if not _DASH_C_OPTION.match(rest):
+        return None
+    tail = rest[2:].lstrip()
+    if not tail or tail[0] not in ("'", '"'):
+        return None
+    quote = tail[0]
+    out: list[str] = []
+    i = 1
+    while i < len(tail):
+        ch = tail[i]
+        if quote == '"' and ch == "\\" and i + 1 < len(tail):
+            nxt = tail[i + 1]
+            # POSIX: inside double quotes a backslash is special only before
+            # `$`, a backtick, `"` and `\`; anywhere else it stays literal.
+            if nxt in ("$", "`", '"', "\\"):
+                out.append(nxt)
+                i += 2
+                continue
+            out.append(ch)
+            i += 1
+            continue
+        if ch == quote:
+            return "".join(out)
+        out.append(ch)
+        i += 1
+    return None  # unterminated quote
+
+
+def _snippet_imports(source: str) -> tuple[list[str], bool]:
+    """(top-level imported module names, parsed_ok) for a `-c` snippet.
+
+    Every import form is collected: `import X`, `import X.Y`, `from X import
+    ...` and `from X.Y import ...`. A RELATIVE import (`from . import x`) names
+    no top-level module and is repo-local by construction => reported as
+    `_RELATIVE_IMPORT`, which is never in the stdlib.
+    """
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError, RecursionError):
+        return ([], False)
+    mods: list[str] = []
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            mods.extend(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                mods.append(_RELATIVE_IMPORT)
+            elif node.module:
+                mods.append(node.module.split(".")[0])
+            else:
+                mods.append(_RELATIVE_IMPORT)
+    return (mods, True)
+
+
+def _dash_c_snippet_is_stdlib_only(rest: str) -> bool:
+    """True when a `python3 -c` snippet is a stdlib-only shell-side helper.
+
+    Fail-closed everywhere: an unextractable snippet, an unparseable
+    snippet, a missing `sys.stdlib_module_names`, a dynamic import, or ANY
+    non-stdlib import (a project module, `torch`, `pandas`, ...) => NOT
+    exempt => the line falls through to the trainer-literal test.
+    """
+    stdlib = _STDLIB_MODULE_NAMES
+    if not stdlib:
+        return False
+    source = _extract_dash_c_snippet(rest)
+    if source is None:
+        return False
+    mods, parsed = _snippet_imports(source)
+    if not parsed:
+        return False
+    if _DYNAMIC_IMPORT.search(source):
+        return False
+    return all(mod in stdlib for mod in mods)
 
 
 def _rel(path: Path) -> str:
@@ -531,7 +649,16 @@ def audit_wrapper(path: Path, detached_by: dict[str, str] | None = None) -> dict
             rest = line[m.end() :].strip()
             # `-c` / `-` / heredoc is a shell-side helper (JSON parsing in the
             # dashboard, an inline import probe) — no project trainer involved.
-            if rest.startswith(("-c", "-")) or rest.startswith("<<"):
+            # The `-c` exemption is CONDITIONAL on that claim: it holds only
+            # when the snippet is STDLIB-ONLY. A snippet that imports a
+            # third-party module (torch / pandas / rdkit / a repo module) runs
+            # under the SYSTEM interpreter — the exact failure §5.9 exists to
+            # prevent ("the system interpreter has no torch/pandas and the
+            # trainer dies at import") — so it must NOT be exempt.
+            if _DASH_C_OPTION.match(rest):
+                if _dash_c_snippet_is_stdlib_only(rest):
+                    continue
+            elif rest.startswith("-") or rest.startswith("<<"):
                 continue
             # Same trap as the detach check: a wrapper holding its trainer in a
             # variable writes `python3 "${TRAINER}"`, with no `.py` literal.

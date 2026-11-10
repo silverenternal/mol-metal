@@ -222,16 +222,16 @@ launch_wf264_smoke() {
 launch_vina_4step_smoke() {
   local target_log="${LOG_DIR}/vina_4step_smoke.log"
   log "Launching Vina 4-step smoke"
-  log "  wrapper: molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh"
+  log "  wrapper: scripts/launch_wf333_vina_4step_gpu_bench.sh"
   log "  status: BLOCKED on Vina 1.2.7 conda install (AGENTS.md §5.4 + Wf-299B)"
   log "  Wf-328+Wf-335 fixes: --no-cuda-graphs (redundant for CPU Vina)"
   log "  expected wall: PROJECTED 7-10 s/mol × N ligands (steps 1+2 only)"
   if [ "${DRY_RUN:-0}" = "1" ]; then
-    echo "[DRY-RUN] USER_OK=1 bash molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh --dry-run" | tee -a "${target_log}"
+    echo "[DRY-RUN] USER_OK=1 bash scripts/launch_wf333_vina_4step_gpu_bench.sh --dry-run" | tee -a "${target_log}"
     echo "[DRY-RUN] Vina 4-step is HONEST-NEGATIVE on Vina install per AGENTS.md §5.4" | tee -a "${target_log}"
     return 2  # SKIP — blocked on external dependency
   fi
-  USER_OK=1 nohup bash "${SCRIPTS_DIR}/launch_wf333_vina_4step_gpu_bench.sh" \
+  USER_OK=1 nohup bash "${PROJECT_ROOT}/scripts/launch_wf333_vina_4step_gpu_bench.sh" \
     --status > "${target_log}" 2>&1 &
   local pid=$!
   log "  Vina 4-step status query launched pid=${pid}; log=${target_log}"

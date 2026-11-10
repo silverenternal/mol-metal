@@ -92,7 +92,7 @@ from rdkit import Chem, RDLogger
 RDLogger.DisableLog("rdApp.*")
 
 # Make chemprop v2 importable.
-CHEMPROP_V2_PATH = Path("/home/hugo/codes/mol-metal/.cloned/chemprop_v2")
+CHEMPROP_V2_PATH = Path(__file__).resolve().parents[2] / ".cloned" / "chemprop_v2"
 if str(CHEMPROP_V2_PATH) not in sys.path:
     sys.path.insert(0, str(CHEMPROP_V2_PATH))
 
@@ -106,9 +106,12 @@ from chemprop.nn import AtomMessagePassing, SumAggregation  # noqa: E402
 # ---------------------------------------------------------------------------
 # Defaults — match chemprop_v2_mt_model defaults + Wf-148 protocol.
 # ---------------------------------------------------------------------------
-DEFAULT_DATA_DIR = Path("/home/hugo/codes/mol-metal/molmetal/data")
-DEFAULT_CSV = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "molmetal" / "data"
+DEFAULT_CSV = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_OUT_DIR = DEFAULT_DATA_DIR / "chemprop_features"
 

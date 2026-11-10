@@ -104,7 +104,7 @@
 |---|---|---:|---:|---:|---|
 | Pocket2Mol | 2022 | −7.15 | 24.4% | — | TransDiffSBDD Table |
 | TargetDiff | 2023 | −7.80 | 10.5% | — | TransDiffSBDD Table |
-| DecompDiff | 2024 | −8.39 | 24.5% | — | TransDiffSBDD Table |
+| DecompDiff | 2023 | −8.39 | 24.5% | — | TransDiffSBDD Table |
 | DiffSBDD | 2024 | −7.62 | — | 88% | DiffSBDD / sota2 |
 | MolCRAFT | 2024 | −9.25 | 36.1% | — | TransDiffSBDD Table |
 | ReInvent+Vina | 2024 | −9.18 | 76.7% | — | TransDiffSBDD Table |
@@ -335,9 +335,44 @@ Our RX 7800 XT (gfx1101) is roughly **equivalent to a 3090 / 4090 tier** in raw 
 | 13 | Pocket2Mol | 2022 | ICML | 2205.07249 | — | peng2022pocket2mol |
 | 14 | TargetDiff | 2023 | ICLR | 2303.03543 | — | guan2023targetdiff |
 | 15 | DiffSBDD | 2024 | Nat. Comput. Sci. | 2210.13695 | 10.1038/s43588-024-00737-x | schneuing2024diffsbdd |
-| 16 | DecompDiff | 2024 | ICLR | 2303.10120 | — | guan2024decompdiff |
+| 16 | DecompDiff | 2023 | ICML | 2403.07902 | — | guan2024decompdiff |
 | 17 | DeltaDock | 2024 | — | — | — | deltadock2024 |
 
 ---
 
 *Last updated: 2026-09-12. Cite external papers via arXiv/DOI; do NOT run other people's pretrained weights.*
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-05 / F-07 — DecompDiff identifier + venue + venue-year.** Superseded: year `2024`
+  (both sites), venue `ICLR`, arXiv `2303.10120`.
+  Corrected to: year `2023` (both sites), venue `ICML`, arXiv `2403.07902`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → "DecompDiff: Diffusion Models with
+  Decomposed Priors for Structure-Based Drug Design" (Guan, Zhou, Yang, Bao, Peng, Ma, Liu,
+  Wang, Gu); PMLR v202 → ICML 2023, PMLR 202:11827-11846. The superseded id `2303.10120`
+  resolves to an unrelated ASME Riccati-filter paper. The year column records the **venue**
+  year (2023, ICML); the arXiv posting date is 2024-02-26, which is why it previously read
+  2024. The DOI column follows this table's local convention (publisher DOI only, as in the
+  TargetDiff row) and was therefore left as `—`. The bibtex key `guan2024decompdiff` is
+  **kept unchanged** (referenced by `paper/main.aux` / `paper/main.bbl`; `paper/*` is
+  read-only per AGENTS.md §5.3 / TODO-84).
+- **F-13 (Rusanov / PlatinAI) — NOT REPRODUCED in this file.** This file cites the
+  ChemRxiv preprint by family names only — `Rusanov, Brezgunov, Matnurov, Pashaliev, Vetrova,
+  Babak. "Overcoming cisplatin resistance via deep learning-assisted de novo design of
+  platinum complexes." ChemRxiv 2025-06-20 v2. DOI: 10.26434/chemrxiv-2025-pp32k` — and all
+  six family names match the Crossref record for `10.26434/chemrxiv-2025-pp32k` exactly, so
+  no wrong given name exists here and **this row was left untouched**. The `v2` marker could
+  not be confirmed (chemrxiv.org returns HTTP 403 to automated requests and no `-v2` DOI
+  variant is registered) — logged as UNVERIFIED in the wave closeout, not asserted or denied.
+- **No performance number was changed** (−8.39, 24.5 %, and every other table value are
+  byte-identical to the pre-wave file).

@@ -22,7 +22,7 @@ import sys
 import unittest
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "molmetal"))
 

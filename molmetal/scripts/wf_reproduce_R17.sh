@@ -123,7 +123,19 @@ LOSS_A=$(uv run --no-sync python -c "
 import json; print(float(json.load(open('${REPRO_CKPT_DIR}/runA/final.json'))['final_loss']))")
 LOSS_B=$(uv run --no-sync python -c "
 import json; print(float(json.load(open('${REPRO_CKPT_DIR}/runB/final.json'))['final_loss']))")
-python3 -c "
+# 2026-11-09 REPAIR (§5.9, additive + dated; the line above is the
+# SUPERSEDED rendering, preserved VERBATIM): this invocation was a BARE
+# `python3`, i.e. the SYSTEM interpreter.  AGENTS.md §5.9 forbids a bare
+# python, and the §5.9 gate could not SEE it -- scripts/_wrapper_audit.py's
+# _ABS_PY_RE / _REL_PY_RE both require a "/", so a bare `python3` word is
+# invisible to the census.  MEASURED over the 113 tracked `*.sh`: this was
+# the LAST bare invocation (BARE-INVOCATION 1 / WRAPPED 0 / MENTION 50).
+# It is now routed through the SAME interpreter this file already uses for
+# all ten of its other python invocations -- `uv run --no-sync python`,
+# which env.sh pins to the repo-local canonical venv (env.sh:39 exports
+# UV_PROJECT_ENVIRONMENT="$CANONICAL_VENV").  The snippet is stdlib-only,
+# so its computation is unchanged.
+uv run --no-sync python -c "
 a = float('${LOSS_A}'); b = float('${LOSS_B}')
 diff = abs(a - b); print(f'final_loss delta: {diff:.6e}')
 assert diff < 1e-4, f'final_loss delta {diff} exceeds 1e-4 — ckpt not reproducible!'

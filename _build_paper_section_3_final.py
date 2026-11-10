@@ -10,7 +10,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[0]
 sys.path.insert(0, str(REPO_ROOT))
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 

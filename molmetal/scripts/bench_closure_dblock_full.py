@@ -163,8 +163,12 @@ DEFAULT_OUTPUT_DIR: Path = (
 
 #: Path to the full tmQM parsed CSV (108K records, 30 d-block metals).
 #: Falls back to ``molmetal/data/tmqm_dblock_subset.csv`` if missing.
-DEFAULT_TMQM_CSV: Path = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmqm_parsed.csv"
+DEFAULT_TMQM_CSV: Path = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "tmQM"
+    / "tmqm_parsed.csv"
 )
 FALLBACK_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 

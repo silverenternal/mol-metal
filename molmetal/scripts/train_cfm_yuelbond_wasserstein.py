@@ -39,10 +39,43 @@ Honest framing
 
 Lit anchors
 -----------
-* Wang, S., Dokholyan, P. (2025). *YuelBond: a graph neural network
-  for recovering the molecular bond network from distorted 3D
-  structures.*  bioRxiv 10.1101/2025.05.06.652517.  F1=92.7 % on
-  distorted molecules.
+* Wang, J.; Dokholyan, N. V. (2026). *Multimodal Bond Reconstruction
+  toward Generative Molecular Design.*  J. Chem. Inf. Model. 66(2),
+  1003-1012.  DOI 10.1021/acs.jcim.5c03052  (preprint: bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11).  F1 = 92.7 % on the CDG set
+  (worst case, sigma = 0.2 A); F1 = 98.4 % on standard 3-D.
+  (Citation corrected 2026-10-31, Wf-A143 — this bullet previously
+  printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  See
+  `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
+  Correction note (2026-10-31, Wf-A148) — the Wf-A143 note above is
+  PARTLY FALSE AT THIS SITE.  Its third clause claims that this script's
+  pre-repair bullet carried "the attribution of the 783/1000 RDKit failure
+  count to ``DetermineConnectivity``".
+  It did not: neither "783" nor "DetermineConnectivity" ever occurred
+  in this file.  Evidence (MEASURED against git on 2026-10-31):
+      git show HEAD:molmetal/scripts/train_cfm_yuelbond_wasserstein.py | grep -n "783\\|DetermineConnectivity"
+  -> NO MATCH (grep exit status 1).  The SAME grep on HEAD's
+  `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` DOES match
+  (lines 20-21), so the Wf-A143 note was accurate at THAT site and is
+  wrong at THIS one.  The Wf-A143 note's REMAINING claims ARE true
+  at this site and stand unchanged: the pre-repair bullet really did
+  print the title "YuelBond: a graph neural network for recovering the
+  molecular bond network from distorted 3D structures" and the author
+  initials "Wang, S., Dokholyan, P.", and it really did carry only the
+  bioRxiv preprint identifier with no journal DOI; the current bullet
+  corrects all three to the published record — Wang, J.; Dokholyan,
+  N. V. (2026), *Multimodal Bond Reconstruction toward Generative
+  Molecular Design*, J. Chem. Inf. Model. 66(2), 1003-1012, DOI
+  10.1021/acs.jcim.5c03052, whose preprint (bioRxiv
+  10.1101/2025.05.06.652517, 2025-05-11) is titled "Multimodal Bonds
+  Reconstruction Towards Generative Molecular Design".  Superseded
+  wording preserved verbatim (AGENTS.md §5.5 rule #6) — the Wf-A143
+  note is retained above, unaltered and undeleted:
+      "(Citation corrected 2026-10-31, Wf-A143 — this bullet previously
+      printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  See
+      `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)"
+  (Catalog entry pending — this wave does not own
+  `docs/HONEST_NEGATIVE_CATALOG.md`.)
 * Kolouri, Rohde, Moosavi-Dezfooli, Thibert (2016) — sliced Wasserstein
   distance for generative modelling, ICLR 2016 W / Nat. Commun. 2019.
   arXiv:1603.08127.
@@ -114,6 +147,7 @@ import os
 
 import argparse
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -121,7 +155,7 @@ import time
 import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -191,7 +225,8 @@ from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
 # entropy_term (2999-3005) + diversity_term (3142-3269) blocks in
 # train_one_epoch with class calls.  Bit-exact identical to pre-Wf-A13
 # on the default path (every new class is an exact ``torch.zeros(())``
-# when its weight is 0.0).  See AGENTS.md §5.11 backward-compat rule
+# when its weight is 0.0).  See ~~AGENTS.md §5.11 backward-compat rule~~
+# → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31
 # and DESIGN G.4 — bond_ce / cb_loss / wasserstein are KEPT INLINE
 # because they cross out of range (2640-2680 = per-cloud call is owned
 # by sibling territory; the 3817-3840 sum block is owned by sum-block
@@ -199,10 +234,8 @@ from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
 # top-level ``sa_loss`` symbol to avoid shadowing the trainer's
 # (post-Wf-A13) ``_sa_local``.
 from molmetal.loss import (
-    ConsistencyTerm,
     ContinuousBOLoss,
     DiversityRegularizer,
-    EDMTerm,
     EnergyConservation,
     EntropyTerm,
     FmOdeTerm,
@@ -212,8 +245,6 @@ from molmetal.loss import (
     QEDLoss,
     RingTemplatePrior,
     SBOO3Term,
-    SO3Term,
-    ShortcutDistillLoss,
     SingleFragmentLoss,
     StereoCentreSuppressionLoss,
 )
@@ -624,6 +655,7 @@ def _install_event_emitter(
     emit_enabled: bool,
     events_jsonl_path: Path,
     fresh_run: bool = False,
+    sink_enabled: bool = True,
 ) -> None:
     """Module-level install hook called from main() once per job.
 
@@ -639,14 +671,22 @@ def _install_event_emitter(
     """
     global _EVENT_ENABLED, _EVENT_LOG_PATH, _EVENT_FH
     _EVENT_ENABLED = bool(emit_enabled)
-    _EVENT_LOG_PATH = Path(events_jsonl_path)
+    # 2026-11-04 (Wf-A269) — `sink_enabled=False` is the `--no-events-jsonl`
+    # path: the sink must not be installed AT ALL, so emit_event()'s
+    # `if _EVENT_LOG_PATH is not None` guard skips the write and no
+    # events.jsonl file is created.  SUPERSEDED RENDERING PRESERVED
+    # VERBATIM per AGENTS.md section 5.5 rule #6: the line here used to be
+    #   `_EVENT_LOG_PATH = Path(events_jsonl_path)`
+    # unconditionally — i.e. the sink was ALWAYS installed and the flag had
+    # no way to express "off".
+    _EVENT_LOG_PATH = Path(events_jsonl_path) if sink_enabled else None
     if _EVENT_FH is not None:
         try:
             _EVENT_FH.close()
         except Exception:
             pass
     _EVENT_FH = None
-    if fresh_run:
+    if fresh_run and _EVENT_LOG_PATH is not None:
         try:
             if _EVENT_LOG_PATH.is_file() and _EVENT_LOG_PATH.stat().st_size > 0:
                 prev = _EVENT_LOG_PATH.with_name(_EVENT_LOG_PATH.name + ".prev")
@@ -671,6 +711,478 @@ def _close_event_emitter() -> None:
     _EVENT_FH = None
     _EVENT_LOG_PATH = None
     _EVENT_ENABLED = False
+
+
+# ---------------------------------------------------------------------------
+# Wf-A114E (2026-10-30) — L3: the per-epoch record must not be clobbered.
+#
+# MEASURED (molmetal/reports/wfa114e/census_population_conflict.md): this
+# trainer writes `per_epoch_metrics.json` to a FIXED path at the END of
+# training, so two runs launched into the same `--out-dir` overwrite each
+# other's record and the survivor is whichever finished LAST.  Four of the
+# 59 census runs carry a TRUNCATED PREFIX of a longer run in the same
+# directory, and two of them flip across the 0.50 gate when the true
+# series is restored.
+#
+# The guard is a RUN IDENTITY: the config block that tells two
+# populations apart.  A run may overwrite a record whose identity
+# matches its own; a record that belongs to a DIFFERENT run is preserved
+# and this run's record goes to a run-scoped filename instead.
+#
+# Three independent checks, because MEASURED on disk no single one of
+# them is enough:
+#   1. IDENTITY — the WHOLE config block, not a hand-picked subset.
+#      Wf-A114E D1: the first version compared six keys and MEASURED
+#      only 29 distinct fingerprints over the 80 on-disk records, 13 of
+#      them spanning more than one artifact — two runs with a different
+#      lr / batch_size / hidden_dim / wasserstein_weight were ALLOWED to
+#      overwrite each other, silently.
+#   2. EPOCH EXTENT — a record that holds MORE epochs than this run, over
+#      a range this run's epochs are contained in, is the longer record
+#      of another population (`cfm_round3_retrain/run` and the two
+#      `cfm_round7_f5f6_retrain` dirs: the 4-epoch run that truncated a
+#      20-epoch run shares that run's config EXACTLY, so the identity
+#      cannot separate them — only the extent can).
+#   3. THE EPOCH BUDGET — Wf-A114E D3: the declared budget is not by
+#      itself a different population when the incoming epoch range
+#      CONTINUES the existing one (a resume).
+#
+# And an ALLOWED write that replaces a record of a DIFFERENT population
+# preserves the record it replaces under a run-scoped filename
+# (Wf-A114E D2) — the earlier population's record is never destroyed,
+# whether the write is allowed or refused.
+#
+# A RESUME is not a clobber: the resumed run continues the epoch range,
+# so its epochs are not contained in the pre-resume record's and the
+# write is allowed (this is what keeps `cfm_c7_fullgen_2026_10_20`'s
+# epochs 4..17 in the canonical record).
+# ---------------------------------------------------------------------------
+
+#: The config keys the FIRST version of this guard compared.
+#: MEASURED INSUFFICIENT (Wf-A114E D1): over the 80 on-disk records these
+#: six yield only 29 distinct fingerprints, 13 of which span more than one
+#: artifact — two runs with a different lr / batch_size / hidden_dim /
+#: wasserstein_weight but the same six keys were ALLOWED to overwrite each
+#: other, silently.  KEPT FOR REFERENCE ONLY; the identity is the whole
+#: config block now (:func:`identity_view`).
+RUN_FINGERPRINT_KEYS: Tuple[str, ...] = (
+    "epochs",
+    "n_train",
+    "n_val",
+    "pocket_id",
+    "seed",
+    "device",
+)
+
+#: The config key that declares the epoch BUDGET.  It is the ONE key whose
+#: difference does not by itself make two populations different: a resumed
+#: run declares a LARGER budget than the run it continues (Wf-A114E D3).
+BUDGET_CONFIG_KEY = "epochs"
+
+#: Config keys that are DERIVED from the run rather than declared by it.
+#: Comparing them would refuse a legitimate resume: ``lr_live`` is the
+#: optimiser's live lr at the END of training (so it differs whenever the
+#: resumed run trained a different number of epochs) and ``fm_prior_scale``
+#: is a MEASURED diagnostic of the data, not a hyperparameter.  Both are
+#: consequences of a population, not causes of one.
+DERIVED_CONFIG_KEYS: Tuple[str, ...] = ("lr_live", "fm_prior_scale")
+
+
+def _jsonable(value: Any) -> Any:
+    """A JSON-safe copy of a config value (the identity is written to disk)."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, Mapping):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    return str(value)
+
+
+def _canon(value: Any) -> Any:
+    """A hashable canonical form, so ``20`` and ``20.0`` compare equal."""
+    if value is None:
+        return ("null",)
+    if isinstance(value, bool):
+        return ("bool", value)
+    if isinstance(value, (int, float)):
+        return ("num", float(value))
+    if isinstance(value, str):
+        return ("str", value)
+    if isinstance(value, (list, tuple)):
+        return ("list", tuple(_canon(v) for v in value))
+    if isinstance(value, Mapping):
+        return (
+            "map",
+            tuple(sorted((str(k), _canon(v)) for k, v in value.items())),
+        )
+    return ("other", str(value))
+
+
+def identity_view(config: Mapping[str, Any]) -> Dict[str, Any]:
+    """The config keys that identify a training population.
+
+    Wf-A114E D1: the identity is the WHOLE config block minus the
+    :data:`DERIVED_CONFIG_KEYS`, not the six keys the first version
+    compared.  MEASURED: all 80 on-disk records carry a full ``config``
+    block and the six-key set is a strict SUBSET of it, so the whole block
+    is available everywhere the six keys were.
+    """
+    if not isinstance(config, Mapping):
+        return {}
+    out: Dict[str, Any] = {}
+    for key, value in config.items():
+        name = str(key)
+        if name in DERIVED_CONFIG_KEYS:
+            continue
+        out[name] = _jsonable(value)
+    return out
+
+
+def compute_run_fingerprint(config: Mapping[str, Any]) -> Dict[str, Any]:
+    """The identity of a run, drawn from its own ``config`` block.
+
+    Wf-A114E D1: the identity covers the WHOLE config block (minus the
+    derived keys), so two runs that differ in lr / batch_size / hidden_dim /
+    wasserstein_weight are two populations and not one.  Each value is
+    normalised to a JSON-safe form so the fingerprint can be compared
+    across processes and written into the record verbatim.
+    """
+    return identity_view(config)
+
+
+def fingerprint_diff(
+    existing: Mapping[str, Any], incoming: Mapping[str, Any]
+) -> List[str]:
+    """The config keys whose values differ.
+
+    A key that is ``None`` on either side is "unknown" and is skipped:
+    a record written by an older trainer does not get refused for a key it
+    simply never had.
+    """
+    a = existing if isinstance(existing, Mapping) else {}
+    b = incoming if isinstance(incoming, Mapping) else {}
+    diff: List[str] = []
+    for key in sorted(set(a) | set(b)):
+        va = a.get(key)
+        vb = b.get(key)
+        if va is None or vb is None:
+            continue
+        if _canon(va) != _canon(vb):
+            diff.append(key)
+    return diff
+
+
+def read_existing_record(
+    path: Union[str, Path]
+) -> Tuple[Optional[Dict[str, Any]], List[int], str]:
+    """``(identity, epoch_indices, source)`` of an existing record.
+
+    ``source`` is ``"config"`` when the record carries a ``config`` block
+    (every artifact on disk does — it is where the identity lives), and
+    ``"run_fingerprint"`` when only the explicit fingerprint is present.
+    ``"unreadable"`` is returned when the file exists but is not a JSON
+    object.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return None, [], "absent"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None, [], "unreadable"
+    if not isinstance(payload, dict):
+        return None, [], "unreadable"
+    cfg = payload.get("config")
+    raw_fp = payload.get("run_fingerprint")
+    if isinstance(cfg, Mapping) and cfg:
+        identity = compute_run_fingerprint(cfg)
+        source = "config"
+    elif isinstance(raw_fp, Mapping) and raw_fp:
+        identity = {
+            str(k): _jsonable(v)
+            for k, v in raw_fp.items()
+            if str(k) not in DERIVED_CONFIG_KEYS
+        }
+        source = "run_fingerprint"
+    else:
+        identity = {}
+        source = "unidentified"
+    epochs: List[int] = []
+    for row in payload.get("per_epoch_metrics") or []:
+        if not isinstance(row, dict) or row.get("epoch") is None:
+            continue
+        try:
+            epochs.append(int(row["epoch"]))
+        except (TypeError, ValueError):
+            continue
+    return identity, sorted(set(epochs)), source
+
+
+def epoch_range_continues(
+    incoming_epochs: Sequence[int], existing_epochs: Sequence[int]
+) -> bool:
+    """True when the incoming epoch range picks up AFTER the existing one.
+
+    Wf-A114E D3: a resumed run continues the epoch range of the run it
+    resumes (``4..17`` then ``18..19``).  Only a continuation may excuse
+    a change of the declared epoch BUDGET.
+    """
+    inc = {int(e) for e in incoming_epochs}
+    ex = {int(e) for e in existing_epochs}
+    if not inc or not ex:
+        return False
+    return min(inc) > max(ex)
+
+
+def may_write_per_epoch_metrics(
+    path: Union[str, Path],
+    fingerprint: Mapping[str, Any],
+    epoch_indices: Optional[Sequence[int]] = None,
+) -> Tuple[bool, str]:
+    """May this run write its per-epoch record to ``path``?
+
+    Returns ``(allowed, reason)``.  ``allowed`` is False only when the
+    file exists and demonstrably belongs to a DIFFERENT run; the reason
+    names the keys that differ.
+
+    ``epoch_indices`` is the range this run recorded.  It is optional so
+    the identity check (config keys) can be asked on its own; with it, the
+    two epoch-aware rules apply as well:
+
+      * a TRUNCATED PREFIX (this run's epochs are a strict subset of the
+        existing record's) is a clobber — refused;
+      * a change of the declared epoch BUDGET alone is NOT a difference
+        when the incoming range CONTINUES the existing one (a resume).
+    """
+    path = Path(path)
+    if not path.is_file():
+        return True, (
+            "no existing per_epoch_metrics.json: there is no other run's "
+            "record to preserve"
+        )
+    existing, existing_epochs, source = read_existing_record(path)
+    if existing is None:
+        return False, (
+            "the existing per_epoch_metrics.json is not a readable JSON "
+            "object, so its owner cannot be identified; refusing to "
+            "overwrite it"
+        )
+    if not existing or all(v is None for v in existing.values()):
+        return False, (
+            "the existing per_epoch_metrics.json carries no run identity "
+            f"(fingerprint source={source}); refusing to overwrite a record "
+            "whose owner cannot be established"
+        )
+    diff = fingerprint_diff(existing, fingerprint)
+    incoming_epochs: Optional[List[int]] = None
+    if epoch_indices is not None:
+        incoming_epochs = sorted({int(e) for e in epoch_indices})
+    # Wf-A114E D3 — the declared epoch BUDGET is the one key whose
+    # difference does not by itself make two populations different, and
+    # only when the incoming epoch range CONTINUES the existing one.
+    core_diff = [k for k in diff if k != BUDGET_CONFIG_KEY]
+    budget_differs = BUDGET_CONFIG_KEY in diff
+    is_resume = bool(
+        budget_differs
+        and incoming_epochs is not None
+        and epoch_range_continues(incoming_epochs, existing_epochs)
+    )
+    if core_diff:
+        return False, (
+            f"the existing per_epoch_metrics.json belongs to a DIFFERENT run "
+            f"(fingerprint source={source}); differing keys: "
+            f"{', '.join(diff)}"
+        )
+    if budget_differs and not is_resume:
+        return False, (
+            f"the existing per_epoch_metrics.json belongs to a DIFFERENT run "
+            f"(fingerprint source={source}); differing keys: "
+            f"{BUDGET_CONFIG_KEY} (the declared epoch budget changed and "
+            "this run's epoch range does not continue the existing "
+            "record's range, so it is not a resume)"
+        )
+    if incoming_epochs is not None and is_truncated_prefix(
+        incoming_epochs, existing_epochs
+    ):
+        return False, (
+            f"the existing per_epoch_metrics.json belongs to a DIFFERENT run "
+            f"(fingerprint source={source}); differing keys: epoch_extent — "
+            f"it holds MORE epochs ({len(existing_epochs)}) than this run "
+            f"({len(incoming_epochs)}), over a range that contains this "
+            "run's epochs: this run's record is a truncated prefix of it "
+            "and would destroy the longer record"
+        )
+    if is_resume:
+        return True, (
+            f"the existing record carries the same run identity "
+            f"(source={source}): the declared epoch budget changed, but "
+            "this run's epoch range CONTINUES the existing record's range, "
+            "which is a resume and not a different run"
+        )
+    return True, (
+        f"the existing record carries the same run fingerprint "
+        f"(source={source}): it is this run's own record"
+    )
+
+
+def is_truncated_prefix(
+    candidate_epochs: Sequence[int], existing_epochs: Sequence[int]
+) -> bool:
+    """True when this run's epochs are a strict subset of the existing ones.
+
+    MEASURED: the 4-epoch run that truncated a 20-epoch run in
+    ``cfm_round3_retrain/run`` shares that run's config EXACTLY, so the
+    fingerprint cannot separate them — but its epochs {0..3} ARE contained
+    in the longer record's {0..19}, and that is what makes it a
+    truncation rather than a continuation.
+
+    An EMPTY record is a truncation of anything: a resumed run that has
+    nothing left to train would otherwise replace the record of the run
+    it continued with an empty one, and the census would drop the run.
+    """
+    cand = {int(e) for e in candidate_epochs}
+    exist = {int(e) for e in existing_epochs}
+    return bool(exist) and cand < exist
+
+
+def run_record_tag(
+    fingerprint: Mapping[str, Any], epoch_indices: Sequence[int]
+) -> str:
+    """A short, stable filename tag for one run's record.
+
+    The tag covers the WHOLE identity AND the epoch extent, so two
+    populations that share a config (MEASURED: the 4-epoch and the
+    20-epoch runs in ``cfm_round3_retrain/run``) land on two different
+    filenames and neither record is lost.
+    """
+    blob = json.dumps(
+        {
+            "identity": {
+                str(k): fingerprint.get(k)
+                for k in sorted(fingerprint or {})
+                if k not in DERIVED_CONFIG_KEYS
+            },
+            "epochs": sorted({int(e) for e in epoch_indices}),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
+
+
+def preserve_existing_record(
+    out_dir: Union[str, Path],
+    identity: Mapping[str, Any],
+    epoch_indices: Sequence[int],
+) -> List[str]:
+    """Preserve the canonical record under a run-scoped filename.
+
+    Wf-A114E D2: an ALLOWED write that replaces a record belonging to a
+    DIFFERENT population must not DESTROY it.  The earlier population's
+    record is copied to the run-scoped name the refusal path already
+    uses, so both records survive on disk.
+
+    A COPY, not a move: the canonical path keeps holding the old record
+    until the new one is actually written, so a failed write cannot leave
+    the directory with no record at all.
+    """
+    out_dir = Path(out_dir)
+    tag = run_record_tag(identity, epoch_indices)
+    kept: List[str] = []
+    for ext in (".json", ".csv"):
+        src = out_dir / f"per_epoch_metrics{ext}"
+        if not src.is_file():
+            continue
+        try:
+            text = src.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        dst = out_dir / f"per_epoch_metrics.{tag}{ext}"
+        write_text_atomic(dst, text)
+        kept.append(str(dst))
+    return kept
+
+
+def resolve_record_paths(
+    out_dir: Union[str, Path],
+    fingerprint: Mapping[str, Any],
+    epoch_indices: Sequence[int],
+) -> Dict[str, Any]:
+    """Where this run's per-epoch record goes, and why.
+
+    Returns a dict with ``json_path`` / ``csv_path`` (where to write
+    THIS run's record), ``canonical`` (True when the fixed filenames are
+    used), ``reason`` (why the write was allowed or refused) and
+    ``displaced`` (the run-scoped copies of a record this write replaces).
+
+    When the directory already holds a record belonging to a different
+    run, the fixed filenames are NOT returned: this run's record goes to
+    a run-scoped filename and the other run's record is left untouched.
+
+    When the write IS allowed but it replaces a record with a DIFFERENT
+    epoch extent (a different population that shares the config), the
+    replaced record is PRESERVED under a run-scoped filename first
+    (Wf-A114E D2) — it is never destroyed.
+    """
+    out_dir = Path(out_dir)
+    json_path = out_dir / "per_epoch_metrics.json"
+    csv_path = out_dir / "per_epoch_metrics.csv"
+    incoming_epochs = sorted({int(e) for e in epoch_indices})
+    allowed, reason = may_write_per_epoch_metrics(
+        json_path, fingerprint, incoming_epochs
+    )
+    displaced: List[str] = []
+    if allowed:
+        existing, existing_epochs, _source = read_existing_record(json_path)
+        if existing and existing_epochs != incoming_epochs:
+            displaced = preserve_existing_record(
+                out_dir, existing, existing_epochs
+            )
+            reason += (
+                "; the record this write replaces belongs to a DIFFERENT "
+                f"population ({len(existing_epochs)} epochs) and was "
+                f"preserved at {', '.join(displaced)} instead of being "
+                "destroyed"
+            )
+    if allowed:
+        return {
+            "json_path": json_path,
+            "csv_path": csv_path,
+            "canonical": True,
+            "reason": reason,
+            "displaced": displaced,
+        }
+    tag = run_record_tag(fingerprint, incoming_epochs)
+    return {
+        "json_path": out_dir / f"per_epoch_metrics.{tag}.json",
+        "csv_path": out_dir / f"per_epoch_metrics.{tag}.csv",
+        "canonical": False,
+        "reason": reason,
+        "displaced": displaced,
+    }
+
+
+def write_text_atomic(path: Union[str, Path], text: str) -> None:
+    """Atomic write (AGENTS.md §5.6), with a plain-write fallback.
+
+    The guard's decision is only as good as the write that follows it,
+    so the record is written through a temp file + rename rather than
+    through a truncating ``write_text``.
+    """
+    path = Path(path)
+    try:
+        from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+        atomic_write_file(path, text)
+    except Exception as exc:
+        print(
+            f"[cfm-run][WARNING] atomic write failed for {path} "
+            f"({type(exc).__name__}: {exc}); falling back to a plain write",
+            flush=True,
+        )
+        path.write_text(text)
 
 
 def set_cfm_chemprop_v3_cache(cache: Optional[object]) -> None:
@@ -996,7 +1508,50 @@ DEFAULT_TORCH_COMPILE_MODE = "max-autotune-no-cudagraphs"
 # ``--edge-cutoff`` so the yaml's ``edge_cutoff`` key is real — before
 # 2026-10-04 the yamls declared 6.0 while the decoder ran at the 3.5
 # default, i.e. the config misreported the geometry the run actually used.
+# 2026-10-31 (Wf-A146) — DECLARED DEVIATION from the YuelBond paper.
+# The published paper defines a molecular graph by connecting "any pair
+# of atoms within 3 Å" (its own words — 3 Å at four independent sites in
+# the paper's text).  This constant is 3.5 Å: a repo-side DECODE
+# parameter, NOT a reproduction of the paper's setting.  The deviation
+# was already declared at the decoder definition sites
+# (`molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py`'s
+# `YuelBondDecoderHead.cutoff` / `RBF_MAX_DISTANCE`, and
+# `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py`'s
+# `distance_cutoff`) but NOT here — and this is the constant the YAML
+# `edge_cutoff` key actually feeds (20+ yamls set it to 3.5), so the
+# omission sat at the site a training-path reader reaches first.  THE
+# VALUE IS DELIBERATELY UNCHANGED: changing it would invalidate every
+# trained checkpoint and every measured decode metric, and re-validating
+# it needs a GPU run, which this CPU-only wave is forbidden to do.  Any
+# headline number produced under this cutoff must be labelled as
+# produced under a 3.5 Å cutoff, not the paper's 3 Å.  See
+# `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
 DEFAULT_EDGE_CUTOFF = 3.5
+
+# 2026-10-31 (Wf-A148) — CLARIFICATION of the Wf-A146 note above, which
+# is left EXACTLY AS IS.  The Wf-A146 note names the decoder definition
+# sites where the 3 A-vs-3.5 A deviation "was already declared", and one
+# of the three it names — `yuelbond_decoder.py`'s `RBF_MAX_DISTANCE` — is
+# NOT a candidate-edge cutoff: `RBF_MAX_DISTANCE` is the TOP OF THE RBF
+# EXPANSION RANGE (the `d_max` of `rbf_expand`, i.e. the largest distance
+# the 8 log-spaced Gaussian RBF centres are spread over; Wf-A72 Operator 2,
+# shipped Wf-A107), a repo-side construction with no candidate-edge rule
+# in it.  The candidate-edge cutoff is a SEPARATE constant:
+# `YuelBondDecoderHead.cutoff` (default 3.5), applied in that head's
+# forward as `mask = d_raw < self.cutoff`, and mirrored by
+# `YuelBondBondDecoder.distance_cutoff` in
+# `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py`.  Both constants
+# happen to be 3.5 A today, which is what made the Wf-A146 wording read as
+# if `RBF_MAX_DISTANCE` were the cutoff.  NOTHING HERE CHANGES ANY VALUE:
+# `DEFAULT_EDGE_CUTOFF` stays 3.5 A (a repo-side DECODE parameter,
+# deliberately unchanged — see the Wf-A146 note above) and the RBF
+# expansion range is untouched.  The correction to the Wf-A143 note at the
+# `RBF_MAX_DISTANCE` site itself (which had attached the candidate-edge
+# cutoff to the RBF constants) lives in
+# `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py`; this wave does not
+# own that file.  (Catalog entry pending — this wave does not own
+# `docs/HONEST_NEGATIVE_CATALOG.md`.)
+
 # 2026-10-05 — the acceptance bar for the bond TYPE task, used only when the
 # corpus carries Wiberg truth (tmQM) so `hit_target` has something meaningful
 # to compare against.
@@ -1082,6 +1637,246 @@ EARLY_STOP_METRICS: Tuple[str, ...] = (
     "bond_type_f1_eps",
     "combined",
 )
+# ---------------------------------------------------------------------------
+# Wf-A114 (2026-10-30) — the ONE predicate for "this epoch drew no samples"
+# ---------------------------------------------------------------------------
+#
+# WHY this is a named constant and not an inline expression.  The trainer
+# used to write ``gen_validity = _gen_ok / max(_gen_tot, 1)``, which turns
+# "the generation eval drew NO samples" into a MEASURED ``0.0000`` — a
+# number indistinguishable from "the model generated nothing but garbage".
+# MEASURED on disk (2026-10-30, Wf-A114): 119 of 496 generation rows across
+# 25 runs have the eval genuinely not run (``gen_validity_n == 0`` AND
+# ``gen_eval_n == 0``) and still carry ``0.0000`` in the rate columns; two
+# of them are LAST-epoch rows, so those runs' headline number was invented.
+#
+# ``gen_eval_n == 0`` is NOT the predicate.  MEASURED: 11 rows carry
+# ``gen_eval_n == 0`` while ``gen_validity_n > 0`` — the eval ran and only
+# the per-seed record was lost (e.g. ``cfm_tmqm_all6_retrain`` epoch 10
+# reads ``gen_validity`` 0.75 = 12 of 16).  The sample count that reached
+# the metric is ``gen_validity_n``; ``gen_eval_n`` is per-seed bookkeeping.
+GEN_UNMEASURED_PREDICATE = "gen_validity_n == 0"
+
+
+def _gen_measured(gen_n: int) -> bool:
+    """True when this epoch's generation metrics were actually measured.
+
+    ``gen_n`` is the number of samples the generation eval DREW (the
+    ``gen_validity_n`` column).  ``0`` means the eval did not run, which is
+    NOT the same as a measured 0.0.
+    """
+    try:
+        return int(gen_n) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _measured_rate(numerator: int, denominator: int) -> Optional[float]:
+    """``numerator / denominator`` — or ``None`` when the denominator is 0.
+
+    This is the replacement for the ``max(denominator, 1)`` idiom, which
+    turned "the eval drew NO samples" into a MEASURED ``0.0000``: a rate
+    over an empty denominator is 0/0, which is UNDEFINED, not zero.
+
+    A genuinely measured 0.0 still comes back as ``0.0`` — 0 of 16 parsed
+    has denominator 16, so it is a measurement, and the two must never look
+    alike on disk.
+    """
+    try:
+        den = int(denominator)
+        num = int(numerator)
+    except (TypeError, ValueError):
+        return None
+    if den <= 0:
+        return None
+    return float(num) / float(den)
+
+
+#: Wf-A114/T85 (2026-10-30) — the chemistry block's own denominator.  Every
+#: rate :func:`summarise_decode_chemistry` computes is over the rows it
+#: SCORED (the rows RDKit parsed), and it records that count under this key.
+#: When the count is 0 the rate is 0/0 — UNDEFINED, not a measured 0.0.
+CHEM_SCORED_KEY = "n_chemistry_scored"
+
+
+def _chem_scored_rows(chem: Dict[str, Any]) -> Optional[int]:
+    """How many chemistry rows the eval scored — ``None`` when unknown.
+
+    ``None`` (the key is absent) means the block does not say; ``0`` is a
+    FACT ("the eval scored nothing").  Only the second makes a rate
+    undefined, so the two are kept apart.  Every branch of
+    :func:`summarise_decode_chemistry` carries the key, so an absent one
+    means the caller handed in a hand-made block.
+    """
+    if not isinstance(chem, dict) or CHEM_SCORED_KEY not in chem:
+        return None
+    try:
+        return int(chem[CHEM_SCORED_KEY])
+    except (TypeError, ValueError):
+        return None
+
+
+def _chem_val(
+    chem: Dict[str, Any],
+    key: str,
+    *,
+    scored_denominator: bool = True,
+) -> Optional[float]:
+    """One chemistry rate out of the eval's ``_gen_chem`` block.
+
+    Key PRESENCE is the test, never truthiness: a genuinely measured 0.0
+    must survive, and ``or 0.0`` ate real zeros at every construction site.
+    A missing key means the eval never produced that column (it raised
+    part-way through), so the column is NOT MEASURED and the caller must
+    carry ``None`` rather than a number.
+
+    ``scored_denominator`` says whether the rate's denominator is the
+    block's SCORED-row count (``n_chemistry_scored``).  It is for every
+    rate :func:`summarise_decode_chemistry` computes, and it is NOT for
+    ``molecule_validity``, whose denominator is the number of samples the
+    eval DREW.  With zero scored rows those rates are 0/0, so they are NOT
+    MEASURED — the block publishes a placeholder 0.0 for them (it has to:
+    a reader must never have to branch on the row count), and the
+    undefined reading happens HERE, where the denominator is known.
+    """
+    if not isinstance(chem, dict) or key not in chem:
+        return None
+    if scored_denominator and _chem_scored_rows(chem) == 0:
+        # Wf-A114/T85 — zero scored rows means the rate is 0/0.  The
+        # zero-row branch of `summarise_decode_chemistry` publishes 0.0
+        # for these keys, and that 0.0 is a placeholder, not a
+        # measurement.
+        return None
+    val = chem.get(key)
+    if val is None:
+        return None
+    try:
+        out = float(val)
+    except (TypeError, ValueError):
+        return None
+    # NaN / inf are not measurements either, and `json.dumps` would write a
+    # bare `NaN` token — which is not valid JSON and which every downstream
+    # reader (`float()` -> None) would have to special-case.  Treat them as
+    # NOT MEASURED, same as a missing key.
+    if out != out or out in (float("inf"), float("-inf")):
+        return None
+    return out
+
+
+def _end_to_end_rate(
+    gen_validity: Optional[float],
+    gen_single_fragment_ratio: Optional[float],
+) -> Optional[float]:
+    """The HONEST end-to-end generation rate.
+
+    ``gen_validity`` is an RDKit PARSE rate (`C.C.C` parses) and
+    ``gen_single_fragment_ratio`` is over PARSED ROWS ONLY, so their
+    product is the share of ALL drawn samples that are BOTH parseable AND
+    one connected molecule — the rate that can actually fail.
+
+    Either input being ``None`` (not measured) makes the product ``None``:
+    a product with a missing factor is not a measurement, it is a number
+    wearing a chemistry label.
+    """
+    if gen_validity is None or gen_single_fragment_ratio is None:
+        return None
+    return float(gen_validity) * float(gen_single_fragment_ratio)
+
+
+def _gen_metric_fields(
+    gen_ok: int,
+    gen_tot: int,
+    chem: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Every generation field for one epoch, in ONE place.
+
+    Wf-A114 (2026-10-30) — the epoch record, the CSV row and the event
+    stream used to compute these independently, and each one had its own
+    version of the same lie: ``_gen_ok / max(_gen_tot, 1)`` (a measured
+    0.0000 for an epoch that drew no samples) and ``.get(k, 0.0) or 0.0``
+    (a real measured 0.0 eaten by a truthiness test, and a missing key
+    turned into a number).
+
+    This function is the single source of truth for all three writers, so
+    they cannot drift apart, and it is callable from a test without
+    running a training epoch.
+
+    Wf-A114/T85 (2026-10-30) — the LAST fabricated-zero hole: the eval RAN,
+    drew N samples, and NONE of them parsed.  There the PARSE rate is a
+    real measurement (``gen_validity`` = 0 of N, denominator N), but every
+    CHEMISTRY rate has the SCORED-row count as its denominator, and that
+    count is 0 — 0/0, undefined.  So:
+
+    * ``gen_validity`` / ``gen_molecule_validity`` stay NUMERIC (0 of N);
+    * the per-scored-row rates are ``None`` (NOT MEASURED);
+    * ``gen_end_to_end_rate`` is ``None`` too — it is the product of the
+      parse rate and the single-fragment rate, and the second factor is
+      undefined.  The measured number to read instead is
+      ``gen_molecule_validity`` (0 of N drawn samples were a strict
+      molecule).
+    """
+    measured = _gen_measured(gen_tot)
+    validity: Optional[float] = _measured_rate(gen_ok, gen_tot)
+    # Wf-A114/T85 (2026-10-30) — when the eval drew NO samples, NOTHING in
+    # the chemistry block was measured: there were no rows to score, so
+    # every rate below is 0/0 rather than a measured zero.  The block is
+    # emptied so the placeholder zeros the summary publishes for an empty
+    # row set cannot leak into the artifact as numbers.
+    if not measured:
+        chem = {}
+    single_fragment = _chem_val(chem, "single_fragment_ratio")
+    sa_observed = bool(chem.get("sa_observed", False))
+    return {
+        "gen_validity": validity,
+        "gen_validity_val": int(gen_ok),
+        "gen_validity_n": int(gen_tot),
+        # Key PRESENCE, not truthiness: a genuinely measured 0.0 must
+        # survive, and `or 0.0` ate it at every construction site.
+        #
+        # Wf-A114/T85 — the strict rate's denominator is the number of
+        # samples the eval DREW, not the number of rows it scored, so the
+        # scored-row rule does not apply to it (`scored_denominator=False`).
+        # But when the eval drew nothing the rate is 0/0, so it is None —
+        # the two columns (parse rate and strict rate) must agree on what
+        # "no measurement" means.
+        "gen_molecule_validity": (
+            _chem_val(chem, "molecule_validity", scored_denominator=False)
+        ),
+        "gen_molecule_validity_n": int(chem.get("molecule_validity_n", 0) or 0),
+        "gen_molecule_validity_total": int(
+            chem.get("molecule_validity_total", 0) or 0
+        ),
+        "gen_end_to_end_rate": _end_to_end_rate(validity, single_fragment),
+        "gen_measured": 1 if measured else 0,
+        "gen_largest_fragment_frac": _chem_val(
+            chem, "largest_fragment_frac_mean"
+        ),
+        "gen_single_fragment_ratio": single_fragment,
+        "gen_metal_ratio": _chem_val(chem, "metal_ratio"),
+        "gen_mean_heavy_atoms": _chem_val(chem, "mean_heavy_atoms"),
+        "gen_rings_per_mol": _chem_val(chem, "rings_per_mol_mean"),
+        "gen_ring_5_6_share": _chem_val(chem, "ring_5_6_share"),
+        "gen_ring_3_share": _chem_val(chem, "ring_3_share"),
+        "gen_conditional_success": _chem_val(chem, "conditional_success"),
+        "gen_raw_rings_per_mol": _chem_val(chem, "raw_rings_per_mol_mean"),
+        "gen_raw_ring_5_6_share": _chem_val(chem, "raw_ring_5_6_share"),
+        "gen_raw_ring_3_share": _chem_val(chem, "raw_ring_3_share"),
+        # Wf-R43 m4 — `sa_observed` is the flag to branch on.  When it is
+        # False the summary carries a PLACEHOLDER 0.0, and writing that
+        # placeholder into the artifact is the same lie this change
+        # removes, so the two rates are None in that case.
+        "gen_sa_observed": sa_observed,
+        "gen_sa_mean": (
+            _chem_val(chem, "sa_mean") if sa_observed else None
+        ),
+        "gen_sa_target": _chem_val(chem, "sa_target"),
+        "gen_sa_synthesizable_rate": (
+            _chem_val(chem, "sa_synthesizable_rate") if sa_observed else None
+        ),
+        "gen_sa_scored": int(chem.get("sa_scored", 0) or 0),
+    }
+
+
 #: Default is the chemistry criterion, per the E4 brief.
 DEFAULT_EARLY_STOP_METRIC = "combined"
 #: Plateau length for the chemistry criteria.  ``--patience`` (default 10)
@@ -1110,7 +1905,7 @@ def resolve_early_stop_criterion(
     requested: str,
     *,
     decode_ratio: float,
-    gen_validity: float,
+    gen_validity: Optional[float],
     gen_n: int,
     bond_exact_type_rate: float,
     bond_n_scored: float,
@@ -1153,7 +1948,14 @@ def resolve_early_stop_criterion(
             f"unknown --early-stop-metric {requested!r}; expected one of "
             f"{list(EARLY_STOP_METRICS)}"
         )
-    have_gen = int(gen_n) > 0
+    # Wf-A114 (2026-10-30) — `gen_validity` may now be None, because an
+    # epoch that drew no samples is NOT MEASURED rather than measured 0.0.
+    # The predicate is `gen_validity_n > 0` (i.e. `gen_n`), never
+    # `gen_eval_n > 0`: MEASURED on disk, 11 epoch rows carry
+    # `gen_eval_n == 0` with `gen_validity_n > 0` (the eval ran; only the
+    # per-seed record was lost).  `have_gen` therefore means "measured AND
+    # present", so every `float(gen_validity)` below is guarded.
+    have_gen = int(gen_n) > 0 and gen_validity is not None
     have_bond = float(bond_n_scored) > 0
     # A rate at its floor or its ceiling carries NO gradient: every epoch
     # reports the same number, the "best" never moves, and the run stops at
@@ -1401,24 +2203,42 @@ def resolve_early_stop_criterion(
         )
 
     # req was gen_validity or bond_exact_type and its own data was absent.
+    #
+    # Wf-A114 (2026-10-30) — the degradation note must NAME the predicate,
+    # so a reader does not have to guess which count was zero.  The
+    # generation-side predicate is `gen_validity_n == 0` (see
+    # GEN_UNMEASURED_PREDICATE); the bond side has its own (`n_scored == 0`)
+    # and is NOT described with the generation predicate.
+    if req == "molecule_validity" and have_gen and molecule_validity is None:
+        _unmeasured = (
+            "its own input was unmeasured: the generation eval's chemistry "
+            "block carried no molecule_validity key"
+        )
+    elif req in ("gen_validity", "molecule_validity") and not have_gen:
+        _unmeasured = (
+            f"its own input was unmeasured: {GEN_UNMEASURED_PREDICATE}"
+        )
+    else:
+        _unmeasured = "its own input was unmeasured"
     if have_bond:
         return (
             "bond_exact_type",
             float(bond_exact_type_rate),
-            f"{req} degraded to bond_exact_type (its own input was unmeasured)"
+            f"{req} degraded to bond_exact_type ({_unmeasured})"
             + (f"; {_bond_floor}" if _bond_floor else ""),
         )
     if have_gen:
         return (
             "gen_validity",
             float(gen_validity),
-            f"{req} degraded to gen_validity (its own input was unmeasured)"
+            f"{req} degraded to gen_validity ({_unmeasured})"
             + (f"; {_gen_saturated}" if _gen_saturated else ""),
         )
     return (
         "decode_ratio",
         float(decode_ratio),
-        f"{req} degraded to decode_ratio (NO chemistry metric measurable)",
+        f"{req} degraded to decode_ratio ({_unmeasured}; NO chemistry metric "
+        "measurable)",
     )
 
 
@@ -1755,7 +2575,13 @@ class EpochMetrics:
     # MEASURE whether the prior is actually moving, not just whether the
     # total loss moved.  Default 0.0 = prior off (bit-exact path).
     ring_prior_term: float = 0.0
-    gen_validity: float = 0.0
+    # Wf-A114 (2026-10-30) — the RATE columns are Optional.  `None` means
+    # NOT MEASURED this epoch (the generation eval drew no samples, or the
+    # column the eval was to produce was never written); the CSV writes it
+    # as the literal `nan` and the JSON writes `null`.  `0.0` stays a REAL
+    # measurement, distinguishable from "not measured".  The COUNT columns
+    # stay `int`: 0 there means "no sample was drawn", which is a fact.
+    gen_validity: Optional[float] = None
     gen_validity_val: int = 0
     gen_validity_n: int = 0
     gen_solver: str = ""
@@ -1776,27 +2602,38 @@ class EpochMetrics:
     # travel with gen_validity so the parse count is never read alone.
     # `largest_fragment_frac_mean` → 1/n_atoms for loose atoms, 1.0 for a
     # real connected molecule.
-    gen_largest_fragment_frac: float = 0.0
-    gen_single_fragment_ratio: float = 0.0
+    gen_largest_fragment_frac: Optional[float] = None
+    gen_single_fragment_ratio: Optional[float] = None
     # Wf-A113 (2026-10-27) — `gen_validity` is a PARSE rate: `C.C.C.C`
     # sanitises, so a pool of loose atoms reads 1.000.  MEASURED on
     # molmetal/reports/cfm_c8_fullgen_2026_10_24: gen_validity 1.000/1.000/
     # 1.000 while single-fragment was 0.203/0.200/0.348.  This field is the
     # same denominator with one-fragment + seed-metal applied, so the gap
     # between the two is the size of the blind spot on THIS epoch.
-    gen_molecule_validity: float = 0.0
+    gen_molecule_validity: Optional[float] = None
     gen_molecule_validity_n: int = 0
-    gen_metal_ratio: float = 0.0
-    gen_mean_heavy_atoms: float = 0.0
+    # Wf-A114 — the denominator of the strict rate, and the honest
+    # END-TO-END rate: the share of ALL drawn samples that are both
+    # RDKit-parseable AND one connected molecule carrying the seed metal.
+    # `gen_validity` cannot see fragmentation (`C.C.C` parses), so this
+    # product is the number that can fail.
+    gen_molecule_validity_total: int = 0
+    gen_end_to_end_rate: Optional[float] = None
+    # Wf-A114 — 1 when this epoch's generation metrics were MEASURED
+    # (`gen_validity_n > 0`), 0 when they were NOT.  The CSV is then
+    # self-explaining without a reader having to know the predicate.
+    gen_measured: int = 0
+    gen_metal_ratio: Optional[float] = None
+    gen_mean_heavy_atoms: Optional[float] = None
     # Wf-A85 (2026-10-19) — ring SIZE on the generated corpus.  OPT-2
     # (metrics/by_metric/cfm_opt2_ring_content.json) decided the generation
     # question on this axis: 5/6-membered rings 1.85% generated vs 96.92%
     # real, 3-membered 89.8% vs 0.5%.  Until now that number came from a
     # one-off script over one CSV, so no epoch record carried it.  Shares are
     # over RINGS (same denominator as OPT-2), not over molecules.
-    gen_rings_per_mol: float = 0.0
-    gen_ring_5_6_share: float = 0.0
-    gen_ring_3_share: float = 0.0
+    gen_rings_per_mol: Optional[float] = None
+    gen_ring_5_6_share: Optional[float] = None
+    gen_ring_3_share: Optional[float] = None
     # JSON dict {"3": n, ...} as a str: EpochMetrics serialises str as a JSON
     # string, and a dict field would not survive the CSV writer.
     gen_ring_size_distribution: str = ""
@@ -1812,15 +2649,15 @@ class EpochMetrics:
     # amplification as chemistry.  With `raw_*` beside `gen_ring_*` the ratio
     # between them is visible every epoch, and a ring claim that lives only in
     # the assembled number can be recognised as such without a head-swap probe.
-    gen_raw_rings_per_mol: float = 0.0
-    gen_raw_ring_5_6_share: float = 0.0
-    gen_raw_ring_3_share: float = 0.0
+    gen_raw_rings_per_mol: Optional[float] = None
+    gen_raw_ring_5_6_share: Optional[float] = None
+    gen_raw_ring_3_share: Optional[float] = None
     # Wf-A112 (MOD5) — share of generated samples whose DECODED metal has
     # exactly the coordination number the sample was asked for.  `_n` is the
     # denominator (parsed molecules with a metal), so 0.0 over n=0 is
     # distinguishable from 0.0 over n=32.  Only populated when the field was
     # built with cn_conditioning.
-    gen_conditional_success: float = 0.0
+    gen_conditional_success: Optional[float] = None
     gen_conditional_n: int = 0
     # Wf-A107f — epoch-MEAN of the flow-matching term (see
     # `_LAST_EPOCH_TERM_MEANS`).  0.0 with `use_fm_objective: true` means the
@@ -1835,9 +2672,9 @@ class EpochMetrics:
     # NOT a loss term — sascorer is a fragment lookup with no gradient, and
     # the 2026-10-04 audit deleted the surrogate that pretended otherwise.
     gen_sa_observed: bool = False
-    gen_sa_mean: float = 0.0
-    gen_sa_target: float = 0.0
-    gen_sa_synthesizable_rate: float = 0.0
+    gen_sa_mean: Optional[float] = None
+    gen_sa_target: Optional[float] = None
+    gen_sa_synthesizable_rate: Optional[float] = None
     gen_sa_scored: int = 0
     # Round-4 E4 — WHICH NUMBER GATED THIS EPOCH, and its value.
     #
@@ -1893,6 +2730,204 @@ class EpochMetrics:
     bond_class_weights: list = field(default_factory=list)
     bond_class_prior: list = field(default_factory=list)
     bond_class_weight_power: float | None = None
+
+
+# ---------------------------------------------------------------------------
+# Wf-A114 (2026-10-30) — the per-epoch CSV: ONE header, ONE row builder
+# ---------------------------------------------------------------------------
+#
+# WHY these are module-level and not two literals inside the writer.  The
+# header and the row used to be maintained by hand in two places, and the
+# only thing tying them together was "they happen to line up".  Add a column
+# to the header and forget the row and every cell after the insertion point
+# SHIFTS BY ONE — silently, with no error, and the CSV still parses.  That
+# is how a generation metric ends up reported under a bond metric's name.
+# `csv_row` now ASSERTS the length, and the JSON side is `asdict(m)`, so the
+# CSV and the JSON carry the same keys by construction rather than by
+# discipline.
+#
+# THE SENTINEL.  An unmeasured rate is written as the literal `nan`:
+#   * NOT `0.0000` — indistinguishable from a measured 0.0, and it poisons
+#     every median taken over the column;
+#   * NOT `-1` — a real number, so it survives a median filter and drags
+#     the column down;
+#   * `nan` is dropped by every reader in the repo, which parse with
+#     `float(...)` and test `v != v` (`wf_cfm_run_census._f`,
+#     `cfm_fragmentation_gate._f`).
+# The JSON side uses `null` (a dataclass `Optional[float] = None` ->
+# `asdict` -> `null`), so `json.dumps` never emits a bare `NaN`.
+# ---------------------------------------------------------------------------
+
+#: The per-epoch CSV header.  The order here IS the column order.
+CSV_HEADER: Tuple[str, ...] = (
+    "epoch",
+    "wall_time_s",
+    "train_loss",
+    "bond_ce",
+    "wasserstein",
+    "catherine_pass",
+    "decode_ratio",
+    "decode_ratio_val",
+    "decode_ratio_n",
+    # Wf-A53 — connectivity beside the ratio.  A sanitised string is not a
+    # connected molecule.
+    "decode_n_single_fragment",
+    "decode_single_fragment_ratio",
+    "decode_fragments_mean",
+    "decoding_attempted",
+    # Round-4 E3 — the bond columns were missing from the CSV entirely, so
+    # the grep surface silently carried no bond number at all even when the
+    # JSON did.
+    "bond_precision",
+    "bond_recall",
+    "bond_f1",
+    "bond_exact_match",
+    "bond_exact_type_rate",
+    "bond_set_exact_rate",
+    "bond_type_macro_f1_pooled",
+    "bond_pr_auc",
+    # Wf-A99 — the definition travels with the number, in the grep surface
+    # as well as the JSON.
+    "bond_pr_auc_definition",
+    "bond_pos_rate",
+    "bond_n_scored",
+    "bond_n_truth_bonds",
+    "gen_validity",
+    "gen_validity_val",
+    "gen_validity_n",
+    "gen_solver",
+    "gen_eval_seeds",
+    "gen_eval_n",
+    "gen_seed_spread",
+    "gen_largest_fragment_frac",
+    "gen_single_fragment_ratio",
+    # Wf-A114 — the strict rate, its denominator, the honest END-TO-END
+    # rate, and the "was this measured at all" flag.
+    "gen_molecule_validity",
+    "gen_molecule_validity_n",
+    "gen_molecule_validity_total",
+    "gen_end_to_end_rate",
+    "gen_measured",
+    "gen_metal_ratio",
+    "gen_mean_heavy_atoms",
+    # Wf-A107f — the ring axis OPT-2 says decides the generation question
+    # was absent from the grep surface entirely: the CSV carried no ring
+    # column, so a `grep` over a run could not see the number the run was
+    # judged on.  Raw = pre-assembly graph.
+    "gen_rings_per_mol",
+    "gen_ring_5_6_share",
+    "gen_ring_3_share",
+    "gen_raw_rings_per_mol",
+    "gen_raw_ring_5_6_share",
+    "gen_raw_ring_3_share",
+    # Wf-A107f — did the flow-matching term contribute at all?
+    "fm_term",
+    # Wf-R43 m4 — the real SA observation columns.
+    "gen_sa_observed",
+    "gen_sa_mean",
+    "gen_sa_target",
+    "gen_sa_synthesizable_rate",
+    "gen_sa_scored",
+    # Round-4 E4 — the criterion and its value, so the grep surface carries
+    # the same control the JSON does.
+    "early_stop_metric",
+    "early_stop_value",
+    "early_stop_improved",
+    "early_stop_criterion_note",
+)
+
+
+def _fmt_rate(value: Optional[float], fmt: str = ".4f") -> str:
+    """One rate cell, with the HONEST sentinel for an unmeasured column.
+
+    ``None`` means "this column was not measured this epoch" and is written
+    as the literal ``nan`` — never ``0.0000`` (which is a measured zero)
+    and never ``-1`` (which is a real number that would survive a median
+    filter).  See the block comment above for why.
+    """
+    if value is None:
+        return "nan"
+    try:
+        return format(float(value), fmt)
+    except (TypeError, ValueError):
+        return "nan"
+
+
+def csv_row(m: EpochMetrics) -> List[str]:
+    """One CSV row for one epoch, in :data:`CSV_HEADER` order.
+
+    The length assertion is the point of this function: a one-sided edit
+    (header only, or row only) used to shift every cell after the change
+    without any error, and the CSV still parsed.
+    """
+    row: List[str] = [
+        str(m.epoch),
+        f"{m.wall_time_s:.3f}",
+        f"{m.train_loss:.5f}",
+        f"{m.bond_ce_loss:.5f}",
+        f"{m.wasserstein_loss:.5f}",
+        str(int(m.catherine_audit_pass)),
+        f"{m.decode_ratio_rdkit_strict:.4f}",
+        str(m.decode_ratio_val),
+        str(m.decode_ratio_n),
+        str(m.decode_n_single_fragment),
+        f"{m.decode_single_fragment_ratio:.4f}",
+        f"{m.decode_fragments_mean:.2f}",
+        str(int(m.decoding_attempted)),
+        f"{m.bond_precision:.4f}",
+        f"{m.bond_recall:.4f}",
+        f"{m.bond_f1:.4f}",
+        f"{m.bond_exact_match:.4f}",
+        f"{m.bond_exact_type_rate:.4f}",
+        f"{m.bond_set_exact_rate:.4f}",
+        f"{m.bond_type_macro_f1_pooled:.4f}",
+        f"{m.bond_pr_auc:.4f}",
+        str(m.bond_pr_auc_definition),
+        f"{m.bond_pos_rate:.4f}",
+        str(m.bond_n_scored),
+        str(m.bond_n_truth_bonds),
+        # Wf-A114 — the generation rates.  `None` (not measured) renders as
+        # the literal `nan`; the COUNT columns stay bare ints, because 0
+        # there means "no sample was drawn", which is a fact, not a rate.
+        _fmt_rate(m.gen_validity),
+        str(m.gen_validity_val),
+        str(m.gen_validity_n),
+        str(m.gen_solver),
+        str(m.gen_eval_seeds),
+        str(m.gen_eval_n),
+        f"{m.gen_seed_spread:.4f}",
+        _fmt_rate(m.gen_largest_fragment_frac),
+        _fmt_rate(m.gen_single_fragment_ratio),
+        _fmt_rate(m.gen_molecule_validity),
+        str(m.gen_molecule_validity_n),
+        str(m.gen_molecule_validity_total),
+        _fmt_rate(m.gen_end_to_end_rate),
+        str(int(m.gen_measured)),
+        _fmt_rate(m.gen_metal_ratio),
+        _fmt_rate(m.gen_mean_heavy_atoms, ".2f"),
+        _fmt_rate(m.gen_rings_per_mol),
+        _fmt_rate(m.gen_ring_5_6_share),
+        _fmt_rate(m.gen_ring_3_share),
+        _fmt_rate(m.gen_raw_rings_per_mol),
+        _fmt_rate(m.gen_raw_ring_5_6_share),
+        _fmt_rate(m.gen_raw_ring_3_share),
+        f"{m.fm_term:.6f}",
+        str(int(m.gen_sa_observed)),
+        _fmt_rate(m.gen_sa_mean),
+        _fmt_rate(m.gen_sa_target, ".2f"),
+        _fmt_rate(m.gen_sa_synthesizable_rate),
+        str(m.gen_sa_scored),
+        str(m.early_stop_metric),
+        f"{m.early_stop_value:.6f}",
+        str(int(m.early_stop_improved)),
+        str(m.early_stop_criterion_note),
+    ]
+    assert len(row) == len(CSV_HEADER), (
+        f"csv_row has {len(row)} cells but CSV_HEADER has {len(CSV_HEADER)}: "
+        "the header and the row builder drifted apart, which silently "
+        "shifts every cell after the change"
+    )
+    return row
 
 
 # ---------------------------------------------------------------------------
@@ -4558,10 +5593,42 @@ def _rdkit_strict_reason(
                            when the decoder reported one (Wf-A81)
     ``reparse_failed``     round-trip MolFromSmiles returned None
     ``resanitize_failed``  round-trip SanitizeMol raised
-    ``multi_fragment``     parses cleanly but is >1 disconnected fragment —
-                           reported only when ``strict_ok`` is requested,
-                           since RDKit accepts `C.C.C.C` and this is the
-                           pathology the strict gate cannot see
+    Wf-A269 wave-28 (2026-11-06) — CORRECTION: THE BUCKET TABLE ABOVE
+    USED TO CARRY A SEVENTH ROW THAT THIS FUNCTION NEVER RETURNS.  The
+    superseded rendering is reproduced VERBATIM below (AGENTS.md §5.5
+    rule #6), indented so that it is no longer a row of the table a
+    machine reads:
+
+        ``multi_fragment``     parses cleanly but is >1 disconnected fragment —
+                               reported only when ``strict_ok`` is requested,
+                               since RDKit accepts `C.C.C.C` and this is the
+                               pathology the strict gate cannot see
+
+    WHY IT IS NOT A BUCKET (MEASURED 2026-11-06 by reading this
+    function's own AST — no run, no GPU):
+      (1) `strict_ok` is NOT a parameter of this function — the
+          caller's flag is `rdkit_ok` — so the advertised trigger does
+          not exist;
+      (2) this function performs NO fragment check at all: it never
+          counts the fragments of a parsed molecule, so a
+          multi-fragment SMILES that RDKit accepts lands in the
+          SUCCESS bucket (None);
+      (3) the function's returns are exactly {empty_decode,
+          assembly_error, sanitize_failed[:<class>], sanitize_failed,
+          no_smiles, reparse_failed, resanitize_failed}.
+
+    ⇒ AND THE FRAGMENT PATHOLOGY IS MEASURED ELSEWHERE, NOT HERE: the
+    molecule-validity and single-fragment-ratio metrics apply the
+    fragment conjunct, and the end-to-end rate is the parse rate times
+    the fragment ratio (trainer :1783).  This function feeds
+    reason_counts, whose `ok` bucket IS the published gen_validity
+    numerator (n_ok counts `_rdkit_strict_reason(...) is None`,
+    trainer :9734, consumed at :10086-10098) ⇒ **implementing a
+    multi_fragment bucket here would CHANGE the published
+    gen_validity / decode_ratio numbers** and would need a GPU retrain
+    to re-measure them.  That is OUT OF SCOPE for a 0-GPU wave, so the
+    honest repair is to make the documentation match the code and to
+    record the boundary.
 
     Cost note: the caller already holds a decoded result for every sample,
     so this adds no decode.  Before this change the gen-eval loop decoded
@@ -5061,7 +6128,8 @@ def apply_fm_distortion(
 #: MEASURED epoch-5 train_loss 9.28459 of the objective-terms arm: at 0.01 the
 #: term is 0.11%..0.19% of the loss; at 0.12 it is 1.3%..2.3%.
 #:
-#: The argparse DEFAULT stays 0.0 (AGENTS.md §5.11 bit-for-bit default-off);
+#: The argparse DEFAULT stays 0.0 (~~AGENTS.md §5.11 bit-for-bit default-off~~
+#: → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31);
 #: this constant only bounds what may be set SILENTLY. See the sub-threshold
 #: guard in ``main()`` and configs/cfm_entropy_reg_012_2026_10_11.yaml.
 ENTROPY_REG_MEASURED_FLOOR = 0.12
@@ -8216,6 +9284,24 @@ def _with_bond_length_guidance(
     cutoff: float,
     weight: float,
     node_mask: Optional[torch.Tensor] = None,
+    # Wf-A128 (2026-10-31) — the one-sided UPPER-BOUND companion switch.
+    # DEFAULT OFF.  ``upper_bound=False`` reproduces the pre-Wf-A128
+    # guidance exactly (the flag-off path performs the same arithmetic
+    # in the same order); ``True`` adds a SECOND, one-sided force that
+    # fires only when a pair distance EXCEEDS its expected bond length,
+    # with NO inner truncation, out to ``upper_bound_reach`` (default
+    # 3.5 A — the YuelBond head's own candidate cutoff).  That is the
+    # gap the spring's 2.5 A inner cutoff leaves open: a 2.5-3.5 A
+    # span is inside the head's candidate set (so the head COULD bond
+    # it) but the spring never touched it — and a bond that is never
+    # formed is a dropped bond, i.e. a fragment.
+    #
+    # ``upper_bound_strength=None`` means "the same stiffness as the
+    # spring" (the adapter's own default); an explicit float overrides
+    # it; 0.0 disables the extra term while leaving the switch on.
+    upper_bound: bool = False,
+    upper_bound_reach: float = 3.5,
+    upper_bound_strength: Optional[float] = None,
 ):
     """Wrap a velocity closure with the MolDiff bond-length term, or not.
 
@@ -8240,6 +9326,13 @@ def _with_bond_length_guidance(
         cutoff=float(cutoff),
         guidance_weight=_w,
         node_mask=node_mask,
+        # Wf-A128 — the three new kwargs.  Each one reproduces the
+        # adapter's OWN default, so the flag-off path is unchanged.
+        upper_bound=bool(upper_bound),
+        upper_bound_reach=float(upper_bound_reach),
+        upper_bound_strength=(
+            None if upper_bound_strength is None else float(upper_bound_strength)
+        ),
     )
 
     def _wrapped(x, t, _vf_in=vf, _blg_in=blg):
@@ -8264,6 +9357,12 @@ def generate_clouds_from_noise(
     # When > 0, the EGNN velocity is augmented at every ODE step with
     # a Hooke-spring force on bonded (Z_i, Z_j) pairs.
     bond_length_guidance_weight: float = 0.0,
+    # Wf-A128 (2026-10-31) — the one-sided upper-bound companion switch,
+    # threaded from YAML -> argparse -> here.  DEFAULT OFF, so the
+    # pre-Wf-A128 sampler is bit-exact.  See ``_BondLengthGuidance``.
+    bond_length_guidance_upper_bound: bool = False,
+    bond_length_guidance_upper_bound_reach: float = 3.5,
+    bond_length_guidance_upper_bound_strength: Optional[float] = None,
     # Wf-A112 (MOD5) — the requested coordination number per TEMPLATE, aligned
     # with ``templates``.  ``None`` is the pre-MOD5 sampler exactly: no
     # conditioning argument reaches the field.
@@ -8417,6 +9516,9 @@ def generate_clouds_from_noise(
                 model.cutoff,
                 bond_length_guidance_weight,
                 node_mask,
+                bond_length_guidance_upper_bound,
+                bond_length_guidance_upper_bound_reach,
+                bond_length_guidance_upper_bound_strength,
             )
 
             solver = ODESolver(
@@ -8469,7 +9571,14 @@ def generate_clouds_from_noise(
             # preserved.  See ``_BondLengthGuidance`` for the chemistry
             # table + per-pair spring force.
             _vf_used = _with_bond_length_guidance(
-                _vf, z_b, model.cutoff, bond_length_guidance_weight, node_mask
+                _vf,
+                z_b,
+                model.cutoff,
+                bond_length_guidance_weight,
+                node_mask,
+                bond_length_guidance_upper_bound,
+                bond_length_guidance_upper_bound_reach,
+                bond_length_guidance_upper_bound_strength,
             )
 
             solver = ODESolver(
@@ -8858,6 +9967,11 @@ def evaluate_generation_validity(
     # ODE step during generation.  0.0 (default) is a no-op
     # (back-compat with the Wf-A74 sampling path).
     bond_length_guidance_weight: float = 0.0,
+    # Wf-A128 (2026-10-31) — the one-sided upper-bound companion switch.
+    # DEFAULT OFF (bit-exact with the pre-Wf-A128 sampler).
+    bond_length_guidance_upper_bound: bool = False,
+    bond_length_guidance_upper_bound_reach: float = 3.5,
+    bond_length_guidance_upper_bound_strength: Optional[float] = None,
     smiles_out: Optional[List[str]] = None,
     rejected_smiles_out: Optional[List[Tuple[str, str]]] = None,
     per_cloud_out: Optional[List[bool]] = None,
@@ -8951,6 +10065,16 @@ def evaluate_generation_validity(
         pad_groups=bool(pad_groups),
         pad_group_bucket=int(pad_group_bucket),
         bond_length_guidance_weight=float(bond_length_guidance_weight),
+        # Wf-A128 — the one-sided upper-bound companion switch.
+        bond_length_guidance_upper_bound=bool(bond_length_guidance_upper_bound),
+        bond_length_guidance_upper_bound_reach=float(
+            bond_length_guidance_upper_bound_reach
+        ),
+        bond_length_guidance_upper_bound_strength=(
+            None
+            if bond_length_guidance_upper_bound_strength is None
+            else float(bond_length_guidance_upper_bound_strength)
+        ),
         cond_cn=_req_cn,
         cfg_scale=float(cn_cfg_scale),
     )
@@ -8999,7 +10123,11 @@ def evaluate_generation_validity(
         chemistry_out.clear()
         chemistry_out.update(summarise_decode_chemistry(chem_rows))
         chemistry_out["n_samples"] = len(clouds)
-        chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
+        # Wf-A114/T85 — the denominator is the number of clouds the eval
+        # decoded.  `max(len(clouds), 1)` published a MEASURED 0.0000 for
+        # an eval that decoded nothing; a rate over an empty denominator is
+        # 0/0, so it is None (NOT MEASURED) instead.
+        chemistry_out["decode_ratio"] = _measured_rate(n_ok, len(clouds))
         # Wf-A113 — ``decode_ratio`` / ``gen_validity`` count RDKit-strict
         # parses, and a string of loose atoms parses.  This is the same
         # denominator with the fragment and metal conjuncts applied, so the
@@ -9008,7 +10136,9 @@ def evaluate_generation_validity(
         # is a measurement, and its absence is not.
         if molecule_valid_out is not None:
             _n_mol = int(sum(1 for v in molecule_valid_out if v))
-            chemistry_out["molecule_validity"] = _n_mol / max(len(clouds), 1)
+            chemistry_out["molecule_validity"] = _measured_rate(
+                _n_mol, len(clouds)
+            )
             chemistry_out["molecule_validity_n"] = _n_mol
             chemistry_out["molecule_validity_total"] = len(clouds)
             chemistry_out["gen_validity_definition"] = (
@@ -9040,8 +10170,12 @@ def evaluate_generation_validity(
                 if row and row.get("metal_degree") is not None
             ]
             _hits = sum(1 for req, row in _pairs if int(row["metal_degree"]) == req)
-            chemistry_out["conditional_success"] = (
-                _hits / len(_pairs) if _pairs else 0.0
+            # Wf-A114/T85 — same rule as every other rate here: with no
+            # scored pair the rate is 0/0, so it is None (NOT MEASURED),
+            # not a measured 0.0.  ``conditional_n`` carries the
+            # denominator beside it.
+            chemistry_out["conditional_success"] = _measured_rate(
+                _hits, len(_pairs)
             )
             chemistry_out["conditional_n"] = len(_pairs)
             chemistry_out["requested_cn_hist"] = {
@@ -11466,7 +12600,28 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--bond-decision",
         dest="bond_decision",
-        choices=("argmax", "threshold"),
+        # 2026-11-04 (Wf-A269 wave-20) — the DECLARED contract was STALE.
+        # The pre-repair rendering is preserved VERBATIM below (AGENTS.md
+        # §5.5 rule #6 — append-only, dated, never a silent edit):
+        #
+        #     choices=("argmax", "threshold"),
+        #
+        # MEASURED 2026-11-04 (read-only, AST + a CPU probe): that tuple did
+        # NOT cover the rule set the decoder actually implements —
+        # `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::bond_decision`
+        # implements a THIRD rule, "per_class" (the Wf-A80 per-class
+        # calibrated thresholds) — and TWO shipped configs select it:
+        #   configs/cfm_5metal_wfa80_per_class_cpu_smoke.yaml
+        #   configs/cfm_5metal_wfa80_per_class_decision.yaml
+        # The YAML path BYPASSES argparse's `choices` entirely (MEASURED with
+        # a CPU probe of `wfA2_config_loader.apply_yaml_overrides`:
+        # `args.bond_decision` becomes "per_class" although the parser
+        # forbids it), so the per_class runs were NOT broken — the
+        # DECLARATION was, and no gate in the repo could see it.
+        # Widening the tuple makes the parser describe what the trainer can
+        # actually do. The DEFAULT ("argmax") is untouched, so every shipped
+        # config stays bit-exact (the repo's bit-exact-default contract).
+        choices=("argmax", "threshold", "per_class"),
         default="argmax",
         help=(
             "2026-10-04 NEW: how per-pair bond logits become a predicted "
@@ -11478,7 +12633,15 @@ def parse_args() -> argparse.Namespace:
             "P(bonded) >= --bond-decision-threshold and takes the argmax "
             "over the non-zero classes for the type, decoupling 'is there a "
             "bond' (30%% positive rate) from 'which bond'. Set both from "
-            "yaml (flow.bond_decision / flow.bond_decision_threshold)."
+            "yaml (flow.bond_decision / flow.bond_decision_threshold). "
+            "2026-11-04 (Wf-A269 wave-20): 'per_class' is the Wf-A80 rule "
+            "-- score_c = p_c - t_c for c >= 1 with the per-class calibrated "
+            "thresholds t_c, the argmax over the classes whose score "
+            "exceeds 0, and NO_BOND when none does. The trainer's metric "
+            "path deliberately keeps the POOLED rule ('threshold') so the "
+            "Wf-A73..A75 history stays comparable, and hands the calibrated "
+            "per-class thresholds to the DECODER before the decode. Set it "
+            "from yaml (flow.bond_decision: per_class)."
         ),
     )
     p.add_argument(
@@ -11871,9 +13034,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
+            # Wf-A114 (2026-10-30) — argparse %-formats every help string,
+            # so a bare `%` in one is a ValueError AT PRINT TIME, not at
+            # parse time: `train_cfm_yuelbond_wasserstein.py --help` died
+            # with "unsupported format character 'p'" on a literal `~95%`.
+            # The bug is on HEAD (1b9470a0:11876) and broke every `--help`
+            # probe of this trainer.  `%%` renders as one literal `%`.
             "2026-10-17 NEW (Wf-A68): replace plain bond CE with class-"
             "balanced focal CE.  Down-weights the easy NO_BOND majority "
-            "(~95% prior in the 5-metal cohort) and lets rare positive "
+            "(~95%% prior in the 5-metal cohort) and lets rare positive "
             "classes contribute gradient.  Default OFF preserves bit-exact "
             "backward compat with Wf-A67 + earlier.  Pair with "
             "--focal-bond-alpha / --focal-bond-gamma."
@@ -12574,7 +13743,7 @@ def parse_args() -> argparse.Namespace:
             "14 tmqm configs on disk overrides it to -1, so nothing measured "
             "changed -- but a new config that forgot the key would have "
             "silently kept only four-coordinate complexes, and by the corpus "
-            "that is 81.8% of Pt against 0.3% of Ru (28/9,800), i.e. a "
+            "that is 81.8%% of Pt against 0.3%% of Ru (28/9,800), i.e. a "
             "'five-metal' cohort that is one metal.  Same footgun as the "
             "n_train=256 default in T67; a filter's default must be 'off'."
         ),
@@ -12825,8 +13994,8 @@ def parse_args() -> argparse.Namespace:
             "entropy.  Implements the user's advice 三 — stop the head "
             "摆烂 by collapsing every sample onto one degenerate skeleton. "
             "Default 0.1 (Wf-A43 C — default ON; was 0.01 = unobservable "
-            "0.11-0.19% of the loss sum; 0.0 → exact torch.zeros(()) so a "
-            "caller can still opt out).  At 0.1 the entropy term is ~1.3-2.3% "
+            "0.11-0.19%% of the loss sum; 0.0 → exact torch.zeros(()) so a "
+            "caller can still opt out).  At 0.1 the entropy term is ~1.3-2.3%% "
             "of the 12-term sum, matching the BLK-C5 floor."
         ),
     )
@@ -12929,7 +14098,7 @@ def parse_args() -> argparse.Namespace:
             "different atom count, so `memory_reserved` climbs for a whole "
             "epoch while `memory_allocated` stays at ~88 MiB. nvidia-smi "
             "reports the reserved number. Bounding it costs throughput "
-            "(MEASURED +51% epoch time at every step), so set it as large as "
+            "(MEASURED +51%% epoch time at every step), so set it as large as "
             "the headroom allows. Overrides MOLMETAL_EMPTY_CACHE_EVERY."
         ),
     )
@@ -13114,7 +14283,7 @@ def parse_args() -> argparse.Namespace:
             "BLK-C11 (2026-10-10): write only the largest connected component "
             "of each decoded molecule. This is the field-standard post-process "
             "(`--all_frags` in the EDM/DiffSBDD family) for the disconnection "
-            "measured at 85.1% across three runs. It DISCARDS atoms rather "
+            "measured at 85.1%% across three runs. It DISCARDS atoms rather "
             "than reconnecting them, so it raises validity without improving "
             "quality — the run therefore also records how many molecules were "
             "truncated and how many atoms were dropped. Default OFF."
@@ -13233,7 +14402,7 @@ def parse_args() -> argparse.Namespace:
             "2026-10-18 NEW (Wf-A75): bond-length guidance weight "
             "applied at every ODE step during generation.  0.0 "
             "(default) is a no-op (back-compat with the Wf-A74 "
-            "sampler).  Per MolDiff (Vignac et al. 2023, "
+            "sampler).  Per MolDiff (Peng, Guan, Liu & Ma, ICML 2023, "
             "arXiv:2305.07508), Cartesian-coordinate diffusion on metal "
             "complexes suffers from the atom-bond inconsistency "
             "failure mode: bonded pairs drift past ~3 Å during "
@@ -13241,9 +14410,80 @@ def parse_args() -> argparse.Namespace:
             "Hooke-spring force on (Z_i, Z_j) pairs that pulls actual "
             "distance toward an expected per-pair value "
             "(metal-donor ~2.05 Å, C-C ~1.50 Å, C-N/O ~1.40 Å, etc.).  "
-            "At weight 0.1 the guidance is ~10% of the EGNN velocity "
+            "At weight 0.1 the guidance is ~10%% of the EGNN velocity "
             "at full magnitude.  Try 0.1 to recover the Wf-A74 ep-4 "
             "gen_validity collapse from 0.354 back toward 0.95+."
+        ),
+    )
+    # Wf-A128 (2026-10-31) — the one-sided UPPER-BOUND companion to the
+    # MolDiff spring above.  DEFAULT OFF, so the default path is
+    # bit-exact with the pre-Wf-A128 sampler.
+    #
+    # Why it exists (MEASURED motivation): the spring's own inner cutoff
+    # is 2.5 A, but the YuelBond head's candidate cutoff is 3.5 A, so a
+    # pair sitting at 2.5-3.5 A is inside the head's candidate set (the
+    # head COULD bond it) while the spring never touched it.  A bond that
+    # is never formed is a dropped bond, i.e. a fragment — and the CFM
+    # pool is 91.49% fragmented (MEASURED, c7 pool,
+    # fragmented_ratio 0.9149).  This switch is a MECHANISM lever for
+    # fragmentation.
+    #
+    # REACH: the outer radius at which the one-sided penalty acts.  The
+    # default 3.5 A is the bond head's own candidate cutoff — beyond that
+    # the head would not consider a bond at all.
+    #
+    # STRENGTH: the stiffness of the one-sided penalty.  ``None`` (the
+    # default) means "the same stiffness as the spring", which is what
+    # the adapter does when the value is not supplied; an explicit float
+    # overrides it; 0.0 disables the extra term while leaving the switch
+    # itself on.
+    p.add_argument(
+        "--bond-length-guidance-upper-bound",
+        dest="bond_length_guidance_upper_bound",
+        # ``store_true`` (not BooleanOptionalAction) on purpose: the §5.7
+        # smoke protocol's ``flag_type_expectations`` classifies a
+        # BooleanOptionalAction dest as "str" (its action carries no
+        # ``type=``), so a bool value there reads as a type violation.
+        # ``store_true`` classifies as "bool" and the check is exact.
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-31 NEW (Wf-A128): one-sided UPPER-BOUND bond-length "
+            "penalty in the CFM velocity field.  DEFAULT OFF (bit-exact "
+            "with the pre-Wf-A128 sampler).  When on, a SECOND force is "
+            "added on top of the MolDiff spring: it fires ONLY when a "
+            "pair distance EXCEEDS its expected bond length, with no "
+            "inner truncation, out to --bond-length-guidance-upper-bound-"
+            "reach (default 3.5 A = the YuelBond head's candidate "
+            "cutoff).  This closes the 2.5-3.5 A gap the spring's inner "
+            "cutoff leaves open.  See _BondLengthGuidance."
+        ),
+    )
+    p.add_argument(
+        "--bond-length-guidance-upper-bound-reach",
+        dest="bond_length_guidance_upper_bound_reach",
+        type=float,
+        default=3.5,
+        help=(
+            "2026-10-31 NEW (Wf-A128): outer reach (A) of the one-sided "
+            "upper-bound penalty.  Default 3.5 A = the YuelBond head's "
+            "own candidate cutoff, i.e. the largest distance at which "
+            "the head could still form a bond.  Only consulted when "
+            "--bond-length-guidance-upper-bound is on."
+        ),
+    )
+    p.add_argument(
+        "--bond-length-guidance-upper-bound-strength",
+        dest="bond_length_guidance_upper_bound_strength",
+        type=float,
+        default=None,
+        help=(
+            "2026-10-31 NEW (Wf-A128): stiffness of the one-sided "
+            "upper-bound penalty.  Default None = 'the same stiffness as "
+            "the MolDiff spring' (the adapter's own default).  An "
+            "explicit float overrides it; 0.0 disables the extra term "
+            "while leaving the switch itself on.  Only consulted when "
+            "--bond-length-guidance-upper-bound is on."
         ),
     )
     # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss weights.  All
@@ -13697,7 +14937,7 @@ def parse_args() -> argparse.Namespace:
             "trains it against x1_hat = x_t + u, i.e. the loss becomes "
             "||u - (1-t)(x1-x0)||^2 — full weight at low t, downweighted at "
             "high t.  That is deliberate: Wf-A108d measured the velocity "
-            "field to be 64% worse than predicting zero at t=0.05.  The "
+            "field to be 64%% worse than predicting zero at t=0.05.  The "
             "sampler still consumes vel = u / max(1-t, x1_denominator_floor)."
         ),
     )
@@ -13896,7 +15136,7 @@ def parse_args() -> argparse.Namespace:
             "metal atom's own atomic-number embedding. 'embedding' adds a "
             "learned per-cloud metal table broadcast to every atom. MEASURED "
             "on the c8 epoch-2 checkpoint: swapping the metal moved the "
-            "velocity by 0.74%, against 86%% for a 0.25 t shift and 18%% for "
+            "velocity by 0.74%%, against 86%% for a 0.25 t shift and 18%% for "
             "one C->N swap."
         ),
     )
@@ -14869,6 +16109,61 @@ def parse_args() -> argparse.Namespace:
             "tail this file for structured per-epoch / per-batch events."
         ),
     )
+    # 2026-11-04 (Wf-A269) — the SINK off-switch, mirroring
+    # train_dmpnn_multitask_wasserstein.py's identical flag.
+    #
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5
+    # rule #6: the block above this one used to read, in full —
+    #
+    #   # Wf-TUI NEW: structured event emission for deep TUI integration.
+    #   # When ON, emit_event() writes JSON lines to stdout + appends to
+    #   # --events-jsonl-path. When OFF, emit_event() writes a backslash-
+    #   # escaped prefix line that preserves the Wf-124 P2 text log format
+    #   # for grep/tail consumers. Default ON per AGENTS.md §5.7 NEW trainer
+    #   # flag wire-in smoke-required rule; --no-emit-json-events restores
+    #   # the legacy text-only path for backward compat.
+    #
+    # ... and the `--emit-json-events` help text still says:
+    #
+    #   "Default ON; --no-emit-json-events falls back to the legacy
+    #   '[EVENT <type>] key=value' text path (backward compat with Wf-124
+    #   P2 grep/tail consumers)."
+    #
+    # THAT TEXT WAS TRUE ABOUT STDOUT AND SILENTLY WRONG ABOUT THE FILE.
+    # `--no-emit-json-events` switches the STDOUT format only; the
+    # events.jsonl WRITE happened either way, because emit_event() gates
+    # the write on `_EVENT_LOG_PATH is not None` and that was always a
+    # Path.  So this trainer had NO way to turn the sink off — while
+    # scripts/start.sh transported `--no-events-jsonl` to it (the spelling
+    # the D-MPNN trainer declares).  `output.events_jsonl: false` in a
+    # config therefore CRASHED this trainer's launch with argparse's
+    # "unrecognized arguments" before a single step ran.
+    #
+    # MEASURED 2026-11-04: the launch-contract census in
+    # scripts/_runtime_transport_gate.py found exactly this pair
+    # (scripts/start.sh:916 -> this trainer, undeclared flag).  The D-MPNN
+    # trainer's own flag says the same thing in its help text: "Distinct
+    # from --no-emit-json-events, which only switches STDOUT ... the jsonl
+    # write happened either way, so there was no way to turn the file off."
+    #
+    # Default False => bit-for-bit identical behaviour when the flag is
+    # absent (the sink was always on unless the launcher said otherwise).
+    p.add_argument(
+        "--no-events-jsonl",
+        dest="no_events_jsonl",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-11-04 (Wf-A269): disable the events.jsonl sink "
+            "entirely, so no events.jsonl is created or appended to. "
+            "Distinct from --no-emit-json-events, which only switches "
+            "STDOUT between JSON and the legacy '[EVENT type] k=v' text "
+            "format — the jsonl write happened either way, so there was "
+            "no way to turn the file off. Wired to the yamls' "
+            "output.events_jsonl:false, which scripts/start.sh turns "
+            "into this flag."
+        ),
+    )
     args = p.parse_args()
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
@@ -15284,7 +16579,6 @@ def derive_assemble_hinge_tau(
     train_one_epoch.  Raises when no cloud carries bond truth: silently
     keeping a foreign constant is the defect this function exists to remove.
     """
-    import math
 
     vals: List[float] = []
     n_seen = 0
@@ -15613,6 +16907,14 @@ def main() -> int:
     # the legacy '[EVENT <type>] k=v k=v ...' text format instead of
     # JSON, and events.jsonl writes are still appended (TUI consumers
     # can read the JSONL regardless of stdout format).
+    #
+    # 2026-11-04 (Wf-A269) — that last clause used to be unconditional.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5
+    # rule #6: the sentence "and events.jsonl writes are still appended
+    # (TUI consumers can read the JSONL regardless of stdout format)" is
+    # now TRUE ONLY when `--no-events-jsonl` is absent.  The flag below
+    # turns the sink off, which is what `output.events_jsonl: false` in
+    # a YAML means (scripts/start.sh translates it into that flag).
     _events_jsonl_path = (
         args.events_jsonl_path
         if args.events_jsonl_path is not None
@@ -15621,6 +16923,10 @@ def main() -> int:
     _install_event_emitter(
         emit_enabled=bool(args.emit_json_events),
         events_jsonl_path=_events_jsonl_path,
+        # 2026-11-04 (Wf-A269) — the sink off-switch.  `getattr` (not
+        # `args.no_events_jsonl`) so a caller that builds its own namespace
+        # without the flag keeps the historical behaviour (sink on).
+        sink_enabled=not bool(getattr(args, "no_events_jsonl", False)),
         # Only an explicit `resume_from: none` is known-fresh.  `auto` may pick
         # up the seed's last checkpoint, and then appending is correct.
         fresh_run=str(getattr(args, "resume_from", "auto") or "auto").strip().lower()
@@ -17804,13 +19110,37 @@ def main() -> int:
                         # plumbed from YAML → CLI → gen_eval path.  When
                         # >0 the trainer's ``generate_clouds_from_noise``
                         # wraps the velocity function with a Hooke-spring
-                        # force on (Z_i, Z_j) pairs (per MolDiff Vignac
-                        # 2023) so bonded atoms do not drift past ~3 Å
+                        # force on (Z_i, Z_j) pairs (per MolDiff, Peng
+                        # et al. 2023) so bonded atoms do not drift past ~3 Å
                         # during denoising.  0.0 (default) is a no-op
                         # that keeps the pre-Wf-A75 sampling path
                         # bit-exact.
                         bond_length_guidance_weight=float(
                             getattr(args, "bond_length_guidance_weight", 0.0)
+                        ),
+                        # Wf-A128 (2026-10-31) — the one-sided upper-bound
+                        # companion switch, plumbed from YAML -> argparse ->
+                        # the eval path.  DEFAULT OFF: False / 3.5 / None
+                        # reproduce the pre-Wf-A128 sampler bit-for-bit.
+                        bond_length_guidance_upper_bound=bool(
+                            getattr(args, "bond_length_guidance_upper_bound", False)
+                        ),
+                        bond_length_guidance_upper_bound_reach=float(
+                            getattr(
+                                args,
+                                "bond_length_guidance_upper_bound_reach",
+                                3.5,
+                            )
+                        ),
+                        bond_length_guidance_upper_bound_strength=(
+                            None
+                            if getattr(
+                                args,
+                                "bond_length_guidance_upper_bound_strength",
+                                None,
+                            )
+                            is None
+                            else float(args.bond_length_guidance_upper_bound_strength)
                         ),
                         # Wf-A112 (MOD5) — CFG scale for the CN request. 1.0
                         # is v = v_cond, i.e. the unconditioned branch is not
@@ -17842,19 +19172,31 @@ def main() -> int:
                         _gen_flags[_fk] = _gen_flags.get(_fk, 0) + int(_fv)
                     if not _gen_first_err and _chem_seed.get("decode_error_example"):
                         _gen_first_err = str(_chem_seed["decode_error_example"])
+                    _seed_tot = int(_tot_s)
+                    _seed_nmol = int(sum(1 for v in _mol_seed if v))
                     _gen_per_seed.append(
                         {
                             "seed": int(_sd),
-                            "gen_validity": float(_ok_s) / max(int(_tot_s), 1),
+                            # Wf-A114 — None when THIS seed drew no samples.
+                            # A per-seed 0.0 says "every sample failed" when
+                            # the truth is "no sample was drawn".
+                            "gen_validity": (
+                                None
+                                if not _gen_measured(_seed_tot)
+                                else float(_ok_s) / _seed_tot
+                            ),
                             # Wf-A113 — the same seed's strict rate, so the
                             # per-seed payload can show the blind spot without
                             # re-reading the pooled block.
                             "molecule_validity": (
-                                sum(1 for v in _mol_seed if v)
-                                / max(int(_tot_s), 1)
+                                None
+                                if not _gen_measured(_seed_tot)
+                                else _seed_nmol / _seed_tot
                             ),
+                            # Wf-A114 — the denominator beside the rate.
+                            "molecule_validity_n": _seed_nmol,
                             "n_ok": int(_ok_s),
-                            "n_total": int(_tot_s),
+                            "n_total": _seed_tot,
                             "template_offset": int(_si * _gen_n),
                             # Wf-A81 — this seed's OWN failure buckets.
                             # `failure_reasons` on the event below is the
@@ -17873,14 +19215,22 @@ def main() -> int:
                 # means.
                 _gen_chem.update(summarise_decode_chemistry(_gen_chem_rows))
                 _gen_chem["n_samples"] = int(_gen_tot)
-                _gen_chem["decode_ratio"] = _gen_ok / max(_gen_tot, 1)
+                # Wf-A114/T85 — the denominator is the number of samples the
+                # eval DREW.  `max(_gen_tot, 1)` published a MEASURED
+                # 0.0000 for an eval that drew nothing; the rate is 0/0
+                # then, so it is None (NOT MEASURED) instead.
+                _gen_chem["decode_ratio"] = _measured_rate(_gen_ok, _gen_tot)
                 # Wf-A113 — ``gen_validity`` is a PARSE rate, not a molecule
                 # rate: ``C.C.C.C`` sanitises.  Both numbers are published
                 # side by side so the gap is a number rather than a caveat,
                 # and ``rdkit_parse_rate`` carries the honest name.
                 _n_mol = int(sum(1 for v in _gen_mol_valid if v))
-                _gen_chem["rdkit_parse_rate"] = _gen_ok / max(_gen_tot, 1)
-                _gen_chem["molecule_validity"] = _n_mol / max(_gen_tot, 1)
+                _gen_chem["rdkit_parse_rate"] = _measured_rate(
+                    _gen_ok, _gen_tot
+                )
+                _gen_chem["molecule_validity"] = _measured_rate(
+                    _n_mol, _gen_tot
+                )
                 _gen_chem["molecule_validity_n"] = _n_mol
                 _gen_chem["molecule_validity_total"] = int(_gen_tot)
                 _gen_chem["gen_validity_definition"] = (
@@ -18038,22 +19388,49 @@ def main() -> int:
                                  "largest_frag_frac"]
                             )
                         for _s in _gen_smiles:
-                            _s_out, _nfrag, _lfrac = _s, 1, 1.0
-                            try:
-                                from rdkit import Chem as _ChemLFF
+                            # Wf-A114 (2026-10-30) — the default for a SMILES
+                            # RDKit cannot parse was `n_frags_raw = 1` and
+                            # `largest_frag_frac = 1.0`, i.e. the row CLAIMED
+                            # to be one connected molecule holding all its
+                            # atoms.  A string that does not parse is not a
+                            # molecule at all, so the claim was false in the
+                            # one direction that matters: the column that
+                            # carries connectivity truth asserted connectivity
+                            # for exactly the rows where it is unknown.
+                            # MEASURED on the pools on disk: 1 row of 21,679
+                            # (molmetal/reports/cfm_c7_fullgen_2026_10_20/
+                            # generated_smiles.csv) carries the fabricated
+                            # `1`.  The sentinel is -1 = UNKNOWN, so a reader
+                            # testing `== 1` excludes the row instead of
+                            # counting it as a molecule, and a reader taking
+                            # the mean must skip it rather than believe it.
+                            #
+                            # The counts now come from `decode_chemistry` —
+                            # the SAME function the audit scores the pool
+                            # with — instead of a duplicated inline RDKit
+                            # block.  MEASURED bit-exact: over all 21,379
+                            # parseable rows in the generation pools on disk,
+                            # the two agree on `n_fragments` (0 differences)
+                            # and on `largest_fragment_frac` (0 differences).
+                            # The counts are of the RAW decode, before the
+                            # largest-fragment truncation below — which is
+                            # what the column name says.
+                            _s_out = _s
+                            _chem = decode_chemistry(_s)
+                            if _chem is None:
+                                _nfrag, _lfrac = -1, -1.0
+                            else:
+                                _nfrag = int(_chem["n_fragments"])
+                                _lfrac = float(_chem["largest_fragment_frac"])
+                            if _take_largest and _nfrag > 1:
+                                try:
+                                    from rdkit import Chem as _ChemLFF
 
-                                _m = _ChemLFF.MolFromSmiles(_s)
-                                if _m is not None:
-                                    _frs = _ChemLFF.GetMolFrags(
-                                        _m, asMols=True, sanitizeFrags=False
-                                    )
-                                    _nfrag = len(_frs)
-                                    _heavy = _m.GetNumHeavyAtoms()
-                                    _lfrac = (
-                                        max(f.GetNumHeavyAtoms() for f in _frs)
-                                        / _heavy
-                                    ) if _heavy else 0.0
-                                    if _take_largest and _nfrag > 1:
+                                    _m = _ChemLFF.MolFromSmiles(_s)
+                                    if _m is not None:
+                                        _frs = _ChemLFF.GetMolFrags(
+                                            _m, asMols=True, sanitizeFrags=False
+                                        )
                                         _best = max(
                                             _frs,
                                             key=lambda f: f.GetNumHeavyAtoms(),
@@ -18061,10 +19438,11 @@ def main() -> int:
                                         _s_out = _ChemLFF.MolToSmiles(_best)
                                         _n_trunc += 1
                                         _atoms_dropped += (
-                                            _heavy - _best.GetNumHeavyAtoms()
+                                            _m.GetNumHeavyAtoms()
+                                            - _best.GetNumHeavyAtoms()
                                         )
-                            except Exception:  # noqa: BLE001
-                                pass
+                                except Exception:  # noqa: BLE001
+                                    pass
                             _w.writerow(
                                 [int(epoch), _s_out, _nfrag, round(_lfrac, 4)]
                             )
@@ -18087,7 +19465,11 @@ def main() -> int:
                 #
                 # Re-uses the in-memory ``_gen_smiles`` collector (zero extra
                 # decode cost) and routes through decode_gate.gate_ratio with
-                # the standard MOSES floor (largest_frac_min=0.80, min_atoms=2).
+                # this repo's OWN project-strict floor (largest_frac_min=0.80,
+                # min_atoms=2).  NOT a published standard: MOSES
+                # (arXiv:1811.12823) has no fragment term and GuacaMol's
+                # is_valid (Brown et al., J. Chem. Inf. Model. 2019, 59(3),
+                # 1096-1108) requires only >= 1 fragment.  Behaviour unchanged.
                 # Gated on ``--eval-m14-per-atom`` so a run that did not opt in
                 # pays nothing and its per_epoch_metrics.json is bit-exact.
                 if bool(getattr(args, "eval_m14_per_atom", False)) and _gen_smiles:
@@ -18206,25 +19588,41 @@ def main() -> int:
                 f"{getattr(args, 'method', 'euler')}"
                 f"/{int(getattr(args, 'n_steps', 100))}"
             )
+            # Wf-A114/T85 — the log lines must not invent a 0.0000 for an
+            # eval that drew no samples: `nan` says NOT MEASURED, and it
+            # matches the sentinel the CSV/JSON carry.
+            _gv_txt = (
+                f"{_gen_ok / _gen_tot:.3f}"
+                if _gen_measured(_gen_tot)
+                else "nan"
+            )
+            _mv_raw = _gen_chem.get("molecule_validity")
+            _mv_txt = f"{float(_mv_raw):.3f}" if _mv_raw is not None else "nan"
             if _gen_per_seed:
                 # 2026-10-05 (D3) — the per-seed numbers are printed and
                 # emitted, never just averaged away.  A pooled 0.75 that is
                 # really (0.55, 0.75, 0.95) is a different claim from a
                 # pooled 0.75 that is (0.74, 0.75, 0.76), and only the split
                 # says which one happened.
-                _vals = [float(r["gen_validity"]) for r in _gen_per_seed]
-                _mean = sum(_vals) / len(_vals)
+                # Wf-A114 — a seed that drew no samples carries None, so it
+                # is DROPPED from the spread instead of counting as a 0.0.
+                _vals = [
+                    float(r["gen_validity"])
+                    for r in _gen_per_seed
+                    if r.get("gen_validity") is not None
+                ]
+                _mean = (sum(_vals) / len(_vals)) if _vals else 0.0
                 _gen_spread = (
                     max(_vals) - min(_vals) if len(_vals) > 1 else 0.0
                 )
                 print(
                     f"[cfm-gen] epoch={epoch} gen_validity="
-                    f"{_gen_ok / max(_gen_tot, 1):.3f} ({_gen_ok}/{_gen_tot}) "
+                    f"{_gv_txt} ({_gen_ok}/{_gen_tot}) "
                     # Wf-A113 — the same denominator, one fragment + seed
                     # metal required.  A gap here is loose-atom output that
                     # the parse rate counted as success.
                     f"molecule_validity="
-                    f"{float(_gen_chem.get('molecule_validity', 0.0) or 0.0):.3f} "
+                    f"{_mv_txt} "
                     f"({int(_gen_chem.get('molecule_validity_n', 0) or 0)}/"
                     f"{_gen_tot}) "
                     f"solver={_gen_solver} "
@@ -18252,9 +19650,11 @@ def main() -> int:
                         flush=True,
                     )
             else:
+                # Wf-A114/T85 — same sentinel as the per-seed branch above:
+                # an eval that drew no samples is NOT a measured 0.0000.
                 print(
                     f"[cfm-gen] epoch={epoch} gen_validity="
-                    f"{_gen_ok / max(_gen_tot, 1):.3f} ({_gen_ok}/{_gen_tot}) "
+                    f"{_gv_txt} ({_gen_ok}/{_gen_tot}) "
                     f"solver={_gen_solver}",
                     flush=True,
                 )
@@ -18336,12 +19736,24 @@ def main() -> int:
                         "gen_eval",
                         epoch=int(epoch),
                         seed=int(_row["seed"]),
-                        gen_validity=float(_row["gen_validity"]),
+                        gen_validity=(
+                            None
+                            if _row.get("gen_validity") is None
+                            else float(_row["gen_validity"])
+                        ),
                         # Wf-A113 — per-seed strict rate, so a seed whose
                         # parses were all loose atoms is visible on its own
                         # row instead of being averaged into the pool.
-                        molecule_validity=float(
-                            _row.get("molecule_validity", 0.0) or 0.0
+                        molecule_validity=(
+                            None
+                            if _row.get("molecule_validity") is None
+                            else float(_row["molecule_validity"])
+                        ),
+                        # Wf-A114 — the denominator beside the rate, so an
+                        # unmeasured seed is legible without the reader
+                        # having to divide anything.
+                        molecule_validity_n=int(
+                            _row.get("molecule_validity_n", 0) or 0
                         ),
                         n_ok=int(_row["n_ok"]),
                         n_total=int(_row["n_total"]),
@@ -18449,10 +19861,23 @@ def main() -> int:
         # reuses these three values instead of recomputing them, so the
         # recorded criterion and the criterion that actually gated can never
         # disagree.
+        # Wf-A114 (2026-10-30) — the HONEST generation numbers, computed ONCE
+        # so the early-stop call, the epoch record and the event stream cannot
+        # disagree about whether the generation eval ran at all.
+        #
+        # `gen_validity` is None when `gen_validity_n == 0` (the eval drew no
+        # samples).  The old expression `_gen_ok / max(_gen_tot, 1)` turned
+        # that into a MEASURED 0.0000, which is indistinguishable from "every
+        # sample the model drew failed to parse".  MEASURED on disk (Wf-A114,
+        # 2026-10-30): 119 of 496 generation rows across 25 runs carried that
+        # fabricated 0.0000, two of them on LAST-epoch rows — i.e. the
+        # headline number of those runs was invented by the writer.
+        _gen_fields = _gen_metric_fields(_gen_ok, _gen_tot, _gen_chem)
+        _gen_validity_rate: Optional[float] = _gen_fields["gen_validity"]
         _es_name, _es_value, _es_note = resolve_early_stop_criterion(
             str(getattr(args, "early_stop_metric", DEFAULT_EARLY_STOP_METRIC)),
             decode_ratio=decode_ratio,
-            gen_validity=_gen_ok / max(_gen_tot, 1),
+            gen_validity=_gen_validity_rate,
             gen_n=int(_gen_tot),
             bond_exact_type_rate=float(_bond_acc.get("bond_exact_type_rate", 0.0)),
             bond_n_scored=float(_bond_acc.get("n_scored", 0.0)),
@@ -18468,11 +19893,11 @@ def main() -> int:
             # generation block only fills `_gen_chem` when the eval ran, so a
             # `gen_eval_n: 0` run passes None and degrades instead of gating
             # on a fabricated 0.0.
-            molecule_validity=(
-                float(_gen_chem["molecule_validity"])
-                if "molecule_validity" in _gen_chem
-                else None
-            ),
+            #
+            # Wf-A114 — read from the ONE helper the epoch record also uses,
+            # so the criterion and the record cannot disagree about whether
+            # the strict rate was measured.
+            molecule_validity=_gen_fields["gen_molecule_validity"],
         )
         if _es_note and epoch == 0:
             print(
@@ -18678,16 +20103,12 @@ def main() -> int:
                     else 0.0
                 )
             ),
-            gen_validity=_gen_ok / max(_gen_tot, 1),
-            gen_validity_val=_gen_ok,
-            gen_validity_n=_gen_tot,
-            # Wf-A113 — published next to the parse rate, same denominator.
-            gen_molecule_validity=float(
-                _gen_chem.get("molecule_validity", 0.0) or 0.0
-            ),
-            gen_molecule_validity_n=int(
-                _gen_chem.get("molecule_validity_n", 0) or 0
-            ),
+            # Wf-A114 (2026-10-30) — the generation fields come from ONE
+            # helper (`_gen_metric_fields`), so the epoch record, the CSV
+            # row and the event stream cannot disagree.  The RATE columns
+            # carry None when the generation eval drew no samples, so "not
+            # measured" and "measured 0.0" are different things on disk.
+            **_gen_fields,
             gen_solver=_gen_solver,
             gen_eval_seeds=",".join(str(s) for s in _gen_seeds)
             if _gen_per_seed
@@ -18695,36 +20116,16 @@ def main() -> int:
             gen_eval_n=int(_gen_n) if _gen_per_seed else 0,
             gen_eval_per_seed=[dict(r) for r in _gen_per_seed],
             gen_seed_spread=float(_gen_spread),
-            gen_largest_fragment_frac=float(
-                _gen_chem.get("largest_fragment_frac_mean", 0.0)
-            ),
-            gen_single_fragment_ratio=float(
-                _gen_chem.get("single_fragment_ratio", 0.0)
-            ),
-            gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
-            gen_mean_heavy_atoms=float(_gen_chem.get("mean_heavy_atoms", 0.0)),
-            gen_rings_per_mol=float(_gen_chem.get("rings_per_mol_mean", 0.0) or 0.0),
-            gen_ring_5_6_share=float(_gen_chem.get("ring_5_6_share", 0.0) or 0.0),
-            gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
-            gen_conditional_success=float(
-                _gen_chem.get("conditional_success", 0.0) or 0.0
-            ),
             gen_conditional_n=int(_gen_chem.get("conditional_n", 0) or 0),
             gen_ring_size_distribution=json.dumps(
                 _gen_chem.get("ring_size_distribution", {}) or {}
             ),
-            # Wf-A107f — the same profile on the pre-assembly graph.  Reading
-            # `gen_raw_*` beside `gen_ring_*` is what separates a chemistry
-            # change from an assembly change (§6.162 measured a 27x gap).
-            gen_raw_rings_per_mol=float(
-                _gen_chem.get("raw_rings_per_mol_mean", 0.0) or 0.0
-            ),
-            gen_raw_ring_5_6_share=float(
-                _gen_chem.get("raw_ring_5_6_share", 0.0) or 0.0
-            ),
-            gen_raw_ring_3_share=float(
-                _gen_chem.get("raw_ring_3_share", 0.0) or 0.0
-            ),
+            # Wf-A107f — the same profile on the pre-assembly graph, and the
+            # SA block, come from `**_gen_fields` above (one helper, one
+            # truth).  Reading `gen_raw_*` beside `gen_ring_*` is what
+            # separates a chemistry change from an assembly change (§6.162
+            # measured a 27x gap).
+            #
             # Wf-A107f — epoch mean of the FM term.  Non-zero is the only
             # artifact-level evidence that `use_fm_objective: true` reached
             # the objective.
@@ -18734,14 +20135,6 @@ def main() -> int:
             loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
             # Wf-A113 (T42/D42) — the CE pair and the class statistics.
             **_bond_ce_aux_fields(),
-            # Wf-R43 m4 — real SA on generated molecules.
-            gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
-            gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
-            gen_sa_target=float(_gen_chem.get("sa_target", 0.0) or 0.0),
-            gen_sa_synthesizable_rate=float(
-                _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
-            ),
-            gen_sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
             # Round-4 E4 — the criterion that gates, and the caveat on it.
             early_stop_metric=_es_name,
             early_stop_value=_es_value,
@@ -18867,17 +20260,11 @@ def main() -> int:
                 # geometry).  Emitted so the TUI dashboard can chart it; it
                 # was already in per_epoch_metrics.json but not in the
                 # structured event stream.
-                gen_validity=float(_gen_ok / max(_gen_tot, 1)),
-                gen_validity_val=int(_gen_ok),
-                gen_validity_n=int(_gen_tot),
-                # Wf-A113 — the strict rate, so the event stream can chart
-                # the parse/molecule gap without reading the epoch JSON.
-                gen_molecule_validity=float(
-                    _gen_chem.get("molecule_validity", 0.0) or 0.0
-                ),
-                gen_molecule_validity_n=int(
-                    _gen_chem.get("molecule_validity_n", 0) or 0
-                ),
+                # Wf-A114 — the event stream carries the SAME sentinel as
+                # the epoch record: None (JSON null) when the generation eval
+                # drew no samples, so a dashboard cannot chart a fabricated
+                # 0.0000 as a measurement.  One helper, one truth.
+                **_gen_fields,
                 gen_solver=str(_gen_solver),
                 # 2026-10-05 (D3) — the per-seed split, as a compact string
                 # because emit_event stringifies non-scalars.  The structured
@@ -18887,52 +20274,15 @@ def main() -> int:
                 else "",
                 gen_eval_n=int(_gen_n) if _gen_per_seed else 0,
                 gen_seed_spread=float(_gen_spread),
-                gen_largest_fragment_frac=float(
-                    _gen_chem.get("largest_fragment_frac_mean", 0.0)
-                ),
-                gen_single_fragment_ratio=float(
-                    _gen_chem.get("single_fragment_ratio", 0.0)
-                ),
-                gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
-                gen_rings_per_mol=float(
-                    _gen_chem.get("rings_per_mol_mean", 0.0) or 0.0
-                ),
-                gen_ring_5_6_share=float(
-                    _gen_chem.get("ring_5_6_share", 0.0) or 0.0
-                ),
-                gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
-                gen_conditional_success=float(
-                    _gen_chem.get("conditional_success", 0.0) or 0.0
-                ),
                 gen_conditional_n=int(_gen_chem.get("conditional_n", 0) or 0),
                 gen_ring_size_distribution=json.dumps(
                     _gen_chem.get("ring_size_distribution", {}) or {}
-                ),
-                # Wf-A107f — pre-assembly counterpart (see the primary site).
-                gen_raw_rings_per_mol=float(
-                    _gen_chem.get("raw_rings_per_mol_mean", 0.0) or 0.0
-                ),
-                gen_raw_ring_5_6_share=float(
-                    _gen_chem.get("raw_ring_5_6_share", 0.0) or 0.0
-                ),
-                gen_raw_ring_3_share=float(
-                    _gen_chem.get("raw_ring_3_share", 0.0) or 0.0
                 ),
                 fm_term=float(_LAST_EPOCH_TERM_MEANS.get("fm_term", 0.0)),
                 # Wf-A108e — see the primary site.
                 loss_terms=dict(_LAST_EPOCH_TERM_MEANS),
                 # Wf-A113 (T42/D42) — see the primary site.
                 **_bond_ce_aux_fields(),
-                # Wf-R43 m4 — real SA on generated molecules (see the
-                # EpochMetrics field docs for why `gen_sa_observed` is the
-                # field to branch on).
-                gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
-                gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
-                gen_sa_target=float(_gen_chem.get("sa_target", 0.0) or 0.0),
-                gen_sa_synthesizable_rate=float(
-                    _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
-                ),
-                gen_sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
                 # Round-3 D1 — assemble diagnostics.  `assemble_loss` is the
                 # SOFT surrogate that entered the objective; `assemble_fragments`
                 # and `assemble_largest_fragment_frac` are the EXACT hard counts
@@ -19490,6 +20840,16 @@ def main() -> int:
             "velocity_head_init": str(
                 getattr(args, "velocity_head_init", "zero")
             ),
+            # Wf-A114 — the two levers that were MISSING from the provenance
+            # block.  `velocity_head_init_knots` takes the value 9 on some
+            # configs on disk and 5 on others, so a run pair that differed
+            # only in the knot count was indistinguishable in its own
+            # artifact; `vector_channels` is the width of the per-atom
+            # vector head, which `velocity_head` names but does not size.
+            "velocity_head_init_knots": int(
+                getattr(args, "velocity_head_init_knots", 0) or 0
+            ),
+            "vector_channels": int(getattr(args, "vector_channels", 0)),
             "vector_channel_norm_gain": str(
                 getattr(args, "vector_channel_norm_gain", "learnable")
             ),
@@ -19620,10 +20980,29 @@ def main() -> int:
             "fm_noise_sigma": float(getattr(args, "fm_noise_sigma", 1.0)),
             # Wf-A108a/c — which coordinate head this run actually built.
             # A reader must not have to infer it from the parameter count.
+            #
+            # Wf-A114 (2026-10-30) — the block now carries ALL SIX head
+            # levers, not two.  The two it already had (`velocity_head`,
+            # `vector_channels`) do not separate two runs from each other:
+            # MEASURED on the configs on disk, `velocity_head_init_knots`
+            # takes the value 9 on some configs and 5 on others, and the
+            # artifact could not tell those two runs apart at all.  With a
+            # 2x2 attribution (head x init) undecidable, the generation
+            # result could not be attributed to a head change.
             "velocity_head": str(
                 getattr(args, "velocity_head", "radial")
             ),
             "vector_channels": int(getattr(args, "vector_channels", 0)),
+            "velocity_head_init": str(
+                getattr(args, "velocity_head_init", "zero")
+            ),
+            "velocity_head_init_knots": int(
+                getattr(args, "velocity_head_init_knots", 0) or 0
+            ),
+            "vector_channel_norm_gain": str(
+                getattr(args, "vector_channel_norm_gain", "learnable")
+            ),
+            "t_embedding_dim": int(getattr(args, "t_embedding_dim", 0) or 0),
             "metal_frame_channels": bool(
                 getattr(args, "metal_frame_channels", False)
             ),
@@ -19800,6 +21179,16 @@ def main() -> int:
             "bond_f1 / bond_recall and with the gen_* chemistry fields "
             "(largest_fragment_frac, single_fragment_ratio, metal_ratio)."
         ),
+        # Wf-A114 (2026-10-30) — the sentinel, stated where a reader meets
+        # it.  Before this change an epoch whose generation eval drew no
+        # samples carried a MEASURED 0.0000 in the rate columns,
+        # indistinguishable from "every sample failed to parse".  The rate
+        # columns are now null (JSON) / the literal "nan" (CSV) in that
+        # case, and `gen_measured` says which case an epoch is in.
+        "gen_metric_sentinel_note": (
+            "generation metrics are null/nan when the epoch drew no samples "
+            "(gen_validity_n == 0): NOT MEASURED, not 0.0"
+        ),
         "honest_framing": (
             f"CFM retrain complete on {device}. "
             f"Gating metric: {_gate_name} = {_best_gate:.4f} (best @ epoch "
@@ -19827,9 +21216,39 @@ def main() -> int:
         # run intended to write.
         "provenance": _provenance_block(),
     }
-    (out_dir / "per_epoch_metrics.json").write_text(
-        json.dumps(metrics_payload, indent=2) + "\n"
+    # Wf-A114E (2026-10-30) — L3: the record carries its run identity and
+    # does not overwrite a record that belongs to a DIFFERENT run.  Three
+    # checks, because MEASURED on disk no single one of them can separate
+    # every pair (see the guard section above).
+    _fingerprint = compute_run_fingerprint(metrics_payload["config"])
+    metrics_payload["run_fingerprint"] = _fingerprint
+    metrics_payload["run_fingerprint_note"] = (
+        "the config keys that identify this run (the WHOLE config block "
+        "minus the derived ones: lr_live, fm_prior_scale).  A record whose "
+        "run_fingerprint differs belongs to a DIFFERENT run: this trainer "
+        "never destroys it — it writes its own record under a run-scoped "
+        "filename instead, and a record it is allowed to replace is kept "
+        "under a run-scoped filename first (Wf-A114E L3, D1-D3)."
     )
+    _epoch_indices = [
+        int(m.epoch) for m in per_epoch if getattr(m, "epoch", None) is not None
+    ]
+    _record = resolve_record_paths(out_dir, _fingerprint, _epoch_indices)
+    write_text_atomic(_record["json_path"], json.dumps(metrics_payload, indent=2) + "\n")
+    if not _record["canonical"]:
+        print(
+            "[cfm-run][WARNING] refusing to overwrite a per-epoch record that "
+            f"belongs to a different run ({_record['reason']}).  This run's "
+            f"record was written to {_record['json_path']}.",
+            flush=True,
+        )
+    if _record.get("displaced"):
+        print(
+            "[cfm-run][WARNING] this run's record replaces a record of a "
+            "DIFFERENT population; the replaced record was preserved at "
+            f"{', '.join(_record['displaced'])} instead of being destroyed.",
+            flush=True,
+        )
     # Wf-A24 (2026-10-13) — Track E paper-table emit.
     #
     # Build the canonical paper-table row (m14 decode + ADMET8 + m4/m5/m7
@@ -19897,141 +21316,37 @@ def main() -> int:
             wall_time_s=float(total_elapsed),
             n_epochs=int(args.epochs),
             n_epochs_run=len(per_epoch),
+            # Wf-A114E — where this run's record landed and which run it
+            # belongs to.  `events.jsonl` is append-only, so this is the
+            # one place a population states its own identity without
+            # reading a file a later run may have replaced.
+            record_json_path=str(_record["json_path"]),
+            record_canonical=bool(_record["canonical"]),
+            # Wf-A114E D2 — the run-scoped copies of a record this run's
+            # write replaced.  Empty when nothing was displaced.
+            record_displaced=list(_record.get("displaced") or []),
+            run_fingerprint=json.dumps(_fingerprint, sort_keys=True),
         )
     except Exception:
         pass
     # Final CSV (for grep).
-    csv_path = out_dir / "per_epoch_metrics.csv"
+    # Wf-A114E — the CSV goes to the SAME path as the JSON (the run-scoped
+    # one when the guard refused the fixed name), so the two artifacts of a
+    # directory always describe the SAME population.
+    csv_path = _record["csv_path"]
     with csv_path.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(
-            [
-                "epoch",
-                "wall_time_s",
-                "train_loss",
-                "bond_ce",
-                "wasserstein",
-                "catherine_pass",
-                "decode_ratio",
-                "decode_ratio_val",
-                "decode_ratio_n",
-                # Wf-A53 — connectivity beside the ratio.  A sanitised
-                # string is not a connected molecule.
-                "decode_n_single_fragment",
-                "decode_single_fragment_ratio",
-                "decode_fragments_mean",
-                "decoding_attempted",
-                # Round-4 E3 — the bond columns were missing here entirely, so
-                # the CSV (the grep surface) silently carried no bond number at
-                # all even when the JSON did.
-                "bond_precision",
-                "bond_recall",
-                "bond_f1",
-                "bond_exact_match",
-                "bond_exact_type_rate",
-                "bond_set_exact_rate",
-                "bond_type_macro_f1_pooled",
-                "bond_pr_auc",
-                # Wf-A99 — the definition travels with the number, in the
-                # grep surface as well as the JSON.
-                "bond_pr_auc_definition",
-                "bond_pos_rate",
-                "bond_n_scored",
-                "bond_n_truth_bonds",
-                "gen_validity",
-                "gen_validity_val",
-                "gen_validity_n",
-                "gen_solver",
-                "gen_eval_seeds",
-                "gen_eval_n",
-                "gen_seed_spread",
-                "gen_largest_fragment_frac",
-                "gen_single_fragment_ratio",
-                "gen_metal_ratio",
-                "gen_mean_heavy_atoms",
-                # Wf-A107f — the ring axis OPT-2 says decides the generation
-                # question was absent from the grep surface entirely: the CSV
-                # carried no ring column, so a `grep` over a run could not see
-                # the number the run was judged on.  Raw = pre-assembly graph.
-                "gen_rings_per_mol",
-                "gen_ring_5_6_share",
-                "gen_ring_3_share",
-                "gen_raw_rings_per_mol",
-                "gen_raw_ring_5_6_share",
-                "gen_raw_ring_3_share",
-                # Wf-A107f — did the flow-matching term contribute at all?
-                "fm_term",
-                # Wf-R43 m4 — the real SA observation columns.
-                "gen_sa_observed",
-                "gen_sa_mean",
-                "gen_sa_target",
-                "gen_sa_synthesizable_rate",
-                "gen_sa_scored",
-                # Round-4 E4 — the criterion and its value, so the grep
-                # surface carries the same control the JSON does.
-                "early_stop_metric",
-                "early_stop_value",
-                "early_stop_improved",
-                "early_stop_criterion_note",
-            ]
-        )
+        # Wf-A114 (2026-10-30) — ONE header, ONE row builder.  The header
+        # literal and the row literal used to be maintained by hand in two
+        # places, and a one-sided edit shifted every cell after the change
+        # without any error (the CSV still parsed).  `csv_row` now asserts
+        # its own length against `CSV_HEADER`, so the two cannot drift.
+        w.writerow(list(CSV_HEADER))
         for m in per_epoch:
-            w.writerow(
-                [
-                    m.epoch,
-                    f"{m.wall_time_s:.3f}",
-                    f"{m.train_loss:.5f}",
-                    f"{m.bond_ce_loss:.5f}",
-                    f"{m.wasserstein_loss:.5f}",
-                    int(m.catherine_audit_pass),
-                    f"{m.decode_ratio_rdkit_strict:.4f}",
-                    m.decode_ratio_val,
-                    m.decode_ratio_n,
-                    m.decode_n_single_fragment,
-                    f"{m.decode_single_fragment_ratio:.4f}",
-                    f"{m.decode_fragments_mean:.2f}",
-                    int(m.decoding_attempted),
-                    f"{m.bond_precision:.4f}",
-                    f"{m.bond_recall:.4f}",
-                    f"{m.bond_f1:.4f}",
-                    f"{m.bond_exact_match:.4f}",
-                    f"{m.bond_exact_type_rate:.4f}",
-                    f"{m.bond_set_exact_rate:.4f}",
-                    f"{m.bond_type_macro_f1_pooled:.4f}",
-                    f"{m.bond_pr_auc:.4f}",
-                    m.bond_pr_auc_definition,
-                    f"{m.bond_pos_rate:.4f}",
-                    m.bond_n_scored,
-                    m.bond_n_truth_bonds,
-                    f"{m.gen_validity:.4f}",
-                    m.gen_validity_val,
-                    m.gen_validity_n,
-                    m.gen_solver,
-                    m.gen_eval_seeds,
-                    m.gen_eval_n,
-                    f"{m.gen_seed_spread:.4f}",
-                    f"{m.gen_largest_fragment_frac:.4f}",
-                    f"{m.gen_single_fragment_ratio:.4f}",
-                    f"{m.gen_metal_ratio:.4f}",
-                    f"{m.gen_mean_heavy_atoms:.2f}",
-                    f"{m.gen_rings_per_mol:.4f}",
-                    f"{m.gen_ring_5_6_share:.4f}",
-                    f"{m.gen_ring_3_share:.4f}",
-                    f"{m.gen_raw_rings_per_mol:.4f}",
-                    f"{m.gen_raw_ring_5_6_share:.4f}",
-                    f"{m.gen_raw_ring_3_share:.4f}",
-                    f"{m.fm_term:.6f}",
-                    int(m.gen_sa_observed),
-                    f"{m.gen_sa_mean:.4f}",
-                    f"{m.gen_sa_target:.2f}",
-                    f"{m.gen_sa_synthesizable_rate:.4f}",
-                    m.gen_sa_scored,
-                    m.early_stop_metric,
-                    f"{m.early_stop_value:.6f}",
-                    int(m.early_stop_improved),
-                    m.early_stop_criterion_note,
-                ]
-            )
+            # Wf-A114 — the row builder renders an UNMEASURED rate as the
+            # literal "nan" and a measured one as a number; it never writes
+            # 0.0000 for an epoch that drew no samples.
+            w.writerow(csv_row(m))
     # Wasserstein decay check.
     w2_history = [m.wasserstein_loss for m in per_epoch]
     w2_decay_pass = wasserstein_decay_check(w2_history, window=10, tol=1e-3)
@@ -20139,8 +21454,8 @@ def main() -> int:
         "",
         "## Outputs",
         "",
-        f"- `{args.out_dir}/per_epoch_metrics.json` (full per-epoch record)",
-        f"- `{args.out_dir}/per_epoch_metrics.csv` (flat CSV)",
+        f"- `{args.out_dir}/{_record['json_path'].name}` (full per-epoch record)",
+        f"- `{args.out_dir}/{_record['csv_path'].name}` (flat CSV)",
         f"- `{args.out_dir}/wasserstein_decay.json` (W₂ decay check)",
         f"- `{args.ckpt_dir}/cfm_yuelbond_wasserstein.pt` (best checkpoint)",
         f"- `{args.out_dir}/synthesis.md` (this file)",
@@ -20159,6 +21474,24 @@ def main() -> int:
         "- Wf-123 P2 (pocket-specific closure-bias module)",
         "- Wf-123 P3 (cross-module integration verification)",
     ]
+    if not _record["canonical"]:
+        lines += [
+            "",
+            "> **Record path (Wf-A114E).** This run's per-epoch record was NOT "
+            "written to `per_epoch_metrics.json`: that file belongs to a "
+            f"different run ({_record['reason']}). The record written by this "
+            "run is the run-scoped file named under Outputs above; the other "
+            "run's record was left untouched.",
+        ]
+    if _record.get("displaced"):
+        lines += [
+            "",
+            "> **Replaced record (Wf-A114E D2).** This run's record replaced "
+            "the record of a DIFFERENT population in the same directory. That "
+            "record was NOT destroyed: it was preserved at "
+            + ", ".join(f"`{p}`" for p in _record["displaced"])
+            + ".",
+        ]
     (out_dir / "synthesis.md").write_text("\n".join(lines) + "\n")
     if _abort_degraded:
         print(

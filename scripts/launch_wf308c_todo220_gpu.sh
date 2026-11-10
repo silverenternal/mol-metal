@@ -29,7 +29,7 @@
 #   #    smoke; this script skips the smoke if env var WF208C_SMOKE_DONE=1).
 #   # 2. To authorise the GPU run:
 #   touch /tmp/USER_OK_WF308C
-#   bash molmetal/scripts/launch_wf308c_todo220_gpu.sh
+#   bash scripts/launch_wf308c_todo220_gpu.sh
 #   # 3. To explicitly skip GPU (default behaviour):
 #   unset WF308C_RUN_GPU   # (the default is "no" without USER_OK file)
 #
@@ -52,7 +52,21 @@ PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 # of the caller's CWD.
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# Wf-A269 wave-3 (2026-11-02) — REPAIR.  The repo root was derived with
+# a TWO-hop ``../..``.  That form was carried over verbatim from the
+# launcher's previous home (``TODO/archive/wf437_simplify/``), where it
+# resolved to ``<repo>/TODO`` — already one hop SHORT of the repo root.
+# From ``scripts/`` (one level deep) it resolves to the repo's PARENT,
+# ``/home/hugo/codes``, so the launcher cd's outside the repo and creates
+# its output tree there.  MEASURED: ``cd <repo>/scripts/../.. && pwd`` ->
+# ``/home/hugo/codes``.  Every other ``scripts/`` launcher uses ONE hop
+# (``launch_wf394_lambda_cfm.sh:40``, ``launch_wf380_scaffold_loss.sh:70``,
+# ``launch_wf394a1_lambda_cfm_patch.sh:63``,
+# ``launch_wf388_a1_metal_coord_retrain.sh:139``,
+# ``wf406a4_launch_wf246c_metal_coord_retrain.sh:60``).
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+#   PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 VENV_PY="/home/hugo/codes/mol-metal/.venv/bin/python"
@@ -98,10 +112,10 @@ if [ "${USER_OK:-0}" != "1" ] && [[ ! -f "${USER_OK_FILE}" ]]; then
 To authorise the full GPU run, create the marker file and re-run:
 
     touch ${USER_OK_FILE}
-    bash molmetal/scripts/launch_wf308c_todo220_gpu.sh
+    bash scripts/launch_wf308c_todo220_gpu.sh
 
 Or set USER_OK=1 in env:
-    USER_OK=1 bash molmetal/scripts/launch_wf308c_todo220_gpu.sh
+    USER_OK=1 bash scripts/launch_wf308c_todo220_gpu.sh
 
 Then monitor via:
     tail -f ${TEMPORAL_OUT_DIR}/run.log
@@ -136,15 +150,35 @@ fi
 mkdir -p "${TEMPORAL_OUT_DIR}" "${NCI60_OUT_DIR}"
 
 # --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) -------------------------------
+# Wf-A269 wave-17 (2026-11-03) — FOUR repairs to this block.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+# the pre-fix block captured the pre-flight's CONSOLE STREAM (stdout + stderr
+# merged by `2>&1`) into a file named `preflight.json` and read the verdict
+# out of it with `grep -q '"fail": 0'`.  That predicate was TIMEOUT-BLIND (a
+# report with 1 TIMEOUT and 0 FAILs matched it) and could not see a TIMEOUT
+# at all, so a gate whose measurement was NOT obtained counted as a PASS
+# (Wf-A135).
+#  (1) `--json PATH` writes a REAL JSON document; the console transcript
+#      goes to a sibling .log, so the report path stays pure JSON.
+#  (2) the verdict comes from the repo's own FAIL-CLOSED consumer
+#      (molmetal/scripts/wf_launch_gate_verdict.py).
+#  (3) the previous run's report is removed first ("stale is treated as
+#      missing"), so a crashed pre-flight leaves no PASS report behind.
 PREFLIGHT_OUT="${NCI60_OUT_DIR}/preflight.json"
+PREFLIGHT_LOG="${PREFLIGHT_OUT%.json}.log"
+mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
+rm -f "${PREFLIGHT_OUT}"
 echo "[wf308c-launch] pre-flight check begin"
 PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
     /home/hugo/codes/mol-metal/molmetal/scripts/pre_flight_check.py --pipeline launch \
-    >"${PREFLIGHT_OUT}" 2>&1 \
-    || { echo "[wf308c-launch] pre_flight_check FAIL — see ${PREFLIGHT_OUT}" >&2; exit 1; }
-grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
-    || { echo "[wf308c-launch] pre_flight_check has FAILs — see ${PREFLIGHT_OUT}" >&2; exit 1; }
-echo "[wf308c-launch] pre-flight PASS"
+    --json "${PREFLIGHT_OUT}" \
+    >"${PREFLIGHT_LOG}" 2>&1 \
+    || { echo "[wf308c-launch] pre_flight_check FAIL — see ${PREFLIGHT_LOG}" >&2; exit 1; }
+pf_verdict="$(PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    /home/hugo/codes/mol-metal/molmetal/scripts/wf_launch_gate_verdict.py \
+    preflight --report "${PREFLIGHT_OUT}" 2>&1)" \
+    || { echo "[wf308c-launch] pre_flight_check verdict is not PASS — ${pf_verdict} (see ${PREFLIGHT_OUT})" >&2; exit 1; }
+echo "[wf308c-launch] pre-flight PASS — ${pf_verdict}"
 
 # Emit DRY_RUN.log + plan.json (Wf-363-A1 schema)
 DRY_LOG="${NCI60_OUT_DIR}/DRY_RUN.log"
@@ -175,7 +209,8 @@ EOF
 echo "[wf308c-launch] === Stage A: temporal-split 5-metal × 5-seed × 50-epoch ==="
 # --user-ok REQUIRED: propagate USER_OK gate to the trainer call.
 # WF308C deliberate GPU-1 route — override via WF308C_CUDA_VISIBLE_DEVICES; do not flip.
-if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
+# Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> ${WF308C_CUDA_VISIBLE_DEVICES:-0}.
+if ! CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${WF308C_CUDA_VISIBLE_DEVICES:-0}}" \
      "${VENV_PY}" molmetal/scripts/wf219_temporal_split_driver.py \
         --csv "${TEMPORAL_CSV}" \
         --train-cutoff 2024-01-01 \
@@ -201,7 +236,8 @@ echo "[wf308c-launch] Stage A OK. Summary: ${TEMPORAL_SUMMARY}"
 # ---------------------------------------------------------------------------
 echo "[wf308c-launch] === Stage B: NCI-60 9-cell × 3-seed × 50-epoch ==="
 # WF308C deliberate GPU-1 route — override via WF308C_CUDA_VISIBLE_DEVICES; do not flip.
-if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
+# Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> ${WF308C_CUDA_VISIBLE_DEVICES:-0}.
+if ! CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-${WF308C_CUDA_VISIBLE_DEVICES:-0}}" \
      "${VENV_PY}" molmetal/scripts/nci60_9cell_chemprop_driver.py \
         --csv "${NCI60_CSV}" \
         --cells MCF7 A2780 A549 HCT116 PC3 HL60 HCT-116 A2780cis DU145 \

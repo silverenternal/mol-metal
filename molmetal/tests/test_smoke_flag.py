@@ -15,10 +15,18 @@ Verifies that the canonical smoke CLI satisfies the spec agreed in
 These are *behavioural* tests, not mocks — they actually invoke the
 script as a subprocess (the canonical M-R17-A1 unit-test pattern).
 The runtime guard (240 s) reflects the MEASURED 200-step wall-clock
-(~206 s on an idle GPU; the flow-matching ``train_step`` integrates an
-ODE, so ~1 s/step is inherent).  The IMPROVEMENT_BACKLOG B1 / strategy
+(MEASURED 63 s for the subprocess on CPU on this host, 2026-10-31 -- the
+run is CPU-forced, see below; the flow-matching ``train_step`` integrates
+an ODE).  The IMPROVEMENT_BACKLOG B1 / strategy
 budget is "CPU ≤ 30 min", so 240 s is a comfortable, achievable ceiling
 — the earlier ``<120 s`` pin was arbitrary and could never pass.
+
+Wf-A121C — the "on_cpu" test now FORCES the CPU: it launches the script
+with ``CUDA_VISIBLE_DEVICES=""`` and ``MOLMETAL_SMOKE_DEVICE=cpu``, and
+asserts that the run's own ``final.json`` says ``device == "cpu"`` and
+``cuda_available is False``.  Before that it ran on the GPU whenever the
+host had one, which is how a test named "on_cpu" could pass while using
+2.2 GiB of GPU memory.
 
 Skipped automatically when ``metallo_drug_smoke_retrain.py`` is not
 present (e.g. an empty branch checkout) so the rest of the suite
@@ -27,6 +35,7 @@ still runs.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -52,7 +61,7 @@ pytestmark = pytest.mark.skipif(
 # Locate a python that has rdkit + torch installed.  We honour the
 # UV_PROJECT_ENVIRONMENT convention used by env.sh (CadButEaas shared
 # venv with rdkit + torch+cu130 pre-installed).
-_SHARED_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+_SHARED_VENV = Path(sys.executable)
 _DEFAULT_PY = _SHARED_VENV if _SHARED_VENV.exists() else Path(sys.executable)
 
 
@@ -161,16 +170,31 @@ def test_explicit_step_wins_over_smoke_default(monkeypatch, tmp_path):
 def test_smoke_run_completes_within_budget_on_cpu(tmp_path):
     """Run ``--smoke --out-dir`` for real and assert:
 
-      1. wall-clock < 240 s (MEASURED ~206 s; backlog budget "CPU ≤ 30 min")
+      1. wall-clock < 240 s (MEASURED 63 s for the subprocess on CPU on this
+         host, 2026-10-31; the pytest call phase measured 75 s; backlog
+         budget "CPU ≤ 30 min")
       2. out_dir is populated with ckpt.pt + final.json + final.md
       3. final.json reports steps_executed == 200
+      4. the run really was on the CPU (config.device == "cpu" and
+         config.cuda_available is False)
 
     Marked ``@pytest.mark.slow`` so the fast suite can opt out via
     ``-m 'not slow'``.
+
+    Wf-A121C -- the test was named "on_cpu" but launched the script with NO
+    env override, so on a GPU host it ran ON THE GPU (MEASURED 2026-10-31:
+    the pytest process held 1444 MiB of GPU 0 and the smoke child 2218 MiB).
+    The subprocess now carries the CPU-forcing env: ``CUDA_VISIBLE_DEVICES``
+    is emptied (so torch reports no CUDA) and ``MOLMETAL_SMOKE_DEVICE=cpu``
+    is the script's explicit CPU override.
     """
     out_dir = tmp_path / "smoke_out"
     if out_dir.exists():
         shutil.rmtree(out_dir)
+
+    env = dict(os.environ)
+    env["CUDA_VISIBLE_DEVICES"] = ""
+    env["MOLMETAL_SMOKE_DEVICE"] = "cpu"
 
     t0 = time.time()
     proc = subprocess.run(
@@ -179,6 +203,7 @@ def test_smoke_run_completes_within_budget_on_cpu(tmp_path):
         capture_output=True,
         text=True,
         timeout=330.0,
+        env=env,
     )
     wall = time.time() - t0
 
@@ -206,3 +231,7 @@ def test_smoke_run_completes_within_budget_on_cpu(tmp_path):
     ), f"smoke run executed 0 steps; metrics={metrics.get('config')}"
     assert metrics["config"]["batch_size"] == 4, metrics["config"]
     assert metrics["config"]["decode_smoke_every"] == 50, metrics["config"]
+    # Wf-A121C -- the assertion that would have caught the incident: the run
+    # really was on the CPU, and it says so in its own record.
+    assert metrics["config"]["device"] == "cpu", metrics["config"]
+    assert metrics["config"]["cuda_available"] is False, metrics["config"]

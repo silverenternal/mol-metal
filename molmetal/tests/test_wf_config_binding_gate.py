@@ -27,6 +27,7 @@ passed, and the trainer then searched for one metal literally named
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import sys
 from pathlib import Path
@@ -56,6 +57,25 @@ def _write(tmp_path: Path, name: str, body: dict) -> Path:
     p = tmp_path / name
     p.write_text(yaml.safe_dump(body, sort_keys=False), encoding="utf-8")
     return p
+
+
+@contextlib.contextmanager
+def _declared_skip(gate_mod, name: str, reason: str):
+    """Temporarily declare `name` as a DECLARED-SKIP on the gate module.
+
+    The registry is module-level state, so the fixture must restore it —
+    otherwise a test would leave a declaration behind and silently change the
+    verdict of a later audit.
+    """
+    prior = gate_mod.DECLARED_SKIPPED_CONFIGS.get(name)
+    gate_mod.DECLARED_SKIPPED_CONFIGS[name] = reason
+    try:
+        yield
+    finally:
+        if prior is None:
+            gate_mod.DECLARED_SKIPPED_CONFIGS.pop(name, None)
+        else:
+            gate_mod.DECLARED_SKIPPED_CONFIGS[name] = prior
 
 
 def _shapes(**flags) -> dict[str, dict]:
@@ -250,9 +270,24 @@ class TestTypeChecking:
         Worth pinning separately: a fixture hand-written to match the
         implementation would keep passing if `_actions_by_dest` started
         returning the wrong field, which is the whole gate.
+
+        2026-11-04 (Wf-A269 frontier sweep) — the PRE-REPAIR expectation is
+        preserved VERBATIM per AGENTS.md §5.5 rule #6:
+
+            assert shapes["metals"] == {"nargs": "+", "type": None, "option": "--metals"}
+
+        The gate now records a FOURTH field, ``choices`` (the action's
+        declared value set, ``None`` when it declares none), so the
+        dict-equality assertion needed the new key.  The three fields it
+        checked are unchanged.
         """
         shapes = _shapes(**{"--metals": {"nargs": "+"}, "--lr": {"type": float}, "--device": {}})
-        assert shapes["metals"] == {"nargs": "+", "type": None, "option": "--metals"}
+        assert shapes["metals"] == {
+            "nargs": "+",
+            "type": None,
+            "option": "--metals",
+            "choices": None,
+        }
         assert shapes["lr"]["type"] is float
         assert shapes["device"]["option"] == "--device"
 
@@ -389,6 +424,12 @@ class TestEndToEnd:
         report = gate.audit()
         assert "n_type_violations" in report
         assert report["n_type_violations"] == 0, report["violations"]
+        # 2026-11-04 (Wf-A269 frontier sweep) — the SAME argument applied to
+        # the choices tier: a counter that is 0 because the tier never fired
+        # is not evidence.  The tier's own load-bearing test lives in
+        # molmetal/tests/test_wfa269_config_binding_choices.py.
+        assert "n_choices_violations" in report
+        assert report["n_choices_violations"] == 0, report["violations"]
 
     def test_no_config_is_audited_without_its_actions(self):
         """A config whose parser yielded no actions gets NO type check.
@@ -439,19 +480,69 @@ class TestSkippedConfigsAreNotSilent:
     MEASURED 2026-10-21: eight tracked ``configs/msrs_dmpnn_*.yaml`` files
     declared no ``entry.script``. ``n_configs_skipped`` was 8, the gate printed
     PASS, and nothing had looked at them.
+
+    **CHANGED 2026-11-04 (Wf-A269).**  The 2026-10-21 repair made the skip
+    visible in the report but left the VERDICT alone: an undeclared skip was
+    still a PASS unless the caller passed ``--strict``, and the pre-flight
+    calls this gate WITHOUT it.  MEASURED 2026-11-04: **2 of 261** configs
+    were skipped while the gate said PASS and its closing line claimed that
+    *every* config key reached a dest of its own ``entry.script`` parser —
+    a sentence that was false for every skipped config.  That is the
+    §6.269.17 DEAD-GATE class in its "skipped" costume: the check could PASS
+    without checking.
+
+    The contract now mirrors the loader's own three dispositions
+    (:data:`scripts._config_binding_gate.DECLARED_SKIPPED_CONFIGS`):
+
+    1. bound to a trainer → checked normally;
+    2. skipped **and declared** with a reason → reported as ``DECLARED-SKIP``,
+       not counted as an unchecked config, verdict unaffected;
+    3. skipped **and NOT declared** → a **violation**, always.
+
+    The mutation tests live in
+    ``molmetal/tests/test_wfa269_config_binding_declared_skips.py``.
+
+    SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    the assertion this test used to make was ``assert report["verdict"] ==
+    "PASS"`` for an undeclared skip — i.e. the gate passed while leaving the
+    config unchecked.  That was the defect, and the test locked it in.
     """
 
     def test_a_config_without_an_entry_script_is_skipped_by_default(self, tmp_path):
+        """CHANGED 2026-11-04: an UNDECLARED skip is now a FAIL, not a PASS."""
         cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
         report = gate.audit(configs=[cfg])
         assert report["n_configs_skipped"] == 1
-        assert report["verdict"] == "PASS"
+        assert report["verdict"] == "FAIL", (
+            "an undeclared skip produced a PASS verdict — the gate can still "
+            "pass without checking"
+        )
 
     def test_strict_turns_a_skip_into_a_failure(self, tmp_path):
         cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
         report = gate.audit(configs=[cfg], strict=True)
         assert report["verdict"] == "FAIL"
         assert report["violations"][0]["reason"] == "skipped"
+
+    def test_strict_and_the_default_now_agree(self, tmp_path):
+        """``--strict`` is retained for interface parity, but it no longer
+        changes anything: the default IS strict (2026-11-04)."""
+        cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
+        assert (
+            gate.audit(configs=[cfg])["verdict"]
+            == gate.audit(configs=[cfg], strict=True)["verdict"]
+            == "FAIL"
+        )
+
+    def test_a_declared_skip_is_not_counted_as_unchecked(self, tmp_path):
+        """A DECLARED skip is disclosed, not hidden — and not a violation."""
+        cfg = _write(tmp_path, "orphan.yaml", {"train": {"epochs": 3}})
+        with _declared_skip(gate, "orphan.yaml", "a fixture, on purpose"):
+            report = gate.audit(configs=[cfg])
+        assert report["n_configs_skipped"] == 0
+        assert report["n_configs_declared_skipped"] == 1
+        assert "orphan.yaml" in report["declared_skipped"][0]
+        assert report["verdict"] == "PASS"
 
     def test_the_repo_has_no_skipped_configs(self):
         report = gate.audit()

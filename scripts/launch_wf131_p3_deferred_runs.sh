@@ -23,54 +23,22 @@
 #   - Wf-328-W2 (--cpu-num-workers 8 — NOT supported by train_metal_lomo*; removed Wf-379-A1)
 #   - Wf-328-W5 (--w2-gradient-mode sort — NOT supported by train_metal_lomo*; removed Wf-379-A1)
 #
-# HONEST FRAMING (party-twenty-spirit §3.5):
-#   - user_ok_required: true (kill_then_adapt; 7 runs × ~40 min wall each
-#     = ~5 hr GPU wall PROJECTED)
-#   - Scope: 7 DEFERRED (metal, seed) runs on BUGGY Wf-125 P1 cohort:
-#       Rh seed=3, Rh seed=4, Re seed=0, Re seed=1, Re seed=2, Re seed=3, Re seed=4
-#   - Wall: ~5 hr GPU (PROJECTED) per Wf-260 G6 timing:
-#       - Rh (small cohort, 1.2k rows): ~15 min/run × 2 = ~30 min
-#       - Re (smallest cohort, 800 rows): ~30 min/run × 5 = ~2.5 hr
-#       - Sequential overhead + ckpt write: +1 hr
-#       - TOTAL: ~5 hr GPU (vs Wf-310E Wf-135 Phase 2 ~10 hr for 25 runs)
-#   - Rh fold AUC MEASURED 3/5 seeds on BUGGY cohort (Rh mean 0.6874 ± 0.3584,
-#     high std from seed0=0.274 outlier) — re-running seeds 3+4 will help
-#     clarify if seed0 was a fluke or a structural bug. Honest-negative:
-#     BUGGY cohort is the structural fix-target (TODO-135 Phase 1 = balanced
-#     Rh cohort); this re-launch on the BUGGY cohort may still NOT clear
-#     paper §4 acceptance gates.
-#   - Re fold AUC DEFERRED (0/5) — running all 5 Re seeds on the BUGGY
-#     cohort is the minimum needed to evaluate the per-metal lift axis.
-#   - The Re fold has the worst acceptance gate concern: TODO-135 §5
-#     "Re fold bias from rare-metal noise floor" — Re cohort is small
-#     (~800 rows) so per-seed AUC variance may be high.
-#   - Trainer target: molmetal/scripts/train_metal_lomo_wasserstein.py
-#     (uses W₂ transfer + Rh oversample + multi-task backbone; default
-#      out-dir = wf131_p3_lomo_full, so RE-runs will OVERWRITE existing
-#      partial results for Rh seeds 3+4)
-#
-# Usage:
-#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh --dry-run
-#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh           # actual
-#   USER_OK=1 bash scripts/launch_wf131_p3_deferred_runs.sh --runs "Rh 3 Rh 4 Re 0"
-#     # Optional: subset of the 7 runs (override defaults)
-#
-# USER_OK gate (explicit, per mol-metal-gpu-execution §0):
-#   - The wrapper REFUSES to run unless USER_OK=1 is set in the env.
-#   - --dry-run does NOT bypass the gate; it only skips GPU launch.
-#   - --runs "..." allows custom subset of (metal, seed) tuples.
-#
-# Stop semantics: per TODO-207 v2 §7.2 (per-phase abort criteria):
-#   - per-phase timeout: ckpt older than 2× projected wall-time
-#   - failure pattern: 3+ consecutive NaN/OOM/IndexError
-#   - GPU util < 70% for 5+ minutes
-#   - collapse: Rh fold AUC < 0.10 on 2+ seeds (binding regression alarm)
-#
-# Pre-launch checks (BLOCKER before any GPU work):
-#   1. pre_flight_check.py --pipeline launch (62/62 PASS target)
-#   2. wave_budget_tracker.py --budget-hr 5
-#   3. USER_OK env gate
-#   4. Trainer + cohort + CSV existence
+# HONEST FRAMING, Refs, Usage, USER_OK gate, stop semantics and the pre-launch
+# checklist are preserved VERBATIM in configs/wf131_p3_deferred_runs.yaml
+# (header, "WRAPPER HEADER — VERBATIM") and in
+# molmetal/reports/wfa269_yaml_migration/launch_wf131_p3_deferred_runs.before.sh
+# (the whole pre-migration file, header included). Summary of that block:
+#   - USER_OK=1 required; --dry-run does NOT bypass it; --runs "Rh 3 Rh 4 Re 0"
+#     picks a subset of the 7 runs.
+#   - Scope: 7 DEFERRED (metal, seed) runs on the BUGGY Wf-125 P1 cohort
+#     (Rh 3, Rh 4, Re 0..4); ~5 hr GPU wall PROJECTED (Wf-260 G6 timing).
+#   - MEASURED (BUGGY cohort): Rh fold 3/5 seeds, mean AUC 0.6874 ± 0.3584
+#     (seed0=0.274 outlier); Re fold DEFERRED 0/5.
+#   - Stop semantics (TODO-207 v2 §7.2): ckpt older than 2x projected wall, 3+
+#     consecutive NaN/OOM/IndexError, GPU util < 70% for 5+ min, Rh fold AUC
+#     < 0.10 on 2+ seeds.
+#   - Pre-launch: pre_flight_check.py --pipeline launch, wave_budget_tracker.py
+#     --budget-hr 5, USER_OK env gate, trainer + cohort + CSV existence.
 
 set -euo pipefail
 
@@ -87,29 +55,30 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf131_p3_deferred_runs"
 TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
+# AGENTS.md §5.11 ("no cli参数"): the trainer is launched from a YAML config and
+# nothing else — every CLI hyperparameter now lives in BASE_CONFIG (whose header
+# carries the flag -> dest map + the verbatim pre-migration argv).
+BASE_CONFIG="${PROJECT_ROOT}/configs/wf131_p3_deferred_runs.yaml"
+PAIR_CONFIG_HELPER="${PROJECT_ROOT}/scripts/_wf_yaml_pair_config.py"
+# The config is authoritative; these copies exist only for the existence
+# check and are checked against it by --expect.
 LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 RH_COHORT_JSON="${PROJECT_ROOT}/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json"
 
-# 7 DEFERRED runs (per Wf-354-A1 §5 HONEST-NEGATIVE)
-# Format: 14 array elements (7 pairs of "metal seed" tokens), space-separated
-# Each pair occupies 2 consecutive slots: metal at index 2*i, seed at 2*i+1.
-# Same convention as --runs "Rh 3 Rh 4 Re 0" CLI override.
-DEFAULT_RUNS=(
-    "Rh" 3
-    "Rh" 4
-    "Re" 0
-    "Re" 1
-    "Re" 2
-    "Re" 3
-    "Re" 4
-)
+# 7 DEFERRED runs (per Wf-354-A1 §5 HONEST-NEGATIVE): 14 array elements = 7
+# "metal seed" pairs, same convention as --runs "Rh 3 Rh 4 Re 0".
+DEFAULT_RUNS=("Rh" 3 "Rh" 4 "Re" 0 "Re" 1 "Re" 2 "Re" 3 "Re" 4)
 
 # Wall budget (PROJECTED per Wf-260 G6 timing)
 WALL_BUDGET_HR=5
+# Epochs + device: AUTHORITATIVE in BASE_CONFIG (checked by --expect).
 EPOCHS=50
 GPU="cuda:0"               # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 
 mkdir -p "${REPORTS_DIR}"
+
+# Die helper — MOVED UP before its first call (Wf-A269 repair 2, 2026-11-02).
+die()  { mkdir -p "${REPORTS_DIR}" 2>/dev/null || true; printf '%s[FATAL]%s %s\n' "${C_RED:-}" "${C_RST:-}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
 
 # Wf-363-A1: source the shared DRY_RUN.log helper (consistent per-pair schema)
 DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
@@ -170,8 +139,7 @@ else
 fi
 
 log()  { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
-die()  { printf '%s[FATAL]%s %s\n' "${C_RED}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
-ok()   { printf '%s[OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+ok()   { printf '[%s][OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 warn() { printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
 
 # -----------------------------------------------------------------------------
@@ -179,6 +147,8 @@ warn() { printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS
 # -----------------------------------------------------------------------------
 [ -x "$(command -v "${PY}")" ]   || die "PY not found: ${PY}"
 [ -f "${TRAINER}" ]              || die "trainer missing: ${TRAINER}"
+[ -f "${BASE_CONFIG}" ]          || die "base config missing: ${BASE_CONFIG}"
+[ -f "${PAIR_CONFIG_HELPER}" ]   || die "pair-config helper missing: ${PAIR_CONFIG_HELPER}"
 [ -f "${LOMO_CSV}" ]             || die "LOMO CSV missing: ${LOMO_CSV}"
 [ -f "${RH_COHORT_JSON}" ]       || die "Rh cohort JSON missing: ${RH_COHORT_JSON}"
 
@@ -238,15 +208,8 @@ ok "plan emitted → ${PLAN_JSON}"
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK was still required)"
     log "DRY-RUN: actual invocation per (metal, seed) tuple would be:"
-    log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
-    log "    --metals <METAL> --seeds <SEED> \\"
-    log "    --epochs ${EPOCHS} \\"
-    log "    --wasserstein-weight 0.05 \\"
-    log "    --rh-oversample 500 \\"
-    log "    --rh-cohort-json ${RH_COHORT_JSON} \\"
-    log "    --csv ${LOMO_CSV} \\"
-    log "    --use-l2-guard \\"
-    log "    --device=cuda:0"
+    log "  ${PY} ${PAIR_CONFIG_HELPER} --base ${BASE_CONFIG} --out <derived> --metal <METAL> --seed <SEED>"
+    log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} --config <derived per-pair config> --out-dir ${REPORTS_DIR}/<METAL>/seed<SEED>"
     log ""
     log "DRY-RUN: per-run sequencing (${N_RUNS} (metal, seed) tuples):"
     for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
@@ -267,7 +230,7 @@ if [ "${DRY_RUN}" = "1" ]; then
         --wrapper "$(basename "$0")" \
         --mode "DEFERRED_${N_RUNS}_runs" \
         --trainer "${TRAINER}" \
-        --flags "--metals <METAL> --seeds <SEED> --epochs ${EPOCHS} --wasserstein-weight 0.05 --rh-oversample 500 --rh-cohort-json ${RH_COHORT_JSON} --csv ${LOMO_CSV} --use-l2-guard --device=cuda:0" \
+        --flags "--config <derived per-pair config> --out-dir ${REPORTS_DIR}/<METAL>/seed<SEED>" \
         --gpu "${GPU}" \
         --budget-hr "${WALL_BUDGET_HR}" \
         --user-ok "REQUIRED" \
@@ -277,9 +240,9 @@ if [ "${DRY_RUN}" = "1" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Actual GPU run — sequential 7-run sweep
-# Each (metal, seed) tuple runs a full LOMO: hold out the focal metal,
-# train on remaining 4 + Wf-125 P1 Rh synthetic cohort, evaluate on held-out metal.
+# Actual GPU run — sequential 7-run sweep. Each (metal, seed) tuple runs a
+# full LOMO: hold out the focal metal, train on the remaining 4 + the Wf-125 P1
+# Rh synthetic cohort, evaluate on the held-out metal.
 # -----------------------------------------------------------------------------
 RUN_LOG="${REPORTS_DIR}/run.log"
 echo "[]" > "${REPORTS_DIR}/per_seed_results.json"
@@ -296,23 +259,67 @@ for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
     log "=== metal=${METAL} seed=${SEED} on ${GPU} ==="
     # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
     # directive; this call site is serial with every other job.
-    #
     # `setsid --wait` puts each run in its own session so the sweep survives
     # the invoking shell, and still makes the `if` test the TRAINER's status:
     # bare `setsid` may fork and return 0 before the run starts, which would
     # turn `die` into an unreachable branch.
-    if CUDA_VISIBLE_DEVICES=0 setsid --wait "${PY}" "${TRAINER}" \
-            --metals "${METAL}" \
-            --seeds "${SEED}" \
-            --epochs "${EPOCHS}" \
-            --wasserstein-weight 0.05 \
-            --rh-oversample 500 \
-            --rh-cohort-json "${RH_COHORT_JSON}" \
-            --csv "${LOMO_CSV}" \
-            --use-l2-guard \
+    # Wf-A167: a command-prefix CUDA_VISIBLE_DEVICES assignment defeats the ambient "" no-GPU lock; an explicit ambient value must win; unset -> 0.
+    # AGENTS.md §5.11 — YAML-only: the per-pair config carries every CLI value.
+    DERIVED_CONFIG="${REPORTS_DIR}/configs/${METAL}_seed${SEED}.yaml"
+    if ! "${PY}" "${PAIR_CONFIG_HELPER}" \
+            --base "${BASE_CONFIG}" --out "${DERIVED_CONFIG}" \
+            --metal "${METAL}" --seed "${SEED}" \
+            --expect "protocol.epochs=${EPOCHS}" --expect "compute.device=${GPU}" \
+            --expect "csv=${LOMO_CSV}" --expect "data.rh_cohort_json=${RH_COHORT_JSON}" \
+            --set "output.out_dir=${REPORTS_DIR}/${METAL}/seed${SEED}" --set "output.out_metric=${REPORTS_DIR}/${METAL}/seed${SEED}/metrics.json" \
+            > "${REPORTS_DIR}/config_derive.log" 2>&1; then
+        die "config derivation failed for ${METAL}/seed${SEED} (see ${REPORTS_DIR}/config_derive.log); aborting sweep"
+    fi
+
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    # (2026-11-03, AGENTS.md §5.11 YAML-only migration. Every line below is the
+    #  ORIGINAL line byte-for-byte (same flags, same order, same literal values,
+    #  same indentation) after the "# " comment prefix, so the migration can be
+    #  audited against the exact text it replaced. Every flag it carried now lives
+    #  in configs/wf131_p3_deferred_runs.yaml; the wrapper passes only --config and
+    #  --out-dir.
+    # pre-migration trainer invocation, its DRY-RUN rendering and its DRY_RUN.log
+    # --flags string live byte-for-byte in all three of:
+    # 1) molmetal/reports/wfa269_yaml_migration/launch_wf131_p3_deferred_runs.before.sh  (the whole pre-migration file)
+    # 2) configs/wf131_p3_deferred_runs.yaml  (header)
+    # 3) molmetal/reports/wfa269_yaml_migration/launch_wf131_p3_deferred_runs.json  (old_argv)
+    # #
+    # [SUPERSEDED 1 -- the pre-migration trainer invocation, verbatim]
+    #     if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait "${PY}" "${TRAINER}" \
+    #             --metals "${METAL}" \
+    #             --seeds "${SEED}" \
+    #             --epochs "${EPOCHS}" \
+    #             --wasserstein-weight 0.05 \
+    #             --rh-oversample 500 \
+    #             --rh-cohort-json "${RH_COHORT_JSON}" \
+    #             --csv "${LOMO_CSV}" \
+    #             --use-l2-guard \
+    #             --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
+    #             --out-metric "${REPORTS_DIR}/${METAL}/seed${SEED}/metrics.json" \
+    #             --device cuda:0 \
+    #             >> "${RUN_LOG}" 2>&1; then
+    # #
+    # [SUPERSEDED 2 -- the pre-migration DRY-RUN rendering, verbatim]
+    #     log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
+    #     log "    --metals <METAL> --seeds <SEED> \\"
+    #     log "    --epochs ${EPOCHS} \\"
+    #     log "    --wasserstein-weight 0.05 \\"
+    #     log "    --rh-oversample 500 \\"
+    #     log "    --rh-cohort-json ${RH_COHORT_JSON} \\"
+    #     log "    --csv ${LOMO_CSV} \\"
+    #     log "    --use-l2-guard \\"
+    #     log "    --device=cuda:0"
+    # #
+    # [SUPERSEDED 3 -- the pre-migration DRY_RUN.log --flags string, verbatim]
+    #         --flags "--metals <METAL> --seeds <SEED> --epochs ${EPOCHS} --wasserstein-weight 0.05 --rh-oversample 500 --rh-cohort-json ${RH_COHORT_JSON} --csv ${LOMO_CSV} --use-l2-guard --device=cuda:0" \
+    if CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}" setsid --wait "${PY}" "${TRAINER}" \
+            --config "${DERIVED_CONFIG}" \
             --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
-            --out-metric "${REPORTS_DIR}/${METAL}/seed${SEED}/metrics.json" \
-            --device cuda:0 \
             >> "${RUN_LOG}" 2>&1; then
         ok "metal=${METAL} seed=${SEED} completed"
     else

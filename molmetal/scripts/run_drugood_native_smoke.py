@@ -41,8 +41,14 @@ IMOLD_REFERENCE = {
     "size": 0.6792,
 }
 
-NATIVE_DATA = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+NATIVE_DATA = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "drugood"
+    / "ic50"
+    / "data"
+    / "train.csv"
 )
 
 

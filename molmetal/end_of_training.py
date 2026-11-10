@@ -30,6 +30,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional
 
 log = logging.getLogger(__name__)
@@ -105,7 +106,7 @@ def stage3_manifest(cfg: Dict, ckpt_path: Optional[str], out_dir: str) -> Dict:
         from molmetal.manifest.manifest_writer import ManifestWriter  # noqa: PLC0415
     except ImportError as e:
         return {"status": "HONEST-NEGATIVE", "reason": f"manifest import failed: {e}"}
-    project_root = cfg.get("_project_root", "/home/hugo/codes/mol-metal")
+    project_root = cfg.get("_project_root", str(Path(__file__).resolve().parents[1]))
     config_path = cfg.get("_config_path", "HONEST-NEGATIVE")
     gen = ManifestGenerator(project_root=project_root, config_path=config_path, ckpt_path=ckpt_path)
     manifest = gen.generate()
@@ -148,7 +149,9 @@ def auto_run(cfg: Dict, ckpt_path: Optional[str] = None, cohort_smiles: Optional
     res = EOTResult(success=True)
     eot = cfg.get("end_of_training", {})
     out_dir = out_dir or cfg.get("output", {}).get("base_dir", "/tmp/eot_default")
-    metrics_dir = cfg.get("_metrics_dir", "/home/hugo/codes/mol-metal/metrics/by_metric")
+    metrics_dir = cfg.get(
+        "_metrics_dir", str(Path(__file__).resolve().parents[1] / "metrics" / "by_metric")
+    )
 
     if eot.get("use_liganddiff_scoring", True):
         r = stage1_sa_recompute(cohort_smiles or [])

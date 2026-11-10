@@ -82,6 +82,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -90,9 +91,9 @@ import numpy as np
 # direct-script execution both.  Matches the convention used by the
 # other Wf-36 / Wf-37 scripts in ``molmetal/scripts/``.
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +142,11 @@ DEFAULT_LR: float = 1.0e-3
 DEFAULT_N_EPOCHS: int = 5
 
 #: Default output directory for the bench JSON.
-DEFAULT_OUTPUT_DIR: str = (
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf36_replay_learner"
+DEFAULT_OUTPUT_DIR: str = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf36_replay_learner"
 )
 
 #: Default max action index for the policy head.  When the buffer

@@ -38,6 +38,7 @@ import math
 import os
 import random
 import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
@@ -45,7 +46,7 @@ import pytest
 # Allow the test to run both as a top-level module and as part of
 # the molmetal test suite.  Match the convention in
 # ``test_variance_mcts_proof_search.py``.
-_PROJECT_ROOT = "/home/hugo/codes/mol-metal"
+_PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 

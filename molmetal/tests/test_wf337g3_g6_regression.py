@@ -31,7 +31,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf124_p3_g6.sh"
 DATA_CSV = ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 TRAINER = ROOT / "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"

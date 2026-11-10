@@ -91,6 +91,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import time
 import traceback
@@ -222,6 +223,24 @@ def _decode_smoke(adapter, n_samples: int = 16, seed: int = 0) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def _resolve_device(env=None) -> str:
+    """The device this smoke runs on.
+
+    Wf-A121C -- the CPU path must be REACHABLE, not an accident of the
+    machine.  ``MOLMETAL_SMOKE_DEVICE=cpu`` (or ``cuda``) makes the choice
+    explicit; the DEFAULT is unchanged -- the GPU whenever one is available
+    -- so a real run still wants that.
+
+    ``env`` defaults to the process environment; a caller (a test) may pass
+    a mapping instead.
+    """
+    source = os.environ if env is None else env
+    override = (source.get("MOLMETAL_SMOKE_DEVICE") or "").strip().lower()
+    if override in ("cpu", "cuda"):
+        return override
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     # Wf-A8c FIX (2026-10-03): add --config + --checkpoint-interval + --resume-from +
@@ -506,7 +525,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     # Resolve device: prefer cuda:0
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #
+    # Wf-A121C -- the CPU path must be REACHABLE, not an accident of the
+    # machine.  ``MOLMETAL_SMOKE_DEVICE=cpu`` makes "CPU-only" a first-class
+    # choice for a caller that cannot use the GPU (and for the test that
+    # asserts the run really was CPU).  The DEFAULT is unchanged -- the GPU
+    # whenever one is available -- so a real run still wants that.
+    device = _resolve_device()
     print(f"[metallo_smoke] setup(device={device})...")
     adapter.setup(device=device)
     print(f"[metallo_smoke] resolved device: {adapter.device}")

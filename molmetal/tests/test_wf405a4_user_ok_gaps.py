@@ -59,7 +59,7 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = PROJECT_ROOT / "scripts"
 
 # The 3 USER_OK-gated launch wrappers per Wf-368-B1 §7.1 (a)+(b)+(c).

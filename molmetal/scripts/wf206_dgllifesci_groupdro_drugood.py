@@ -501,21 +501,31 @@ def main() -> int:
         "--ckpt-dir",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf206_dgllifesci_groupdro_drugood"
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "checkpoints"
+            / "wf206_dgllifesci_groupdro_drugood"
         ),
     )
     parser.add_argument(
         "--json-dir",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/reports/wf206_dgllifesci_groupdro_drugood"
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf206_dgllifesci_groupdro_drugood"
         ),
     )
     parser.add_argument(
         "--compare-erm-json",
         type=Path,
         default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/reports/wf202_dgllifesci_erm_drugood/summary.json"
+            Path(__file__).resolve().parents[2]
+            / "molmetal"
+            / "reports"
+            / "wf202_dgllifesci_erm_drugood"
+            / "summary.json"
         ),
         help="Path to Wf-202 ERM summary.json for lift comparison.",
     )

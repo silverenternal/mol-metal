@@ -46,7 +46,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import wave_budget_tracker  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+VENV_PY = sys.executable
 
 CONTRACT_FIELDS = (
     "schema_version",

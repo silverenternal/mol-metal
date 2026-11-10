@@ -165,7 +165,13 @@ output = {
     "results": results,
 }
 
-OUT_PATH = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf315d_pb_smoke/m8_prod_1h36.json")
+OUT_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "molmetal"
+    / "reports"
+    / "wf315d_pb_smoke"
+    / "m8_prod_1h36.json"
+)
 with open(OUT_PATH, "w") as f:
     json.dump(output, f, indent=2)
 

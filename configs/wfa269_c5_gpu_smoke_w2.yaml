@@ -1,0 +1,339 @@
+# configs/wfa269_c5_gpu_smoke_w2.yaml — the Wf-338-F1 W₂-sliced GPU SMOKE cohort
+# (Wf-A269 cohort c5_gpu_smoke_w2).
+#
+# Consumed by: scripts/gpu_smoke_w2_sliced.sh
+# Invoke with:  .venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py \
+#                  --config configs/wfa269_c5_gpu_smoke_w2.yaml
+#
+# NAME HISTORY (AGENTS.md §5.5 rule #6 — append-only, never a silent edit):
+#   This file was first written as `configs/gpu_smoke_w2_sliced.yaml` by the
+#   Wf-A269 wave that migrated the wrapper's command line, then renamed to the
+#   wave's `configs/wfa269_<cohort-id>.yaml` convention. The superseded
+#   rendering is preserved VERBATIM at
+#     molmetal/reports/wfa269_yaml_migration/gpu_smoke_w2_sliced.config.before.yaml
+#   and the superseded CONFIG PATH still exists on disk at
+#     configs/gpu_smoke_w2_sliced.yaml
+#   (it is inert: scripts/gpu_smoke_w2_sliced.sh points at THIS file).
+#   ONE substantive change was made at rename time — `output.out_dir` moved
+#   from the RELATIVE `results/wf338f1_w2_sliced_smoke` to the ABSOLUTE
+#   `/home/hugo/codes/mol-metal/results/wf338f1_w2_sliced_smoke`, because the
+#   wrapper passes exactly that absolute path via `--out-dir` and
+#   scripts/_yaml_equivalence_probe.py compares the OLD argv's `--out-dir`
+#   against the YAML's `output.out_dir` dest-by-dest: a relative-vs-absolute
+#   mismatch is a MEASURED `out_dir` DIFF (probe FAIL). See the receipt
+#   molmetal/reports/wfa269_yaml_migration/gpu_smoke_w2_sliced.json.
+#
+# WHY A DEDICATED COPY (2026-11-03, AGENTS.md §5.11 migration):
+#   `configs/dmpnn.yaml` is SHARED by 8 launch wrappers (launch_wf124_p3_g5/g6,
+#   launch_wf310b_g6_final, launch_wf388_a1, launch_wf390a1_m2_r2_path_a,
+#   launch_wf409a3, recover_g6_failed_tuples, retry_g5_missing_pairs) plus this
+#   smoke. The Wf-338-F1 smoke needs ITS OWN cohort (1 epoch, seed 0, TF32 on,
+#   8 CPU workers, W₂ sliced, CUDA device 0). Editing the shared file to carry
+#   the smoke's values would change the other 8 runs — so this file is a
+#   byte-for-byte copy of configs/dmpnn.yaml with EXACTLY FIVE flag-derived
+#   value changes (epochs, data.seeds, protocol.seeds, tf32,
+#   cpu_num_workers — the six CLI flags map onto five YAML leaves because
+#   `--seeds` writes two), plus ONE key ADDED (the top-level
+#   `cuda_visible_devices`, which has no trainer dest under any section), plus
+#   the two `output:` paths repointed at THIS smoke's directory. Every other
+#   line is unchanged; `diff configs/dmpnn.yaml
+#   configs/wfa269_c5_gpu_smoke_w2.yaml` is the audit.
+#
+# THE SIX MIGRATED FLAG VALUES (was CLI, now YAML):
+#   --epochs 1              -> train.epochs: 1              (was 50)
+#   --seeds 0               -> data.seeds: [0] + protocol.seeds: [0]  (was [0..4])
+#   --cpu-num-workers 8     -> compute.cpu_num_workers: 8   (was 0)
+#   --tf32                  -> compute.tf32: true            (was false)
+#   --w2-gradient-mode sliced -> eval.w2_gradient_mode: sliced (UNCHANGED: the
+#                              shared file already carried this exact value)
+#   --cuda-visible-devices 0 -> cuda_visible_devices: "0"    (top-level; ADDED)
+#
+# WHY `cuda_visible_devices` IS QUOTED (a value that must stay a string):
+#   The trainer reads `apply_default_cuda_visible_devices(override=(args.cuda_visible_devices
+#   or None))` (train_dmpnn_multitask_wasserstein.py:4197). argparse stores the CLI
+#   token as the STRING "0", so `or None` keeps it. An unquoted YAML `0` is the INT
+#   0, and `0 or None` is None — the override would be DROPPED and CUDA_VISIBLE_DEVICES
+#   would fall back to the env/default. Quoting keeps the value identical to what
+#   the command line delivered. (Same convention as configs/platinai_4cell_desc_v1_rerun.yaml.)
+#
+# THE ORIGINAL HEADER, PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#
+# configs/dmpnn.yaml — D-MPNN multi-task Wasserstein trainer, single source of truth.
+#
+# Consumed by: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+# Invoke with:  .venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py \
+#                  --config configs/dmpnn.yaml
+#
+# WHY THIS FILE (user directive 2026-10-07, "cfm和dmpnn分别用一个yaml管理配置"):
+# `parse_args()` already ends in `apply_yaml_overrides(p, args, args.config)`
+# (train_dmpnn_multitask_wasserstein.py:3320-3322), so `--config` is a
+# first-class input. Launchers should pass it and nothing else.
+#
+# PRECEDENCE (wfA2_config_loader.py:404 apply_yaml_overrides):
+#   explicit CLI flag  >  YAML  >  argparse default
+# ONE exception: LIST-valued dests (`metals`, `seeds`) are always YAML-wins.
+#
+# SECTION SCHEMA — READ BEFORE ADDING A KEY
+# -------------------------------------------
+# `_resolve_dest` (wfA2_config_loader.py:258) matches a leaf ONLY when the YAML
+# path is EXACTLY two components AND the section is in
+# `_LEAF_FALLBACK_SECTIONS` (wfA2_config_loader.py:78):
+#     protocol | model | flow | data | compute | eval | output | train
+# Any other section name, or a three-component path, resolves to nothing and is
+# reported SKIPPED — the Wf-A9 silent-lie class.
+#
+# DEST-NAME TRAPS (each verified with hasattr against this parser)
+#   * Kendall: the flags are `--use-kendall` / `--no-kendall` but they share
+#     `dest="kendall"` (L2572-2574), so the YAML key is `kendall`, NOT
+#     `use_kendall`.
+#   * W1: the flag is `--use-wasserstein-w1`, so the dest is
+#     `use_wasserstein_w1` (not `wasserstein_w1`).
+#   * There is no `no_l2_guard` dest — only `use_l2_guard`.
+# Validate any edit with WFA2_CONFIG_STRICT=1 (see configs/cfm.yaml header).
+
+# ---------------------------------------------------------------------------
+# TOP-LEVEL (not under a section)
+# ---------------------------------------------------------------------------
+# Wf-338-F1 smoke: CUDA device 0 (was `--cuda-visible-devices 0` on the command
+# line). The dest is `cuda_visible_devices`, and a TOP-LEVEL key is the only
+# spelling that reaches it: `compute.cuda_visible_devices` would flatten to
+# `compute_cuda_visible_devices` (no dest) and then fall back to the leaf only
+# if `compute` were a leaf-fallback section — it is, so `compute.cuda_visible_
+# devices` would ALSO resolve, but the top-level form is the one the repo
+# already uses (configs/platinai_4cell_desc_v1_rerun.yaml:60,
+# configs/train_cisplatin_resistance_v2_v1.yaml:47).
+#
+# QUOTED ON PURPOSE: the trainer does
+# `apply_default_cuda_visible_devices(override=(args.cuda_visible_devices or None))`
+# (train_dmpnn_multitask_wasserstein.py:4197). argparse hands the CLI token over
+# as the STRING "0"; an unquoted YAML 0 is the INT 0, and `0 or None` is None —
+# the override would be silently DROPPED and CUDA_VISIBLE_DEVICES would fall
+# back to the env var / "0" default instead of the explicit "0" the smoke asked
+# for. The quotes keep the delivered value byte-identical to the CLI's.
+cuda_visible_devices: "0"
+
+model:
+  # `hidden`/`depth` default to None, meaning "take the built-in model default".
+  # Set them explicitly so the architecture is recorded, not implied.
+  hidden: 128
+  depth: 3
+  # CPU-cheap featurisation; leave the Triton kernels off unless a specific run
+  # has measured them faster on this host.
+  #
+  # WIRE-IN STATUS (verified 2026-10-07 against the real argparse parser, not
+  # from a static grep — all three keys RESOLVE to a real dest, so none of them
+  # is a Wf-A11 YAML dead key and WFA2_CONFIG_STRICT=1 does not raise on them):
+  #   use_triton_relu_mlp        — WIRED as of Wf-R29. The dest existed and the
+  #     model already had a live `self.use_triton_relu_mlp` branch swapping the
+  #     eager heads for _FusedReLUMLPWrapper, but main() never threaded it into
+  #     the constructor, so it was FLAG_ONLY (Wf-385-A1 class). Now threaded
+  #     main() -> train_one_metal_one_seed() -> MultiTaskWassersteinModel().
+  #     !! CAVEAT measured 2026-10-07: the wrapper nests the heads under
+  #     `.eager`, so state_dict keys change from `cls_heads.0.0.weight` to
+  #     `cls_heads.0.eager.0.weight` (16 keys differ either way). A strict
+  #     load_state_dict across the ON/OFF boundary FAILS. Leave this false
+  #     unless you are starting a cold run; flipping it on a run you intend to
+  #     --resume-from will break the resume.
+  #   use_triton_smiles_featurize — REJECTED (verified 2026-10-08). The fused
+  #     kernel exists at
+  #     adapters/flow_matching_lipman/_reference/fused_smiles_featurize.py, but
+  #     NO call site in train_dmpnn_multitask_wasserstein.py featurises SMILES
+  #     through a Triton kernel (featurisation runs through RDKit upstream).
+  #     Setting this true now raises SystemExit in main() rather than silently
+  #     computing nothing (§5.7 FLAG_ONLY). Wire a real call site before use.
+  #   use_triton_bond_head — REJECTED (verified 2026-10-08). fused_bond_head_
+  #     aggregation.py expects a 3-layer bond-head MLP; this trainer's only
+  #     bond head (UnifiedAtomBondFlowHead.bond_head) is a single Linear, so
+  #     the kernel has no valid target here. Setting true raises SystemExit
+  #     (§5.7). See flowmol_unified.py before attempting a wire-in.
+  #   use_triton_wasserstein_sliced — WIRED (2026-10-08). wasserstein_loss.py's
+  #     dispatch hook gates on TRITON_WASSERSTEIN_SLICED + TRITON_USE_FUSED;
+  #     main() now dispatches both env vars from this key, so flipping it true
+  #     activates the fused sliced-W₂ path on CUDA (falls back to the PyTorch
+  #     reference otherwise). Previously a silent no-op (§5.7 FLAG_ONLY).
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  # REPORT-ONLY ridge readout on the frozen encoder embedding, reported next
+  # to (never replacing) test_pic50_metrics. Default false is the trainer's
+  # argparse default; the pinned "bit-for-bit Wf-131 P1" contract is unchanged.
+  # Value must be an unquoted YAML boolean: apply_yaml_overrides coerces via
+  # the action's type= and argparse.BooleanOptionalAction has no type=, so a
+  # quoted "true" arrives as str 'true' (MEASURED 2026-10-11).
+  pic50_ridge_readout: false
+
+train:
+  # argparse defaults: DEFAULT_EPOCHS=50, MT_BATCH_SIZE=64, DEFAULT_LR=1e-3.
+  # Wf-338-F1 smoke: 1 epoch (was `--epochs 1` on the command line).
+  epochs: 1
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  # Cosine/onecycle + warmup (Wf-A6 A2). `none` (the argparse default) trains flat.
+  lr_scheduler: none
+  lr_min_lr: 1.0e-6
+  lr_warmup_epochs: 5
+  # BCE balance between the regression and classification heads (default 0.5).
+  # Raise it to weight the regression head.
+  alpha: 0.5
+  single_task: false
+  # Kendall tau UW MTL loss, ON by default. Key is `kendall` — see the dest-name
+  # trap in the header.
+  kendall: true
+
+data:
+  # 2026-10-09 (§5.11): this path used to live ONLY as a literal
+  # `--csv <path> --data-csv <path>` inside entry.command_template, with
+  # `data.csv: null` below it. Removing that literal to satisfy §5.11 also
+  # removed the config's only dataset reference, and
+  # p3_wf35_protocol_lock_m19_lomo immediately FAILED with "trainer config
+  # names NO dataset artifact" — a lock entry with no cohort behind it is the
+  # untraceable case the lock exists to prevent.
+  #
+  # The general hazard: deleting a CLI literal can delete the ONLY copy of a
+  # value. The value belongs in the yaml; the literal should never have.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  # Lists are ALWAYS YAML-wins per the loader's list special case.
+  metals:
+    - auto
+  # Wf-338-F1 smoke: ONE seed (was `--seeds 0` on the command line). Written as
+  # a YAML SEQUENCE because `--seeds` is nargs="+" — a bare `0` would arrive as
+  # a scalar and the trainer would get the wrong shape (AGENTS.md §5.11).
+  seeds:
+    - 0
+  # Optional metal-coordinate auxiliary term (per-metal offsets). Enabling it
+  # changes the loss cascade AND the state_dict, so it is off by default.
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  # Drop rows whose active-pIC50 falls below this threshold.
+  active_pic50_threshold: 6.0
+  # NOTE: DrugOOD id / ood / scaffold / size splits have no YAML dest — they are
+  # selected by the corresponding CLI flag. Left to the caller by design.
+
+eval:
+  # Weight of the Wasserstein term in the loss (default 0.05). 0 disables it.
+  wasserstein_weight: 0.05
+  # W1 by default; use_wasserstein_2 switches to W2, which is better behaved
+  # and has the sliced gradient fallback below.
+  use_wasserstein_2: false
+  use_wasserstein_w1: true
+  # How the W2 term is differentiated. `sliced` avoids materialising the full
+  # OT plan — required once OT-CFM is on at any real batch size.
+  w2_gradient_mode: sliced
+  use_triton_wasserstein_sliced: false
+  # See configs/cfm.yaml §flow for the Monge-Ampere batch-size constraint; the
+  # same rank-deficiency argument applies to this trainer.
+  use_ot_cfm: false
+  triton_ot: false
+  use_l2_guard: true
+
+compute:
+  # None means "let the trainer pick" (GPU-first per Wf-130). Set "cpu" for the
+  # AGENTS.md §5.7 smoke.
+  device: null
+  # Wf-338-F1 smoke: TF32 ON (was `--tf32` on the command line, Wf-328-W4).
+  tf32: true
+  torch_compile: false
+  # Wf-338-F1 smoke: 8 CPU workers (was `--cpu-num-workers 8`,
+  # Wf-326B OPTIMAL_NUM_WORKERS).
+  cpu_num_workers: 8
+  pin_memory: true
+
+# ---------------------------------------------------------------------------
+# LAUNCH sections (added 2026-10-07, Wf-R27 FIX 5)
+# ---------------------------------------------------------------------------
+# `protocol:` `directives:` `entry:` exist because scripts/launch_all_training.sh
+# drives runs through `scripts/start.sh <yaml>`, whose pre-flight
+# (scripts/_pre_flight_check.sh:162 REQUIRED_KEYS) demands the top-level keys
+# data, model, protocol, output, directives. MEASURED before this edit:
+# `bash scripts/start.sh configs/dmpnn.yaml --dry-run` exited 1 with
+# `FAIL:missing=protocol,directives`. This file also declares no `entry:`, so
+# start.sh fell back to its legacy synthesised command — the opposite of the
+# yaml-driven launch the config exists for.
+#
+# `protocol:` carries only `seeds`, and deliberately so:
+#   * An EMPTY `protocol: {}` is NOT safe — it parses to a bare `{}` leaf,
+#     which the loader reports as an unresolved key and strict mode raises on
+#     (MEASURED: "WFA2_CONFIG_STRICT: ... protocol={}"). Same trap as the
+#     comment-only section noted in cfm.yaml.
+#   * It cannot be a duplicate of run hyperparameters (epochs / batch_size /
+#     lr) because the loader is LAST-KEY-WINS within the YAML, so a second
+#     `epochs` under `protocol:` would silently override `train.epochs`
+#     depending on file order.
+# `seeds` is restated with the identical value it has under `data:` — the
+# loader treats list dests as YAML-wins, so both writes land the same list.
+protocol:
+  # Wf-338-F1 smoke: same single seed as `data.seeds` above — the loader is
+  # LAST-KEY-WINS within the YAML, so the two must carry the SAME value.
+  seeds:
+    - 0
+
+directives:
+  kill_then_adapt: true
+  # 2026-10-03 user directive: session budget is 48h. Kept in step with
+  # configs/cfm_full_retrain.yaml so both baselines declare one budget.
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  # Passes --config plus the corpus path and nothing else: every
+  # hyperparameter lives above. `--seeds` is NOT passed — `data.seeds` /
+  # `protocol.seeds` already declare the cohort and the loader writes it, so a
+  # CLI list would be redundant (and list dests are YAML-wins per Wf-R27 FIX 4).
+  #
+  # `--csv` AND `--data-csv` are both required and both a literal, not a
+  # placeholder — the two flags feed different loaders (trainer lines 2959 /
+  # 2970): `--csv` overrides the property corpus selected by `--dataset`,
+  # `--data-csv` overrides the MetalCytoToxDB base path whose loader default is
+  # /mnt/storage/data/molmetal/MetalCytoToxDB.csv. MEASURED, passing only
+  # `--csv` still aborts with "FileNotFoundError: MetalCytoToxDB not found at
+  # /mnt/storage/data/molmetal/MetalCytoToxDB.csv"; scripts/launch_wf124_p3_g5.sh
+  # passes both for the same reason.
+  # `data.csv` / `data.data_csv` are left null in `data:` above on purpose —
+  # the loader runs every value through the argparse type converter, so null
+  # stringifies to the literal path "None" (MEASURED, hit on the first smoke of
+  # configs/cfm.yaml). start.sh also has no `{csv_path}` placeholder (grep: 0
+  # hits in scripts/start.sh), so naming one here would die with KeyError,
+  # which start.sh reports as the misleading "could not parse YAML".
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+output:
+  # Wf-338-F1 smoke: the wrapper's own `--out-dir` OVERRIDES this key on the
+  # command line — an explicit CLI flag beats the YAML
+  # (wfA2_config_loader.py precedence: explicit CLI > YAML > argparse default),
+  # and `--out-dir` is one of the four flags §5.11 allows on a trainer line.
+  # The value below is what the trainer would use if it were launched WITHOUT
+  # that flag, so it names THIS smoke's directory rather than the shared
+  # dmpnn.yaml's (a stale pointer to another run's output dir is the defect
+  # class AGENTS.md §5.5 warns about).
+  #
+  # ABSOLUTE ON PURPOSE (2026-11-03, Wf-A269 c5): the wrapper passes
+  #   --out-dir "${OUT_BASE}"  ==  /home/hugo/codes/mol-metal/results/wf338f1_w2_sliced_smoke
+  # and the OLD command line passed that same ABSOLUTE path. This key used to
+  # carry the RELATIVE `results/wf338f1_w2_sliced_smoke`, which
+  # scripts/_yaml_equivalence_probe.py reports as a dest-by-dest DIFF
+  # (`out_dir: old=PosixPath('/home/.../results/wf338f1_w2_sliced_smoke')
+  # new=PosixPath('results/wf338f1_w2_sliced_smoke')` — MEASURED probe FAIL,
+  # 2026-11-03). The two spellings are NOT interchangeable: the trainer
+  # resolves a relative out_dir against the process CWD, which for a launch
+  # wrapper is not guaranteed to be the project root. Matching the CLI value
+  # exactly keeps the YAML and the command line telling the same story.
+  out_dir: /home/hugo/codes/mol-metal/results/wf338f1_w2_sliced_smoke
+  # canonical checkpoint path (was missing -> the trainer warned
+  # "--ckpt-dir not set" and fell back to <out_dir>/checkpoints per run).
+  ckpt_dir: molmetal/checkpoints
+  # start.sh derives its log + events.jsonl paths from `base_dir` (not from
+  # `out_dir`). This parser has no `base_dir` dest (MEASURED hasattr
+  # base_dir=False), so the key is reported as skipped — it is here anyway so
+  # the two halves of the run land in the same directory, exactly as
+  # configs/cfm.yaml documents for its own base_dir.
+  base_dir: results/wf338f1_w2_sliced_smoke
+  # `auto` resumes the newest compatible checkpoint if one exists. Set to null
+  # to always train from scratch.
+  resume_from: auto
+  checkpoint_interval: 50

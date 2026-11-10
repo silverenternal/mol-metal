@@ -78,12 +78,53 @@ Run:
 /home/hugo/codes/mol-metal/.venv/bin/python \
     /home/hugo/codes/mol-metal/molmetal/scripts/wf395a1_evaluator_audit.py
 
-# Output:
+# Output (DATED 2026-09-30 reading — the artefact's own `"date"` field; the
+# LIVE format and the label correction are in the ADDITIVE note below):
 #   Wf-395-A1 SUMMARY: 22/22 evaluators PASS
 #   R17 canonical baseline: 14/14 evaluators PASS
 #   NEW Wf-380..394: 10 candidate evaluators (all MEASURED-OK in probe)
 #   JSON audit record: molmetal/reports/wf395a1_evaluator_audit/audit.json
 ```
+
+> **RE-QUOTED 2026-11-06 (Wf-A269 wave-28) — THREE POPULATIONS, ONE LABEL.**
+> The block above is a **DATED 2026-09-30 reading** (the artefact
+> `molmetal/reports/wf395a1_evaluator_audit/audit.json` carries `"date":
+> "2026-09-30"`, `"n_evaluators": 22`, `"n_pass": 22`, `"by_tier": {"R17": 12,
+> "SCAFFOLD": 9, "MEASURED-ON-REAL": 1}`, `"r17_canonical_pass": 14`) and is
+> **PRESERVED VERBATIM** per AGENTS.md §5.5 rule #6. ⇒ **THE ARTEFACT IS NOT
+> RE-RUN AND NOT RE-PUBLISHED**: the audit writes to a FIXED path (no
+> `--out`), so re-running it would OVERWRITE the dated reading ⇒ the live
+> numbers are therefore NOT claimed here. Three label defects, all repaired
+> **producer-side**:
+>
+> * **"14/14 evaluators"** — the **14** are **PROBES** (one `n_total += 1`
+>   per checked assertion) spanning the summary script's **9** evaluator
+>   SECTIONS; the audit's own inventory declares **12** R17-tier
+>   **EVALUATORS** (`by_tier.R17 = 12`) and **22** evaluators overall ⇒
+>   **three populations, one label**. `molmetal/scripts/eval_all_evaluators.py`
+>   now prints **PROBES** in BOTH branches of its summary
+>   (`SUMMARY: {n_pass}/{n_total} PROBES PASS`), and
+>   `molmetal/scripts/wf395a1_evaluator_audit.py` → `measure_canonical_probe_count()`
+>   reads the count from the **SOURCE** on every run (its own declared rule:
+>   the count of `n_total += 1` increments in the source) ⇒ the number cannot
+>   go stale away from the script it describes. The LIVE summary line is
+>   `R17 canonical baseline: {N} PROBES declared by
+>   molmetal/scripts/eval_all_evaluators.py (re-measured from the source on
+>   this run)`.
+> * **"22/22"** — the audit reported **21/22** against this published
+>   **22/22** because the probe input did not satisfy the contract the
+>   **callee** declares (`molmetal/scripts/wf380a4_vina_param_tuning.py`
+>   refuses an empty or non-list `cohort.pockets` / `cohort.seeds`); the
+>   probe input is fixed ⇒ the published `22/22` is reachable again.
+> * the artefact's `r17_canonical_pass: 14` key is **RETAINED with its NAME
+>   and VALUE** by the live producer (it is quoted VERBATIM in
+>   `docs/HONEST_NEGATIVE_CATALOG.md` §6.269.40) and a **NEW** key
+>   `r17_canonical_pass_population` names what the 14 actually is ⇒ the
+>   published line's **shape** is unchanged; the two NEW axes
+>   (`r17_canonical_probe_total`, `r17_tier_evaluator_total` /
+>   `r17_tier_evaluator_passed`) are **ADDITIVE**.
+>
+> (catalog §6.269.40 class 6)
 
 The audit script:
 1. Enumerates each evaluator module + function callable from the project tree.

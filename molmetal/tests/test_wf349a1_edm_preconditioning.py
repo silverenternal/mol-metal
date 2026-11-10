@@ -44,7 +44,7 @@ from pathlib import Path
 import torch
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TRAINER = REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 PYTHON = sys.executable
 
@@ -251,7 +251,14 @@ def test_trainer_cli_alias_flag():
     assert TRAINER.exists(), f"trainer script not found: {TRAINER}"
 
     # --help: verify both flag names appear in argparse output.
-    env = {"PYTHONPATH": str(REPO_ROOT)}
+    # Wf-A269 wave-5 (2026-11-02) — the CUDA_VISIBLE_DEVICES key was repeated
+    # twice on this line.  Python keeps the LAST binding, so the value was never
+    # wrong — but a repeated dict key is a silent-edit hazard (a later edit that
+    # changes one copy and not the others looks like a change and is not).
+    # Reduced to a single key.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #   env = {"CUDA_VISIBLE_DEVICES": "", "CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT)}
+    env = {"CUDA_VISIBLE_DEVICES": "", "PYTHONPATH": str(REPO_ROOT)}
     result = subprocess.run(
         [PYTHON, str(TRAINER), "--help"],
         env=env,

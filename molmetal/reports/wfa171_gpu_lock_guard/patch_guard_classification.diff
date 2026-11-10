@@ -1,0 +1,106 @@
+--- a/molmetal/scripts/wfa167_command_prefix_guard.py
++++ b/molmetal/scripts/wfa167_command_prefix_guard.py
+@@ -71,8 +71,18 @@
+                            no-colon form (``${CVD-V}`` / ``${CVD}``) -> an
+                            empty lock survives
+   BENIGN                   everything else
+-  ARCHIVED                 the file is a read-only historical artefact
+-                           (``TODO/archive/``, ``results/``)
++  ARCHIVED                 the file is a read-only historical artefact whose
++                           archival state is DECLARED by tracked text (an
++                           in-tree marker, an "archived under <tree>/"
++                           statement, or a sibling index that names its own
++                           subdirectory).  Wf-A171 REPLACED the previous
++                           path-prefix heuristic (``TODO/archive/``,
++                           ``results/``), which filed a live, tracked,
++                           executable launcher under ``results/`` as
++                           archived and reported ``real_defeaters_live: 0``.
++                           Liveness is now decided by
++                           ``molmetal/scripts/wfa171_gpu_lock_guard_path.py``;
++                           the default polarity is LIVE.
+ 
+ The DENOMINATOR (tracked ``*.sh`` files enumerated / read / unreadable) is
+ reported alongside the counts so that every number has a denominator.
+@@ -103,6 +113,26 @@
+ import sys
+ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+ 
++# --- Wf-A171: evidence-based live/archived classification ------------------
++# The path-prefix heuristic (``ARCHIVE_PREFIXES``) is kept only for backward
++# compatibility; the verdict that the report uses comes from DECLARED
++# evidence, never from where the path sits.  See
++# ``molmetal/scripts/wfa171_gpu_lock_guard_path.py``.
++try:
++    from wfa171_gpu_lock_guard_path import (  # type: ignore
++        build_liveness_index,
++        classify_liveness,
++    )
++except ImportError:  # pragma: no cover - direct-script invocation
++    import os as _os
++    import sys as _sys
++
++    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
++    from wfa171_gpu_lock_guard_path import (  # type: ignore
++        build_liveness_index,
++        classify_liveness,
++    )
++
+ __all__ = [
+     "CVD",
+     "ARCHIVE_PREFIXES",
+@@ -724,6 +754,9 @@
+     """Scan one shell script and return the list of CVD sites."""
+     sites: List[Dict[str, Any]] = []
+     heredoc = _heredoc_body_lines(text)
++    # PROVISIONAL: replaced after the scan by the evidence-based classifier
++    # (see ``scan_repository``).  Kept so that a standalone
++    # ``scan_shell_text()`` call still returns a usable field.
+     archived = path.startswith(ARCHIVE_PREFIXES)
+ 
+     for start_line, logical, linenos, offsets in _logical_lines(text):
+@@ -945,6 +978,28 @@
+         )
+         per_file[rel] = counts
+ 
++    # --- Wf-A171: replace the path-prefix archive verdict with the
++    # evidence-based one.  A site is ARCHIVED only when tracked text
++    # DECLARES the file/tree archival; otherwise it is LIVE.  This runs
++    # BEFORE the by_* aggregation so ``by_class`` and
++    # ``real_defeaters_live`` see the new verdict.
++    liveness_index = None
++    try:
++        liveness_index = build_liveness_index(repo_root)
++    except Exception as exc:  # pragma: no cover - never let the guard crash
++        liveness_index = None
++        liveness_error = str(exc)
++    else:
++        liveness_error = None
++    if liveness_index is not None:
++        for site in sites:
++            verdict = classify_liveness(site["file"], liveness_index)
++            site["archived"] = bool(verdict["archived"])
++            site["class"] = (
++                "ARCHIVED" if verdict["archived"] else site["semantic_class"]
++            )
++            site["liveness_basis"] = verdict["basis"]
++
+     by_shape: Dict[str, int] = {}
+     by_class: Dict[str, int] = {}
+     by_semantic: Dict[str, int] = {}
+@@ -1030,6 +1085,14 @@
+                 len(real_defeaters) == by_semantic.get("REAL_DEFEATER", 0)
+             ),
+         },
++        "liveness": {
++            "method": "evidence-based (Wf-A171 wfa171_gpu_lock_guard_path.py)",
++            "default_polarity": "LIVE",
++            "error": liveness_error,
++            "declared_archive_trees": (
++                liveness_index["archive_trees"] if liveness_index else {}
++            )
++        }
+     }
+     return report
+ 
+# End of the Wf-A171 staged patch. Do NOT apply to the live tree:
+# this file is a REVIEW ARTIFACT for the A167 guard only.

@@ -31,6 +31,7 @@ import gzip
 import math
 import os
 import pickle
+from pathlib import Path
 from typing import Optional
 
 from rdkit import Chem
@@ -61,7 +62,14 @@ def _resolve_fpscores_path(name: str = "fpscores") -> str:
     if os.path.isfile(local):
         return local
     # Fallback: copy from the LigandDiff reference clone (Apache-2.0).
-    ref = "/home/hugo/codes/mol-metal/references/LigandDiff/src/SA_Score/fpscores.pkl.gz"
+    ref = str(
+        Path(__file__).resolve().parents[3]
+        / "references"
+        / "LigandDiff"
+        / "src"
+        / "SA_Score"
+        / "fpscores.pkl.gz"
+    )
     if os.path.isfile(ref):
         import shutil  # noqa: PLC0415
         shutil.copyfile(ref, local)
@@ -69,7 +77,7 @@ def _resolve_fpscores_path(name: str = "fpscores") -> str:
     # Final fallback: surface a clear error rather than a generic FileNotFoundError.
     raise FileNotFoundError(
         f"fpscores.pkl.gz not found at {local} and LigandDiff reference {ref} "
-        "unavailable. The data file is gitignored (.gitignore L111) on the "
+        "unavailable. The data file is gitignored (.gitignore L124) on the "
         "promise that sascorer.py regenerates it from the reference clone."
     )
 
@@ -81,7 +89,12 @@ def readFragmentScores(name: str = "fpscores") -> None:
     global _fscores
     # locate the data file relative to this module (was hardcoded to
     # /mnt/gs21/scratch/... in the LigandDiff upstream; replaced per
-    # AGENTS.md §5.10 portability + reproducibility).
+    # ~~AGENTS.md §5.10 portability + reproducibility~~ AGENTS.md §5.10
+    # FLAT PACKAGE LAYOUT rule (the fpscores table is looked up
+    # `__file__`-relative inside the `molmetal/` package; it is
+    # gitignored (.gitignore L124) and, when absent, is copied from the
+    # LigandDiff reference clone by ABSOLUTE path; full text in
+    # `docs/STANDING_DIRECTIVES.md` §G rule 2); corrected 2026-11-01).
     data_path = _resolve_fpscores_path(name)
     data = pickle.load(_gzip.open(data_path, "rb"))
     outDict: dict = {}

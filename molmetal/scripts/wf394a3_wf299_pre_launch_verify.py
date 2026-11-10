@@ -2,7 +2,7 @@
 
 Per TODO-207 + AGENTS.md §5.1 + Wf-378-A2 lesson + Wf-385-A2 wrapper review
 + Wf-392-A3 Wf-388 trainer flag integration + `mol-metal-cfm-training`
-skill: the Wf-299 CFM 3-wave launcher (`molmetal/scripts/launch_wf299_cfm_main.sh`)
+skill: the Wf-299 CFM 3-wave launcher (`scripts/launch_wf299_cfm_main.sh`)
 is a > 1 hr GPU launcher (~9.5 hr sequential across 3 waves) and requires
 BEFORE any actual launch:
 
@@ -47,8 +47,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 # --- Canonical paths ---------------------------------------------------------
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
-LAUNCHER = PROJECT_ROOT / "molmetal/scripts/launch_wf299_cfm_main.sh"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LAUNCHER = Path(__file__).resolve().parents[2] / "scripts" / "launch_wf299_cfm_main.sh"
 TRAINER = PROJECT_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 WF343C2 = PROJECT_ROOT / "molmetal/scripts/wf343c2_per_wave_check.py"
 WF343C3 = PROJECT_ROOT / "molmetal/scripts/wf343c3_data_quality_check.py"
@@ -244,15 +244,41 @@ def verify_wf299_3_wave_separation(launcher_path: Path = LAUNCHER) -> Dict[str, 
     )
     wave_c_full_sweep = bool(wave_c_block and "60" in wave_c_block.group(0))
 
-    # Case statement must include all 3 waves + 'all'.
-    case_pattern = re.search(
-        r"case\s*\"\$\{WAVE_TARGET\}\"\s*in\s*(.*?)\s*esac",
-        src,
-        re.DOTALL,
-    )
-    case_text = case_pattern.group(1) if case_pattern else ""
-    case_statement_complete = all(
-        f'"{w}")' in case_text or f"{w})" in case_text for w in EXPECTED_WAVES
+    # Case statement must include all 3 waves.
+    #
+    # Wf-A269 wave-1 item A — this used to be a FALSE NEGATIVE.  The
+    # launcher carries TWO `case "${WAVE_TARGET}" in` blocks: the numbered
+    # ALIAS block (`1) WAVE_TARGET="A" ;;` ... `3) WAVE_TARGET="C" ;;`) and
+    # the DISPATCH block (`A) wave_A ;;` / `B) wave_B ;;` / `C) wave_C ;;` /
+    # `all) ... ;;`).  A single `re.search` matched only the FIRST block, so
+    # `case_text` never contained an `A)` arm and the check reported the
+    # launcher incomplete although it is complete.  MEASURED before the
+    # repair: `case_statement_complete = False` while `waves_present =
+    # ['A', 'B', 'C']` and the dispatch block provably carries all three
+    # arms.
+    #
+    # The fix resolves EVERY block and looks for a DISPATCH block — one
+    # whose ARM LABELS are the wave letters.  Matching the arm label (the
+    # text at the start of a line inside the block) is what keeps the
+    # numbered alias block from satisfying the check: its arm label is
+    # `1)`, and `WAVE_TARGET="A"` appears as an assignment, not as an arm.
+    #
+    # Repo precedent: `wf410a4_wf299_re_verify.py` resolves the same blocks
+    # with `re.finditer` and accumulates them into `all_case_text`.
+    case_blocks = [
+        _m.group(1)
+        for _m in re.finditer(
+            r"case\s*\"\$\{WAVE_TARGET\}\"\s*in\s*(.*?)\s*esac",
+            src,
+            re.DOTALL,
+        )
+    ]
+    case_statement_complete = any(
+        all(
+            re.search(r"(?m)^\s*\"?" + w + r"\"?\)\s", block)
+            for w in EXPECTED_WAVES
+        )
+        for block in case_blocks
     )
 
     return {

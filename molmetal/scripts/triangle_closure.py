@@ -83,8 +83,33 @@ Honest framing
 Lit anchors
 -----------
 * Yu / Yang / Ren / Zhao 2026 — Deflexpressor (arXiv:2606.07426).
-* Sun & Zheng 2026 — Hilbert primal-dual (arXiv:2510.08423).
+* Chambolle & Pock 2011 — Hilbert primal-dual splitting, *J. Math.
+  Imaging Vision* 40(1): 120-145 (issued 2010-12-21), DOI
+  10.1007/s10851-010-0251-1 — the splitting actually implemented by
+  ``hilbert_primal_dual.PrimalDualOptimizer`` (one step is
+  ``x_{k+1} = prox(x_k - lr_primal * ∇F(x_k))`` followed by
+  ``y_{k+1} = y_k + lr_dual * (x_{k+1} - x_k)``).
+* Sun & Zheng 2026 — Hilbert primal-dual dynamics, 孙祥凯 (Sun Xiangkai)
+  & 郑丽娟 (Zheng Lijuan), 《数学学报(中文版)》 2026年04期, DOI
+  10.12386/A20250022 (English: Sun, Zheng & Teo, arXiv:2408.06884,
+  *J. Optim. Theory Appl.* 207(1): 12, 2025, DOI
+  10.1007/s10957-025-02766-6); volume / issue / pages UNVERIFIED.
 * Silver 2016 + Burch & Bardsley 2022 — variance-controlled PUCT.
+
+.. NOTE-Wf-A149 (2026-10-31, citation-truth wave).  Superseded wording
+   is retained verbatim below as a historical record — never delete a
+   superseded record (AGENTS.md §5.5 rule 6):
+
+       * Sun & Zheng 2026 — Hilbert primal-dual (arXiv:2510.08423).
+
+   Superseded because arXiv:2510.08423 resolves to "Computational Bell
+   Inequalities" (Merkulov & Arnon, quant-ph, v2 2025-10-10) — NOT a
+   Hilbert-space primal-dual paper.  The Sun & Zheng paper itself IS
+   real (see the corrected bullet above) — what was fabricated was the
+   arXiv id.  The substitute record "On the ergodic convergence of the
+   Douglas-Rachford splitting method, SIAM J. Optim. 21(2): 343-384,
+   2011" was checked and is NOT-FOUND (Crossref has no such record;
+   DOI 10.1137/110822976 → HTTP 404), so it is NOT used.
 """
 
 from __future__ import annotations

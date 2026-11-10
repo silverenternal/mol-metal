@@ -84,7 +84,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # chemprop v2 needs to be importable
-CHEMPROP_V2 = Path("/home/hugo/codes/mol-metal/.cloned/chemprop_v2")
+CHEMPROP_V2 = Path(__file__).resolve().parents[2] / ".cloned" / "chemprop_v2"
 if str(CHEMPROP_V2) not in sys.path:
     sys.path.insert(0, str(CHEMPROP_V2))
 

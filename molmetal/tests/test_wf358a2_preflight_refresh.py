@@ -42,6 +42,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -50,7 +51,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PREFLIGHT_JSON = PROJECT_ROOT / "molmetal" / "reports" / "wf259_run" / "pre_flight.json"
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 WF343C2_SCRIPT = SCRIPTS_DIR / "wf343c2_per_wave_check.py"
-VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+VENV_PY = Path(sys.executable)
 PREFLIGHT_FRESHNESS_CAP_SEC = 86400  # 24 h per Wf-302A AnchorGuard
 
 

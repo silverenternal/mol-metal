@@ -45,12 +45,11 @@ import json
 import os
 import re
 import subprocess
-import shutil
 from pathlib import Path
 
 import pytest
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf124_p3_g6.sh"
 HELPER = ROOT / "scripts" / "_dry_run_log_helper.sh"
 
@@ -266,7 +265,7 @@ def test_no_user_ok_exits_64(
 # ---------------------------------------------------------------------------
 
 
-def test_dry_run_with_user_ok_emits_log_and_plan() -> None:
+def test_dry_run_with_user_ok_emits_log_and_plan(tmp_path: Path) -> None:
     """USER_OK=1 + --dry-run → exits 0 AND emits DRY_RUN.log AND plan.json.
 
     Per Wf-378-A2 fix + Wf-363-A1 DRY_RUN.log schema helper:
@@ -275,15 +274,19 @@ def test_dry_run_with_user_ok_emits_log_and_plan() -> None:
       - 60 (cfg, metal, seed) tuples enumerated via --pair args in DRY_RUN.log
       - plan.json carries total_tuples=60 + status=PLAN_ONLY + honest_framing
     """
-    out_base = ROOT / "results" / "wf124_p3_per_innovation_ablation_g6"
-
-    # Clean previous run if present (test idempotency)
-    if out_base.exists():
-        shutil.rmtree(out_base)
+    # Wf-A269 wave-3 (2026-11-02) — REPAIR.  This test used to emit into
+    # the repo's OWN tracked results tree and then ``shutil.rmtree`` that
+    # directory for idempotency, destroying the tracked published artefacts
+    # under it.  The launcher now honours WF124_G6_OUT_BASE, so the emission
+    # goes to pytest's tmp_path and the repo is untouched.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+    #   out_base = ROOT / "results" / "wf124_p3_per_innovation_ablation_g6"
+    #   ... followed by ``shutil.rmtree(out_base)``.
+    out_base = tmp_path / "wf124_p3_per_innovation_ablation_g6"
 
     proc = _run(
         ["bash", str(WRAPPER), "--dry-run"],
-        env_extra={"USER_OK": "1"},
+        env_extra={"USER_OK": "1", "WF124_G6_OUT_BASE": str(out_base)},
         timeout=60,
     )
     assert proc.returncode == 0, (

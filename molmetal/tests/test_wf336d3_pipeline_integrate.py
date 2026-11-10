@@ -44,7 +44,7 @@ import pytest
 # Project + path constants
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PIPELINE_MASTER = PROJECT_ROOT / "scripts" / "gpu_pipeline_master.sh"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 MOLMETAL_SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
@@ -343,7 +343,7 @@ class TestPathConsistency:
     brief, the 4 NEW wrappers live in different dirs:
 
       - Wf-264        : scripts/launch_wf264_cfm_property_panel.sh
-      - Wf-333        : molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh
+      - Wf-333        : scripts/launch_wf333_vina_4step_gpu_bench.sh
       - Wf-119 P1.4   : scripts/launch_wf119_p1_4_chemprop_v3_lomo.sh
       - DrugOOD Wf-74 : scripts/launch_wf74_v2_drugood_dann.sh
 
@@ -358,12 +358,30 @@ class TestPathConsistency:
             "scripts/launch_wf264_cfm_property_panel.sh" in text
         ), "Wf-264 launch must reference scripts/ path (NOT molmetal/scripts/)"
 
-    def test_wf333_vina_invocation_uses_molmetal_scripts_path(self) -> None:
-        """Wf-333 Vina 4-step invocation must use molmetal/scripts/ path."""
+    def test_wf333_vina_invocation_uses_resolvable_path(self) -> None:
+        """Wf-333 Vina 4-step invocation must use a path that RESOLVES.
+
+        Wf-A269 wave-3 (2026-11-02): this pin used to demand
+        ``molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh`` — a
+        path that does NOT exist (the launcher is at ``scripts/``), so
+        the master was invoking a missing file and the guard was pinning
+        the breakage.  MEASURED: ``git ls-files "molmetal/scripts/*"``
+        holds NO launcher at all, so the prefix is dead.  The pin now
+        demands the resolving path.
+        SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md §5.5
+        rule #6 (the pre-wave-3 rendering of this docstring demanded the
+        dead ``molmetal/scripts/`` path).
+        """
         text = _read_pipeline_master()
         assert (
-            "molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh" in text
-        ), "Wf-333 Vina launch must reference molmetal/scripts/ path"
+            "scripts/launch_wf333_vina_4step_gpu_bench.sh" in text
+        ), "Wf-333 Vina launch must reference a path that resolves on disk"
+        # Wf-A269 wave-3 (2026-11-02) — the message above claims the path
+        # RESOLVES, but the assertion was a bare substring test that never
+        # touched the filesystem.  Make the claim true: resolve it.
+        assert (
+            SCRIPTS_DIR / "launch_wf333_vina_4step_gpu_bench.sh"
+        ).is_file(), "Wf-333 Vina launch must reference a path that resolves on disk"
 
     def test_wf119_p1_4_invocation_uses_scripts_path(self) -> None:
         """Wf-119 P1.4 chemprop v3 LOMO invocation must use scripts/ path."""
@@ -385,11 +403,11 @@ class TestPathConsistency:
         """
         text = _read_pipeline_master()
         for path in (
-            "molmetal/scripts/launch_wf310f_frontier_math_gpu.sh",
-            "molmetal/scripts/launch_wf306b_wf219_ru_gpu.sh",
-            "molmetal/scripts/launch_wf310c_todo220_gpu.sh",
-            "molmetal/scripts/launch_wf310c_t179_w2_gpu.sh",
-            "molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh",
+            "scripts/launch_wf310f_frontier_math_gpu.sh",
+            "scripts/launch_wf306b_wf219_ru_gpu.sh",
+            "scripts/launch_wf310c_todo220_gpu.sh",
+            "scripts/launch_wf310c_t179_w2_gpu.sh",
+            "scripts/launch_wf306a_drugood_vina_gpu.sh",
             "scripts/launch_wf310e_wf135_phase2_gpu.sh",
         ):
             assert path in text, (

@@ -45,7 +45,7 @@ from chemprop.nn import AtomMessagePassing, SumAggregation  # noqa: E402
 
 from molmetal.data.drugood_loader import load_drugood  # noqa: E402
 
-DEFAULT_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+DEFAULT_PY = sys.executable
 
 # ---------------------------------------------------------------------------
 # Cache directory layout (mirrors precache_chemprop_features.py for back-compat).

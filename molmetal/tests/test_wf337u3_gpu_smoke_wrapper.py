@@ -24,7 +24,7 @@ Honest framing (party-twenty-spirit §3.5)
 - MEASURED: --dry-run produces expected launch commands for all
   3 targets; USER_OK=1 (unset) path correctly DENIED with rc=3.
 - MEASURED: Wf-264 launch uses scripts/launch_wf264_cfm_property_panel.sh;
-  Vina 4-step launch uses molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh;
+  Vina 4-step launch uses scripts/launch_wf333_vina_4step_gpu_bench.sh;
   Triangle launch uses molmetal/scripts/wf333g2_triangle_12d_gpu_wrapper.py.
 - HONEST_NEGATIVE_VINA_BLOCKED: Vina 4-step launch returns rc=2
   (SKIP) in --dry-run; the actual launch is BLOCKED on Vina 1.2.7
@@ -42,7 +42,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER_PATH = PROJECT_ROOT / "scripts" / "gpu_smoke_when_vram_free.sh"
 
 

@@ -33,8 +33,8 @@ Storing the class as a str keeps the JSON side-channel at
 ``molmetal/eval/scoring/pocket2mol_score.py`` vocabulary.  Callers that
 need a numerical one-hot should use :func:`one_hot_coord_geometry`.
 
-Backward-compat rule (AGENTS.md §5.11)
---------------------------------------
+Backward-compat rule (~~AGENTS.md §5.11~~ → AGENTS.md §3.3 audit-ledger; corrected 2026-10-31)
+----------------------------------------------------------------------------------------------
 ``classify_coord_geometry(coord_number, atom_z)`` 2-arg call is
 BYTE-IDENTICAL with Wf-A28 step-1 (the signature adds an optional
 ``oxidation_state`` kwarg, defaulting to ``None``; omitting it falls

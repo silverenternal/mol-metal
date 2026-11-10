@@ -63,7 +63,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Make ``molmetal.*`` importable when this file is run directly as
 # ``python molmetal/scripts/registry.py``. Without this, only the script's own
@@ -2087,6 +2087,165 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Wf-A125 G6 — the TARGETED sha re-point.
+#
+# WHY THIS EXISTS: before this command the only way to move a row's
+# ``source_json_sha256`` was ``generate``, which re-derives the WHOLE
+# document: every row's ``last_refreshed`` is re-stamped and the narrative
+# block is re-wrapped.  MEASURED 2026-10-31 on a throwaway copy of the real
+# registry: a full ``generate`` changes **1166** lines for a one-row semantic
+# change.  The alternative — hand-editing the sha — is the unauditable
+# practice AGENTS.md §5.5 forbids.  So the audited path is a TEXT-LEVEL
+# surgical edit of exactly one row, validated by a yaml parse.
+# ---------------------------------------------------------------------------
+
+_METRIC_KEY_RE = re.compile(r"^  ([A-Za-z0-9_.\-]+):\s*$")
+
+
+def _metric_block_bounds(lines: List[str], metric_id: str) -> Tuple[int, int]:
+    """``(start, end)`` line indices of one metric row inside ``lines``.
+
+    The row starts at its 2-space-indented key line inside the top-level
+    ``metrics:`` section and ends at the next 2-space-indented key line.
+    Raises ``KeyError`` when the metric id is not a row key.
+    """
+    section = None
+    for i, line in enumerate(lines):
+        if line.startswith("metrics:"):
+            section = i
+            break
+    if section is None:
+        raise ValueError("registry file has no top-level 'metrics:' section")
+    start = None
+    for i in range(section + 1, len(lines)):
+        m = _METRIC_KEY_RE.match(lines[i])
+        if m and m.group(1) == metric_id:
+            start = i
+            break
+    if start is None:
+        raise KeyError(metric_id)
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if _METRIC_KEY_RE.match(lines[i]):
+            end = i
+            break
+    return start, end
+
+
+def repoint(
+    metric_id: str,
+    *,
+    apply: bool = False,
+    metrics_path: Path = METRICS_PATH,
+    repo_root: Path = REPO_ROOT,
+) -> Dict[str, Any]:
+    """Re-point ONE metric row's ``source_json_sha256`` at the file on disk.
+
+    Refuses (raises ``ValueError`` / ``KeyError``) when the metric id is
+    unknown, when its ``source_json`` is missing from disk, or when the row
+    does not carry exactly one ``source_json_sha256:`` line.  ``apply=False``
+    (the default) is a DRY RUN: nothing is written.
+
+    The edit is TEXT-LEVEL and surgical — only the named row's
+    ``source_json_sha256:`` and ``last_refreshed:`` lines change, plus the
+    FILE-level ``generated_at:`` header stamp (Wf-A127: the header must not
+    date itself before one of its own rows was refreshed).  A yaml
+    round trip is NOT used for the write (it re-wraps the narrative and
+    churns the file); it IS used to validate that the result still parses.
+    """
+    if not metrics_path.is_file():
+        raise ValueError(f"registry file not found: {metrics_path}")
+    text = metrics_path.read_text(encoding="utf-8")
+    doc = yaml.safe_load(text)
+    rows = (doc or {}).get("metrics") or {}
+    if metric_id not in rows:
+        raise KeyError(metric_id)
+    row = rows[metric_id] or {}
+    src = str(row.get("source_json") or "")
+    if not src:
+        raise ValueError(f"metric {metric_id!r} has no source_json")
+    src_path = Path(src)
+    if not src_path.is_absolute():
+        src_path = repo_root / src
+    new_sha = _sha256_file(src_path)
+    if new_sha is None:
+        raise ValueError(f"source_json not found on disk: {src_path}")
+    old_sha = str(row.get("source_json_sha256") or "")
+
+    lines = text.splitlines(keepends=True)
+    start, end = _metric_block_bounds(lines, metric_id)
+    sha_idx = [
+        i
+        for i in range(start + 1, end)
+        if lines[i].startswith("    source_json_sha256:")
+    ]
+    if len(sha_idx) != 1:
+        raise ValueError(
+            f"metric {metric_id!r} row carries {len(sha_idx)} "
+            "'source_json_sha256:' lines; refusing to guess"
+        )
+    i = sha_idx[0]
+    newline = "\n" if lines[i].endswith("\n") else ""
+    # The SEMANTIC change is the sha.  If the sha is already correct the row
+    # is CURRENT and there is nothing to re-point — the file must not be
+    # touched (a needless rewrite is exactly the churn G6 exists to remove).
+    changed = old_sha != new_sha
+    stamp = _now_utc()
+    new_text = text
+    if changed:
+        lines[i] = f"    source_json_sha256: {new_sha}{newline}"
+        lr_idx = [
+            j
+            for j in range(start + 1, end)
+            if lines[j].startswith("    last_refreshed:")
+        ]
+        if len(lr_idx) == 1:
+            j = lr_idx[0]
+            nl2 = "\n" if lines[j].endswith("\n") else ""
+            lines[j] = f"    last_refreshed: '{stamp}'{nl2}"
+        # The FILE-level `generated_at:` stamp must move with the row.
+        # Wf-A127 (2026-10-31; catalog §6.240): a re-point refreshed the
+        # row's `last_refreshed` but left the header claiming the file was
+        # last generated BEFORE one of its own rows was refreshed — the
+        # header then dated itself before its own content.
+        gen_idx = [
+            j for j, line in enumerate(lines) if line.startswith("generated_at:")
+        ]
+        if len(gen_idx) == 1:
+            j = gen_idx[0]
+            nl3 = "\n" if lines[j].endswith("\n") else ""
+            lines[j] = f"generated_at: '{stamp}'{nl3}"
+        new_text = "".join(lines)
+        # The result MUST still parse — a hand-rolled text edit that corrupts
+        # the YAML is worse than no edit at all.
+        reparsed = yaml.safe_load(new_text)
+        if not isinstance(reparsed, dict) or metric_id not in (
+            reparsed.get("metrics") or {}
+        ):
+            raise ValueError(
+                f"the surgical edit did not yield a parseable registry row for "
+                f"{metric_id!r}; refusing to write"
+            )
+    written = False
+    if changed and apply:
+        from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+        atomic_write_file(str(metrics_path), new_text)
+        written = True
+    return {
+        "metric_id": metric_id,
+        "source_json": src,
+        "old_sha256": old_sha,
+        "new_sha256": new_sha,
+        "changed": changed,
+        "applied": written,
+        "dry_run": not apply,
+        "registry_file": str(metrics_path),
+        "last_refreshed": stamp,
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     cmd = args[0] if args else "check"
@@ -2149,8 +2308,35 @@ def main(argv: Optional[List[str]] = None) -> int:
                     f"{row['verdict']}"
                 )
         return 0
+    if cmd == "repoint":
+        # Wf-A125 G6 — the targeted sha re-point.  Dry run by default.
+        if len(args) < 2:
+            print("usage: registry.py repoint <metric_id> [--apply]", file=sys.stderr)
+            return 2
+        metric_id = args[1]
+        apply = "--apply" in args[2:]
+        try:
+            rep = repoint(metric_id, apply=apply)
+        except (KeyError, ValueError) as exc:
+            print(f"registry repoint FAILED: {exc}", file=sys.stderr)
+            return 1
+        verb = "repointed" if rep["applied"] else (
+            "would repoint" if rep["changed"] else "already current"
+        )
+        print(
+            f"registry repoint [{metric_id}]: {verb} "
+            f"{rep['source_json']} sha {rep['old_sha256'][:12]}... -> "
+            f"{rep['new_sha256'][:12]}..."
+        )
+        if not rep["applied"]:
+            print(
+                "  (dry run — pass --apply to write "
+                f"{rep['registry_file']})"
+            )
+        return 0
     print(
-        f"unknown command {cmd!r}; use 'generate', 'check', 'gaps' or 'cite'",
+        f"unknown command {cmd!r}; use 'generate', 'check', 'gaps', 'cite' or "
+        "'repoint'",
         file=sys.stderr,
     )
     return 2

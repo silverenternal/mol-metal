@@ -6,8 +6,8 @@ Tool version: `0.1.0-wf39-phase1`
 
 | strategy | n_traj | n_ok | n_err | success_rate | mean_wall_s | mean_n_states | mean_best | mean_leaf_var |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `proof_search` | 2 | 2 | 0 | 1.000 | 1.7698 | 478.00 | 1.500 | 0.0000 |
-| `variance_mcts` | 2 | 2 | 0 | 1.000 | 1.8769 | 477.00 | 1.500 | 0.0000 |
+| `proof_search` | 2 | 2 | 0 | 1.000 | 3.6914 | 478.00 | 1.500 | 0.0000 |
+| `variance_mcts` | 2 | 2 | 0 | 1.000 | 3.2109 | 477.00 | 1.500 | 0.0000 |
 
 ## Vulnerability scan
 

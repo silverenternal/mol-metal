@@ -1,0 +1,231 @@
+# configs/wfa128_bond_reach_upper_bound_2026_10_31.yaml
+#
+# Wf-A129 T3 (2026-10-31) — the ONLY config in the repo that carries the
+# Wf-A128 one-sided UPPER-BOUND bond-length reach switch.
+#
+# WHY this config exists
+# ----------------------
+# Wf-A128 (2026-10-31) added a one-sided upper-bound penalty to the CFM
+# velocity field, behind three default-OFF kwargs on
+# ``_BondLengthGuidance``: ``upper_bound`` / ``upper_bound_reach`` /
+# ``upper_bound_strength``.  The adapter wires them off
+# ``GenerationConfig.bond_length_guidance_upper_bound*``.
+#
+# That left the switch UNREACHABLE from a trainer launch: the trainer's own
+# sampler path (``generate_clouds_from_noise`` -> ``_with_bond_length_guidance``)
+# built ``_BondLengthGuidance`` WITHOUT the three kwargs, so the only way to
+# reach them was ``GenerationConfig -> LipmanFlowMatchingAdapter.generate`` —
+# a path no trainer launch takes.  Wf-A129 T3 wires the three through
+# ``molmetal/scripts/train_cfm_yuelbond_wasserstein.py`` and declares them
+# here, so a YAML-driven trainer launch can actually turn the mechanism on.
+#
+# THE MECHANISM, and why it is a fragmentation lever
+# -------------------------------------------------
+# The MolDiff spring (Wf-A75) fires only INSIDE its 2.5 A inner cutoff.  The
+# YuelBond head's own candidate cutoff is 3.5 A (``flow.edge_cutoff``).  A
+# pair sitting at 2.5-3.5 A is therefore inside the head's candidate set —
+# the head COULD bond it — but the spring never touched it.  A bond that is
+# never formed is a dropped bond, i.e. a FRAGMENT.  The c7 pool is 91.49%
+# fragmented (MEASURED: fragmented_ratio 0.9149).  The upper-bound term
+# reaches out to 3.5 A with NO inner truncation and fires only when the
+# distance EXCEEDS the expected bond length, which is exactly that gap.
+#
+# THE ONE NON-OBVIOUS COUPLING (read this before changing the weights)
+# ---------------------------------------------------------------------
+# The upper-bound term lives INSIDE ``_BondLengthGuidance``, and the trainer
+# only constructs that object when ``bond_length_guidance_weight > 0``
+# (``_with_bond_length_guidance`` returns the bare velocity closure when the
+# weight is 0).  So ``bond_length_guidance_upper_bound: true`` with
+# ``bond_length_guidance_weight: 0.0`` is a NO-OP — the switch would be set
+# and nothing would happen.  This config therefore sets the spring weight to
+# 0.1 (the Wf-A75 value) as well.  That is a coupling, not a preference.
+#
+# WHAT THIS CONFIG DOES NOT CLAIM
+# --------------------------------
+# This is a REACHABILITY smoke: it proves the three knobs arrive at
+# ``_BondLengthGuidance`` from YAML.  It does NOT measure a fragmentation
+# lift — that needs a multi-epoch run and is out of scope here.  No metric
+# is published by this file.
+#
+# Per AGENTS.md §5.11: every hyperparameter lives in the YAML; the launch
+# wrapper passes only --config / --out-dir / --ckpt-dir.
+#
+# Per AGENTS.md §5.7: the flag wire-in is verified by a CPU 50-step smoke
+# (run_smoke_50step) — the switch is DEFAULT OFF, so the default path stays
+# bit-exact with the pre-Wf-A128 sampler.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  # Wf-A113 T71 — the atom vocabulary must cover the cohort.  The
+  # 5-metal cohort (Ru=44, Ir=45, Os=76, Rh=77, Re=75) is NOT in the
+  # Pt-only 13-entry YuelBond table, so the trainer's
+  # _assert_vocab_covers_cohort aborts a 'pt' preset.  all6 = 18 entries.
+  atom_vocab_size: 18
+  # The Z-table preset.  'pt' (13 entries, metal = Pt only) maps every
+  # Ru/Ir/Os/Rh/Re atom to the PADDING one-hot slot, so the bond head
+  # cannot tell which metal it is looking at.  'all6' = 18 entries.
+  yuelbond_vocab: all6
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_logit_adjustment: true
+  bond_logit_adjustment_tau: 0.1
+  bond_head_kind: single
+  bond_predictor: yuelbond_edge_mpnn_residual
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  metal_placement: legacy
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  use_metal_pair_features: true
+  bond_label_smoothing: 0.0
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  head_class: YuelBondDecoderHead
+  # Consistency check only (Wf-A113 T71) — must name the table the
+  # head actually receives, i.e. the same 'all6' as model.yuelbond_vocab.
+  bond_z_table: all6
+  bond_z_metal_set: all7
+  n_steps: 12
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  # Wf-A75 (2026-10-18) — the MolDiff spring.  MUST be > 0 for the
+  # upper-bound term to exist at all (see the coupling note in the header).
+  bond_length_guidance_weight: 0.1
+  # Wf-A128 (2026-10-31) — the one-sided UPPER-BOUND reach switch.
+  # DEFAULT OFF everywhere else in the repo; this config is where it is
+  # turned on.
+  bond_length_guidance_upper_bound: true
+  # The outer reach of the one-sided penalty.  3.5 A = the YuelBond head's
+  # own candidate cutoff (flow.edge_cutoff) — beyond it the head would not
+  # consider a bond at all.
+  bond_length_guidance_upper_bound_reach: 3.5
+  # The stiffness of the one-sided penalty.  The adapter's own default
+  # (None) means "the same stiffness as the spring" (50.0); 25.0 is
+  # written out explicitly so the YAML->argparse round-trip is
+  # type-checked on a REAL float rather than on a null.
+  bond_length_guidance_upper_bound_strength: 25.0
+protocol:
+  n_train: 400
+  n_val: 64
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 4
+  gen_eval_n: 8
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  # 2 epochs, not 1: the CFM trainer records train_loss per EPOCH, so
+  # a 1-epoch run writes a 1-point loss curve and the AGENTS.md §5.7
+  # loss[0] > loss[N-1] check has nothing to compare.
+  epochs: 2
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: /tmp/wfa129/reach_smoke
+  log_master: /tmp/wfa129/reach_smoke/master.log
+  ckpt_dir: /tmp/wfa129/reach_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cpu
+  # 2026-10-19 — `compute.gpu` is a start.sh-only key (CUDA_VISIBLE_DEVICES);
+  # the trainer's own dest is `compute.device`.  Without this line a direct
+  # launch of a "cpu" config resolves --device to `auto` and runs on GPU0.
+  device: cpu
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false
+  user_ok_granted: "Wf-A129 T3 reachability smoke, CPU only, no GPU (2026-10-31)"
+  pre_flight_gates_required:
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
+  # Wf-A269 wave-22 (2026-11-04): the SAME removal applied here — this config
+  # was never in the Wf-A176 population (it was created 2026-10-31 and is
+  # still UNTRACKED), so it kept the phantom.  MEASURED 2026-11-04: no
+  # pipeline owns the name (`pre_flight_check.py --gates
+  # p1_pytorch_cuda_available` hard-errors with "unknown gate name(s)"), and
+  # the config is a CPU-ONLY reachability smoke (`device: cpu`,
+  # `user_ok_granted: "... CPU only, no GPU"`) — a CUDA-required gate was
+  # never the right requirement for it.  The removal is the repo-wide
+  # Wf-A176 precedent; the superseded rendering is preserved VERBATIM above
+  # per AGENTS.md §5.5 rule #6.
+  - p2_tests_pass
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  # AGENTS.md §5.11 — a launch wrapper may pass ONLY --config / --out-dir /
+  # --ckpt-dir (flags that select WHICH run, never WHAT to train).  Every
+  # hyperparameter below is declared in this file.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - "REACHABILITY (MEASURED): the three Wf-A128 knobs arrive at
+    _BondLengthGuidance from this YAML via parse_args(['--config', cfg]).
+    Verified by TYPE (bool / float / float), not by value alone."
+  - "The switch is DEFAULT OFF in the argparse, so every other config in
+    the repo keeps the pre-Wf-A128 sampler bit-for-bit."
+  do_not_claim:
+  - "Any fragmentation lift from this switch. NONE is measured here. The
+    fragmentation lever is a HYPOTHESIS under test; the only fragmentation
+    number on record is the MEASURED c7-pool fragmented_ratio 0.9149, which
+    PREDATES the switch and does not move because of it."
+  - "A CPU 2-epoch smoke says anything about gen_validity / decode_ratio.
+    It does not — 400 clouds x 2 epochs is a plumb check, not a measurement."
+  deferred:
+  - "GPU multi-epoch retrain with the reach switch on vs off, to MEASURE
+    whether the fragmentation rate moves. Gated on a user OK per
+    AGENTS.md §5.1 (>1 hr wall)."

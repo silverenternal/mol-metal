@@ -41,7 +41,8 @@ PY="/home/hugo/codes/mol-metal/.venv/bin/python"   # §5.9 canonical venv
 export PY
 
 # --- GPU 0 ONLY (user directive 2026-10-07) ---------------------------------
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 GPU="cuda:0"
 GPU_PHYS=0
 

@@ -36,10 +36,12 @@
 # Per AGENTS.md §5.1 standing GPU authorization ("显存够就放心大胆用"):
 #   - The wrapper is USER_OK-gated (kill_then_adapt standing directive)
 #   - VRAM budget check is enforced BEFORE the launch (>= 24 GB free)
-#   - Wf-328 + Wf-335 fixes are propagated to the trainer:
-#       * --w2-gradient-mode sliced (this is the path under test)
-#       * --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS)
-#       * --tf32 (Wf-328-W4)
+#   - Wf-328 + Wf-335 fixes are propagated to the trainer THROUGH THE YAML
+#     (AGENTS.md §5.11 — a launch wrapper may pass only --config / --out-dir
+#     / --ckpt-dir / --help), from configs/wfa269_c5_gpu_smoke_w2.yaml:
+#       * eval.w2_gradient_mode: sliced (this is the path under test)
+#       * compute.cpu_num_workers: 8 (Wf-326B OPTIMAL_NUM_WORKERS)
+#       * compute.tf32: true (Wf-328-W4)
 #     Five flags this list used to advertise (--bf16, --num-workers,
 #     --torch-compile-mode-v2, --no-cuda-graphs, --smoke) are not declared by
 #     the trainer's argparse; see the removal note at the launch site.
@@ -50,11 +52,54 @@
 #   - MEASURED: --w2-gradient-mode sort MEASURED 2-3× W₂ step speedup
 #     over sliced on RTX PRO 6000 Blackwell sm_120 (per Wf-326A quick wins
 #     + Wf-328-W5 ship).
+#
+#   CORRECTION (2026-11-03, Wf-A269 cohort c5_gpu_smoke_w2) — the two lines
+#   above are PRESERVED VERBATIM per AGENTS.md §5.5 rule #6, but the first one
+#   no longer matches the code:
+#   - MEASURED (2026-11-03): the trainer's default is "sliced", NOT "sort" —
+#     `DEFAULT_W2_GRADIENT_MODE: str = "sliced"`
+#     (train_dmpnn_multitask_wasserstein.py:235) and argparse's default reads
+#     that constant (:3222). The trainer's OWN history comment (:220-234)
+#     records why: "Wf-328-W5 flipped this constant to 'sort' ... They did not
+#     — both kept the historical 'sliced' literal, argparse kept
+#     default='sliced', and every live config pins w2_gradient_mode: sliced.
+#     The constant was therefore dead code carrying a false claim."
+#   - CONSEQUENCE for this smoke: `--w2-gradient-mode sliced` is the DEFAULT
+#     path, not an opt-in one, so this smoke exercises the default and its
+#     "paper §6 reproducibility" framing above is stale. The migrated YAML
+#     still states `eval.w2_gradient_mode: sliced` EXPLICITLY, so the run is
+#     pinned to the sliced path regardless of any future default flip — that
+#     is the value-preserving choice, not the prose's claim about defaults.
+#   - The 2-3× sort-vs-sliced speedup claim above is NOT re-verified here
+#     (0 GPU in this wave); it is left as the 2026-09-29 measurement it is.
 #   - PROJECTED wall: ~5 min GPU on cuda:0 (100 ligands × 1 seed ×
 #     1-epoch smoke run).
 #   - HONEST_NEGATIVE_HISTORICAL: prior Wf-334 GPU smoke did NOT exercise
 #     the sliced mode (only the sort default path). This wrapper closes
 #     that gap.
+#
+#   SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#     - MEASURED (2026-09-29 15:30): --w2-gradient-mode default is "sort";
+#       sliced mode is wired but not default (paper §6 reproducibility only).
+#   CORRECTION (2026-11-04, MEASURED on this tree): the superseded rendering
+#   above is MEASURED-FALSE — the shipped default is 'sliced', NOT 'sort'.
+#   molmetal/scripts/train_dmpnn_multitask_wasserstein.py:235
+#     DEFAULT_W2_GRADIENT_MODE: str = "sliced"
+#   and argparse's --w2-gradient-mode default reads that constant (:3222).
+#   MEASURED 2026-11-04:
+#     DEFAULT_W2_GRADIENT_MODE = sliced
+#     parse_args([]).w2_gradient_mode = sliced
+#   REPRODUCE (CPU-only, 0 GPU):
+#     CUDA_VISIBLE_DEVICES="" /home/hugo/codes/mol-metal/.venv/bin/python -c "
+#     import importlib.util, sys
+#     spec = importlib.util.spec_from_file_location('t', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py')
+#     m = importlib.util.module_from_spec(spec); sys.modules['t'] = m; spec.loader.exec_module(m)
+#     sys.argv = ['t']; print(m.DEFAULT_W2_GRADIENT_MODE); print(m.parse_args([]).w2_gradient_mode)"
+#   -> DEFAULT_W2_GRADIENT_MODE = sliced
+#      parse_args([]).w2_gradient_mode = sliced
+#   (The 2026-11-03 CORRECTION above carries the same finding and explains
+#    WHY the constant was never flipped; it is left untouched. This block
+#    re-states it under the §5.5 rule #6 marker and re-measures it.)
 #
 # USAGE
 # -----
@@ -80,7 +125,24 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 # 2026-10-07 (user directive: configs in YAML, not CLI). Precedence:
 # explicit CLI flag > YAML > argparse default.
-DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
+# 2026-11-03 (AGENTS.md §5.11 migration): this smoke names its OWN config.
+# `configs/dmpnn.yaml` is SHARED by 8 other launch wrappers, so the six flags
+# the smoke used to pass on the command line (epochs 1, seeds [0], W₂ sliced,
+# 8 CPU workers, TF32 on, CUDA device 0) live in a dedicated copy —
+# configs/wfa269_c5_gpu_smoke_w2.yaml (Wf-A269 cohort c5_gpu_smoke_w2) —
+# instead of on this command line. Editing
+# the shared file would change the other 8 runs. Overriding SMOKE_CONFIG
+# overrides the smoke's cohort.
+#
+# NAME HISTORY (AGENTS.md §5.5 rule #6 — append-only, never a silent edit):
+# the dedicated copy was first written as `configs/gpu_smoke_w2_sliced.yaml`
+# and was renamed to the Wf-A269 `configs/wfa269_<cohort-id>.yaml` convention
+# on 2026-11-03. The superseded rendering is preserved VERBATIM at
+#   molmetal/reports/wfa269_yaml_migration/gpu_smoke_w2_sliced.config.before.yaml
+# and the superseded path still exists on disk at
+#   configs/gpu_smoke_w2_sliced.yaml
+# (inert — this wrapper points at the wfa269_ file).
+SMOKE_CONFIG="${SMOKE_CONFIG:-${PROJECT_ROOT}/configs/wfa269_c5_gpu_smoke_w2.yaml}"
 OUT_BASE="${PROJECT_ROOT}/results/wf338f1_w2_sliced_smoke"
 LOG_DIR="${PROJECT_ROOT}/molmetal/reports/wf338f1_w2_sliced_smoke"
 WRAPPER_LOG="${LOG_DIR}/wrapper.log"
@@ -204,23 +266,39 @@ launch_w2_sliced_smoke() {
   local target_log="${LOG_DIR}/w2_sliced_smoke.log"
   log "Launching W₂ sliced GPU smoke on cuda:0"
   log "  trainer: molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
-  log "  Wf-328+Wf-335 fixes:"
-  log "    --w2-gradient-mode sliced (this smoke — production default is 'sort' per Wf-328-W5)"
-  log "    --cpu-num-workers 8 (Wf-328-W2; the trainer's only worker flag)"
-  log "    --tf32 (Wf-328-W4)"
+  log "  config: ${SMOKE_CONFIG}"
+  log "  Wf-328+Wf-335 fixes (now declared in the YAML, AGENTS.md §5.11):"
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   log "    eval.w2_gradient_mode=sliced (this smoke — production default is 'sort' per Wf-328-W5)"
+  # CORRECTION (2026-11-04, MEASURED on this tree): the shipped default is
+  # 'sliced', NOT 'sort'. The trainer defines
+  #   DEFAULT_W2_GRADIENT_MODE: str = "sliced"
+  # at molmetal/scripts/train_dmpnn_multitask_wasserstein.py:235, and argparse's
+  # --w2-gradient-mode default reads that constant (:3222). MEASURED:
+  #   DEFAULT_W2_GRADIENT_MODE = sliced
+  #   parse_args([]).w2_gradient_mode = sliced
+  #   REPRODUCE (CPU-only, 0 GPU):
+  #     CUDA_VISIBLE_DEVICES="" /home/hugo/codes/mol-metal/.venv/bin/python -c "
+  #     import importlib.util, sys
+  #     spec = importlib.util.spec_from_file_location('t', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py')
+  #     m = importlib.util.module_from_spec(spec); sys.modules['t'] = m; spec.loader.exec_module(m)
+  #     sys.argv = ['t']; print(m.DEFAULT_W2_GRADIENT_MODE); print(m.parse_args([]).w2_gradient_mode)"
+  #   -> DEFAULT_W2_GRADIENT_MODE = sliced
+  #      parse_args([]).w2_gradient_mode = sliced
+  log "    eval.w2_gradient_mode=sliced (this smoke — production default is 'sliced' per the trainer's DEFAULT_W2_GRADIENT_MODE)"
+  log "    compute.cpu_num_workers=8 (Wf-328-W2; the trainer's only worker flag)"
+  log "    compute.tf32=true (Wf-328-W4)"
+  log "    cuda_visible_devices=\"0\" (top-level key; was --cuda-visible-devices 0)"
   log "    no --torch-compile, so no CUDA Graphs (the Wf-335-R3 lever is"
   log "      structural here, not a flag — see the removal note below)"
   log "  expected wall: ~5 min GPU cuda:0 (100 ligands × 1 seed × 1-epoch smoke)"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
     echo "[DRY-RUN] USER_OK=1 ${PY} molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\" | tee -a "${target_log}"
-    echo "    --config ${DMPNN_CONFIG} \\" | tee -a "${target_log}"
-    echo "    --cuda-visible-devices 0 \\" | tee -a "${target_log}"
-    echo "    --w2-gradient-mode sliced \\" | tee -a "${target_log}"
-    echo "    --epochs 1 --seeds 0 \\" | tee -a "${target_log}"
-    echo "    --cpu-num-workers 8 \\" | tee -a "${target_log}"
-    echo "    --tf32 \\" | tee -a "${target_log}"
+    echo "    --config ${SMOKE_CONFIG} \\" | tee -a "${target_log}"
     echo "    --out-dir ${OUT_BASE}" | tee -a "${target_log}"
+    echo "    (the six hyperparameters live in ${SMOKE_CONFIG}: epochs 1, seeds [0]," | tee -a "${target_log}"
+    echo "     w2-gradient-mode sliced, cpu-num-workers 8, tf32 true, cuda-visible-devices \"0\")" | tee -a "${target_log}"
     return 0
   fi
 
@@ -243,13 +321,64 @@ launch_w2_sliced_smoke() {
   #                     behind `--torch-compile`, which is NOT passed, so the
   #                     lever is already closed structurally.
   #   --bf16         -> not a CLI flag; BF16 is resolved by configure_bf16().
+  #
+  # 2026-11-03 (AGENTS.md §5.11): the six flags that REMAINED on this line
+  # were moved into configs/wfa269_c5_gpu_smoke_w2.yaml. §5.11 permits only
+  # --config / --out-dir / --ckpt-dir / --help on a trainer invocation, and
+  # `scripts/_yaml_only_gate.py` flagged every one of them.
+  #
+  # MEASURED equivalence (FIRST migration, Wf-A269 prior wave): the trainer's
+  # own parse_args was run twice — once
+  # with the OLD command line and once with the NEW `--config` alone — and the
+  # two namespaces were compared dest-by-dest: 0 differences, and the migrated
+  # dests come back as the right TYPES (`epochs` int, `seeds` LIST [0],
+  # `cuda_visible_devices` str "0", `w2_gradient_mode` str 'sliced',
+  # `cpu_num_workers` int 8, `tf32` bool True).
+  #
+  # MEASURED equivalence (Wf-A269 cohort c5_gpu_smoke_w2, 2026-11-03 —
+  # ADDENDUM, the prior claim above is PRESERVED VERBATIM per AGENTS.md §5.5
+  # rule #6): scripts/_yaml_equivalence_probe.py re-run against the renamed
+  # config found ONE dest that did NOT match: `out_dir`, because the YAML
+  # carried the RELATIVE `results/wf338f1_w2_sliced_smoke` while the OLD
+  # command line passed the ABSOLUTE
+  #   /home/hugo/codes/mol-metal/results/wf338f1_w2_sliced_smoke
+  # (the probe reported: `DIFF out_dir: old="PosixPath('/home/hugo/codes/
+  # mol-metal/results/wf338f1_w2_sliced_smoke')" new="PosixPath('results/
+  # wf338f1_w2_sliced_smoke')" — value differs`). The config now carries the
+  # absolute path, and the probe reports PASS. The prior wave's "0
+  # differences" claim was measured on a config whose `output.out_dir` still
+  # had the shared file's value, so it did not cover this dest.
+  #
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   (the OLD wrapper's `${DMPNN_CONFIG}` was configs/dmpnn.yaml)
+  #   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py" \
+  #     --config "${DMPNN_CONFIG}" \
+  #     --cuda-visible-devices 0 \
+  #     --w2-gradient-mode sliced \
+  #     --epochs 1 --seeds 0 \
+  #     --cpu-num-workers 8 \
+  #     --tf32 \
+  #     --out-dir "${OUT_BASE}" \
+  #     > "${target_log}" 2>&1 &
+  #
+  # AND the matching header bullet list, VERBATIM:
+  #   - Wf-328 + Wf-335 fixes are propagated to the trainer:
+  #       * --w2-gradient-mode sliced (this is the path under test)
+  #       * --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS)
+  #       * --tf32 (Wf-328-W4)
+  #     Five flags this list used to advertise (--bf16, --num-workers,
+  #     --torch-compile-mode-v2, --no-cuda-graphs, --smoke) are not declared by
+  #     the trainer's argparse; see the removal note at the launch site.
+  #
+  # WHERE EACH FLAG WENT (configs/wfa269_c5_gpu_smoke_w2.yaml):
+  #   --cuda-visible-devices 0 -> cuda_visible_devices: "0"   (top-level key)
+  #   --w2-gradient-mode sliced -> eval.w2_gradient_mode: sliced
+  #   --epochs 1                -> train.epochs: 1
+  #   --seeds 0                 -> data.seeds: [0] + protocol.seeds: [0]
+  #   --cpu-num-workers 8       -> compute.cpu_num_workers: 8
+  #   --tf32                    -> compute.tf32: true
   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py" \
-    --config "${DMPNN_CONFIG}" \
-    --cuda-visible-devices 0 \
-    --w2-gradient-mode sliced \
-    --epochs 1 --seeds 0 \
-    --cpu-num-workers 8 \
-    --tf32 \
+    --config "${SMOKE_CONFIG}" \
     --out-dir "${OUT_BASE}" \
     > "${target_log}" 2>&1 &
   local pid=$!
@@ -269,7 +398,13 @@ print_status() {
   echo "VRAM probe:"
   probe_vram | awk -F',' 'BEGIN{printf "  %-3s %-30s %10s %10s %10s\n", "GPU", "Name", "UsedMiB", "TotalMiB", "FreeMiB"} {used=$3; gsub(/ /,"",used); total=$4; gsub(/ /,"",total); free=total-used; printf "  %-3s %-30s %10s %10s %10s\n", $1, $2, used, total, free}'
   echo ""
-  echo "W₂ gradient mode default (per Wf-328-W5): sort"
+  # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+  #   echo "W₂ gradient mode default (per Wf-328-W5): sort"
+  # CORRECTION (2026-11-04, MEASURED on this tree): the default is 'sliced',
+  # NOT 'sort' — molmetal/scripts/train_dmpnn_multitask_wasserstein.py:235
+  #   DEFAULT_W2_GRADIENT_MODE: str = "sliced"
+  # (argparse's --w2-gradient-mode default reads that constant, :3222).
+  echo "W₂ gradient mode default (per the trainer's DEFAULT_W2_GRADIENT_MODE): sliced"
   echo "W₂ gradient mode under smoke (this wrapper): sliced"
   echo ""
   echo "Recent wrapper log (last 15 lines):"
@@ -334,7 +469,9 @@ main() {
     "vram_threshold_mib": ${VRAM_FREE_MIN_MIB},
     "w2_sliced_rc": ${rc_w2_sliced},
     "user_ok": "${USER_OK:-<unset>}",
-    "production_default": "sort",
+    "production_default": "sliced",
+    "production_default_superseded_rendering": "sort",
+    "production_default_correction": "SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6: the emitted value was 'sort' (the Wf-328-W5 claim). MEASURED 2026-11-04: the shipped default is 'sliced' - molmetal/scripts/train_dmpnn_multitask_wasserstein.py:235 DEFAULT_W2_GRADIENT_MODE = 'sliced', and argparse's --w2-gradient-mode default reads that constant (:3222).",
     "smoke_target": "sliced"
   }
 }

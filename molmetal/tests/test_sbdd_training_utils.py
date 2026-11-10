@@ -16,11 +16,12 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
 # Make sure the molmetal package is importable
-sys.path.insert(0, "/home/hugo/codes/mol-metal")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from molmetal.molmetal_lam.sbdd_env import training_utils as tu
 

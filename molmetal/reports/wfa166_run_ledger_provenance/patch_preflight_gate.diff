@@ -1,0 +1,160 @@
+--- a/molmetal/scripts/pre_flight_check.py
++++ b/molmetal/scripts/pre_flight_check.py
+@@ -5800,7 +5800,12 @@
+     # step and its two gates were already in the working tree uncommitted when
+     # this edit landed; they are recorded here now so the count's provenance is
+     # readable rather than implied. Measured: len(build_gates("all")) == 124.
+-    "all": 129,
++    # Wf-A166 (2026-11-01): "all" 129 -> 130 and "launch" 131 -> 132 with
++    # p3_run_ledger_git_provenance (a ledger row whose git_sha is not a real,
++    # reachable commit whose tree carries the file version the row hashed).
++    # MEASURED via len(build_gates(...)) after registering it on the "all"
++    # pipeline: all=130 launch=132 frontier=25 chemprop_v2_v3=18 cfm=8.
++    "all": 130,
+     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
+     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
+     # gates moved out of the commit path into the new "launch"
+@@ -5873,7 +5878,7 @@
+     # citation or a stale census statistic passed, because both audits
+     # existed only as pytest modules.  "cfm" / "frontier" / "chemprop_v2_v3"
+     # are unchanged (8 / 25 / 18).
+-    "launch": 131,
++    "launch": 132,
+     "frontier": 25,
+     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
+     # via len(build_gates("chemprop_v2_v3"));
+@@ -9980,6 +9985,109 @@
+             f"src {row.get('source_json')}"
+         )
+     status = "FAIL" if open_n > 0 else "PASS"
++    return GateResult(
++        name, priority, pipeline, status, f"{name}: " + " ".join(parts),
++        time.perf_counter() - t0,
++    )
++
++
++def gate_p3_run_ledger_git_provenance(
++    name: str,
++    priority: str,
++    pipeline: str,
++    *,
++    ledger_path: Optional[Path] = None,
++    repo_root: Optional[Path] = None,
++) -> GateResult:
++    """Wf-A166 — run-ledger GIT-provenance gate: does every ledger row name a
++    real, reachable commit that touched the file the row points at?
++
++    WHY THIS GATE EXISTS
++    ---------------------
++    ``molmetal/scripts/run_ledger.py::uncommitted_provenance`` (wired in as
++    ``p3_run_ledger_provenance``) checks ONE axis: does the row's
++    ``source_json_sha256`` match the file on disk or any committed version of
++    it.  It does NOT look at the row's ``git_sha`` at all.  So a row can name
++    a commit that does not exist, a commit that was rewritten away, or a
++    commit unrelated to the file the row points at — and the pre-flight stays
++    green.  This gate closes that hole.
++
++    THE RULE (strict)
++    ------------------
++    FAIL on a metric whose LATEST ledger row has a ``git_sha`` that
++      (i)   does not resolve to a git commit,
++      (ii)  is unreachable from every branch and tag, or
++      (iii) never touched that row's ``source_json``.
++
++    Scoped to the LATEST row per metric — the ledger is append-only
++    (AGENTS.md §5.6), so an EARLIER row with the same defect is HISTORY, it
++    can never be repaired, and it must not be punished for being history.
++
++    MEASURED 2026-11-01 on this working tree (denominator: 418 ledger rows,
++    396 distinct metrics, 396 latest rows):
++
++      * ``commit_exists``       396/396 latest rows name a real commit.
++      * ``commit_reachable``    395 reachable / 1 UNREACHABLE
++        (``chembl29_metal_scan``, git_sha
++        975414bc6fb8ef20ca53429f287a4d3297184cad — a rewritten-away commit
++        that survives only in the reflog).
++      * ``commit_touches_source`` 0/396 touched / 396 NOT touched.
++      * ``sha_vs_committed``    396/396 latest rows match a committed
++        version — cross-checked against
++        ``run_ledger.uncommitted_provenance`` (AGREE on every shared count:
++        418 rows / 396 metrics / 416 pairs / 398 paths / 0 open / 9
++        superseded).
++
++    ⚠️ THIS GATE, WITH THE STRICT RULE, FAILS ON 396 OF 396 METRICS TODAY.
++    Enabling it as-is turns the pre-flight from PASS to FAIL and blocks
++    EVERY launch until the ledger is repaired.  The reason is a SEMANTIC
++    mismatch, not slack in the rule: ``run_ledger.record_run`` sets
++    ``git_sha = git rev-parse HEAD``, so ``git_sha`` means "the repository
++    state when the row was recorded", NOT "the commit that authored the
++    source_json".  A row recorded after an unrelated commit satisfies the
++    real provenance claim and still fails (iii).
++
++    The provenance-TRUE form of (iii) is "the sha256 of ``source_json`` AT
++    ``git_sha`` equals the row's ``source_json_sha256``".  MEASURED on the
++    same tree: 388/396 latest rows MATCH, 7 differ, 1 absent — i.e. 8
++    metrics are open, not 396.  See
++    ``molmetal/reports/wfa166_run_ledger_provenance/`` for the advisory
++    variant that uses that form.
++
++    Implementation: ``molmetal/scripts/wfa166_run_ledger_provenance.py``
++    (``audit_ledger``).  READ-ONLY, CPU-only, torch-free.
++    """
++    t0 = time.perf_counter()
++    try:
++        from molmetal.scripts.wfa166_run_ledger_provenance import audit_ledger
++
++        kwargs: Dict[str, Any] = {}
++        if ledger_path is not None:
++            kwargs["ledger_path"] = ledger_path
++        if repo_root is not None:
++            kwargs["repo_root"] = repo_root
++        rep = audit_ledger(**kwargs)
++    except Exception as exc:  # noqa: BLE001 — a broken ledger is a FAIL
++        return GateResult(
++            name, priority, pipeline, "FAIL",
++            f"{name}: run-ledger git-provenance audit raised "
++            f"{type(exc).__name__}: {exc}",
++            time.perf_counter() - t0,
++        )
++    c = rep["counts"]
++    gv = rep.get("gate_verdict") or {}
++    open_metrics = [str(m) for m in (gv.get("strict_open_metrics") or [])]
++    parts = [
++        f"ledger_rows={c.get('ledger_rows')}",
++        f"metrics={c.get('distinct_metrics')}",
++        f"latest_rows={c.get('latest_rows')}",
++        f"OPEN_metrics={len(open_metrics)}",
++    ]
++    for mid in open_metrics[:25]:
++        parts.append(f"OPEN {mid}")
++    if len(open_metrics) > 25:
++        parts.append(f"... and {len(open_metrics) - 25} more")
++    status = "FAIL" if open_metrics else "PASS"
+     return GateResult(
+         name, priority, pipeline, status, f"{name}: " + " ".join(parts),
+         time.perf_counter() - t0,
+@@ -16138,6 +16246,24 @@
+                     "run_ledger",
+                 ),
+             ),
++            # ---- Wf-A166 — run-ledger GIT-provenance.  The gate above
++            # checks the row's sha against disk and against git history, but
++            # never the row's ``git_sha`` itself.  This one checks that the
++            # ``git_sha`` is a real, reachable commit that touched the file
++            # the row points at.  STRICT RULE — see the gate's docstring for
++            # the MEASURED counts and for the warning that it FAILS on
++            # 396/396 metrics on the current tree (a SEMANTIC mismatch:
++            # ``git_sha`` means "HEAD at record time", not "the commit that
++            # wrote the file").  Implementation:
++            # molmetal/scripts/wfa166_run_ledger_provenance.py.
++            (
++                "p3_run_ledger_git_provenance",
++                lambda: gate_p3_run_ledger_git_provenance(
++                    "p3_run_ledger_git_provenance",
++                    "P3",
++                    "run_ledger",
++                ),
++            ),
+             # ---- Gate-inventory audit — makes the pre-flight gate surface
+             # auditable instead of a 14k-line monolith.  Introspects
+             # build_gates() (no gate executed) and emits the registered-gate

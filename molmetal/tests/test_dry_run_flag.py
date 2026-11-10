@@ -45,7 +45,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-_SHARED_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+_SHARED_VENV = Path(sys.executable)
 _DEFAULT_PY = _SHARED_VENV if _SHARED_VENV.exists() else Path(sys.executable)
 
 

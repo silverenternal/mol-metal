@@ -15,11 +15,12 @@ random initialisation effects.
 """
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import torch
 
-sys.path.insert(0, "/home/hugo/codes/mol-metal")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from molmetal.baselines.dmpnn import featurize_smiles_list, collate_graphs  # noqa: E402
 from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel  # noqa: E402

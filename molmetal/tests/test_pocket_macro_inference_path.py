@@ -37,11 +37,14 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers — load the pure-path helpers without triggering torch import
 # ---------------------------------------------------------------------------
-PMI_FILE = Path(
-    "/home/hugo/codes/try_triton_on_rocm/molmetal/molmetal_lam/lam_chem/"
-    "pocket_macro_inference.py"
+PMI_FILE = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "molmetal_lam"
+    / "lam_chem"
+    / "pocket_macro_inference.py"
 )
-REPO_ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MOLMETAL_ROOT = REPO_ROOT / "molmetal"
 TESTS_DIR = MOLMETAL_ROOT / "tests"
 CHECKPOINT = MOLMETAL_ROOT / "models" / "pocket_macro_skeleton_v2.pt"

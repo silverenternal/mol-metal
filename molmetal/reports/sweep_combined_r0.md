@@ -104,8 +104,8 @@ Lambda MCTS converges quickly on both `1h36` and `830c`: at branching ∈ {12, 6
 | **Lambda (R4-C, measured)** | 2026 | **-14.18** (proxy) | 1.000 | **MEASURED** (2/2 pockets) | this sweep (`r4_c_full_sweep_real`) |
 | Pocket2Mol | 2022 | -7.07 | 0.244 | **CITED** | Peng 2022 (arXiv 2205.07249, CrossDocked100, n=100) |
 | TargetDiff | 2023 | -8.45 | 0.105 | **CITED** | Guan 2023 (arXiv 2303.03543, CrossDocked100, n=100) |
-| DiffSBDD | 2024 | -7.62 | 0.246 | **CITED** | Qin 2024 (arXiv 2210.13695, CrossDocked100, n=100) |
-| DecompDiff | 2024 | -8.39 | 0.245 | **CITED** | Guan 2024 (arXiv 2303.10120, CrossDocked100, n=100) |
+| DiffSBDD | 2024 | -7.62 | 0.246 | **CITED** | Schneuing et al. 2024 (arXiv 2210.13695, CrossDocked100, n=100) |
+| DecompDiff | 2023 | -8.39 | 0.245 | **CITED** | Guan et al. 2023 (arXiv 2403.07902, CrossDocked100, n=100) |
 | FLOWR | 2024 | -6.93 | — (94% PB-valid) | **CITED** | Cremer 2025 (arXiv 2504.10564, CrossDocked100) |
 | MolCRAFT | 2024 | -9.25 | 0.361 | **CITED** | MolCRAFT paper (CrossDocked100, n=100) |
 | AlphaDrug | 2025 | -9.77 | — | **CITED** | AlphaDrug paper (CrossDocked100) |
@@ -141,3 +141,32 @@ Lambda MCTS converges quickly on both `1h36` and `830c`: at branching ∈ {12, 6
 - Cite-only policy: TODO/pending/decisions.md D1
 - Vina 1.2.7 vs QVina mismatch: TODO/pending/decisions.md D7
 - Tk / PyG ROCm 7.2 wheels: TODO/pending/risks.md R1
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-16 / F-05 (adjacent) — DiffSBDD author attribution.** Superseded:
+  `Qin 2024 (arXiv 2210.13695, CrossDocked100, n=100)`. Corrected to:
+  `Schneuing et al. 2024 (arXiv 2210.13695, CrossDocked100, n=100)`.
+  Verified 2026-10-31: arXiv API `id_list=2210.13695` → "Structure-Based Drug Design with
+  Equivariant Diffusion Models", first author **Arne Schneuing** (then Harris, Du, Didi,
+  Jamasb, Igashov, Du, Gomes, Blundell, Lio, Welling, Bronstein, Correia); Crossref
+  `10.1038/s43588-024-00737-x` → *Nature Computational Science* 4(12):899-909 (2024).
+  "Qin" is the surname of the MolChord author (Tao Qin), a different paper. The year column
+  for DiffSBDD already read `2024` and is correct for *Nat. Comput. Sci.* 2024.
+- **F-05 / F-07 — DecompDiff identifier + venue-year.** Superseded: year `2024`,
+  `Guan 2024 (arXiv 2303.10120, CrossDocked100, n=100)`. Corrected to: year `2023`,
+  `Guan et al. 2023 (arXiv 2403.07902, CrossDocked100, n=100)`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` → DecompDiff, **ICML 2023**
+  (PMLR 202:11827-11846); superseded id `2303.10120` = unrelated ASME Riccati-filter paper.
+- **No performance number was changed by this wave** (−7.62 / 0.246 and −8.39 / 0.245 and every
+  Lambda MEASURED value in this report are byte-identical to the pre-wave file).

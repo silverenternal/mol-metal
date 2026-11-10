@@ -43,6 +43,7 @@ Honest ceiling (per AGENTS.md §5.2):
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 
 import pytest
 import torch
@@ -59,6 +60,11 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     split_bond_loss,
 )
 from molmetal.models.bond_head import AtomCloud
+
+# Repo root derived from this file's own location (molmetal/tests/X.py ->
+# parents[2]) so the tracked-source / tracked-config reads below resolve on
+# any checkout.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------------------
@@ -94,11 +100,8 @@ class TestFix2HeadWiring:
         wording so a future refactor that drops the check is caught by
         code review.
         """
-        from pathlib import Path
-
-        trainer = Path(
-            "/home/hugo/codes/mol-metal/molmetal/scripts/"
-            "train_cfm_yuelbond_wasserstein.py"
+        trainer = (
+            REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
         ).read_text(encoding="utf-8")
         # The guard message spans two lines; match the canonical phrase.
         assert (
@@ -315,7 +318,7 @@ class TestFix4ClassWeightsKillSwitch:
         """
         import yaml
         with open(
-            "/home/hugo/codes/mol-metal/configs/cfm_5metal_default.yaml",
+            REPO_ROOT / "configs" / "cfm_5metal_default.yaml",
             "r",
         ) as f:
             cfg = yaml.safe_load(f)
@@ -333,7 +336,7 @@ class TestFix4ClassWeightsKillSwitch:
         """Wf-A69 W2 ship must include all 4 fix-keys in the YAML."""
         import yaml
         with open(
-            "/home/hugo/codes/mol-metal/configs/cfm_5metal_default.yaml",
+            REPO_ROOT / "configs" / "cfm_5metal_default.yaml",
             "r",
         ) as f:
             cfg = yaml.safe_load(f)

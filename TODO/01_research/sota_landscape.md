@@ -30,8 +30,8 @@
 | 15 | **TankBind** | 2022 | SBDD (Docking) | 20.4% top-1 on PDBBind / SE(3)-equivariant | https://github.com/luodaniel/trigonometric_binding |
 | 16 | **TargetDiff** | 2023 | SBDD (Generative) | Per-target Vina score / 3D generation | https://github.com/luost orderly/TargetDiff |
 | 17 | **Pocket2Mol** | 2022 | SBDD (Generative) | Vina -6.5 avg / Autoregressive 3D sampling | https://github.com/illuminolab/Pocket2Mol |
-| 18 | **DiffSBDD** | 2024 | SBDD (Generative) | PoseBusters-valid 88% / Equivariant diffusion | https://github.com/Ar逢eSchneuing/DiffSBDD |
-| 19 | **DecompDiff** | 2024 | SBDD (Generative) | Fragment-conditioned / Diffusion linker | https://github.com/ |
+| 18 | **DiffSBDD** | 2024 | SBDD (Generative) | PoseBusters-valid 88% / Equivariant diffusion | https://github.com/ArneSchneuing/DiffSBDD |
+| 19 | **DecompDiff** | 2023 | SBDD (Generative) | Fragment-conditioned / Diffusion linker | https://github.com/bytedance/DecompDiff |
 | 20 | **DiffBP** | 2024 | SBDD (Generative) | Non-autoregressive / Global context | https://github.com/ |
 | 21 | **FLOWR** | 2026 | SBDD (Generative) | PB-valid 0.94 / Vina -6.93 / 70x faster than PILOT | https://github.com/jule-c/flowr |
 | 22 | **Boltz-2** | 2025 | Protein Structure+Affinity | Pearson r=0.86 / FEP-level affinity, 1000x faster | https://github.com/jackom j/Boltz |
@@ -181,7 +181,7 @@
 
 **Description:** EquiBind applies SE(3)-equivariant geometric deep learning (E(3)-GNN + graph matching network) to rigid protein-ligand docking. Unlike traditional sampling-based methods, it directly predicts the binding pose in a single forward pass without exhaustive sampling, making it 10x faster than classical methods. It guarantees independence from the initial ligand orientation and models ligand flexibility through torsion angle optimization. It was the first practical equivariant docking model.
 
-**Paper:** Ganea et al., "EquiBind: Geometric Deep Learning for Drug Binding Structure Prediction," *ICML 2022*. https://arxiv.org/abs/2111.07786
+**Paper:** Stärk et al., "EquiBind: Geometric Deep Learning for Drug Binding Structure Prediction," *ICML 2022*. https://arxiv.org/abs/2202.05146
 **GitHub:** https://github.com/octavian-ganea/equidock_public
 **Key metric:** 38% top-1 blind docking on PDBBind; 10x faster inference than classical methods.
 
@@ -231,8 +231,8 @@
 
 **Description:** DecompDiff performs structure-aware scaffold decoration using an end-to-end equivariant diffusion process. Given a partial molecular scaffold placed in a protein pocket, it diffuses the missing atoms into chemically plausible completions. This is particularly relevant for fragment-based drug design (FBDD), a common strategy for metal complex optimization where fragments (e.g., a metal-binding pharmacophore) are known and expansion is needed.
 
-**Paper:** (2024; see VLS3D.com comprehensive list)
-**GitHub:** (various implementations)
+**Paper:** Guan et al., "DecompDiff: Diffusion Models with Decomposed Priors for Structure-Based Drug Design," *ICML 2023*. https://arxiv.org/abs/2403.07902
+**GitHub:** https://github.com/bytedance/DecompDiff
 **Key metric:** Scaffold-constrained generation validity; per-fragment completion quality.
 
 ---
@@ -613,3 +613,51 @@ For benchmark protocols and honest baseline results on the molmetal metal-cytoxi
 ---
 
 *Last updated: September 2026. This document is maintained as part of the molmetal project. Please update the companion documents (`TODO/03_baselines`, `TODO/06_milestones`) when new benchmarks are run.*
+
+
+---
+
+## Wf-A149 citation-truth corrections (2026-10-31)
+
+Append-only correction log. Per AGENTS.md §5.5 rule 6 no historical record was deleted
+or rewritten: the superseded wording is quoted **verbatim** below, and the live citation
+fields above now carry the corrected values. **This wave changed IDENTIFIER / VENUE /
+AUTHOR / YEAR fields only — no performance number was changed.** Every replacement value
+was verified on 2026-10-31 against a live source (arXiv API, PMLR proceedings index,
+Crossref REST, doi.org content negotiation, publisher/GitHub pages).
+
+- **F-16 — EquiBind first author + arXiv identifier.** Superseded:
+  `**Paper:** Ganea et al., "EquiBind: Geometric Deep Learning for Drug Binding Structure
+  Prediction," *ICML 2022*. https://arxiv.org/abs/2111.07786`
+  Corrected to:
+  `**Paper:** Stärk et al., "EquiBind: Geometric Deep Learning for Drug Binding Structure
+  Prediction," *ICML 2022*. https://arxiv.org/abs/2202.05146`
+  Verified 2026-10-31: arXiv API `id_list=2202.05146` → "EquiBind: Geometric Deep Learning for
+  Drug Binding Structure Prediction", first author **Hannes Stärk** (then Ganea, Pattanaik,
+  Dror et al.), journal_ref "International Conference on Machine Learning 2022"; PMLR v162 →
+  ICML 2022, PMLR 162:20503-20521. The superseded id `2111.07786` is an unrelated SE(3)
+  protein-docking paper, and **Ganea is the second author, not the first**.
+  **The venue `ICML 2022` was verified as CORRECT and therefore left unchanged** — the
+  "NeurIPS 2022" variant of this finding does not reproduce anywhere in this file.
+  The 38 % top-1 / 10× figures in the landscape table are performance values and are
+  **unchanged**.
+- **F-05 / F-07 — DecompDiff venue-year, GitHub placeholder, citation placeholder.**
+  Superseded: landscape row `| 19 | **DecompDiff** | 2024 | … | https://github.com/ |`;
+  §3.8 `**Paper:** (2024; see VLS3D.com comprehensive list)` and
+  `**GitHub:** (various implementations)`.
+  Corrected to: landscape row `| 19 | **DecompDiff** | 2023 | … |
+  https://github.com/bytedance/DecompDiff |`; §3.8
+  `**Paper:** Guan et al., "DecompDiff: Diffusion Models with Decomposed Priors for
+  Structure-Based Drug Design," *ICML 2023*. https://arxiv.org/abs/2403.07902` and
+  `**GitHub:** https://github.com/bytedance/DecompDiff`.
+  Verified 2026-10-31: arXiv API `id_list=2403.07902` (ICML 2023, PMLR 202:11827-11846);
+  `https://github.com/bytedance/DecompDiff` returns HTTP 200.
+- **DiffSBDD GitHub URL mojibake.** Superseded: `https://github.com/Ar逢eSchneuing/DiffSBDD`
+  (the CJK character U+9022 had replaced the letter `n`). Corrected to:
+  `https://github.com/ArneSchneuing/DiffSBDD`. Verified 2026-10-31: the mojibake URL returns
+  HTTP 404, the corrected URL returns HTTP 200.
+- **Not touched.** The §3.7 DiffSBDD entry (`Schneuing et al., … *Nature Computational Science
+  2024*. https://www.nature.com/articles/s43588-024-00737-x`, GitHub
+  `https://github.com/ArneSchneuing/DiffSBDD`) was already correct and is unchanged.
+- **No performance number was changed** (88 % PoseBusters-valid, 38 % top-1, 10× and every
+  other metric in this file are byte-identical to the pre-wave file).

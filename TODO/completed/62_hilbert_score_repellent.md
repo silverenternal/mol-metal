@@ -66,7 +66,17 @@ All PROJECTED items require R18 Phase 3 GPU ultracode (per `TODO/completed/55_r1
 
 ## 4. P1-4 alignment with Sun & Zheng 2026 paper
 
-**Citation:** Sun X.-K. & Zheng L.-J. (2026) "Hilbert-space primal-dual optimisation for structured learning", *数学学报* (Acta Math. Sin.) 53(4): 821-846, arXiv:2510.08423 — bib key `sun2026hilbert` in `paper/refs.bib`.
+**Citation (CORRECTED 2026-10-31, Wf-A149):** Sun, X. & Zheng, L. (2026) "Hilbert空间上可分离凸优化的原始-对偶动力学方法", *数学学报(中文版)* (*Acta Math. Sin.*, Chinese edition) **69(4): 515** (start page; end page UNVERIFIED), DOI `10.12386/A20250022`. **No arXiv preprint of this title exists.** There is **no** `sun2026hilbert` key in `paper/refs.bib` — this citation has no bib key on disk. The **algorithmic** anchor for the implementation is Chambolle & Pock 2011 (`PrimalDualOptimizer.step` below), not this paper.
+
+> **[Wf-A149 citation correction — 2026-10-31.]** The line above was originally written, verbatim:
+> "**Citation:** Sun X.-K. & Zheng L.-J. (2026) "Hilbert-space primal-dual optimisation for structured learning", *数学学报* (Acta Math. Sin.) 53(4): 821-846, arXiv:2510.08423 — bib key `sun2026hilbert` in `paper/refs.bib`."
+> That record is **REFUTED** and is superseded by the corrected citation above. Per AGENTS.md §5.5 rule 6 the superseded wording is preserved verbatim here rather than deleted (this is a completed-wave document). Evidence, all fetched 2026-10-31:
+> - `arXiv:2510.08423` is **not** this paper. The arXiv API (`export.arxiv.org/api/query?id_list=2510.08423`, HTTP 200) returns *"Computational Bell Inequalities"*, Ilya Merkulov & Rotem Arnon (quant-ph; v1 2025-10-09, v2 2025-10-10).
+> - **Volume/issue/pages REFUTED.** The deposited record for the DOI gives **69(4): 515** — start page only; **end page UNVERIFIED** (the journal article page is bot-gated, HTTP 403). `53(4): 821-846` is not supported by any source fetched on 2026-10-31.
+> - **Title REFUTED.** The deposited title is the Chinese *"Hilbert空间上可分离凸优化的原始-对偶动力学方法"* (Wanfang RSS entry `sxxb202604007`, published 2026-07-31; CNKI `CJFDTotal-SXXB202604007`, title *"…--《数学学报(中文版)》2026年04期"*; doi.org CSL record). The English *"Hilbert-space primal-dual optimisation for structured learning"* does not match the deposited title.
+> - **Bib-key claim REFUTED.** `grep -c 'sun2026hilbert' paper/refs.bib` = **0** — no such key exists on disk (refs.bib holds 100 entries).
+> - **Author names are CORRECT** and unchanged: 孙祥凯 = Sun Xiangkai, 郑丽娟 = Zheng Lijuan (Wanfang RSS author field `孙祥凯%郑丽娟`); the doi.org CSL record lists 孙祥凯 only.
+> - Related **companion** record (same first two authors, *not* a preprint of this article): Sun, Zheng & Teo, "Tikhonov regularization of second-order plus first-order primal-dual dynamical systems for separable convex optimization", arXiv:2408.06884, *J. Optim. Theory Appl.* 207(1):12 (2025), DOI 10.1007/s10957-025-02766-6.
 
 ### §3.2 Hilbert space L²[0,1] basis — IMPLEMENTED
 

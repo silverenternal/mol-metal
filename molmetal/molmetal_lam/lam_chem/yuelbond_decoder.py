@@ -5,11 +5,59 @@ GNN that maps (positions, atomic_numbers) -> per-pair bond logits.
 
 Lit anchor
 -----------
-Wang, S., Dokholyan, P. (2025). *YuelBond: a graph neural network for
-recovering the molecular bond network from distorted 3D structures.*
-bioRxiv 10.1101/2025.05.06.652517.  Reported F1=92.7 % on distorted
-molecules where RDKit's ``DetermineConnectivity`` fails on 783/1000
-cases.
+Wang, J.; Dokholyan, N. V. (2026). *Multimodal Bond Reconstruction toward
+Generative Molecular Design.*  J. Chem. Inf. Model. 66(2), 1003-1012.
+DOI 10.1021/acs.jcim.5c03052  (preprint: bioRxiv 10.1101/2025.05.06.652517,
+2025-05-11; code: https://bitbucket.org/dokhlab/yuel_bond).
+
+The paper reports F1 = 92.7 % on the CDG set (Gaussian noise
+sigma = 0.2 A) — its **worst case**; on standard 3-D structures it reports
+F1 = 98.4 % (acc 98.2 / prec 98.8 / rec 98.2 %).  The RDKit baseline it
+benchmarks is ``DetermineBonds``, which the paper describes as
+"internally … leveraging the xyz2mol program"; on the same 1,000 CDGs
+the paper attributes the 217-processed / 783-failed split to RDKit
+itself (it prints that integer split, never a percentage).
+``DetermineConnectivity`` is the connectivity-only step that
+``DetermineBonds`` calls internally before assigning bond orders — the
+two are not independent siblings.  (VERIFIED 2026-10-31 against the
+RDKit 2026.03.6 source file
+``Code/GraphMol/DetermineBonds/DetermineBonds.cpp``: L543 calls
+``determineConnectivity(...)``, then L544 calls ``determineBondOrders(...)``.)
+Called on its own, ``DetermineConnectivity`` assigns no bond orders at all
+(MEASURED locally: every bond it emits is SINGLE); the paper compares
+against ``DetermineBonds``, which additionally assigns bond orders.
+
+Citation corrected 2026-10-31 (Wf-A143) — this block previously printed the title "YuelBond: a graph neural network for recovering the molecular bond network from distorted 3D structures", the author initials "Wang, S., Dokholyan, P." and the attribution of the 783/1000 RDKit failure count to ``DetermineConnectivity``.  The canonical record is Wang, J.; Dokholyan, N. V. (2026), *Multimodal Bond Reconstruction toward Generative Molecular Design.*, J. Chem. Inf. Model. 66(2) 1003-1012, DOI 10.1021/acs.jcim.5c03052.  See `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
+
+Attribution corrected 2026-10-31 (Wf-A146) — the paragraph above
+previously read "The RDKit baseline it benchmarks is
+``DetermineBonds``; on the same 1,000 CDGs ``xyz2mol`` processed 217
+(=> 783 failures)."  The paper attributes the 217/783 split to
+**RDKit** itself ("Out of 1,000 test molecules with noisy coordinates,
+RDKit was able to process only 217, while it failed on the remaining
+783 molecules"); it prints that integer split, never a percentage, and
+it names ``xyz2mol`` only as the program ``DetermineBonds`` "internally
+… leverages".  Superseded wording preserved verbatim per AGENTS.md
+§5.5 rule #6; see `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
+
+Relation corrected 2026-10-31 (Wf-A148) — the ``DetermineConnectivity``
+paragraph above previously read:
+
+    ``DetermineConnectivity`` is the
+    connectivity-only sibling and assigns no bond orders at all (MEASURED
+    locally: every bond it emits is SINGLE), so it is not the function the
+    paper compares against.
+
+The "sibling" relation is wrong: ``DetermineBonds`` calls
+``DetermineConnectivity`` internally (RDKit 2026.03.6,
+``Code/GraphMol/DetermineBonds/DetermineBonds.cpp`` L543) and then assigns
+bond orders on top (L544), so ``DetermineConnectivity`` is the
+connectivity-only STEP INSIDE ``DetermineBonds``, not an independent
+sibling of it.  The "MEASURED locally: every bond it emits is SINGLE"
+observation stands; it is now scoped to ``DetermineConnectivity`` called on
+its own.  Superseded wording preserved verbatim per AGENTS.md §5.5 rule
+#6.  (Catalog entry pending — this wave does not own
+``docs/HONEST_NEGATIVE_CATALOG.md``.)
 
 This module is a CPU-only re-implementation of the YuelBond decoder head
 inspired by the bioRxiv preprint.  It is intentionally small (≤ 5k
@@ -43,6 +91,51 @@ for molecular generation.*  ICLR 2025, arXiv:2502.12638.  Their MoLlama
 1.8B-pretrain shows that learning the bond topology from positions can
 outperform covalent-radius heuristics on out-of-distribution scaffolds —
 the same intuition that motivates this decoder.
+
+Band-provenance clause corrected 2026-11-02 (Wf-A196) — the published
+92.7-94 % frontier band's provenance is NOT settled on disk: the frontier
+post-processing matrix record
+(`molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json`)
+holds COMPETING readings of which frontier cells the band names -- the
+first under `band_provenance` (GeoLDM Validity & Uniq 92.7 % and HLTF
+PB-Valid 94.0 %, both `post_processed: false`, plus YuelBond's per-bond-type
+classification F1 92.7 % as a third candidate for the same numeral) and the
+second under `sources`.`EF-TALFM` (EF-TALFM arXiv:2609.08333v4 Table 3(a):
+RAW connectivity `C. = 92.98 %`, counted BEFORE the largest-component
+retention, with the post-processed `N. & U. & S. = 94.33 %` companion cell).
+The NUMBER of competing readings is itself NOT settled on disk: this record
+enumerates two, and the repo's primary-source verification
+(`molmetal/reports/wfa186_frontier_primary_source/primary_source_verification.json`
+-> `invariants`.`competing_readings`) records a further reading that likewise
+does not reproduce the quoted numerals.  They do not even agree on the
+numerals (92.7/94.0 vs 92.98/94.33), so the band's source cells are NOT
+settled on disk.  Under EVERY reading the band is EXTERNAL, is NOT one
+homogeneous quantity, and is NOT on our scale -- OUR 8.51 % IS a
+connected-component count on the RAW emitted SMILES, and nothing else.
+Two superseded renderings are preserved VERBATIM below
+(AGENTS.md §5.5 rule #6); each of them BINDS the band to EF-TALFM's own
+numerals with no "not settled on disk" caveat, i.e. each asserts one of the
+competing readings as settled.  The superseded 2026-11-01 (Wf-A180) rendering
+of THIS paragraph is preserved VERBATIM in
+:data:`BAND_PROVENANCE_CLAUSE_SUPERSEDED_2026_11_01`.
+
+Superseded rendering 1 -- the module-level Wf-A155 comment block (the
+`#:` block above `DEFAULT_RADII_SCALED_LAMBDA`):
+
+#: **THE PUBLISHED VALIDITY NUMBERS ARE NOT OURS.**  EF-TALFM reports
+#: Connected **92.98 %** (Sanitized 98.25 %, Unique+sanitized 98.21 %,
+#: Novel+unique+sanitized 94.33 %) over **10,000 molecules** (App. A.2),
+#: and the frontier band is 92.7-94 %.  That band is **NOT** comparable to
+#: our 8.51 %: `docs/HONEST_NEGATIVE_CATALOG.md` §6.264 §6 measures FOUR
+
+Superseded rendering 2 -- the `radii_scaled_candidacy` parameter paragraph
+of :class:`YuelBondDecoderHead`:
+
+        **The published validity numbers are NOT ours.**  EF-TALFM reports
+        Connected **92.98 %** over **10,000 molecules** (App. A.2) and the
+        frontier band is 92.7-94 %; our figure is **8.51 %**, and
+        `docs/HONEST_NEGATIVE_CATALOG.md` §6.264 §6 measures FOUR
+
 """
 
 from __future__ import annotations
@@ -65,6 +158,44 @@ from molmetal.models.bond_head import (
     NUM_BOND_CLASSES,
     PairFeature,
 )
+
+
+#: Wf-A196 (2026-11-02) — the X5 reading-COUNT scope repair.
+#:
+#: The Wf-A180 (2026-11-01) rendering of this module's band-provenance clause
+#: asserted, AS A SETTLED COUNT, that the frontier post-processing matrix
+#: record "holds TWO competing readings".  That count is NOT settled on disk:
+#: the repo's primary-source verification
+#: (molmetal/reports/wfa186_frontier_primary_source/primary_source_verification.json
+#: -> `invariants`.`competing_readings`) records a FURTHER reading that also
+#: does not reproduce the quoted numerals, so two on-disk records disagree
+#: about the SIZE of the contest.  The repaired clause asserts NO count — it
+#: states that the NUMBER of competing readings is itself NOT settled on disk.
+#: It does NOT assert "THREE" either: how many DISTINCT readings there are is
+#: itself not settled on disk.
+#:
+#: The superseded rendering is preserved VERBATIM below (AGENTS.md §5.5
+#: rule #6 — append-only, dated, never a silent edit).
+BAND_PROVENANCE_CLAUSE_SUPERSEDED_2026_11_01 = """\
+Band-provenance clause corrected 2026-11-01 (Wf-A180) — the published
+92.7-94 % frontier band's provenance is NOT settled on disk: the frontier
+post-processing matrix record
+(`molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json`)
+holds TWO competing readings of which frontier cells the band names -- the
+first under `band_provenance` (GeoLDM Validity & Uniq 92.7 % and HLTF
+PB-Valid 94.0 %, both `post_processed: false`, plus YuelBond's per-bond-type
+classification F1 92.7 % as a third candidate for the same numeral) and the
+second under `sources`.`EF-TALFM` (EF-TALFM arXiv:2609.08333v4 Table 3(a):
+RAW connectivity `C. = 92.98 %`, counted BEFORE the largest-component
+retention, with the post-processed `N. & U. & S. = 94.33 %` companion cell).
+They do not even agree on the numerals (92.7/94.0 vs 92.98/94.33), so the
+band's source cells are NOT settled on disk.  Under BOTH readings the band is
+EXTERNAL, is NOT one homogeneous quantity, and is NOT on our scale -- OUR
+8.51 % IS a connected-component count on the RAW emitted SMILES, and nothing
+else.  Two superseded renderings are preserved VERBATIM below
+(AGENTS.md §5.5 rule #6); each of them BINDS the band to EF-TALFM's own
+numerals with no "not settled on disk" caveat, i.e. each asserts ONE of
+the TWO competing readings as settled."""
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +338,254 @@ def pair_collapse_mask(
     """
     rc = _rcov_per_atom(atomic_numbers)
     return d_raw < float(ratio) * (rc[i_idx] + rc[j_idx])
+
+
+# ---------------------------------------------------------------------------
+# Wf-A155 (2026-11-01) — RADII-SCALED bond candidacy (frontier option B)
+# ---------------------------------------------------------------------------
+#: The flat 3.5 A candidate cutoff used by this module is a DECLARED
+#: DEVIATION from the published YuelBond 3 A (see the ``cutoff`` docstring on
+#: :class:`YuelBondDecoderHead` and `docs/HONEST_NEGATIVE_CATALOG.md`
+#: §6.257).
+#:
+#: **THE PUBLISHED VALIDITY NUMBERS ARE NOT OURS.**  EF-TALFM reports
+#: Connected **92.98 %** (Sanitized 98.25 %, Unique+sanitized 98.21 %,
+#: Novel+unique+sanitized 94.33 %) over **10,000 molecules** (App. A.2),
+#: and the published frontier band is quoted as 92.7-94 %.
+#:
+#: **The band's provenance is NOT settled on disk** (reading-safe clause,
+#: corrected 2026-11-02, Wf-A196; the superseded 2026-11-01 rendering is
+#: preserved VERBATIM in
+#: :data:`BAND_PROVENANCE_CLAUSE_SUPERSEDED_2026_11_01`).  The frontier
+#: post-processing matrix record
+#: `molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json`
+#: holds COMPETING readings of which frontier cells the band names -- the
+#: first under `band_provenance` (GeoLDM Validity & Uniq 92.7 % and
+#: HLTF PB-Valid 94.0 %, both `post_processed: false`, plus YuelBond's
+#: per-bond-type classification F1 92.7 % as a third candidate for the same
+#: numeral) and the second under `sources`.`EF-TALFM` (EF-TALFM
+#: arXiv:2609.08333v4 Table 3(a): RAW connectivity `C. = 92.98 %`, counted
+#: BEFORE the largest-component retention, with the post-processed
+#: `N. & U. & S. = 94.33 %` companion cell).  The NUMBER of competing
+#: readings is itself NOT settled on disk: this record enumerates two, and
+#: the repo's primary-source verification
+#: (`molmetal/reports/wfa186_frontier_primary_source/primary_source_verification.json`
+#: -> `invariants`.`competing_readings`) records a further reading that
+#: likewise does not reproduce the quoted numerals.  They do not even agree
+#: on the numerals (92.7/94.0 vs 92.98/94.33), so the band's source cells are
+#: NOT settled on disk.  Under EVERY reading the band is EXTERNAL, is NOT one
+#: homogeneous quantity, and is NOT on our scale -- OUR 8.51 % IS a
+#: connected-component count on the RAW emitted SMILES, and nothing else.
+#:
+#: `docs/HONEST_NEGATIVE_CATALOG.md` §6.264 §6 measures FOUR
+#: independent breaks — (1) DIFFERENT OBJECT (ours is a whole metal-ligand
+#: complex as one connected fragment, theirs is an organic molecule's
+#: validity or a per-BOND recovery F1); (2) DIFFERENT DENOMINATOR (ours is
+#: over ALL samples drawn, unparseable against; theirs is over generated
+#: molecules only, so ours sits on a strictly harsher denominator);
+#: (3) DIFFERENT CHEMISTRY (ours carries a metal in 100 % of pool rows,
+#: every paper cohort is all-organic); (4) DIFFERENT BOND RULE + RAW
+#: GEOMETRY (ours is a FLAT 3.5 A cutoff, theirs is the element-aware
+#: ``tau_ij`` below, and ours is RAW while HLTF's comparable figure moves
+#: 85.5 % -> 92.2 % under relaxation).
+#:
+#: So switching the candidacy rule does NOT make our number comparable to
+#: theirs — it only changes WHICH pairs the decoder may bond.
+#:
+#: EF-TALFM (arXiv 2609.08333, Appendix C.2.1, Algorithm 3) replaces the flat
+#: cutoff with a PAIR-DEPENDENT, radii-scaled threshold:
+#:
+#:     tau_ij  <-  lambda_pi * (r_cov(z_i) + r_cov(z_j))
+#:
+#: ``pi`` is a SUBSCRIPT on ``lambda`` — it denotes the RECONSTRUCTION
+#: POLICY selected by ``ChoosePolicy(ẑ, R̂, Q̂)``, NOT a multiplicative
+#: constant.  The paper's source contains NO ``lambda * pi`` product
+#: anywhere.  Verified 2026-11-01 (Wf-A160) against the arXiv e-print
+#: sha256 ``e13ac0f4fd13f22ecc0b70bc15954ffe0c30661970cf6c89cae73789ef742224``;
+#: the verdict and the quoted source lines are in
+#: ``molmetal/reports/wfa160_bond_threshold_independent_verification/``.
+#:
+#: ``lambda_pi`` is **NOT recoverable** from the text verified here: the
+#: formula is stated without a numeric value, and the string
+#: ``\lambda_\pi`` occurs exactly ONCE in the whole source.  It is
+#: therefore exposed as a PARAMETER whose default is the NEUTRAL IDENTITY
+#: reading (``lambda_pi = 1``) — **not** a value claimed to be the
+#: paper's.  ``radii_scaled_factor`` is the single place that factor is
+#: formed, and it is the IDENTITY.
+#:
+#: **Correction (2026-11-01, Wf-A160).**  This block previously read
+#: ``tau_ij <- lambda * pi * (...)`` and claimed the factor was "exactly
+#: ``lambda * pi``, as quoted".  That was a MISREADING: the pi is a
+#: subscript (the policy), so multiplying by pi made the threshold
+#: 3.1416x MORE PERMISSIVE than the paper's rule.  Severity LATENT —
+#: ``radii_scaled_candidacy`` defaults to ``False`` at every constructor
+#: site, so no published metric changes.  The superseded rendering is
+#: preserved VERBATIM in ``docs/HONEST_NEGATIVE_CATALOG.md`` §6.265
+#: (AGENTS.md §5.5 rule #6).
+DEFAULT_RADII_SCALED_LAMBDA: float = 1.0
+
+
+def radii_scaled_factor(
+    lambda_value: float = DEFAULT_RADII_SCALED_LAMBDA,
+) -> float:
+    """The multiplicative factor ``lambda_pi`` of the EF-TALFM threshold.
+
+    MEASURED: this is the IDENTITY — the factor applied to the radius sum
+    is the ``lambda_pi`` the caller supplies, unchanged.  The paper
+    (EF-TALFM, arXiv 2609.08333, Appendix C.2.1, Algorithm 3) writes the
+    rule as ``tau_ij <- lambda_pi * (r_cov(z_i) + r_cov(z_j))`` where
+    ``pi`` is a SUBSCRIPT denoting the reconstruction policy selected by
+    ``ChoosePolicy``; the source contains NO ``lambda * pi`` product.
+    The paper's own ``lambda_pi`` is **not** recoverable (the formula is
+    stated without a numeric value and ``\\lambda_\\pi`` occurs exactly
+    once in the whole source), so the DEFAULT here is the neutral identity
+    reading (``lambda_pi = 1``) and is NOT presented as the paper's value.
+
+    PROJECTED: every downstream claim about what the radii-scaled rule does
+    to the fragmentation rate is PROJECTED, NOT MEASURED — the repair is
+    CPU-only and no re-decode was run.
+
+    HISTORY: this function previously returned ``lambda * math.pi``.  That
+    was a MISREADING of the paper's subscript, and it made the
+    candidate-bond threshold 3.1416x MORE PERMISSIVE than the paper's
+    rule — i.e. it would have UNDERSTATED fragmentation, in the very chain
+    whose headline is "the CFM emits fragments".  Severity LATENT: no
+    published metric changes, because ``radii_scaled_candidacy`` defaults
+    to ``False`` at every constructor site.
+    """
+    return float(lambda_value)
+
+
+def rcov_for_z(z: int) -> float:
+    """Cordero single-bond covalent radius for ONE element, in Angstrom.
+
+    Reads the SAME table the steric-collapse veto reads
+    (:data:`_CORDERO_RCOV`, materialised as the dense :data:`_RCOV_BY_Z`),
+    so the two rules can never drift onto different radii.  No second radii
+    table is introduced.
+
+    MEASURED: the value is a lookup in the on-disk Cordero table.  The
+    scalar path here mirrors :func:`_rcov_per_atom` EXACTLY — same clamp
+    (``0 <= z <= _RCOV_MAX_Z``), same dense table — so the scalar threshold
+    reported by :func:`radii_scaled_threshold` /
+    :func:`compare_bond_candidacy` can never disagree with the tensor
+    threshold the mask actually applies.  An element inside the clamp range
+    but absent from the table reads :data:`_RCOV_UNKNOWN` (1.3 Å); an
+    element above the clamp reads the last entry, as the veto does.
+
+    PROJECTED: nothing here is a prediction — but what the radii-scaled
+    candidacy does to a decoded pool is UNMEASURED under the 0-GPU mandate
+    of this wave.
+    """
+    zi = int(z)
+    if zi < 0:
+        zi = 0
+    elif zi > _RCOV_MAX_Z:
+        zi = _RCOV_MAX_Z
+    return float(_RCOV_BY_Z[zi])
+
+
+def radii_scaled_threshold(
+    z_i: int,
+    z_j: int,
+    factor: Optional[float] = None,
+) -> float:
+    """``tau_ij`` for one element pair, in Angstrom.
+
+    Implements the EF-TALFM threshold of arXiv 2609.08333, Appendix C.2.1,
+    Algorithm 3:
+
+        tau_ij = lambda_pi * (r_cov(z_i) + r_cov(z_j))
+
+    MEASURED: the value is computed from the on-disk Cordero table and the
+    caller's factor; nothing here is estimated.
+
+    PROJECTED: whether a radii-scaled threshold improves the fragmentation
+    rate is UNMEASURED under the 0-GPU mandate of this wave.
+    """
+    f = radii_scaled_factor() if factor is None else float(factor)
+    return f * (rcov_for_z(z_i) + rcov_for_z(z_j))
+
+
+def radii_scaled_candidacy_mask(
+    atomic_numbers: torch.Tensor,
+    i_idx: torch.Tensor,
+    j_idx: torch.Tensor,
+    d_raw: torch.Tensor,
+    factor: Optional[float] = None,
+) -> torch.Tensor:
+    """Boolean candidate mask under the EF-TALFM radii-scaled rule.
+
+    ``True`` where ``d_raw < tau_ij`` with ``tau_ij`` the pair-dependent
+    threshold of arXiv 2609.08333 App. C.2.1.
+
+    MEASURED: the mask is a pure function of the inputs (distance, atomic
+    numbers, factor) and is exercised on synthetic pairs by
+    ``molmetal/tests/test_wfa155_decoder_bond_candidacy.py``.
+
+    PROJECTED: its effect on a decoded pool is UNMEASURED here.
+    """
+    f = radii_scaled_factor() if factor is None else float(factor)
+    rc = _rcov_per_atom(atomic_numbers)
+    tau = f * (rc[i_idx] + rc[j_idx])
+    return d_raw < tau
+
+
+def compare_bond_candidacy(
+    distances: Sequence[float],
+    z_i: Sequence[int],
+    z_j: Sequence[int],
+    cutoff: float = 3.5,
+    factor: Optional[float] = None,
+) -> List[Dict[str, object]]:
+    """READ-ONLY comparison of the flat rule and the radii-scaled rule.
+
+    For each ``(distance, z_i, z_j)`` triple this reports what the FLAT
+    cutoff would select (``d < cutoff``) and what the radii-scaled rule of
+    arXiv 2609.08333, Appendix C.2.1, Algorithm 3 would select
+    (``d < lambda_pi*(r_i + r_j)``),
+    plus whether the two DISAGREE.  It performs no decode, loads no
+    checkpoint and mutates nothing: it is a measurement instrument for the
+    difference between the two rules on SYNTHETIC input.
+
+    MEASURED: every field is computed from the arguments and the on-disk
+    Cordero table.
+
+    PROJECTED: the aggregate effect of the radii-scaled rule on the
+    fragmentation rate is UNMEASURED under the 0-GPU mandate of this wave.
+    """
+    f = radii_scaled_factor() if factor is None else float(factor)
+    ds = list(distances)
+    zs_i = list(z_i)
+    zs_j = list(z_j)
+    n = min(len(ds), len(zs_i), len(zs_j))
+    out: List[Dict[str, object]] = []
+    for k in range(n):
+        d = float(ds[k])
+        zi = int(zs_i[k])
+        zj = int(zs_j[k])
+        r_i = rcov_for_z(zi)
+        r_j = rcov_for_z(zj)
+        tau = f * (r_i + r_j)
+        flat_sel = d < float(cutoff)
+        scaled_sel = d < tau
+        out.append(
+            {
+                "index": k,
+                "distance": d,
+                "z_i": zi,
+                "z_j": zj,
+                "rcov_i": r_i,
+                "rcov_j": r_j,
+                "flat_threshold": float(cutoff),
+                "flat_selected": bool(flat_sel),
+                "scaled_threshold": tau,
+                "scaled_selected": bool(scaled_sel),
+                "differs": bool(flat_sel != scaled_sel),
+            }
+        )
+    return out
+
 
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
@@ -434,7 +813,35 @@ def _z_to_onehot(z: torch.Tensor) -> torch.Tensor:
 METAL_PAIR_FEATURE_DIM: int = 3
 
 #: Wf-A107 (2026-10-21) — RBF distance expansion (Wf-A72 Operator 2).
-#: 8 centres log-spaced over [0.9, 3.5] A, the candidate-edge range.
+#: 8 centres log-spaced over [0.9, 3.5] A, the RBF expansion range.
+#: NOTE (2026-10-31, Wf-A143): the published YuelBond paper's candidate-edge
+#: cutoff is 3 A; 3.5 A is this repo's own, undeclared-until-now deviation.
+#: See `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
+#: CORRECTED (2026-10-31, Wf-A148).  ``RBF_MAX_DISTANCE`` is the TOP OF THE
+#: RBF EXPANSION RANGE — the largest distance the Gaussian RBF centres are
+#: spread over (the RBF expansion itself is a repo-side construction:
+#: Wf-A72 Operator 2, shipped Wf-A107).  It is NOT the candidate-edge
+#: cutoff.  The candidate-edge cutoff is a SEPARATE constant: the
+#: ``cutoff`` parameter of ``YuelBondDecoderHead.__init__`` (default 3.5;
+#: L712 as of 2026-10-31), stored as ``self.cutoff`` and applied
+#: in ``YuelBondDecoderHead.forward`` as ``mask = d_raw < self.cutoff``
+#: (L992); the CFM wrapper mirrors it as
+#: ``YuelBondBondDecoder.distance_cutoff``.  Both happen to be 3.5 A today,
+#: which is what made the note above read as if the RBF top WERE the
+#: cutoff.
+#:
+#:   Superseded wording, preserved verbatim (AGENTS.md §5.5 rule #6):
+#:     "#: 8 centres log-spaced over [0.9, 3.5] A, the candidate-edge range.
+#:     NOTE (2026-10-31, Wf-A143): the published YuelBond paper's candidate-edge
+#:     cutoff is 3 A; 3.5 A is this repo's own, undeclared-until-now deviation."
+#:   That wording was wrong because it attached the candidate-edge cutoff
+#:   to the RBF constants: a reader at this site would conclude that
+#:   ``RBF_MAX_DISTANCE`` IS the candidate-edge cutoff.  It is not.  The
+#:   3 A-vs-3.5 A deviation declared above belongs to the candidate-edge
+#:   cutoff (``YuelBondDecoderHead.cutoff``); the RBF range top is a
+#:   repo-side choice that merely happens to share the value.  (Catalog
+#:   entry pending — this wave does not own
+#:   ``docs/HONEST_NEGATIVE_CATALOG.md``.)
 RBF_FEATURE_DIM: int = 8
 RBF_MIN_DISTANCE: float = 0.9
 RBF_MAX_DISTANCE: float = 3.5
@@ -604,16 +1011,78 @@ class YuelBondDecoderHead(nn.Module):
         the head under 5k parameters; large enough to represent the
         triple / aromatic minority classes.
     n_layers : int, default 3
-        Number of message-passing iterations.  K=3 matches the bioRxiv
-        preprint's recommendation for drug-like ligands.
+        Number of message-passing iterations.  K=3 is **this repo's** own
+        choice — the published paper states no layer count (and no
+        parameter count), so K=3 is not a figure taken from the paper.
+        (Corrected 2026-10-31, Wf-A143 — this line previously read
+        "K=3 matches the bioRxiv preprint's recommendation for drug-like
+        ligands"; see `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.)
     cutoff : float, default 3.5 Å
         Pairs further apart than this are immediately classified as
         ``NO_BOND`` without being passed through the MLP head.  Keeps
         the ``E = N(N-1)/2`` edge list manageable at N=19 atoms
         (171 pairs).
+
+        **Declared deviation from the paper (2026-10-31, Wf-A143).** The
+        published YuelBond paper uses a **3 Å** candidate-edge cutoff;
+        this repo uses **3.5 Å**.  The value is left unchanged on purpose
+        — it is a decode-behaviour parameter, and re-validating it needs a
+        GPU run, which the current CPU-only mandate forbids.  Any headline
+        number produced with this cutoff must therefore be labelled as
+        produced under a 3.5 Å cutoff, not the paper's 3 Å.  See
+        `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
+
+        **Additive note (2026-11-01, Wf-A155).**  The paragraph above is
+        preserved VERBATIM (AGENTS.md §5.5 rule #6).  It remains true that
+        the DEFAULT cutoff is still 3.5 Å and still a declared deviation.
+        What is new is that an **opt-in** alternative now exists:
+        ``radii_scaled_candidacy=True`` replaces the flat comparison with
+        the pair-dependent threshold of arXiv 2609.08333, Appendix C.2.1,
+        Algorithm 3 (``tau_ij = lambda_pi*(r_cov_i + r_cov_j)``).  The
+        default path is bit-identical to the pre-Wf-A155 path; the effect
+        of the opt-in rule on any decoded pool is **PROJECTED, NOT
+        MEASURED** (this wave is CPU-only and no re-decode was run).
     min_distance : float, default 1.0 Å
         Pairs closer than this are clamped (physically impossible
         steric clash).
+    radii_scaled_candidacy : bool, default False
+        Opt-in: select candidate pairs by the radii-scaled rule of
+        arXiv 2609.08333 App. C.2.1 instead of the flat ``cutoff``.  The
+        default (``False``) reproduces the flat 3.5 Å mask **exactly**.
+
+        **The published validity numbers are NOT ours.**  EF-TALFM reports
+        Connected **92.98 %** over **10,000 molecules** (App. A.2); our
+        figure is **8.51 %**.  The published 92.7-94 % frontier band's
+        provenance is **NOT settled on disk** (reading-safe clause,
+        corrected 2026-11-02, Wf-A196): the frontier post-processing matrix
+        record
+        (`molmetal/reports/wfa158_frontier_postproc_matrix/frontier_matrix.json`)
+        holds COMPETING readings of which frontier cells the band names
+        (under `band_provenance` and under `sources`.`EF-TALFM`) and they do
+        not even agree on the numerals.  The NUMBER of competing readings is
+        itself NOT settled on disk: this record enumerates two, and the
+        repo's primary-source verification
+        (`molmetal/reports/wfa186_frontier_primary_source/primary_source_verification.json`
+        -> `invariants`.`competing_readings`) records a further reading that
+        likewise does not reproduce the quoted numerals.  Under EVERY reading
+        the band is EXTERNAL, is NOT one homogeneous quantity, and is NOT on
+        our scale -- OUR 8.51 % IS a connected-component count on the RAW
+        emitted SMILES, and nothing else.  Independently,
+        `docs/HONEST_NEGATIVE_CATALOG.md` §6.264 §6 measures FOUR
+        independent breaks (different object / denominator / chemistry /
+        bond rule + raw geometry).  Turning this flag on changes WHICH
+        pairs the decoder may bond; it does **not** make our number
+        comparable to theirs.  The effect on any decoded pool is
+        **PROJECTED, NOT MEASURED** (this wave is CPU-only).
+    radii_scaled_lambda : float, default 1.0
+        The ``lambda_pi`` of the EF-TALFM threshold.  The paper's own value
+        is **not recoverable** from arXiv 2609.08333, Appendix C.2.1,
+        Algorithm 3 (the formula is stated without a number and
+        ``\\lambda_\\pi`` occurs exactly once in the whole source), so the
+        default is the neutral identity reading and is NOT presented as the
+        paper's value.  The factor applied to the radius sum is
+        ``lambda_pi`` itself — the ``pi`` is a SUBSCRIPT denoting the
+        reconstruction policy, not a multiplicative constant.
     """
 
     def __init__(
@@ -689,6 +1158,12 @@ class YuelBondDecoderHead(nn.Module):
         # constructor call bit-exact; the trainer turns it ON for new runs
         # (``--bond-head-zero-out``, default on).
         zero_init_pair_out: bool = False,
+        # Wf-A155 (2026-11-01) — opt-in RADII-SCALED bond candidacy.
+        # Default False reproduces the flat ``d_raw < cutoff`` mask
+        # BIT-IDENTICALLY (the load-bearing regression assertion lives in
+        # ``molmetal/tests/test_wfa155_decoder_bond_candidacy.py``).
+        radii_scaled_candidacy: bool = False,
+        radii_scaled_lambda: float = DEFAULT_RADII_SCALED_LAMBDA,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -697,6 +1172,12 @@ class YuelBondDecoderHead(nn.Module):
         self.min_distance = float(min_distance)
         self.clash_reject = bool(clash_reject)
         self.clash_ratio = float(clash_ratio)
+        # Wf-A155 (2026-11-01) — the opt-in radii-scaled candidacy rule.
+        # ``radii_scaled_factor`` is the single place ``lambda_pi`` is
+        # formed (arXiv 2609.08333, Appendix C.2.1, Algorithm 3).
+        self.radii_scaled_candidacy = bool(radii_scaled_candidacy)
+        self.radii_scaled_lambda = float(radii_scaled_lambda)
+        self.radii_scaled_factor = radii_scaled_factor(self.radii_scaled_lambda)
         #: Pairs dropped by the collapse predicate on the last forward.  The
         #: decoder copies it into YuelBondDecodeResult so a generated pool can
         #: record it instead of leaving the effect unmeasurable.
@@ -850,6 +1331,16 @@ class YuelBondDecoderHead(nn.Module):
         positions = cloud.positions.float()
         atomic_numbers = cloud.atomic_numbers.long()
         n = int(atomic_numbers.shape[0])
+        # Wf-A128 (2026-10-31) — reset the clash counter at the TOP of every
+        # forward, BEFORE the early returns.  The counter used to be written
+        # only on the path that reaches the candidate filter, so a forward
+        # that returned early (n < 2) or that raised further down left the
+        # PREVIOUS decode's count in place.  MEASURED before this change: a
+        # 5-atom cloud with 1 rejection followed by a 1-atom cloud reported
+        # ``clash_rejected_pairs == 1`` for the 1-atom cloud, which had zero
+        # rejections.  The count is a per-call diagnostic, so it must not
+        # survive the call that produced it.
+        self.last_clash_rejected_pairs = 0
         if n < 2:
             return (
                 torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
@@ -890,15 +1381,31 @@ class YuelBondDecoderHead(nn.Module):
         d_raw = d_vec.norm(dim=-1)
         d = d_raw.clamp(min=self.min_distance)
         # Filter to within-cutoff pairs only (cutoff=3.5 Å excludes 4.1 Å Cl-Cl)
-        mask = d_raw < self.cutoff
+        #
+        # Wf-A155 (2026-11-01) — the OPT-IN radii-scaled alternative.
+        # ``base_mask`` is the FLAT rule by default, and the
+        # radii-scaled rule of arXiv 2609.08333 App. C.2.1 only when
+        # ``radii_scaled_candidacy`` is on.  The default branch is the
+        # pre-Wf-A155 expression verbatim, so the mask — and therefore
+        # the edge list, the logits and every downstream number — is
+        # bit-identical unless the flag is set.
+        if self.radii_scaled_candidacy:
+            base_mask = radii_scaled_candidacy_mask(
+                atomic_numbers,
+                i_idx,
+                j_idx,
+                d_raw,
+                self.radii_scaled_factor,
+            )
+        else:
+            base_mask = d_raw < self.cutoff
+        mask = base_mask
         if self.clash_reject:
             _collapsed = pair_collapse_mask(
                 atomic_numbers, i_idx, j_idx, d_raw, self.clash_ratio
             )
-            mask = mask & ~_collapsed
-            self.last_clash_rejected_pairs = int(
-                (_collapsed & (d_raw < self.cutoff)).sum()
-            )
+            mask = base_mask & ~_collapsed
+            self.last_clash_rejected_pairs = int((_collapsed & base_mask).sum())
         else:
             self.last_clash_rejected_pairs = 0
         i_idx = i_idx[mask]
@@ -1072,6 +1579,19 @@ class YuelBondResult:
     edge_index: torch.Tensor  # (2, E)
     decode_succeeded: bool
     error: Optional[str] = None
+    #: Wf-A128 (2026-10-31) — how many candidate pairs the Wf-A113 collapse
+    #: rule (0.7 * Cordero radius sum) removed from this decode's candidate
+    #: list.  Carried HERE, on the value object, because the head's
+    #: ``last_clash_rejected_pairs`` attribute is mutable state on the module:
+    #: a consumer that keeps the result but not the head has no way to read
+    #: the count, and a consumer that reads the attribute later gets whatever
+    #: the NEXT forward left behind.  This field is immutable per result.
+    #:
+    #: It is also the number of pairs the connectivity prior was DENIED —
+    #: ``_bridge_components`` draws its candidate pool from the head's
+    #: post-filter ``edge_index``, so a pair rejected here can never be
+    #: bridged.  See ``docs``/the Wf-A128 report for the measured numbers.
+    clash_rejected_pairs: int = 0
 
 
 class YuelBondDecoder:
@@ -1125,8 +1645,20 @@ class YuelBondDecoder:
         # gen_validity came to report 0/128 on CUDA and 28/72 on CPU for one
         # checkpoint.
         cloud = cloud.to(self.head.pair_head[-1].weight.device)
+        # Wf-A128 (2026-10-31) — the collapse-rule count is read off the head
+        # IMMEDIATELY after the forward, and is carried on the RESULT.  The
+        # head's ``last_clash_rejected_pairs`` attribute alone was not enough:
+        # it is mutable module state, so a consumer holding the result but not
+        # the head could not read the count at all, and a consumer reading the
+        # attribute later would read whatever the NEXT forward left behind.
+        # The head now zeroes it at the top of every forward (both head
+        # classes), so the value read here belongs to THIS decode.
+        _clash_rejected = 0
         try:
             out = self.head(cloud)
+            _clash_rejected = int(
+                getattr(self.head, "last_clash_rejected_pairs", 0) or 0
+            )
             # Default YuelBondDecoderHead always returns (logits, (i_idx, j_idx))
             if isinstance(out, tuple) and len(out) == 2:
                 logits, (i_idx, j_idx) = out
@@ -1137,8 +1669,12 @@ class YuelBondDecoder:
                     edge_index=torch.zeros(2, 0, dtype=torch.long),
                     decode_succeeded=False,
                     error="head_returned_unexpected_format",
+                    clash_rejected_pairs=_clash_rejected,
                 )
         except Exception as exc:
+            _clash_rejected = int(
+                getattr(self.head, "last_clash_rejected_pairs", 0) or 0
+            )
             return YuelBondResult(
                 pair_features=None,
                 logits=torch.zeros(0, NUM_BOND_CLASSES, device=cloud.positions.device),
@@ -1149,15 +1685,22 @@ class YuelBondDecoder:
                 # its own says nothing about which of the dozens of ways a
                 # forward pass can fail actually happened.
                 error=f"head_forward_failed:{type(exc).__name__}:{exc}",
+                clash_rejected_pairs=_clash_rejected,
             )
         edge_index = torch.stack([i_idx, j_idx], dim=0).long()
         if edge_index.shape[1] == 0:
+            # Wf-A128 — this is the branch the collapse rule CREATES: a cloud
+            # whose every candidate pair was a steric collapse arrives here
+            # with an empty edge list.  Reporting 0 here would hide the rule
+            # exactly where it fired hardest, so the count travels with the
+            # result.
             return YuelBondResult(
                 pair_features=None,
                 logits=logits,
                 edge_index=edge_index,
                 decode_succeeded=False,
                 error="empty_edge_list",
+                clash_rejected_pairs=_clash_rejected,
             )
         # Compute pair features (distance, z_i, z_j, angle=0, dative=bool)
         d_vec = cloud.positions[edge_index[1]] - cloud.positions[edge_index[0]]
@@ -1195,6 +1738,7 @@ class YuelBondDecoder:
             logits=logits,
             edge_index=edge_index,
             decode_succeeded=True,
+            clash_rejected_pairs=_clash_rejected,
         )
 
     # ------------------------------------------------------------------
@@ -1244,6 +1788,13 @@ __all__ = [
     "YuelBondEdgeMPNNHeadResidual",
     "SplitBondHead",
     "split_bond_loss",
+    # Wf-A155 (2026-11-01) — radii-scaled bond candidacy.
+    "DEFAULT_RADII_SCALED_LAMBDA",
+    "radii_scaled_factor",
+    "radii_scaled_threshold",
+    "radii_scaled_candidacy_mask",
+    "compare_bond_candidacy",
+    "rcov_for_z",
 ]
 
 
@@ -1342,6 +1893,13 @@ class YuelBondEdgeMPNNHead(nn.Module):
         clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
         # Wf-A113 (T52) — same zero-init as :class:`YuelBondDecoderHead`.
         zero_init_pair_out: bool = False,
+        # Wf-A155 (2026-11-01) — opt-in RADII-SCALED bond candidacy, the
+        # same flag as :class:`YuelBondDecoderHead`.  It MUST be the same
+        # flag on both heads: the edge list has to be identical whichever
+        # head is plugged in, or the trainer's downstream code would
+        # branch on the head (the same reason ``clash_reject`` is shared).
+        radii_scaled_candidacy: bool = False,
+        radii_scaled_lambda: float = DEFAULT_RADII_SCALED_LAMBDA,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -1351,6 +1909,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         self.z_table = tuple(z_table)
         self.clash_reject = bool(clash_reject)
         self.clash_ratio = float(clash_ratio)
+        # Wf-A155 (2026-11-01) — see :class:`YuelBondDecoderHead`.
+        self.radii_scaled_candidacy = bool(radii_scaled_candidacy)
+        self.radii_scaled_lambda = float(radii_scaled_lambda)
+        self.radii_scaled_factor = radii_scaled_factor(self.radii_scaled_lambda)
         self.last_clash_rejected_pairs = 0
         # Dative-rule preset — same opt-in pattern as
         # :class:`YuelBondDecoderHead`.  ``pt_only`` preserves the
@@ -1483,6 +2045,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         positions = cloud.positions.float()
         atomic_numbers = cloud.atomic_numbers.long()
         n = int(atomic_numbers.shape[0])
+        # Wf-A128 (2026-10-31) — same stale-counter repair as
+        # :meth:`YuelBondDecoderHead.forward`: the counter is per-call, so it
+        # is zeroed before the early returns rather than surviving them.
+        self.last_clash_rejected_pairs = 0
         if n < 2:
             return (
                 torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
@@ -1510,15 +2076,26 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # a candidate at all.
         d_raw = d_vec.norm(dim=-1)
         d = d_raw.clamp(min=self.min_distance)
-        mask = d_raw < self.cutoff
+        # Wf-A155 (2026-11-01) — same opt-in radii-scaled candidacy as
+        # :meth:`YuelBondDecoderHead.forward`; the default branch is the
+        # pre-Wf-A155 expression verbatim.
+        if self.radii_scaled_candidacy:
+            base_mask = radii_scaled_candidacy_mask(
+                atomic_numbers,
+                i_idx,
+                j_idx,
+                d_raw,
+                self.radii_scaled_factor,
+            )
+        else:
+            base_mask = d_raw < self.cutoff
+        mask = base_mask
         if self.clash_reject:
             _collapsed = pair_collapse_mask(
                 atomic_numbers, i_idx, j_idx, d_raw, self.clash_ratio
             )
-            mask = mask & ~_collapsed
-            self.last_clash_rejected_pairs = int(
-                (_collapsed & (d_raw < self.cutoff)).sum()
-            )
+            mask = base_mask & ~_collapsed
+            self.last_clash_rejected_pairs = int((_collapsed & base_mask).sum())
         else:
             self.last_clash_rejected_pairs = 0
         i_idx = i_idx[mask]
@@ -1746,6 +2323,13 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
         clash_ratio: float = DEFAULT_BOND_CLASH_RATIO,
         # Wf-A113 (T52) — same pass-through rule as ``clash_reject`` above.
         zero_init_pair_out: bool = False,
+        # Wf-A155 (2026-11-01) — same pass-through rule as
+        # ``clash_reject`` above: a subclass that silently reverted to the
+        # parent DEFAULT would make
+        # ``bond_predictor: yuelbond_edge_mpnn_residual`` ignore a YAML
+        # ``radii_scaled_candidacy: on``.
+        radii_scaled_candidacy: bool = False,
+        radii_scaled_lambda: float = DEFAULT_RADII_SCALED_LAMBDA,
     ) -> None:
         super().__init__(
             hidden_dim=hidden_dim,
@@ -1763,6 +2347,8 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
             clash_reject=clash_reject,
             clash_ratio=clash_ratio,
             zero_init_pair_out=zero_init_pair_out,
+            radii_scaled_candidacy=radii_scaled_candidacy,
+            radii_scaled_lambda=radii_scaled_lambda,
         )
 
 

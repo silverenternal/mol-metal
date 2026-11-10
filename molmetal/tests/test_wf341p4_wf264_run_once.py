@@ -39,8 +39,12 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
-FULL_LAUNCHER = ROOT / "scripts" / "launch_wf264_cfm_property_panel.sh"
+ROOT = Path(__file__).resolve().parents[2]
+FULL_LAUNCHER = (
+    Path(__file__).resolve().parents[2]
+    / "scripts"
+    / "launch_wf264_cfm_property_panel.sh"
+)
 RUN_ONCE_WRAPPER = ROOT / "scripts" / "run_wf264_cfm_property_panel.sh"
 PRE_FLIGHT = ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 PANEL_SCRIPT = ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"

@@ -17,10 +17,15 @@ import sys
 import time
 from pathlib import Path
 
-REPORT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf_blackwell_retrain")
+REPORT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf_blackwell_retrain"
+)
 CANDIDATE_VENVS = [
-    Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
-    Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
+    Path(sys.executable),
+    Path(sys.executable),
     Path("/home/hugo/.venv-flowmol311/bin/python"),
 ]
 KANZI_NEEDLES = ("kanzi_venv/bin/python", "sweep_kanzi")

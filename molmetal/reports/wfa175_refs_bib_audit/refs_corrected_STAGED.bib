@@ -1,0 +1,433 @@
+% =====================================================================
+%  STAGED BIBTEX — NOT APPLIED TO paper/refs.bib
+%  Wf-A175 / BIBLIOGRAPHY branch, 2026-11-01
+%  Produced by: molmetal/reports/wfa175_refs_bib_audit/audit_refs_bib.py
+%                + resolve_targets{2..9}.py  (+ build_audit.py)
+%
+%  *** THIS FILE IS A PROPOSAL, NOT A PATCH. ***
+%  Nothing here has been written to paper/refs.bib. Applying it means
+%  editing paper/** , which AGENTS.md 5.3 / TODO-84 forbids without the
+%  USER'S EXPLICIT OK. The user must approve before any of it lands.
+%
+%  Every DOI in this file was resolved against a PRIMARY record on
+%  2026-11-01:
+%    - doi.org handle registry  https://doi.org/api/handles/<doi>
+%    - doi.org landing page      https://doi.org/<doi>
+%    - Crossref                 https://api.crossref.org/works/<doi>
+%    - bioRxiv API              https://api.biorxiv.org/details/biorxiv/<doi>
+%    - arXiv API                http://export.arxiv.org/api/query?id_list=<id>
+%    - PubMed/NLM               https://eutils.ncbi.nlm.nih.gov/entrez/eutils/
+%    - publisher landing pages  journals.plos.org, ojs.aaai.org
+%
+%  Per AGENTS.md 5.5 rule 6 the superseded rendering of every entry that
+%  is changed or removed is preserved VERBATIM below, dated, and never
+%  silently deleted.
+%
+%  SCOPE: this file is the proposal for paper/refs.bib only. The two
+%  FABRICATED entries in .tools/sci-paper/refs/references.bib
+%  (krasnov2026metalcytotoxdb, rusanov2025platinai) are staged in the
+%  separate file refs_sci_paper_corrected_STAGED.bib, so that no cite
+%  key is defined twice in one .bib.
+% =====================================================================
+
+
+% =====================================================================
+%  SECTION 1 — THE 3 GATE-REQUIRED KEYS (all 3 are currently ABSENT from
+%  paper/refs.bib; gate = gate_p3_protocol_alignment_baseline_paper_refs_bib,
+%  molmetal/scripts/pre_flight_check.py:11052)
+% =====================================================================
+
+% --- 1a. krasnov2026metalcytotoxdb ---
+% NOTE: this cite key names the DATABASE (MetalCytoToxDB), but the
+% version of record is the JOURNAL ARTICLE that introduces the database.
+% Verified: PubMed PMID 41969144; Crossref 10.1021/acs.jmedchem.5c02755
+% (registered; J. Med. Chem. 2026, 69(8), 8838-8851). The PubMed abstract
+% reads: "we have manually curated MetalCytoToxDB-a comprehensive
+% experimental database comprising 26,500 IC50 values for 7050 metal
+% complexes against 754 cell lines from 1921 articles".
+@article{krasnov2026metalcytotoxdb,
+  author       = {Krasnov, Lev and Malikov, Dmitry and Kiseleva, Marina A. and Nykhrikova, Ekaterina V. and Tatarin, Sergei V. and Bezzubov, Stanislav I.},
+  title        = {Machine Learning Approach to Anticancer Activity Prediction of Transition-Metal Complexes Based on a Large-Scale Experimental Database},
+  journal      = {Journal of Medicinal Chemistry},
+  volume       = {69},
+  number       = {8},
+  pages        = {8838--8851},
+  year         = {2026},
+  publisher    = {American Chemical Society},
+  doi          = {10.1021/acs.jmedchem.5c02755},
+  url          = {https://pubs.acs.org/doi/10.1021/acs.jmedchem.5c02755},
+  note         = {Introduces the MetalCytoToxDB experimental database: 26,500 IC50 values, 7,050 metal complexes, 754 cell lines, from 1,921 articles (counts quoted from the PubMed abstract, PMID 41969144).}
+}
+
+% --- 1b. rusanov2025platinai ---
+% NOTE: "PlatinAI" is ONE de-novo-designed bis-carbene platinum(II)
+% COMPLEX, not a database name (the ChemRxiv abstract says so verbatim);
+% the curated dataset behind it is 4,078 platinum complexes / 18,995 IC50
+% values. The .tools/sci-paper entry calling it "A 5K-Compound Platinum
+% Cytotoxicity Dataset" and citing Scientific Data 12(184) with doi
+% 10.1038/s41597-025-05012-9 is FABRICATED - that DOI is not registered.
+% Verified: ChemRxiv preprint doi 10.26434/chemrxiv-2025-pp32k (registered,
+% Crossref posted-content 2025); counts quoted from that record's abstract.
+@article{rusanov2025platinai,
+  author       = {Rusanov, Daniil A. and Brezgunov, Dmitrii Yu. and Matnurov, Egor M. and Pashaliev, Bekir L. and Vetrova, Varvara V. and Babak, Maria V.},
+  title        = {Overcoming cisplatin resistance via deep learning-assisted de novo design of platinum complexes},
+  year         = {2025},
+  publisher    = {American Chemical Society},
+  doi          = {10.26434/chemrxiv-2025-pp32k},
+  url          = {https://chemrxiv.org/engage/chemrxiv/article-details/10.26434/chemrxiv-2025-pp32k},
+  note         = {ChemRxiv preprint (not yet a journal version of record as of 2026-11-01). Curated dataset: 4,078 platinum complexes with 18,995 IC50 values; PlatinAI is the single de-novo-designed bis-carbene platinum(II) complex the paper validates (numbers and wording quoted from the record's abstract).}
+}
+
+% --- 1c. ji2022drugood ---
+% Verified on AAAI's own OJS article page
+% (https://ojs.aaai.org/index.php/AAAI/article/view/25970 -> citation_title /
+% citation_volume=37 / citation_issue=7 / citation_firstpage=8023 /
+% citation_lastpage=8031) and via the arXiv API (arXiv:2201.09637,
+% 2022-01-24). The registered DOI is 10.1609/aaai.v37i7.25970; the
+% frequently seen 10.1609/aaai.v37i.v37i7.25970 (doubled "v37i") is NOT
+% registered.
+@inproceedings{ji2022drugood,
+  author       = {Ji, Yuanfeng and Zhang, Lu and Wu, Jiaxiang and Wu, Bingzhe and Li, Lanqing and Huang, Long-Kai and Xu, Tingyang and Rong, Yu and Ren, Jie and Xue, Ding and Lai, Houtim and Liu, Wei and Huang, Junzhou and Zhou, Shuigeng and Luo, Ping and Zhao, Peilin and Bian, Yatao},
+  title        = {DrugOOD: Out-of-Distribution Dataset Curator and Benchmark for AI-Aided Drug Discovery -- A Focus on Affinity Prediction Problems with Noise Annotations},
+  booktitle    = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume       = {37},
+  number       = {7},
+  pages        = {8023--8031},
+  year         = {2023},
+  publisher    = {Association for the Advancement of Artificial Intelligence},
+  doi          = {10.1609/aaai.v37i7.25970},
+  eprint       = {2201.09637},
+  archivePrefix = {arXiv},
+  url          = {https://ojs.aaai.org/index.php/AAAI/article/view/25970},
+  note         = {Preprint version: arXiv:2201.09637 (2022-01-24), titled 'DrugOOD: Out-of-Distribution (OOD) Dataset Curator and Benchmark for AI-aided Drug Discovery -- A Focus on Affinity Prediction Problems with Noise Annotations'.}
+}
+
+
+% =====================================================================
+%  SECTION 2 — CORRECTED ENTRIES OF paper/refs.bib
+%  (each superseded rendering is quoted VERBATIM first)
+% =====================================================================
+
+% --- 2a. buttenschoen2024posebusters — REMOVED (fabricated duplicate) ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original, retained for the
+% record per AGENTS.md 5.5 rule 6:
+%   @article{buttenschoen2024posebusters,
+%     author       = {Buttenschoen, Martin and Morris, Garrett M. and Deane, Charlotte M.},
+%     title        = {{PoseBusters}: {AI}-based docking methods fail to generate physically valid poses or generalise to novel sequences},
+%     journal      = {Nature Communications},
+%     volume       = {15},
+%     number       = {1},
+%     pages        = {6621},
+%     year         = {2024},
+%     publisher    = {Nature Publishing Group},
+%     doi          = {10.1038/s41467-024-49069-0},
+%     url          = {https://www.nature.com/articles/s41467-024-49069-0},
+%     note         = {Version-of-record with the full PB-test suite used by \texttt{molmetal/validation/posebusters\_runner.py}; we also cite the open-access Chem.~Sci.~2023 preprint \cite{posebusters2023}.}
+% REASON: doi 10.1038/s41467-024-49069-0 is NOT REGISTERED (doi.org handle
+% API responseCode != 1; doi.org landing HTTP 404 "Error: DOI Not Found";
+% Crossref HTTP 404). No Nature-Communications PoseBusters article is
+% attested: Crossref title search "PoseBusters" returns only
+% 10.1039/d3sc04185a (+ peer-review decision records) and PubMed
+% "PoseBusters"[Title] returns exactly ONE hit (PMID 38425520, Chem. Sci.
+% 2024, 15(9), 3130-3139). The entry duplicates posebusters2023 with a
+% fabricated venue and a fabricated page number, so it is REMOVED rather
+% than repaired. The PB-test-suite note is preserved in 2b below.
+%
+% --- 2b. posebusters2023 — year corrected 2023 -> 2024 ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @article{posebusters2023,
+%     author       = {Buttenschoen, Martin and Morris, Garrett M. and Deane, Charlotte M.},
+%     title        = {{PoseBusters}: {AI}-based docking methods fail to generate physically valid poses or generalise to novel sequences},
+%     journal      = {Chemical Science},
+%     volume       = {15},
+%     number       = {9},
+%     pages        = {3130--3139},
+%     year         = {2023},
+%     publisher    = {Royal Society of Chemistry},
+%     doi          = {10.1039/D3SC04185A},
+%     url          = {https://pubs.rsc.org/en/content/articlelanding/2024/SC/D3SC04185A}
+%   }
+% REASON: title, DOI, volume, issue and pages are correct; the YEAR is
+% not. PubMed PMID 38425520 and Crossref both date Chem. Sci. 15(9),
+% 3130-3139 to 2024, and the entry's OWN url field (".../2024/SC/...")
+% already said 2024. The Nat.-Commun. duplicate (2a) carried the PB-test
+% note; it is carried forward here.
+@article{posebusters2023,
+  author       = {Buttenschoen, Martin and Morris, Garrett M. and Deane, Charlotte M.},
+  title        = {{PoseBusters}: {AI}-based docking methods fail to generate physically valid poses or generalise to novel sequences},
+  journal      = {Chemical Science},
+  volume       = {15},
+  number       = {9},
+  pages        = {3130--3139},
+  year         = {2024},
+  publisher    = {Royal Society of Chemistry},
+  doi          = {10.1039/D3SC04185A},
+  url          = {https://pubs.rsc.org/en/content/articlelanding/2024/SC/D3SC04185A},
+  note         = {Version of record, with the full PB-test suite used by \texttt{molmetal/validation/posebusters\_runner.py}.}
+}
+
+% --- 2c. rosettafold_aa2024 — wrong DOI + wrong title ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{rosettafold_aa2024,
+%     author       = {Krishna, Rohith and Wang, Jue and Cheng, Maxwell and et al.},
+%     title        = {{RoseTTAFold-AA}: Accurate protein complex structure prediction},
+%     year         = {2024},
+%     howpublished = {bioRxiv preprint},
+%     doi          = {10.1101/2024.07.17.603964},
+%     url          = {https://www.biorxiv.org/content/10.1101/2024.07.17.603964v1}
+%   }
+% REASON: doi 10.1101/2024.07.17.603964 IS registered, but it is NOT
+% RoseTTAFold: the bioRxiv API returns it as "Viral delivery of an
+% RNA-guided genome editor for transgene-free plant germline editing in
+% Arabidopsis" (Weiss, Kamalu, Shi et al., 2024-07-19, plant biology).
+% The RoseTTAFold all-atom work is bioRxiv 10.1101/2023.10.09.561603
+% (v1 2023-10-09, "Generalized Biomolecular Modeling and Design with
+% RoseTTAFold All-Atom"), published as Science 10.1126/science.adl2528,
+% 384(6693), 2024. The bioRxiv title "RoseTTAFold-AA: Accurate protein
+% complex structure prediction" matches NO primary record found, so the
+% title is replaced with the attested one.
+@misc{rosettafold_aa2024,
+  author       = {Krishna, Rohith and Wang, Jue and Ahern, Woody and Sturmfels, Pascal and Venkatesh, Preetham and Kalvet, Indrek and Lee, Gyu Rie and Morey-Burrows, Felix S. and Anishchenko, Ivan and Humphreys, Ian R. and McHugh, Ryan and Vafeados, Dionne and Li, Xinting and Sutherland, George A. and Hitchcock, Andrew and Hunter, C. Neil and Kang, Alex and Brackenbrough, Evans and Bera, Asim K. and Baek, Minkyung and DiMaio, Frank and Baker, David},
+  title        = {Generalized Biomolecular Modeling and Design with {RoseTTAFold} All-Atom},
+  year         = {2024},
+  howpublished = {bioRxiv preprint (2023-10-09); published in Science 384(6693), 2024},
+  doi          = {10.1101/2023.10.09.561603},
+  eprint       = {561603},
+  archivePrefix = {bioRxiv},
+  url          = {https://www.biorxiv.org/content/10.1101/2023.10.09.561603v1},
+  note         = {Version of record: Science 2024, 384(6693), doi 10.1126/science.adl2528. Wf-A175 correction: the previous doi pointed at an unrelated Arabidopsis genome-editing preprint.}
+}
+
+% --- 2d. footnote:rosettafoldaa — wrong DOI embedded in howpublished/url ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{footnote:rosettafoldaa,
+%     author       = {Krishna, Rohith and Wang, Jue and Cheng, Maxwell and et al.},
+%     title        = {{RoseTTAFold-AA}: Accurate protein complex structure prediction},
+%     year         = {2024},
+%     howpublished = {bioRxiv 2024.07.17.603964},
+%     url          = {https://www.biorxiv.org/content/10.1101/2024.07.17.603964v1}
+%   }
+% REASON: this entry carries NO doi field; the wrong DOI survives only
+% inside howpublished/url, and it points at the same Arabidopsis
+% genome-editing preprint (see 2c). Corrected to the attested record.
+@misc{footnote:rosettafoldaa,
+  author       = {Krishna, Rohith and Wang, Jue and Ahern, Woody and Sturmfels, Pascal and Venkatesh, Preetham and Kalvet, Indrek and Lee, Gyu Rie and Morey-Burrows, Felix S. and Anishchenko, Ivan and Humphreys, Ian R. and McHugh, Ryan and Vafeados, Dionne and Li, Xinting and Sutherland, George A. and Hitchcock, Andrew and Hunter, C. Neil and Kang, Alex and Brackenbrough, Evans and Bera, Asim K. and Baek, Minkyung and DiMaio, Frank and Baker, David},
+  title        = {Generalized Biomolecular Modeling and Design with {RoseTTAFold} All-Atom},
+  year         = {2024},
+  howpublished = {bioRxiv preprint (2023-10-09); published in Science 384(6693), 2024},
+  doi          = {10.1101/2023.10.09.561603},
+  url          = {https://www.biorxiv.org/content/10.1101/2023.10.09.561603v1},
+  note         = {Wf-A175 correction: the previous howpublished/url pointed at 10.1101/2024.07.17.603964, an unrelated Arabidopsis genome-editing preprint.}
+}
+
+% --- 2e. footnote:metallodrug_review — fabricated DOI + fabricated title ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{footnote:metallodrug_review,
+%     author       = {Breslow, Ronald and Dong, Shao Dong},
+%     title        = {Biomimetic reactions catalyzed by metallo-enzymes and their models},
+%     journal      = {Chemical Reviews},
+%     year         = {1998},
+%     doi          = {10.1021/cr9600577},
+%     url          = {https://pubs.acs.org/doi/10.1021/cr9600577}
+%   }
+% REASON: doi 10.1021/cr9600577 is NOT REGISTERED (handle API, doi.org 404,
+% Crossref 404) and the title "Biomimetic reactions catalyzed by
+% metallo-enzymes and their models" is attested by NEITHER PubMed NOR
+% Crossref. The real paper by the same two authors is PMID 11848956,
+% "Biomimetic Reactions Catalyzed by Cyclodextrins and Their Derivatives",
+% Chem. Rev. 1998, 98(5), 1997-2012, doi 10.1021/cr970011j. The second
+% author's name was also wrong ("Dong, Shao Dong" -> "Dong, Steven D.").
+@misc{footnote:metallodrug_review,
+  author       = {Breslow, Ronald and Dong, Steven D.},
+  title        = {Biomimetic Reactions Catalyzed by Cyclodextrins and Their Derivatives},
+  journal      = {Chemical Reviews},
+  volume       = {98},
+  number       = {5},
+  pages        = {1997--2012},
+  year         = {1998},
+  publisher    = {American Chemical Society},
+  doi          = {10.1021/cr970011j},
+  url          = {https://pubs.acs.org/doi/10.1021/cr970011j},
+  note         = {Wf-A175 correction: the previous title and doi 10.1021/cr9600577 were unattested; the previous doi is not a registered DOI.}
+}
+
+% --- 2f. fontana2006 — DOI points at an unrelated paper ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @article{fontana2006,
+%     author       = {Fontana, Walter and Buss, Leo W.},
+%     title        = {The barrier of objects: From dynamical systems to bounded organizations},
+%     journal      = {Origins of Life and Evolution of the Biosphere},
+%     volume       = {26},
+%     number       = {3},
+%     pages        = {233--253},
+%     year         = {1996},
+%     publisher    = {Springer},
+%     doi          = {10.1007/BF02473273},
+%     note         = {Constructive-chemistry program cited in \S2 (lambda\_coupling footnote)}
+%   }
+% REASON: doi 10.1007/BF02473273 resolves to "Dense granular bodies: a
+% novel nucleophilic structure in hibernating dormice", Histochemistry and
+% Cell Biology 106(6):581-586 (1996) - an unrelated cell-biology paper.
+% The correct DOI for "The barrier of objects" could NOT be established
+% from a primary record (Crossref title/author/ISSN queries miss; a
+% 10.1007/BF024732xx handle probe over the neighbouring IDs returns no
+% matching article). The WRONG doi is therefore REMOVED rather than
+% replaced by an unverified one; the entry keeps its unverified
+% title/journal/volume/pages unchanged and carries an explicit flag.
+@article{fontana2006,
+  author       = {Fontana, Walter and Buss, Leo W.},
+  title        = {The barrier of objects: From dynamical systems to bounded organizations},
+  journal      = {Origins of Life and Evolution of the Biosphere},
+  volume       = {26},
+  number       = {3},
+  pages        = {233--253},
+  year         = {1996},
+  publisher    = {Springer},
+  note         = {Constructive-chemistry program cited in \S2 (lambda\_coupling footnote). Wf-A175 2026-11-01: doi removed - 10.1007/BF02473273 resolves to an unrelated 1996 cell-biology paper; the correct DOI is NOT YET VERIFIED against a primary record.}
+}
+
+% --- 2g. footnote:fontana2006 — same wrong DOI ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{footnote:fontana2006,
+%     author       = {Fontana, Walter and Buss, Leo W.},
+%     title        = {The barrier of objects: From dynamical systems to bounded organizations},
+%     journal      = {Origins of Life and Evolution of the Biosphere},
+%     year         = {1996},
+%     doi          = {10.1007/BF02473273},
+%     url          = {https://link.springer.com/article/10.1007/BF02473273}
+%   }
+% REASON: as 2f.
+@misc{footnote:fontana2006,
+  author       = {Fontana, Walter and Buss, Leo W.},
+  title        = {The barrier of objects: From dynamical systems to bounded organizations},
+  journal      = {Origins of Life and Evolution of the Biosphere},
+  volume       = {26},
+  number       = {3},
+  pages        = {233--253},
+  year         = {1996},
+  publisher    = {Springer},
+  note         = {Wf-A175 2026-11-01: doi removed - 10.1007/BF02473273 resolves to an unrelated 1996 cell-biology paper; the correct DOI is NOT YET VERIFIED against a primary record.}
+}
+
+% --- 2h. footnote:fep_metallo — DOI points at an unrelated paper ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{footnote:fep_metallo,
+%     author       = {Rizzuti, Bruno and Sportelli, Luigi and Guzzi, Rita},
+%     title        = {Free-energy studies of metallo-drugs},
+%     journal      = {Coordination Chemistry Reviews},
+%     year         = {2009},
+%     doi          = {10.1016/j.ccr.2009.03.006},
+%     url          = {https://www.sciencedirect.com/science/article/pii/S0010854509000715}
+%   }
+% REASON: doi 10.1016/j.ccr.2009.03.006 resolves to "Metal ion extraction
+% in microheterogeneous systems", Coord. Chem. Rev. 253(17-18):2186-2192
+% (2009) (Marc Hegrant) - not Rizzuti/Sportelli/Guzzi. The correct DOI
+% could NOT be established: ScienceDirect returns HTTP 403 to non-browser
+% clients and Crossref has no Coord.-Chem.-Rev. 2009 record under that
+% title (author and bibliographic queries miss; the entry's PII
+% S0010854509000715 could not be mapped). The WRONG doi is removed and
+% the url is dropped rather than left pointing at a mismatched PII.
+@misc{footnote:fep_metallo,
+  author       = {Rizzuti, Bruno and Sportelli, Luigi and Guzzi, Rita},
+  title        = {Free-energy studies of metallo-drugs},
+  journal      = {Coordination Chemistry Reviews},
+  year         = {2009},
+  note         = {Wf-A175 2026-11-01: doi and url removed - 10.1016/j.ccr.2009.03.006 resolves to 'Metal ion extraction in microheterogeneous systems' (Coord. Chem. Rev. 253(17-18):2186-2192); the correct DOI is NOT YET VERIFIED against a primary record.}
+}
+
+% --- 2i. openmm — DOI points at an unrelated paper ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{openmm,
+%     author       = {Eastman, Peter and Swails, Jason and Chodera, John D. and McGibbon, Robert T. and Zhao, Yutong and Beauchamp, Kyle A. and Wang, Lee-Ping and Simmonett, Andrew C. and Harrigan, Matthew P. and Stern, Chaya D. and Wiewiora, Rafal P. and Brooks, Bernard R. and Pande, Vijay S.},
+%     title        = {{OpenMM} 8: Molecular dynamics simulation with heterogeneous hardware},
+%     journal      = {PLOS Computational Biology},
+%     year         = {2023},
+%     doi          = {10.1371/journal.pcbi.1011617},
+%     url          = {https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011617}
+%   }
+% REASON: doi 10.1371/journal.pcbi.1011617 is "Geometric and topological
+% characterization of the cytoarchitecture of islets of Langerhans",
+% PLoS Comput Biol 19(11):e1011617 (2023) - confirmed on PLOS's own
+% article page, in Crossref and in PubMed (PMID 37943957). The title
+% "OpenMM 8: Molecular dynamics simulation with heterogeneous hardware"
+% and the 13-author list are attested by NO PubMed or Crossref record.
+% The only 'OpenMM 8' version of record that IS attested is
+% "OpenMM 8: Molecular Dynamics Simulation with Machine Learning
+% Potentials", J. Phys. Chem. B 2023, 128(1):109-116 (PMID 38154096,
+% doi 10.1021/acs.jpcb.3c06662), with a different (25-author) list. The
+% STAGED entry below adopts the ATTESTED record; if the project actually
+% needs the PLOS paper, its correct DOI must be established first.
+@article{openmm,
+  author       = {Eastman, Peter and Galvelis, Raimondas and Pel{\'a}ez, Ra{\'u}l P. and Abreu, Charlles R. A. and Farr, Stephen E. and Gallicchio, Emilio and Gorenko, Anton and Henry, Michael M. and Hu, Frank and Huang, Jing and Kr{\"a}mer, Andreas and Michel, Julien and Mitchell, Joshua A. and Pande, Vijay S. and Rodrigues, Jo{\~a}o PGLM and Rodriguez-Guerra, Jaime and Simmonett, Andrew C. and Singh, Sukrit and Swails, Jason and Turner, Philip and Wang, Yuanqing and Zhang, Ivy and Chodera, John D. and De Fabritiis, Gianni and Markland, Thomas E.},
+  title        = {{OpenMM} 8: Molecular Dynamics Simulation with Machine Learning Potentials},
+  journal      = {The Journal of Physical Chemistry B},
+  volume       = {128},
+  number       = {1},
+  pages        = {109--116},
+  year         = {2024},
+  publisher    = {American Chemical Society},
+  doi          = {10.1021/acs.jpcb.3c06662},
+  url          = {https://pubs.acs.org/doi/10.1021/acs.jpcb.3c06662},
+  note         = {Wf-A175 2026-11-01: the previous doi 10.1371/journal.pcbi.1011617 and the previous title/author list are unattested; this entry is the only 'OpenMM 8' version of record verified against a primary record (PubMed PMID 38154096, Crossref). Online-first 2023; issue year 2024.}
+}
+
+% --- 2j. attentivefp2020 — preprint title on a version-of-record DOI ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @article{attentivefp2020,
+%     author       = {Xiong, Zhaoping and Wang, Dingyan and Liu, Xiaohong and Zhong, Feisheng and Wan, Xiaozhe and Li, Xutong and Li, Zhenjun and Luo, Xiang and Chen, Kaixian and Jiang, Hualiang and Zheng, Mingyue},
+%     title        = {{AttentiveFP}: Representation Learning for Predicting Molecular Properties from Molecular Graphs},
+%     journal      = {Journal of Medicinal Chemistry},
+%     volume       = {63},
+%     number       = {16},
+%     pages        = {8749--8760},
+%     year         = {2020},
+%     publisher    = {American Chemical Society},
+%     doi          = {10.1021/acs.jmedchem.9b00959},
+%     url          = {https://pubs.acs.org/doi/10.1021/acs.jmedchem.9b00959}
+%   }
+% REASON: the DOI is correct, but the TITLE is the arXiv preprint title.
+% The version of record is "Pushing the Boundaries of Molecular
+% Representation for Drug Discovery with the Graph Attention Mechanism",
+% J. Med. Chem. 2020, 63(12):8749-8760 (PubMed PMID 31408336, Crossref).
+% Two author names were also wrong: "Li, Zhenjun" -> "Li, Zhaojun" and
+% "Luo, Xiang" -> "Luo, Xiaomin" (Crossref author list).
+@article{attentivefp2020,
+  author       = {Xiong, Zhaoping and Wang, Dingyan and Liu, Xiaohong and Zhong, Feisheng and Wan, Xiaozhe and Li, Xutong and Li, Zhaojun and Luo, Xiaomin and Chen, Kaixian and Jiang, Hualiang and Zheng, Mingyue},
+  title        = {Pushing the Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism},
+  journal      = {Journal of Medicinal Chemistry},
+  volume       = {63},
+  number       = {12},
+  pages        = {8749--8760},
+  year         = {2020},
+  publisher    = {American Chemical Society},
+  doi          = {10.1021/acs.jmedchem.9b00959},
+  url          = {https://pubs.acs.org/doi/10.1021/acs.jmedchem.9b00959},
+  note         = {Also circulated as arXiv:2002.07177 under the title 'AttentiveFP: Representation Learning for Predicting Molecular Properties from Molecular Graphs'. Wf-A175 correction: the title now matches the version of record, and the number field is corrected from 16 to 12 (Crossref issue 12; PubMed 63(12):8749-8760).}
+}
+
+% --- 2k. footnote:attentivefp — same title correction ---
+% SUPERSEDED 2026-11-01 (Wf-A175). VERBATIM original:
+%   @misc{footnote:attentivefp,
+%     author       = {Xiong, Zhaoping and Wang, Dingyan and Liu, Xiaohong and Zhong, Feisheng and Wan, Xiaozhe and Li, Xutong and Li, Zhenjun and Luo, Xiang and Chen, Kaixian and Jiang, Hualiang and Zheng, Mingyue},
+%     title        = {{AttentiveFP}: Representation Learning for Predicting Molecular Properties from Molecular Graphs},
+%     journal      = {Journal of Medicinal Chemistry},
+%     year         = {2020},
+%     doi          = {10.1021/acs.jmedchem.9b00959},
+%     url          = {https://pubs.acs.org/doi/10.1021/acs.jmedchem.9b00959}
+%   }
+% REASON: as 2j.
+@misc{footnote:attentivefp,
+  author       = {Xiong, Zhaoping and Wang, Dingyan and Liu, Xiaohong and Zhong, Feisheng and Wan, Xiaozhe and Li, Xutong and Li, Zhaojun and Luo, Xiaomin and Chen, Kaixian and Jiang, Hualiang and Zheng, Mingyue},
+  title        = {Pushing the Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism},
+  journal      = {Journal of Medicinal Chemistry},
+  volume       = {63},
+  number       = {12},
+  pages        = {8749--8760},
+  year         = {2020},
+  publisher    = {American Chemical Society},
+  doi          = {10.1021/acs.jmedchem.9b00959},
+  url          = {https://pubs.acs.org/doi/10.1021/acs.jmedchem.9b00959},
+  note         = {Wf-A175 correction: preprint title replaced by the version-of-record title; see attentivefp2020.}
+}
+
+

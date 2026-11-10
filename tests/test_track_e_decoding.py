@@ -41,7 +41,8 @@ PYTHON = sys.executable
 class TestDecodeGate:
     def test_c_dot_c_dot_c_dot_c_rejected(self):
         """``C.C.C.C`` is sanitised by RDKit but is multi-fragment;
-        per-atom gate MUST reject at the standard MOSES 0.80 floor."""
+        per-atom gate MUST reject at this repo's own 0.80 floor (a REPO-LOCAL
+        project-strict choice; MOSES has no fragment term)."""
         r = gate_smiles("C.C.C.C", largest_frac_min=0.80, min_atoms=2)
         assert r.ok is False
         assert r.reason == "multi_fragment"

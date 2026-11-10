@@ -1,0 +1,1326 @@
+{
+  "schema": "wf269a.receipt_locators.v1",
+  "receipt": "docs/wf_a44_verify_receipts.md",
+  "producer": "molmetal/scripts/wf269a_receipt_locator_refresh.py",
+  "gate": "molmetal/tests/test_wfa269_receipt_locator_guard.py",
+  "resolved_at": "2026-11-06T20:33:12+00:00",
+  "claim_fields": [
+    "error",
+    "expect",
+    "file",
+    "floor",
+    "id",
+    "ok",
+    "said",
+    "said_kind",
+    "said_ok",
+    "section",
+    "symbol"
+  ],
+  "resolution_fields": [
+    "count",
+    "exists",
+    "files",
+    "lines",
+    "note",
+    "said_claim",
+    "said_count",
+    "said_lines"
+  ],
+  "verdict_scope": {
+    "ok": "every row",
+    "said_ok": "every row EXCEPT a row whose said_kind == 'line' (a locator — it drifts on every unrelated edit above the symbol) and EXCEPT a row whose said_ok is None (no machine-checkable claim to be consistent about)"
+  },
+  "rows_sha256": "02b151b3a36671205286ccaedb5894d647e75f9c2a128fa57b1dd37746afe71f",
+  "design_rule": "DESIGN v5 — CLAIM vs RESOLUTION (THREE classes).  (i) CLAIM/RESOLUTION SEPARATION: every stored field is classified — ASSERTED (a mutation MUST fail the guard), ASSERTED-VERDICT (the guard RE-MEASURES the live tree and asserts that the RECORDED verdict EQUALS the LIVE verdict — it does NOT assert that the verdict is TRUE), or RESOLUTION (informational drift, NEVER compared for equality).  A guard may FAIL only on a DURABLE claim — does the symbol still exist, is the count still above its floor, is the verdict still right; every derived field (line numbers, byte offsets, content hashes) is REPORTED as informational drift, never ASSERTED.  The row's own `said_kind` (line | hits | tests | bytes | presence | none) SELECTS which assertion applies to that row: `ok` is asserted on every row, and `said_ok` on every row EXCEPT a `line`-kind row (a locator drifts on every unrelated edit) and EXCEPT a row whose said_ok is None.  (ii) FLOOR SEMANTICS: a count_ge probe carries a FLOOR, never a freeze — a floor is a LOWER BOUND the live count must not fall below, so the tree may GROW without failing; a count_ge spec without an explicit positive integer floor RAISES (the previous default of 1 was vacuous: one hit passed, so the check could not fail), and a floor BELOW the measured live count is ALSO vacuous and is not acceptable; the count_ge verdict is the three-part predicate (a) live_count >= floor, (b) len(sidecar.files) >= floor, (c) every sidecar-named path still carries the marker — and live_files == sidecar.files is NOT compared (that is the treadmill).  (iii) REFRESHING IS A SEPARATE, NON-BLOCKING REGENERATION STEP: it rewrites the resolution fields and the timestamp and never decides whether a claim holds.  (iv) AGENTS.md §4's STALE-FLAG RULE: the PRODUCER stamps (`resolved_at`), the CONSUMER decides, a stamp older than 24 h means FAIL, and a missing, unparseable or future-dated stamp fails CLOSED.  Plus Wf-A269 §6.269.4h's generalised rule: a locator is a RESOLVER (symbol -> current line), not a FROZEN LINE NUMBER.  KNOWN LIMIT: the `hits` said-verdict is a LOWER BOUND (measured >= claimed), so it cannot certify a claim's BREAKDOWN.",
+  "coverage": {
+    "covered_probes": 43,
+    "covered_files": 17,
+    "not_covered": [
+      "the 19 JUDGEMENT-CALL ledger rows (catalogue prose, not file locators)",
+      "the receipt's pre-flight claim (110 PASS / 3 FAIL / 10 SKIP / 124 total) — a wave-scoped snapshot of a live tool, not a locator"
+    ],
+    "does_not_run_pytest": "the guard pins the ARTEFACTS; the repo's own test run executes them"
+  },
+  "rows": [
+    {
+      "id": "M1",
+      "file": "molmetal/eval/scoring/stereo_postprocess.py",
+      "expect": "contains",
+      "symbol": "_ALLOWED_STEREO_MODES = frozenset({\"noop\", \"remove_atom\"})",
+      "said": "L32",
+      "section": "M1 §6.69a",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        37
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          32,
+          32
+        ],
+        "text": "L32"
+      },
+      "said_count": null,
+      "said_lines": [
+        37
+      ]
+    },
+    {
+      "id": "M2",
+      "file": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py",
+      "expect": "contains",
+      "symbol": "def _has_metal(",
+      "said": "6 hits (def + 5 call sites)",
+      "section": "M2 §6.69b",
+      "floor": null,
+      "ok": true,
+      "said_kind": "hits",
+      "said_ok": true,
+      "count": 1,
+      "lines": [
+        110
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "hits",
+        "claimed": 6,
+        "text": "6 hits (def + 5 call sites)"
+      },
+      "said_count": 7,
+      "said_lines": []
+    },
+    {
+      "id": "M3a",
+      "file": "molmetal/scripts/wf_a40_pivot_long_to_wide.py",
+      "expect": "absent",
+      "symbol": "--self-test",
+      "said": "`--self-test` exit 0",
+      "section": "M3 §6.69c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "presence",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "The flag was NEVER in the file: `git show b3482fc9:<file> | grep -c -- 'self.test'` = 0, and the script's argparse declares exactly two args (`--in`, `--out`), both required.  So the receipt's verification command cannot have exited 0.  FALSE AT BIRTH.",
+      "said_claim": {
+        "kind": "presence",
+        "claimed": "symbol",
+        "text": "`--self-test` exit 0"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M3b",
+      "file": "molmetal/scripts/wf_a40_pivot_long_to_wide.py",
+      "expect": "contains",
+      "symbol": "dest=\"out_path\"",
+      "said": "NEW script, 6639 bytes",
+      "section": "M3 §6.69c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "bytes",
+      "said_ok": true,
+      "count": 1,
+      "lines": [
+        166
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "bytes",
+        "claimed": 6639,
+        "text": "NEW script, 6639 bytes"
+      },
+      "said_count": 6639,
+      "said_lines": []
+    },
+    {
+      "id": "M4",
+      "file": "molmetal/loss/distillation_losses.py",
+      "expect": "contains",
+      "symbol": "weight: float = 0.05,",
+      "said": "L34",
+      "section": "M4 §6.69d",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": true,
+      "count": 1,
+      "lines": [
+        34
+      ],
+      "files": [],
+      "exists": null,
+      "note": "The receipt's term-NAME `shortcut_distill_term` does not exist; the class is `ShortcutDistillLoss` and its name attr is `shortcut_distill_loss`.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          34,
+          34
+        ],
+        "text": "L34"
+      },
+      "said_count": null,
+      "said_lines": [
+        34
+      ]
+    },
+    {
+      "id": "M5",
+      "file": "molmetal/loss/aggregation_losses.py",
+      "expect": "contains",
+      "symbol": "weight: float = 0.05,",
+      "said": "L135",
+      "section": "M5 §6.69e",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        134
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          135,
+          135
+        ],
+        "text": "L135"
+      },
+      "said_count": null,
+      "said_lines": [
+        134
+      ]
+    },
+    {
+      "id": "M6",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "fragment_loss_weight: float = 0.05,",
+      "said": "L3291",
+      "section": "M6 §6.69f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6497
+      ],
+      "files": [],
+      "exists": null,
+      "note": "The receipt's literal `fragment_loss_weight=0.05` (no spacing) returns 0 hits; the real form is `fragment_loss_weight: float = 0.05,`.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3291,
+          3291
+        ],
+        "text": "L3291"
+      },
+      "said_count": null,
+      "said_lines": [
+        6497
+      ]
+    },
+    {
+      "id": "M7",
+      "file": "molmetal/tests/test_bond_aromatic_lo_invariance.py",
+      "expect": "file_exists",
+      "symbol": "",
+      "said": "NEW pytest, 5819 B",
+      "section": "M7 §6.69g",
+      "floor": null,
+      "ok": true,
+      "said_kind": "bytes",
+      "said_ok": true,
+      "count": 1,
+      "lines": [],
+      "files": [],
+      "exists": true,
+      "note": "",
+      "said_claim": {
+        "kind": "bytes",
+        "claimed": 5819,
+        "text": "NEW pytest, 5819 B"
+      },
+      "said_count": 5819,
+      "said_lines": []
+    },
+    {
+      "id": "M8a",
+      "file": "molmetal/loss/regularization_losses.py",
+      "expect": "contains",
+      "symbol": "class EntropyTerm:",
+      "said": "L85",
+      "section": "M8 §6.69h",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        95
+      ],
+      "files": [],
+      "exists": null,
+      "note": "§6.269.4b published that `entropy_term.weight = 0.1` \"exists nowhere in the tracked tree\".  It DOES exist.  Only the line and the identifier were stale.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          85,
+          85
+        ],
+        "text": "L85"
+      },
+      "said_count": null,
+      "said_lines": [
+        95
+      ]
+    },
+    {
+      "id": "M8b",
+      "file": "molmetal/loss/regularization_losses.py",
+      "expect": "contains",
+      "symbol": "weight: float = 0.1,",
+      "said": "L85",
+      "section": "M8 §6.69h",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        112
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          85,
+          85
+        ],
+        "text": "L85"
+      },
+      "said_count": null,
+      "said_lines": [
+        112
+      ]
+    },
+    {
+      "id": "M8c",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "entropy_reg_weight: float = 0.1,",
+      "said": "L3235",
+      "section": "M8 §6.69h",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6435
+      ],
+      "files": [],
+      "exists": null,
+      "note": "The receipt's literal `entropy_term_weight=0.1` returns 0 hits; the trainer carries the RENAMED `entropy_reg_weight`.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3235,
+          3235
+        ],
+        "text": "L3235"
+      },
+      "said_count": null,
+      "said_lines": [
+        6435
+      ]
+    },
+    {
+      "id": "M9a",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "consistency_term_weight",
+      "said": "L3141",
+      "section": "M9 §6.69i",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "Retired on purpose: `metrics/by_metric/cfm_epoch_wall.json` `/retractions/0/why` records the retirement, and `molmetal/tests/test_wfa105_diagnostic_terms.py` asserts the flag is GONE (green, CPU-only).  The receipt's VALUE (0.05) is also wrong: the live defaults are 0.0.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3141,
+          3141
+        ],
+        "text": "L3141"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M9b",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "consistency_weight: float = 0.0,",
+      "said": "L3141",
+      "section": "M9 §6.69i",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 2,
+      "lines": [
+        6229,
+        6251
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3141,
+          3141
+        ],
+        "text": "L3141"
+      },
+      "said_count": null,
+      "said_lines": [
+        6229,
+        6251
+      ]
+    },
+    {
+      "id": "M10",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "molecular_property_target_weight",
+      "said": "L3296",
+      "section": "M10 §6.69j",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "The token occurs in the tracked tree in exactly TWO files, BOTH prose (this receipt + the catalogue) and in 0 `.py` files.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3296,
+          3296
+        ],
+        "text": "L3296"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M11",
+      "file": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py",
+      "expect": "contains",
+      "symbol": "if _has_metal(mol):",
+      "said": "L513 (511-530)",
+      "section": "M11 §6.69k",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": true,
+      "count": 5,
+      "lines": [
+        220,
+        285,
+        364,
+        513,
+        572
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          511,
+          530
+        ],
+        "text": "L513 (511-530)"
+      },
+      "said_count": null,
+      "said_lines": [
+        220,
+        285,
+        364,
+        513,
+        572
+      ]
+    },
+    {
+      "id": "M12",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "DEFAULT_EARLY_STOP_PATIENCE = 10",
+      "said": "L800",
+      "section": "M12 §6.68a",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        1894
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          800,
+          800
+        ],
+        "text": "L800"
+      },
+      "said_count": null,
+      "said_lines": [
+        1894
+      ]
+    },
+    {
+      "id": "M13",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "tmqm_min_per_metal",
+      "said": "4 hits",
+      "section": "M13 §6.66c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "hits",
+      "said_ok": true,
+      "count": 4,
+      "lines": [
+        13761,
+        17045,
+        17054,
+        17065
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "hits",
+        "claimed": 4,
+        "text": "4 hits"
+      },
+      "said_count": 4,
+      "said_lines": []
+    },
+    {
+      "id": "M14",
+      "file": "molmetal/data/tmqm.py",
+      "expect": "contains",
+      "symbol": "TRANSITION_METALS",
+      "said": "3 hits",
+      "section": "M14 §6.66d",
+      "floor": null,
+      "ok": true,
+      "said_kind": "hits",
+      "said_ok": true,
+      "count": 4,
+      "lines": [
+        78,
+        110,
+        534,
+        741
+      ],
+      "files": [],
+      "exists": null,
+      "note": "The receipt's count was 3; the token now resolves 4 times.",
+      "said_claim": {
+        "kind": "hits",
+        "claimed": 3,
+        "text": "3 hits"
+      },
+      "said_count": 4,
+      "said_lines": []
+    },
+    {
+      "id": "M15a",
+      "file": "molmetal/adapters/fpocket_wrapper.py",
+      "expect": "file_exists",
+      "symbol": "",
+      "said": "—",
+      "section": "M15 §6.66f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "none",
+      "said_ok": null,
+      "count": 1,
+      "lines": [],
+      "files": [],
+      "exists": true,
+      "note": "The artefact the receipt MEANT.  Moved here by d4bbafb5 (Wf-A41-fixup-1).",
+      "said_claim": {
+        "kind": "none",
+        "claimed": null,
+        "text": "—"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M15b",
+      "file": "molmetal/tests/test_fpocket_wrapper.py",
+      "expect": "file_exists",
+      "symbol": "",
+      "said": "—",
+      "section": "M15 §6.66f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "none",
+      "said_ok": null,
+      "count": 1,
+      "lines": [],
+      "files": [],
+      "exists": true,
+      "note": "The test the receipt MEANT.  Renamed from `test_fpocket_path.py`.",
+      "said_claim": {
+        "kind": "none",
+        "claimed": null,
+        "text": "—"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M15c",
+      "file": "molmetal/scripts/fpocket_wrapper.py",
+      "expect": "file_absent",
+      "symbol": "",
+      "said": "molmetal/scripts/fpocket_wrapper.py",
+      "section": "M15 §6.66f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "presence",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": false,
+      "note": "The path the receipt CITED.  `git log --all --diff-filter=A` proves it was NEVER added to the repo.  The row was WRONG WHEN WRITTEN, not stale.",
+      "said_claim": {
+        "kind": "presence",
+        "claimed": "path",
+        "text": "molmetal/scripts/fpocket_wrapper.py"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "M15d",
+      "file": "molmetal/tests/test_fpocket_path.py",
+      "expect": "file_absent",
+      "symbol": "",
+      "said": "molmetal/tests/test_fpocket_path.py",
+      "section": "M15 §6.66f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "presence",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": false,
+      "note": "Same: never existed.  The receipt row is FALSE AT BIRTH.",
+      "said_claim": {
+        "kind": "presence",
+        "claimed": "path",
+        "text": "molmetal/tests/test_fpocket_path.py"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671a",
+      "file": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py",
+      "expect": "contains",
+      "symbol": "p = p + _metal_amend(mol)",
+      "said": "L567-573",
+      "section": "§6.71a",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        573
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          567,
+          567
+        ],
+        "text": "L567-573"
+      },
+      "said_count": null,
+      "said_lines": [
+        573
+      ]
+    },
+    {
+      "id": "S671b1",
+      "file": "molmetal/tests/test_metrics_v2.py",
+      "expect": "contains",
+      "symbol": "def test_ppb_cisplatin_has_metal_amend(",
+      "said": "L215-247",
+      "section": "§6.71b",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        220
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          215,
+          215
+        ],
+        "text": "L215-247"
+      },
+      "said_count": null,
+      "said_lines": [
+        220
+      ]
+    },
+    {
+      "id": "S671b2",
+      "file": "molmetal/tests/test_metrics_v2.py",
+      "expect": "contains",
+      "symbol": "def test_ppb_organic_no_amend(",
+      "said": "L215-247",
+      "section": "§6.71b",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        235
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          215,
+          215
+        ],
+        "text": "L215-247"
+      },
+      "said_count": null,
+      "said_lines": [
+        235
+      ]
+    },
+    {
+      "id": "S671e",
+      "file": "molmetal/eval/scoring/stereo_postprocess.py",
+      "expect": "contains",
+      "symbol": "§6.66e",
+      "said": "L54",
+      "section": "§6.71e docstring",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": true,
+      "count": 1,
+      "lines": [
+        54
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          54,
+          54
+        ],
+        "text": "L54"
+      },
+      "said_count": null,
+      "said_lines": [
+        54
+      ]
+    },
+    {
+      "id": "S671eJ1",
+      "file": "molmetal/tests/test_sascorer_fork_divergence.py",
+      "expect": "contains",
+      "symbol": "def test_opt1_direction_reverses_under_the_canonical_scorer(",
+      "said": "L403",
+      "section": "§6.71e J1 fix",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        366
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          403,
+          403
+        ],
+        "text": "L403"
+      },
+      "said_count": null,
+      "said_lines": [
+        366
+      ]
+    },
+    {
+      "id": "S671f",
+      "file": "molmetal/tests/test_assemble_term_arithmetic.py",
+      "expect": "file_exists",
+      "symbol": "",
+      "said": "NEW, 3 tests",
+      "section": "§6.71f",
+      "floor": null,
+      "ok": true,
+      "said_kind": "tests",
+      "said_ok": true,
+      "count": 1,
+      "lines": [],
+      "files": [],
+      "exists": true,
+      "note": "",
+      "said_claim": {
+        "kind": "tests",
+        "claimed": 3,
+        "text": "NEW, 3 tests"
+      },
+      "said_count": 3,
+      "said_lines": []
+    },
+    {
+      "id": "S671c:fm_ode_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "fm_ode_term_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6294
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6294
+      ]
+    },
+    {
+      "id": "S671c:energy_conservation_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "energy_conservation_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6305
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6305
+      ]
+    },
+    {
+      "id": "S671c:sboo3_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "sboo3_term_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6306
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6306
+      ]
+    },
+    {
+      "id": "S671c:chem_loss_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "chem_loss_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6489
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6489
+      ]
+    },
+    {
+      "id": "S671c:qed_loss_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "qed_loss_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6490
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6490
+      ]
+    },
+    {
+      "id": "S671c:molecule_loss_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "molecule_loss_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6491
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6491
+      ]
+    },
+    {
+      "id": "S671c:stereo_loss_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "stereo_loss_weight: float",
+      "said": "L3143-3286",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 1,
+      "lines": [
+        6492
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3286"
+      },
+      "said_count": null,
+      "said_lines": [
+        6492
+      ]
+    },
+    {
+      "id": "S671c-retired:edm_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "edm_term_weight",
+      "said": "L3143-3144",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "RETIRED deliberately; `molmetal/tests/test_wfa105_diagnostic_terms.py` REMOVED_FLAGS asserts the flag is GONE.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3144"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671c-retired:shortcut_distill_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "shortcut_distill_term_weight",
+      "said": "L3143-3144",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "RETIRED deliberately; `molmetal/tests/test_wfa105_diagnostic_terms.py` REMOVED_FLAGS asserts the flag is GONE.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3144"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671c-retired:consistency_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "consistency_term_weight",
+      "said": "L3143-3144",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "RETIRED deliberately; `molmetal/tests/test_wfa105_diagnostic_terms.py` REMOVED_FLAGS asserts the flag is GONE.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3144"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671c-retired:so3_term_weight",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "absent",
+      "symbol": "so3_term_weight",
+      "said": "L3143-3144",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "line",
+      "said_ok": false,
+      "count": 0,
+      "lines": [],
+      "files": [],
+      "exists": null,
+      "note": "RETIRED deliberately; `molmetal/tests/test_wfa105_diagnostic_terms.py` REMOVED_FLAGS asserts the flag is GONE.",
+      "said_claim": {
+        "kind": "line",
+        "claimed": [
+          3143,
+          3143
+        ],
+        "text": "L3143-3144"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671c-repl:edm",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "edm_preconditioning: bool = False,",
+      "said": "—",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "none",
+      "said_ok": null,
+      "count": 1,
+      "lines": [
+        6266
+      ],
+      "files": [],
+      "exists": null,
+      "note": "The EDM term's semantics live on under a boolean + a sigma, not a weight.",
+      "said_claim": {
+        "kind": "none",
+        "claimed": null,
+        "text": "—"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671c-repl:sd",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "expect": "contains",
+      "symbol": "shortcut_distill_weight: float = 1.0,",
+      "said": "—",
+      "section": "§6.71c",
+      "floor": null,
+      "ok": true,
+      "said_kind": "none",
+      "said_ok": null,
+      "count": 1,
+      "lines": [
+        6228
+      ],
+      "files": [],
+      "exists": null,
+      "note": "",
+      "said_claim": {
+        "kind": "none",
+        "claimed": null,
+        "text": "—"
+      },
+      "said_count": null,
+      "said_lines": []
+    },
+    {
+      "id": "S671d-scaffold",
+      "file": "configs/",
+      "expect": "count_ge",
+      "symbol": "tmqm_split_kind: scaffold",
+      "said": "3 hits",
+      "section": "§6.71d",
+      "floor": 29,
+      "ok": true,
+      "said_kind": "hits",
+      "said_ok": true,
+      "count": 29,
+      "lines": [],
+      "files": [
+        "configs/c7_b32_4096_2026_10_20.yaml (1)",
+        "configs/c7_c7resume_b32_2026_10_21.yaml (1)",
+        "configs/c7_calib_eval0_2026_10_20.yaml (1)",
+        "configs/c7_calib_postfix_2026_10_20.yaml (1)",
+        "configs/c7_fullgen_2026_10_20.yaml (1)",
+        "configs/c7_fullgen_resume_2026_10_20.yaml (1)",
+        "configs/c7_fullgen_smoke_2026_10_20.yaml (1)",
+        "configs/c7_memtrace_2026_10_21.yaml (1)",
+        "configs/c7_nrot1_4096_2026_10_20.yaml (1)",
+        "configs/c7_prof_2026_10_20.yaml (1)",
+        "configs/c7_sixterms_nogen_2026_10_20.yaml (1)",
+        "configs/c7_sixterms_smoke_2026_10_20.yaml (1)",
+        "configs/c7_vramprobe_2026_10_20.yaml (1)",
+        "configs/c8_fullgen_b64_2026_10_24.yaml (1)",
+        "configs/cfm_fullcorpus_2026_10_10.yaml (1)",
+        "configs/cfm_fullcorpus_b64_2026_10_11.yaml (1)",
+        "configs/cfm_fullcorpus_seed1.yaml (1)",
+        "configs/cfm_fullcorpus_seed2.yaml (1)",
+        "configs/cfm_fullcorpus_smiles_persist.yaml (1)",
+        "configs/cfm_tmqm_all6.yaml (1)",
+        "configs/wfa108l_t3_seed0_2026_10_25.yaml (1)",
+        "configs/wfa108l_t3_seed1_2026_10_25.yaml (1)",
+        "configs/wfa108l_t3_seed2_2026_10_25.yaml (1)",
+        "configs/wfa108l_t3_smoke_2026_10_25.yaml (1)",
+        "configs/wfa113_t3_probe_2026_10_26.yaml (1)",
+        "configs/wfa113_t3_probe_small_2026_10_26.yaml (1)",
+        "configs/wfa113_t3_profile_cpu_2026_10_26.yaml (1)",
+        "configs/wfa113_t3_seed0_2026_10_26.yaml (1)",
+        "configs/wfa113_t3_typed_seed0_2026_10_26.yaml (1)"
+      ],
+      "exists": null,
+      "note": "The receipt's `3` was the number of files THIS WAVE flipped, not the number the tree carried.  TWO POPULATIONS must be labelled and they are NOT the same: the TRACKED count (git grep over tracked files only) and the ON-DISK count (every file under configs/ on disk, tracked AND untracked).  Both are measured on every run and appended below.  SCOPING (2026-11-07, DESIGN v5): the `29` in this row's floor is the TRACKED count (git grep over TRACKED files only) — it is NOT an unqualified 'the tree carries 29'; the ON-DISK count is a DIFFERENT population, is measured on every run, and is labelled separately below.  A bare count must always be read with its population label.  MEASURED populations: TRACKED files = 29 (tracked hits = 29); ON-DISK files = 39 (on-disk hits = 39).",
+      "said_claim": {
+        "kind": "hits",
+        "claimed": 3,
+        "text": "3 hits"
+      },
+      "said_count": 29,
+      "said_lines": []
+    },
+    {
+      "id": "S671d-legacy",
+      "file": "configs/",
+      "expect": "count_ge",
+      "symbol": "LEGACY OVERRIDE",
+      "said": "17 hits",
+      "section": "§6.71d",
+      "floor": 16,
+      "ok": true,
+      "said_kind": "hits",
+      "said_ok": false,
+      "count": 16,
+      "lines": [],
+      "files": [
+        "configs/cfm_blk_c5_repair_2026_10_09.yaml (1)",
+        "configs/cfm_bond_head_30ep_onecycle.yaml (1)",
+        "configs/cfm_entropy_reg_012_2026_10_11.yaml (1)",
+        "configs/cfm_fm_ab_2026_10_09.yaml (1)",
+        "configs/cfm_fm_control_2026_10_09.yaml (1)",
+        "configs/cfm_fm_distort_2026_10_11.yaml (1)",
+        "configs/cfm_frag_assemble.yaml (1)",
+        "configs/cfm_frag_control.yaml (1)",
+        "configs/cfm_gen_collapse_fm.yaml (1)",
+        "configs/cfm_objective_terms_2026_10_11.yaml (1)",
+        "configs/cfm_ode_link_probe_2026_10_12.yaml (1)",
+        "configs/cfm_padgroups_seed0_2026_10_12.yaml (1)",
+        "configs/cfm_pcgrad_off_2026_10_15.yaml (1)",
+        "configs/cfm_pcgrad_on_2026_10_14.yaml (1)",
+        "configs/cfm_per_innovation_ablation_p1.4.yaml (1)",
+        "configs/cfm_real_decode_lift_p1.3.yaml (1)"
+      ],
+      "exists": null,
+      "note": "The receipt's `17 hits` is FALSE against the tracked population and FALSE against the on-disk population.  The 17th file the receipt names (`configs/cfm_tmqm_all6.yaml`) received a REAL split flip (random -> scaffold) in e74832c8 — see the receipt's dated re-verification section.  Both populations are measured on every run and appended below.  SCOPING (2026-11-07, DESIGN v5): the `16` in this row's floor is the TRACKED count (git grep over TRACKED files only); the ON-DISK count is a DIFFERENT population — the two are EQUAL today, but they are NOT the same population and a bare count must always be read with its label.  MEASURED populations: TRACKED files = 16 (tracked hits = 16); ON-DISK files = 16 (on-disk hits = 16).",
+      "said_claim": {
+        "kind": "hits",
+        "claimed": 17,
+        "text": "17 hits"
+      },
+      "said_count": 16,
+      "said_lines": []
+    }
+  ]
+}

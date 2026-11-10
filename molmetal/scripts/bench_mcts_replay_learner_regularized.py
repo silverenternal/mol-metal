@@ -100,9 +100,9 @@ import numpy as np
 
 # Path bootstrap — mirror the Wf-129 P1 / Wf-36 P4 convention.
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # ---------------------------------------------------------------------------
 # Lazy imports — match the convention used by the rest of the
@@ -200,8 +200,11 @@ DEFAULT_GAMMA_W2_VALUE: float = 0.01
 DEFAULT_N_MC_W2: int = 256
 
 #: Default output directory for the bench JSON.
-DEFAULT_OUTPUT_DIR_P2: str = (
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf129_p2_replay_learner"
+DEFAULT_OUTPUT_DIR_P2: str = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf129_p2_replay_learner"
 )
 
 #: Convergence criterion: training stops when the running-mean loss

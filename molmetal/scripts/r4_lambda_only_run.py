@@ -4343,10 +4343,19 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         type=str,
-        required=True,
+        # 2026-11-04 (Wf-A269 §5.11 sweep migration): was required=True.
+        # apply_yaml_overrides() re-parses the parser with an EMPTY argv to
+        # capture the pure-default namespace, and argparse exits 2 on a
+        # required flag — so a required argument made this parser
+        # INCOMPATIBLE with the YAML loader. The value is now optional and
+        # the missing case is a hard error in main() instead (same outcome,
+        # but the parser survives the loader's empty re-parse).
+        required=False,
+        default=None,
         help=(
             "Sub-directory under molmetal/reports/. The full report path "
-            "is molmetal/reports/wf_lambda1_<output-dir>/."
+            "is molmetal/reports/wf_lambda1_<output-dir>/. "
+            "Required (no default) — a run without it exits 2."
         ),
     )
     parser.add_argument(
@@ -4891,6 +4900,17 @@ def _build_argparser() -> argparse.ArgumentParser:
             "``molmetal/reports/wf_t30_patent_axis/final.md``."
         ),
     )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help=(
+            "Path to a YAML config whose leaves override the argparse "
+            "defaults (AGENTS.md §5.11: hyperparameters live in the YAML, "
+            "not on the command line). An explicitly-passed CLI flag still "
+            "wins. See molmetal/scripts/wfA2_config_loader.py."
+        ),
+    )
     return parser
 
 
@@ -4972,7 +4992,25 @@ _load_r17_presets()
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    args = _build_argparser().parse_args(argv)
+    parser = _build_argparser()
+    args = parser.parse_args(argv)
+    # AGENTS.md §5.11 — YAML-only launch: every hyperparameter is declared in
+    # a YAML and delivered by the repo's own loader; an explicitly-passed CLI
+    # flag still wins (explicit CLI > YAML > argparse default).  No-op when
+    # --config is absent, so the argparse-only path is unchanged.
+    from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+    args = apply_yaml_overrides(
+        parser,
+        args,
+        args.config,
+        argv=(list(argv) if argv is not None else None),
+    )
+    if not args.output_dir:
+        raise SystemExit(
+            "--output-dir is required (a run without an output directory "
+            "cannot write its report; it may come from --config or the CLI)."
+        )
     args = _resolve_paper_sweep_preset(args)
     # WF-Lift-N-Sim-Cap (2026-09-14): the historical 100-simulation
     # hard-cap silently clamped ``--n-simulations`` so the CLI flag had

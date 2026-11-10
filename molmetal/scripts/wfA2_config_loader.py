@@ -557,6 +557,53 @@ def _iter_leaves(mapping: Mapping[str, Any], prefix: Optional[list[str]] = None)
             yield path, v
 
 
+def iter_dest_pointers(
+    mapping: Mapping[str, Any], prefix: Optional[list[str]] = None
+):
+    """Yield ``(block_path, pointer)`` for every schema-metadata block that
+    carries a ``dest:`` child.
+
+    WHY THIS EXISTS (MEASURED 2026-11-09).  :func:`_iter_leaves` skips a
+    mapping whose EVERY child key is in :data:`_NON_TRAINER_SUBKEYS`, and
+    ``dest`` IS one of those keys — so a schema-metadata block was skipped
+    WHOLESALE, including the ``dest:`` pointer inside it, and the §5.11
+    binding gate never saw it.  A ``dest:`` pointer is not schema metadata in
+    the same sense as ``type`` / ``default`` / ``desc``: it is a BINDING
+    CLAIM — a machine-readable ``script.py::dest`` reference to an argparse
+    dest.  A config can therefore name a dest that does not exist, or a
+    script that does not exist, and every §5.11 gate PASSes.
+
+    MEASURED 2026-11-09 over the live config population (537 files under the
+    gate's two globs): schema-metadata blocks number **5** and **all 5**
+    carry a ``dest:`` child ⇒ the skip's entire observable effect in this
+    repo is to hide exactly those pointers.  The "suppress the false
+    positives from ``type``/``default``/``desc``" justification has **zero**
+    instances here.
+
+    THIS FUNCTION DOES NOT MAKE THE POINTER A TRAINER LEAF.  The loader must
+    never deliver a ``dest:`` STRING to an argparse dest; the pointer is
+    REPORTED to the gate, which adjudicates it.  So this is a separate
+    scanner, not a change to :func:`_iter_leaves` — the loader's own
+    dest-resolution path is untouched.
+
+    Yields ``(block_path, pointer)`` where ``block_path`` is the list of keys
+    from the root to the schema block and ``pointer`` is the raw ``dest:``
+    string.
+    """
+    prefix = list(prefix or [])
+    for k, v in mapping.items():
+        path = prefix + [str(k)]
+        if isinstance(v, Mapping) and v:
+            child_keys = [str(c) for c in v.keys()]
+            if all(ck in _NON_TRAINER_SUBKEYS for ck in child_keys):
+                pointer = v.get("dest")
+                if isinstance(pointer, str) and pointer.strip():
+                    yield path, pointer
+                # A schema block is a leaf for the loader too: do not recurse.
+                continue
+            yield from iter_dest_pointers(v, path)
+
+
 def _flatten(mapping: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
     """Flatten nested dicts into single-level underscore-joined keys.
 
@@ -725,6 +772,507 @@ def _explicit_cli_dests(
         if not _values_equal(getattr(probe, dest, _MISSING), getattr(args, dest, _MISSING)):
             return None
     return _supplied_dests(parser, argv)
+
+
+# ---------------------------------------------------------------------------
+# Wf-A269 (2026-11-04) — RESOLVED-CONFIG ARTIFACT (Hydra-style).
+#
+# WHAT THIS IS: §5.11 exists because "a knob that lives only in a shell script
+# is a knob nobody audits".  The YAML fixes WHERE the knob lives, but nothing
+# in the tree recorded WHAT THE TRAINER ACTUALLY READ: the config file on disk
+# is the *declared* value, and a config edited after the run silently makes
+# the declaration a lie.  Hydra solves this by writing the RESOLVED config
+# into the run directory (``.hydra/config.yaml``) at launch; this is the same
+# mechanism, wired to the loader so that EVERY yaml-driven trainer gets it
+# without a per-trainer change.
+#
+# WHY IT IS OPT-IN AND ENV-DRIVEN: the loader is called by trainers, by the
+# repo's own tests, and by the config-binding gate.  A file write inside it
+# would be a surprise side effect in all three.  The write therefore happens
+# only when the caller sets ``MOLMETAL_RESOLVED_CONFIG_PATH`` to the absolute
+# path of the artefact to write.  A wrapper knows its own run directory, so the
+# wrapper sets it; the loader honours it.
+#
+# FAIL-OPEN: a provenance write must never abort a training run.  A failure
+# is reported loudly on stderr and the run continues.
+#
+# HONEST LIMIT (do not overclaim): this records the NAMESPACE and the ARGV and
+# the config's sha256 — i.e. what the trainer's own parser resolved.  It does
+# NOT record the host state (kernel, driver, GPU, dataset bytes).  It is a
+# *configuration* provenance record, not a full SLSA L3 build provenance.
+#
+# ---------------------------------------------------------------------------
+# Wf-A269 (2026-11-04, LATER THE SAME DAY) — THE WRITE MOVED OUT OF
+# ``apply_yaml_overrides``.  A previous version of this block wrote the
+# artefact from INSIDE ``apply_yaml_overrides``, i.e. from inside the
+# trainer's ``parse_args``.  That records the namespace BEFORE the trainer's
+# own post-override mutations, and several trainers mutate the namespace
+# after ``parse_args`` returns (``train_dmpnn_multitask_wasserstein.py``
+# ``args.csv`` / ``args.metals``; ``train_chemprop_v2_v3.py`` ``args.metals``
+# / ``args.epochs``).  MEASURED consequence: the trainer CONSUMED
+# ``epochs=2, metals=['Ru']`` while the artefact recorded
+# ``epochs=30, metals=['Ru','Ir']`` — the record certified a namespace nobody
+# trained on.  A provenance record that certifies the wrong namespace is worse
+# than no record, because it reads as an attestation.
+#
+# ⇒ THE WRITE IS NOW EXPLICIT AND TRAINER-CONTROLLED.  A trainer calls
+# ``finalize_resolved_config(args, config_path=...)`` at the point where its
+# namespace is FINAL — i.e. after its own mutations.  A trainer that does not
+# call it records NOTHING, and the provenance check reports SKIP (not PASS)
+# for that run.  Silence is honest; a stale attestation is not.
+#
+# The second honest limit, measured the same day: BOTH SIDES of the
+# comparison are computed by THIS loader, so a loader bug cancels out — the
+# §5.11-documented list-valued defect (``metals: Ru Ir Os Re`` written as one
+# string) makes the check PASS.  The check detects DRIFT between registration
+# and consumption; it does NOT validate the resolver.  See
+# ``scripts/_wf_launch_provenance.py``'s ``honest_limits`` for the same
+# statement on the wrapper side.
+# ---------------------------------------------------------------------------
+
+RESOLVED_CONFIG_ENV = "MOLMETAL_RESOLVED_CONFIG_PATH"
+
+#: Env vars that can change a run's outcome and are therefore recorded.
+#:
+#: 2026-11-04 (Wf-A269 frontier sweep) — the PRE-REPAIR tuple is preserved
+#: VERBATIM per AGENTS.md §5.5 rule #6:
+#:
+#:     RESOLVED_ENV_EXACT = (
+#:         "CUDA_VISIBLE_DEVICES",
+#:         "PYTHONHASHSEED",
+#:         "OMP_NUM_THREADS",
+#:         "MKL_NUM_THREADS",
+#:         "NUMEXPR_NUM_THREADS",
+#:         "TOKENIZERS_PARALLELISM",
+#:     )
+#:
+#: WHY the tuple GREW.  The six names above are the ones the capture was
+#: designed around, but they are NOT the only ambient reads in the trainer
+#: population, and the two rules (this exact list + the prefix rule below)
+#: covered only 15 of the 28 distinct names that population reads.
+#:
+#: MEASURED 2026-11-04 by an AST census over the transitive repo-local import
+#: closure of every `molmetal/scripts/train_*.py` (209 modules): THIRTEEN
+#: ambient reads matched NEITHER rule, so the provenance record attested to
+#: an environment it could not reproduce.  The census is ALIAS-AWARE (the
+#: repo writes `import os as _os`), DYNAMIC-KEY-AWARE (the repo's
+#: `_env_flag(name, default)` helpers read the NAME as an ARGUMENT) and
+#: RELATIVE-IMPORT-AWARE (`from .x import y` inside a package).
+#:
+#:   * ``CHECK_MATH_PRECONDITIONS`` — `molmetal/math_skills/*.py` (e.g.
+#:     `multi_parameter_ph.py:130`) turns on the mathematical precondition
+#:     checks.
+#:   * ``CROSSDOCKED_2020_ROOT`` — `molmetal/data/crossdocked_pool.py:58`
+#:     selects the CrossDocked-2020 DATA POOL.
+#:   * ``CUBLAS_WORKSPACE_CONFIG`` — `molmetal/scripts/_common_train_args.py:615`
+#:     and `molmetal/molmetal_lam/sbdd_env/training_utils.py:396` set it via
+#:     ``os.environ.setdefault(...)`` BEFORE the first CUDA call, so an
+#:     AMBIENT value wins over the default and changes the cuBLAS algorithm
+#:     selection (hence the numerics).
+#:   * ``DRUGOOD_IC50_CSV_DIR`` — `molmetal/scripts/drugood_loader.py:77`
+#:     selects the DrugOOD IC50 CSV pool.
+#:   * ``DRUGOOD_IC50_TARGET_ROOT`` — `molmetal/data/drugood_loader.py:104`
+#:     selects the DrugOOD IC50 TARGET files.
+#:   * ``FUSED_RELU_MLP`` — `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:1327`
+#:     selects the FUSED Triton MLP over the eager 2-layer MLP: a different
+#:     COMPUTE PATH, hence a different number.
+#:   * ``LAMBDA_ASTSR_ENABLED`` — `molmetal/molmetal_lam/reward/lambda_astsr.py:1437`
+#:     switches the ASTSR reward path on.
+#:   * ``TRITON_MINIBATCH_OT`` — set via ``os.environ.setdefault(...)`` at
+#:     `train_cfm_yuelbond_wasserstein.py:17086`,
+#:     `train_dmpnn_multitask_wasserstein.py:4262` and
+#:     `train_metal_lomo_wasserstein.py:3096`.  ``setdefault`` READS the
+#:     ambient value when the key is already present and the AMBIENT value
+#:     WINS — so an ambient ``TRITON_MINIBATCH_OT=0`` silently voids the
+#:     ``--triton-ot`` flag.
+#:   * ``TRITON_RELU_MLP`` / ``TRITON_USE_FUSED`` / ``TRITON_WASSERSTEIN_SLICED``
+#:     — the per-kernel Triton dispatch gates, read through the repo's
+#:     ``_env_flag(name, default)`` helper (e.g.
+#:     `molmetal/adapters/flow_matching_lipman/_reference/fused_relu_mlp.py:295`,
+#:     `.../fused_wasserstein_sliced.py:269`,
+#:     `molmetal/molmetal_lam/reward/wasserstein_loss.py:269`).  Each one
+#:     selects a fused kernel over its PyTorch reference.
+#:   * ``WFA78_DEBUG`` — `molmetal/loss/ring_template.py:332`.
+#:   * ``WFA_STEP_TIMING`` — `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:16653`
+#:     turns on a per-stage profiler that inserts a ``cuda.synchronize()``, so
+#:     a quoted WALL CLOCK is invalid while it is on.
+#:
+#: HONEST NOTE ON THE SELECTION RULE.  Every ambient read in the population is
+#: recorded, INCLUDING the two that do not change a number
+#: (``CHECK_MATH_PRECONDITIONS`` surfaces degenerate inputs, ``WFA78_DEBUG``
+#: only prints).  The alternative — curating "which ones matter" — is a
+#: per-name JUDGEMENT CALL that rots the moment a new read appears, so it is
+#: deliberately NOT made here; a recorded-but-harmless name costs nothing.
+#:
+#: A capture that omits an outcome-relevant variable certifies a run whose
+#: environment it cannot reproduce — and the record reads as an attestation.
+RESOLVED_ENV_EXACT = (
+    "CUDA_VISIBLE_DEVICES",
+    "PYTHONHASHSEED",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "TOKENIZERS_PARALLELISM",
+    # 2026-11-04 (Wf-A269 frontier sweep) — NEW (see the dated note above).
+    "CHECK_MATH_PRECONDITIONS",
+    "CROSSDOCKED_2020_ROOT",
+    "CUBLAS_WORKSPACE_CONFIG",
+    "DRUGOOD_IC50_CSV_DIR",
+    "DRUGOOD_IC50_TARGET_ROOT",
+    "FUSED_RELU_MLP",
+    "LAMBDA_ASTSR_ENABLED",
+    "TRITON_MINIBATCH_OT",
+    "TRITON_RELU_MLP",
+    "TRITON_USE_FUSED",
+    "TRITON_WASSERSTEIN_SLICED",
+    "WFA78_DEBUG",
+    "WFA_STEP_TIMING",
+)
+
+#: Prefix rule of the same capture: every variable whose name starts with one
+#: of these prefixes is recorded.
+#:
+#: 2026-11-04 (Wf-A269 frontier sweep) — NEW.  PRE-REPAIR RENDERING
+#: PRESERVED VERBATIM per AGENTS.md §5.5 rule #6 — the prefixes were INLINE
+#: in ``resolved_environment``:
+#:
+#:     if name.startswith(("MOLMETAL_", "WFA2_")):
+#:
+#: They are NAMED here so the coverage rule can be CHECKED from outside this
+#: module: a test that restates the rule instead of reading it can silently
+#: diverge from the implementation.
+RESOLVED_ENV_PREFIXES = ("MOLMETAL_", "WFA2_")
+
+#: Namespace dests that are META (reports about the config), not parameters.
+RESOLVED_META_DESTS = ("yaml_unresolved_keys",)
+
+#: The environment AS THIS PROCESS WAS EXECUTED WITH.
+#:
+#: A trainer mutates its own environment after ``parse_args`` — e.g.
+#: ``apply_default_cuda_visible_devices`` sets ``CUDA_VISIBLE_DEVICES`` to
+#: "0" — so reading ``os.environ`` at the moment the artefact is written
+#: would record the trainer's OWN mutation.  Comparing that against the
+#: wrapper's registration-time environment would fire on exactly the case a
+#: wrapper handles correctly, i.e. a FALSE POSITIVE.  The environment the
+#: process was EXECUTED with is the only reading of "the environment the
+#: trainer ran with" that is comparable with the wrapper's.
+#:
+#: 2026-11-04 (Wf-A269 wave-20) — this snapshot used to be taken at IMPORT
+#: TIME and the comment above used to claim "Import time is process start".
+#: THAT CLAIM WAS FALSE.  The repo has modules that mutate ``os.environ`` AT
+#: IMPORT TIME (``molmetal/scripts/dmpnn_within_metal_auc.py:74``,
+#: ``fuse_dmpnn_gbdt_within_metal.py:105`` and
+#: ``stack_dmpnn_xgb_within_metal.py:95`` all do
+#: ``os.environ.setdefault(_v, "1")`` for the CPU thread caps, and
+#: ``molmetal/__init__.py:75`` sets ``TOKENIZERS_PARALLELISM``), so the
+#: snapshot's CONTENT depended on WHICH module happened to be imported first.
+#: MEASURED consequence: two processes running the SAME launch under the SAME
+#: environment produced DIFFERENT "environment" rows — a process that had
+#: imported the loader BEFORE a mutating module recorded nothing, a process
+#: that imported it AFTER recorded ``OMP_NUM_THREADS='1'`` ⇒ the provenance
+#: check FAILED on a launch that had not drifted at all.
+#:
+#: THE FIX: read the environment the OS handed this process at ``exec`` time.
+#: On Linux that is ``/proc/self/environ`` — the initial stack environment,
+#: which by construction does not see any later ``os.environ`` write, so it is
+#: IMPORT-ORDER INDEPENDENT.  Where the platform does not expose it the
+#: fallback is the import-time snapshot, and the fallback is NOT
+#: import-order-independent (stated here, not hidden).
+def _exec_environment() -> Optional[dict[str, str]]:
+    """The environment the OS handed this process at ``exec`` time.
+
+    ``None`` when the platform does not expose it.
+    """
+    try:
+        raw = Path("/proc/self/environ").read_bytes()
+    except OSError:
+        return None
+    out: dict[str, str] = {}
+    for entry in raw.split(b"\0"):
+        if not entry or b"=" not in entry:
+            continue
+        name, _, value = entry.partition(b"=")
+        out[name.decode("utf-8", "surrogateescape")] = value.decode(
+            "utf-8", "surrogateescape"
+        )
+    return out or None
+
+
+def process_start_environment() -> dict[str, str]:
+    """The environment this process was EXECUTED with.
+
+    Import-order independent wherever the platform exposes the exec-time
+    environment (Linux: ``/proc/self/environ``); the import-time
+    ``os.environ`` snapshot elsewhere, which is NOT.
+    """
+    env = _exec_environment()
+    if env is None:
+        return dict(os.environ)
+    # The repo's own CPU lock (``CUDA_VISIBLE_DEVICES=""``) is applied at
+    # RUNTIME by the root conftest when the session was not launched with the
+    # prefix.  Record it when the exec environment does not carry it, so the
+    # wrapper's row and the trainer's row stay comparable — and, because this
+    # snapshot is taken at IMPORT time, a trainer's OWN post-``parse_args``
+    # mutation of the variable is still excluded.
+    if "CUDA_VISIBLE_DEVICES" not in env:
+        lock = os.environ.get("CUDA_VISIBLE_DEVICES")
+        if lock is not None:
+            env["CUDA_VISIBLE_DEVICES"] = lock
+    return env
+
+
+_PROCESS_ENV: dict[str, str] = process_start_environment()
+
+#: Dests a trainer may legitimately DERIVE after the configuration has been
+#: applied — i.e. the dests whose value in the CONSUMED namespace is allowed
+#: to differ from the DECLARED one.  Keyed by trainer file name.
+#:
+#: WHY THIS TABLE EXISTS.  The trainer's namespace is mutated after the YAML
+#: has been applied (``args.ckpt_dir``, ``args.csv``, ``args.metals`` in the
+#: D-MPNN trainer).  A provenance record taken before those mutations
+#: certifies a namespace the trainer never trained on — the
+#: POST-OVERRIDE MUTATION BLINDNESS defect (Wf-A269 wave-4 design critique).
+#: A record taken after them certifies a namespace that DIFFERS from the
+#: declared one, so the comparison needs a rule for which differences are
+#: legitimate.  This table is that rule, and it is the AUTHORITATIVE one:
+#: ``finalize_resolved_config`` refuses a trainer's own declaration that is
+#: wider than the table, so a trainer cannot silence the check by editing
+#: its own call site.
+#:
+#: HONEST LIMIT: a dest in this table can be overridden UNCONDITIONALLY
+#: without failing the check.  For ``train_chemprop_v2_v3.py`` that includes
+#: ``epochs`` (its ``--quick`` path caps it at 2), so a rogue epoch override
+#: in that trainer would NOT be caught.  The limit is stated in the
+#: provenance artefact's ``honest_limits`` field rather than left implicit.
+PROVENANCE_DERIVED_DESTS: dict[str, tuple[str, ...]] = {
+    "train_dmpnn_multitask_wasserstein.py": ("ckpt_dir", "csv", "metals"),
+    "train_chemprop_v2_v3.py": (
+        "metals",
+        "seeds",
+        "epochs",
+        "time_budget_s",
+        "max_rows",
+        "wass_weight",
+    ),
+}
+
+
+def _trainer_key() -> str:
+    """The trainer's file name, as the process was invoked.
+
+    ``sys.argv[0]`` is the script the interpreter is running, so this is the
+    trainer's own identity — the key the derived-dest table is written
+    against.  Empty when it cannot be determined (embedded use); the caller
+    then has no table entry and the check reports the derived set as
+    UNVERIFIED rather than silently trusting it.
+    """
+    try:
+        return Path(sys.argv[0]).name
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: str | os.PathLike[str]) -> Optional[str]:
+    """sha256 of a file's bytes, or None if it cannot be read."""
+    try:
+        return _sha256_bytes(Path(path).read_bytes())
+    except OSError:
+        return None
+
+
+def _jsonable(value: Any) -> Any:
+    """Coerce an argparse value into something YAML can round-trip."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, os.PathLike):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, (set, frozenset)):
+        return sorted(_jsonable(v) for v in value)
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    return repr(value)
+
+
+def resolved_environment(env: Optional[Mapping[str, str]] = None) -> dict[str, str]:
+    """The environment subset that can change a run's outcome.
+
+    Exact names plus every ``MOLMETAL_*`` / ``WFA2_*`` prefix (the repo's own
+    switches).  Recorded so that a wrapper's environment and the trainer's
+    environment can be compared.
+
+    ``env=None`` means "the environment AS THE TRAINER PROCESS STARTED WITH",
+    not "the environment right now".  The distinction is load-bearing: a
+    trainer mutates its own environment after ``parse_args`` (e.g.
+    ``apply_default_cuda_visible_devices`` sets ``CUDA_VISIBLE_DEVICES``), so
+    reading ``os.environ`` at the moment the artefact is written would record
+    the trainer's OWN mutation and the comparison against the wrapper's
+    registration-time environment would fire spuriously — on the very case the
+    wrapper handles correctly.  The snapshot is taken at module import, i.e.
+    at process start.
+    """
+    src = _PROCESS_ENV if env is None else env
+    out: dict[str, str] = {}
+    for name in RESOLVED_ENV_EXACT:
+        if name in src:
+            out[name] = src[name]
+    for name, value in src.items():
+        # 2026-11-04 (Wf-A269 frontier sweep) — the prefixes moved from an
+        # inline tuple to the named constant `RESOLVED_ENV_PREFIXES` so the
+        # coverage rule is checkable from outside this module.  PRE-REPAIR
+        # RENDERING PRESERVED VERBATIM per AGENTS.md §5.5 rule #6:
+        #
+        #     if name.startswith(("MOLMETAL_", "WFA2_")):
+        #
+        if name.startswith(RESOLVED_ENV_PREFIXES):
+            out[name] = value
+    # The provenance switch itself is META: the wrapper sets it for the
+    # trainer but not for the pre-registration step, so recording it would
+    # make the two environments differ for a reason that changes no result.
+    out.pop(RESOLVED_CONFIG_ENV, None)
+    return dict(sorted(out.items()))
+
+
+def resolved_namespace(args: argparse.Namespace) -> dict[str, Any]:
+    """The trainer-faithful namespace: every dest, JSON-safe.
+
+    ``yaml_unresolved_keys`` is separated out (it is a report ABOUT the config,
+    not a parameter) and returned under ``_meta`` so that nothing is hidden.
+    """
+    params: dict[str, Any] = {}
+    meta: dict[str, Any] = {}
+    for key, value in sorted(vars(args).items()):
+        if key in RESOLVED_META_DESTS:
+            meta[key] = _jsonable(value)
+            continue
+        params[key] = _jsonable(value)
+    params["_meta"] = meta
+    return params
+
+
+def write_resolved_config(
+    args: argparse.Namespace,
+    *,
+    config_path: Optional[str],
+    argv: Optional[list[str]] = None,
+    path: Optional[str] = None,
+    declared: Optional[argparse.Namespace] = None,
+    derived_dests: Optional[tuple[str, ...]] = None,
+) -> Optional[Path]:
+    """Persist the resolved namespace as a YAML artefact.
+
+    Writes ``<path>`` (or ``$MOLMETAL_RESOLVED_CONFIG_PATH``) containing the
+    trainer-faithful namespace, the argv it was resolved from, the config's
+    sha256, and the recorded environment.
+
+    ``declared`` is the namespace as it stood IMMEDIATELY AFTER the config
+    was applied — before the trainer's own post-override mutations.  When it
+    is supplied, the artefact records BOTH namespaces plus the ``overrides``
+    (the dests that differ), so a reader can see what the trainer changed
+    after reading the config.  A dest that differs and is NOT in the
+    trainer's declared derived set is the POST-OVERRIDE MUTATION BLINDNESS
+    defect made visible.
+
+    ``derived_dests`` is the trainer's own declaration of which dests it
+    derives.  It is checked against :data:`PROVENANCE_DERIVED_DESTS` — a
+    wider declaration is REFUSED (and the refusal is recorded), so a trainer
+    cannot silence the check by editing its own call site.
+
+    Returns the written path, or None if nothing was written (no env var and
+    no explicit path).  NEVER raises: a provenance write must not abort a run.
+    """
+    target = path or os.environ.get(RESOLVED_CONFIG_ENV)
+    if not target:
+        return None
+    try:
+        resolved_argv = list(argv) if argv is not None else list(sys.argv[1:])
+        consumed_ns = resolved_namespace(args)
+        declared_ns = (
+            resolved_namespace(declared) if declared is not None else consumed_ns
+        )
+        # The dests whose value the trainer changed AFTER the config was
+        # applied.  This is the row that makes the POST-OVERRIDE MUTATION
+        # BLINDNESS defect visible instead of invisible.
+        overrides: dict[str, Any] = {}
+        for dest in sorted(set(declared_ns) | set(consumed_ns)):
+            d_val = declared_ns.get(dest, "<missing>")
+            c_val = consumed_ns.get(dest, "<missing>")
+            if d_val != c_val or type(d_val) is not type(c_val):
+                overrides[dest] = {"declared": d_val, "consumed": c_val}
+        # The trainer's own declaration of its derived dests, checked against
+        # the AUTHORITATIVE table.  A wider declaration is refused.
+        trainer = _trainer_key()
+        table = PROVENANCE_DERIVED_DESTS.get(trainer)
+        declared_derived = tuple(sorted(derived_dests or ()))
+        if table is None:
+            derived_state = "NO_TABLE_ENTRY"
+            allowed: tuple[str, ...] = ()
+        else:
+            allowed = tuple(sorted(table))
+            extra = [d for d in declared_derived if d not in allowed]
+            derived_state = "REFUSED_TOO_WIDE" if extra else "OK"
+            if extra:
+                print(
+                    f"[wfA2_config_loader] WARNING: {trainer} declared derived "
+                    f"dests {extra} that are not in PROVENANCE_DERIVED_DESTS; "
+                    "the declaration is IGNORED and the wider set will FAIL the "
+                    "provenance check.",
+                    file=sys.stderr,
+                )
+        payload = {
+            "resolved": consumed_ns,
+            "declared": declared_ns,
+            "overrides": overrides,
+            "derived": {
+                "trainer": trainer,
+                "declared_by_trainer": list(declared_derived),
+                "allowed": list(allowed),
+                "state": derived_state,
+            },
+            "argv": resolved_argv,
+            "config": {
+                "path": str(config_path) if config_path else None,
+                "sha256": sha256_file(config_path) if config_path else None,
+            },
+            "environment": resolved_environment(),
+        }
+        text = (
+            "# Wf-A269 resolved-config artefact (Hydra-style).\n"
+            "# Generated by molmetal/scripts/wfA2_config_loader.py::write_resolved_config\n"
+            "# in the TRAINER process, from the namespace the trainer's OWN parser\n"
+            "# resolved.  The wrapper-side counterpart is written by\n"
+            "# scripts/_wf_launch_provenance.py; comparing the two is what proves\n"
+            "# the run used the hyperparameters it claims to have used.\n"
+            "# MEASURED-on-this-run.  Do not hand-edit: the sha256 of this file is\n"
+            "# what the provenance check compares.\n"
+        )
+        if yaml is not None:
+            text += yaml.safe_dump(payload, default_flow_style=False, sort_keys=True)
+        else:  # pragma: no cover - PyYAML is a hard dep of this repo
+            import json
+
+            text += json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
+        out = Path(target)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        digest = _sha256_bytes(text.encode("utf-8"))
+        out.with_suffix(out.suffix + ".sha256").write_text(digest + "\n", encoding="utf-8")
+        return out
+    except Exception as exc:  # noqa: BLE001 - fail-open on purpose
+        print(
+            f"[wfA2_config_loader] WARNING: could not write the resolved-config "
+            f"artefact to {target!r}: {exc!r}. The run continues; the provenance "
+            "record for this run will be INCOMPLETE.",
+            file=sys.stderr,
+        )
+        return None
 
 
 def apply_yaml_overrides(
@@ -957,4 +1505,53 @@ def apply_yaml_overrides(
                 "WFA2_CONFIG_STRICT: YAML key(s) with no argparse dest: "
                 + ", ".join(f"{e['key']}={e['value']!r}" for e in fatal)
             )
+    # Wf-A269 (2026-11-04) — the RESOLVED namespace is NOT written here any
+    # more.  It used to be: this block sat at the end of apply_yaml_overrides,
+    # i.e. INSIDE the trainer's parse_args, which is BEFORE the trainer's own
+    # post-override mutations (args.csv / args.metals / args.epochs).  The
+    # artefact therefore certified a namespace the trainer never trained on.
+    # The write is now EXPLICIT and trainer-controlled: a trainer calls
+    # finalize_resolved_config(args, config_path=...) once its namespace is
+    # final.  See the block comment above write_resolved_config().
     return args
+
+
+def finalize_resolved_config(
+    args: argparse.Namespace,
+    *,
+    config_path: Optional[str] = None,
+    argv: Optional[list[str]] = None,
+    path: Optional[str] = None,
+    declared: Optional[argparse.Namespace] = None,
+    derived_dests: Optional[tuple[str, ...]] = None,
+) -> Optional[Path]:
+    """Persist the FINAL namespace — call this when the namespace is final.
+
+    THE CALLER'S CONTRACT: call this AFTER every mutation of ``args``, i.e.
+    at the point where the values the trainer will actually train on are
+    settled.  Calling it earlier records a namespace the trainer then
+    overwrites; calling it never records nothing, and the provenance check
+    then reports SKIP for that run (which is the honest outcome).
+
+    Pass ``declared`` — the namespace as it stood right after the config was
+    applied — so the artefact can record what the trainer changed
+    afterwards.  Pass ``derived_dests`` — the dests the trainer derives —
+    so the check knows which differences are legitimate.  Both are optional;
+    without them the artefact still records the consumed namespace, but the
+    check then has no way to tell a derivation from a drift.
+
+    This is a thin, fail-open wrapper over :func:`write_resolved_config`; it
+    exists so the call site reads as a deliberate act rather than an
+    incidental write.
+    """
+    if path is None and not os.environ.get(RESOLVED_CONFIG_ENV):
+        # Not opted in — nothing to do, and nothing to warn about.
+        return None
+    return write_resolved_config(
+        args,
+        config_path=config_path,
+        argv=argv,
+        path=path,
+        declared=declared,
+        derived_dests=derived_dests,
+    )

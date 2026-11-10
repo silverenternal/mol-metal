@@ -117,10 +117,10 @@ ALTERNATE_VINA_BINS: Tuple[Path, ...] = (
     Path("/home/hugo/.mamba/bin/vina"),
     Path("/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"),
 )
-ALT_PREPARE_LIGAND_PY = Path(
-    "/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py"
+ALT_PREPARE_LIGAND_PY = (
+    Path(__file__).resolve().parents[2] / ".venv" / "bin" / "mk_prepare_ligand.py"
 )
-ALT_PREPARE_LIGAND_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
+ALT_PREPARE_LIGAND_VENV = Path(sys.executable)
 
 # ---------------------------------------------------------------------------
 # Phase 2 scope (same as Wf-179 — ship continuity)
@@ -1061,7 +1061,14 @@ def _write_summary(
         "from_existing_poses": bool(from_existing),
         "generated_utc": _utc_now_iso(),
     }
-    (_wf416_atomic_write_text(out_dir / "summary.json"), json.dumps(summary, indent=2))
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (_wf416_atomic_write_text(out_dir / "summary.json"), json.dumps(summary, indent=2))
+    _wf416_atomic_write_text(out_dir / "summary.json", json.dumps(summary, indent=2))
 
     md_lines: List[str] = []
     md_lines.append("# BD-9 m15 RMSD Phase 2 — Vina redocking benchmark")
@@ -1143,7 +1150,14 @@ def _write_summary(
         "* `<pocket>/per_pose_metrics.json` — per-pocket per-seed per-pose RMSD records."
     )
     md_lines.append("* `<pocket>/pose_seed<N>_p<M>.pdbqt` — individual docked poses.")
-    (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
+    _wf416_atomic_write_text(out_dir / "synthesis.md", "\n".join(md_lines) + "\n")
     return summary
 
 
@@ -1233,8 +1247,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         pocket_out.mkdir(parents=True, exist_ok=True)
         r.box_center = box_centers.get(pocket_id, [0.0, 0.0, 0.0])
         # Per-seed / per-pose JSON (also written by helper functions for full mode)
-        (
-            _wf416_atomic_write_text(pocket_out / "per_seed_metrics.json"),
+        # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+        # output PATH to the writer and wrapped the call in a discarded tuple, so
+        # the helper raised TypeError (missing 1 required positional argument:
+        # 'content') at runtime and NO artefact was written.  Restored to a
+        # 2-argument call that passes the intended content.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     (
+        #                 _wf416_atomic_write_text(pocket_out / "per_seed_metrics.json"),
+        #                 json.dumps(asdict(r), indent=2),
+        #             )
+        _wf416_atomic_write_text(
+            pocket_out / "per_seed_metrics.json",
             json.dumps(asdict(r), indent=2),
         )
         results[pocket_id] = r

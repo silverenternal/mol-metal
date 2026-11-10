@@ -1,0 +1,3554 @@
+{
+  "generated_at_utc": "2026-11-10T15:43:35.585409+00:00",
+  "scope": "Regular checkpoint-like files from initial find inventory; excludes datasets, other worktrees, vendored repositories, symlinks, environments and paper. Includes pickle/joblib model candidates; extension alone does not prove a model.",
+  "method": "SHA-256 on bytes; exact relative-path references in text files up to 8 MB, capped at 40 per checkpoint. This is incomplete: dynamic paths, absolute aliases, generic basenames, skipped files and ignored dependencies may not be found. Nearby files are leads, not proof of checkpoint-metric linkage.",
+  "policy": "All retained pending per-protocol metric and dependency adjudication; duplicate bytes do not prove paths are interchangeable.",
+  "summary": {
+    "candidate_files": 287,
+    "candidate_bytes": 1093626169,
+    "duplicate_groups": 16,
+    "redundant_duplicate_paths": 17,
+    "paths_with_exact_text_references": 221
+  },
+  "duplicate_groups": [
+    {
+      "size_bytes": 297584,
+      "sha256": "703be4fb68da7ed5247c1ee61de6b1ac5fad550e811b8f02111afbf665558f5e",
+      "paths": [
+        "molmetal/reports/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+        "molmetal/reports/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt"
+      ]
+    },
+    {
+      "size_bytes": 13754373,
+      "sha256": "e8876bccc6bacdec1766b9dd674e1a4cd61f0a0831773bce622cc5abe5bf8fde",
+      "paths": [
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 443622,
+      "sha256": "6852a9ad1487a4645c3a7087c541e55326a77a856d0ae0fd1f978b17dfe59f41",
+      "paths": [
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_epoch0.pt"
+      ]
+    },
+    {
+      "size_bytes": 297665,
+      "sha256": "bb1d67ab68401b7f70b394626e228d12adf782471be8d1f0abf723aad7280ac5",
+      "paths": [
+        "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt"
+      ]
+    },
+    {
+      "size_bytes": 297659,
+      "sha256": "9fea80b5dd7426ab66d85f61885cc781419f6178cef3f8c500597d4d1af2a169",
+      "paths": [
+        "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt"
+      ]
+    },
+    {
+      "size_bytes": 5964858,
+      "sha256": "088a008ffd295aa307b2e832e24ac5655c93220b10f98520a86b4de95d4b13a9",
+      "paths": [
+        "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 5964887,
+      "sha256": "e22e9d3ff3eff3bf90d246c45242af599c82af59921cde093c78ead852921d1e",
+      "paths": [
+        "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9413186,
+      "sha256": "11b20170a31111a71fbd33a117cfe77da32d4ee47736290ec0dd7eac134c62b3",
+      "paths": [
+        "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9413215,
+      "sha256": "40bb8858f0c9e133931efc8ea792182615ba9d7db129a4b2c59ff8d071e378fb",
+      "paths": [
+        "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9413253,
+      "sha256": "03e0eff5ea10d8b23c8909fffa65772622979f3869c0fba7cee7e15d2f04b67c",
+      "paths": [
+        "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9413224,
+      "sha256": "5af96b80f5c9202ea9e11b07748f913d249045ba1b91db7d429c7b1aa7f0a35b",
+      "paths": [
+        "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9514665,
+      "sha256": "5f644314da679834441e9b131613aa419482b1d4b50dc2c731775dc5974e439c",
+      "paths": [
+        "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 9515787,
+      "sha256": "c627098fee392c1f4886a3df3548d3992b4c86dc8affb9b6a7908a2591e988f9",
+      "paths": [
+        "results/wfa108h_b32_chunk2_vector_channels/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa108h_b32_chunk2_vector_channels/ckpt/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 8392868,
+      "sha256": "aab12ace7610b68e4207496dfe434446a70a400cb216a22ed8572d41914e931b",
+      "paths": [
+        "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 8616398,
+      "sha256": "79b77ddeb98cdfe4ea8c43568d0e0bfb53e60f2647bdad5915cc201945746a87",
+      "paths": [
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    },
+    {
+      "size_bytes": 8407800,
+      "sha256": "fed00651c795a2f78841d702161c3301dffe9927b63945aa600c42bac477c51a",
+      "paths": [
+        "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+        "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "path": "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+      "size_bytes": 560479,
+      "sha256": "e31759ca0d705385e9914fcbe1986f9240ca4997a7e978e2bb4dd2b9a908f4b6",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "todo.archive_2026_10_18.json",
+        "TODO/completed/42_tmqm_pretrain_v4_encoder.md",
+        "TODO/completed/379a2_r20_p5_tmqm_plat.md",
+        "TODO/completed/379_final_synthesis.md",
+        "TODO/completed/378_final_synthesis.md",
+        "TODO/completed/383a1_weak_to_strong_se3sb_audit.md",
+        "TODO/completed/390a2_todo179_deeper_audit.md",
+        "TODO/completed/393a1_r17_r18_refresh.md",
+        "TODO/completed/409a3_wf246c_scaffold.md",
+        "TODO/completed/376_m2_r2_gpu_retrain_plan.md",
+        "TODO/completed/382_final_synthesis.md",
+        "TODO/03_plans/R17_AUC_RECOVERY_PLAN.md",
+        "TODO/pending/179_wf123_p3_w2_pic50_alignment.md",
+        "configs/cfm_fm_distort_2026_10_11.yaml",
+        "configs/cfm_fullcorpus_2026_10_10.yaml",
+        "configs/cfm_fullcorpus_b64_2026_10_11.yaml",
+        "configs/cfm_fullcorpus_seed1.yaml",
+        "configs/cfm_fullcorpus_seed2.yaml",
+        "configs/cfm_fullcorpus_smiles_persist.yaml",
+        "configs/cfm_ode_link_probe_2026_10_12.yaml",
+        "configs/cfm_padgroups_seed0_2026_10_12.yaml",
+        "configs/cfm.yaml",
+        "configs/fusion_dmpnn_ecfp4_paper_funnel_gpu.yaml",
+        "configs/tmqm_ab_metalcytotox_15seed_init_off.yaml",
+        "configs/tmqm_ab_metalcytotox_15seed_init_on.yaml",
+        "configs/tmqm_ab_metalcytotox_init_off.yaml",
+        "configs/tmqm_ab_metalcytotox_init_on.yaml",
+        "configs/tmqm_ab_metalcytotox_ir_15seed_init_off.yaml",
+        "configs/tmqm_ab_metalcytotox_ir_15seed_init_on.yaml",
+        "configs/tmqm_ab_metalcytotox_ir_init_off.yaml",
+        "configs/tmqm_ab_metalcytotox_ir_init_on.yaml",
+        "configs/wf_cfm_eps_gate_tmqminit_2026_10_10.yaml",
+        "configs/c7_fullgen_2026_10_20.yaml",
+        "configs/c7_fullgen_smoke_2026_10_20.yaml",
+        "configs/c7_calib_eval0_2026_10_20.yaml",
+        "configs/c7_calib_b32x1_2026_10_20.yaml",
+        "configs/c7_calib_b32x8_2026_10_20.yaml",
+        "configs/c7_calib_b32x24_2026_10_20.yaml",
+        "configs/c7_calib_batch32_2026_10_20.yaml",
+        "configs/c7_calib_batch16_2026_10_20.yaml"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/models/pocket_macro_skeleton.pt",
+      "size_bytes": 26257,
+      "sha256": "8fa747a5032f03225ced31ab040c5c6e6a7e6f991df2beef2d5496fc852e222e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/models/pocket_macro_skeleton.pt.json",
+        "molmetal/molmetal_lam/lam_chem/pocket_macro_inference.py",
+        "molmetal/molmetal_lam/tests/test_pocket_macro_inference.py",
+        "molmetal/reports/wf_deflex_followup/final.md",
+        "molmetal/reports/wf_deflex_followup/phase1_f5_adapter.md",
+        "molmetal/reports/wf_deflex_followup/phase2_pocket_macro_smoke.md",
+        "molmetal/reports/wf_deflex_pocket_macro_skeleton/final.md",
+        "molmetal/reports/wf_deflex_pocket_macro_skeleton/phase2_train.md",
+        "molmetal/reports/wf_deflex_pocket_macro_skeleton/phase3_validate.md",
+        "molmetal/scripts/eval_pocket_macro_skeleton.py",
+        "molmetal/scripts/phase3_validate_pocket_macro_skeleton.py",
+        "molmetal/scripts/train_pocket_macro_skeleton.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/models/pocket_macro_skeleton_v2.pt",
+      "size_bytes": 26953,
+      "sha256": "86668b209eae90fb65521b5ae737e3691d9a9247d14931b683c745c8e717cbc6",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/molmetal_lam/lam_chem/pocket_macro_inference.py",
+        "molmetal/reports/wf_parallel_discovered_fixes_final.md",
+        "molmetal/reports/wf_bug2_fix/final.md",
+        "molmetal/reports/wf_deflex_pocket_macro_skeleton/phase3_ca2_fix.md",
+        "molmetal/reports/wf_r15_cross_verify/final.md",
+        "molmetal/reports/wf_r16_bug2_fix/final.md",
+        "molmetal/tests/test_pocket_macro_inference_path.py",
+        "molmetal/scripts/r4_lambda_only_run.py",
+        "molmetal/scripts/r4_lib/cli.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/models/symbolic_reward/symbolic_reward.pkl",
+      "size_bytes": 3154,
+      "sha256": "b6225aac80472731cc6ad2a2f60f5b9556870c900a0a2f0e7c808752d9f02dd4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/molmetal_lam/reward/symbolic_regression.py",
+        "molmetal/reports/wf_deflex_symbolic_regression/final.md",
+        "molmetal/reports/wf_deflex_symbolic_regression/phase2_pysr.md",
+        "molmetal/reports/wf_deflex_symbolic_regression/phase3_validate.md",
+        "molmetal/scripts/validate_symbolic_regression.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/molmetal_lam/tile_lib/.cache/joblib/joblib/molmetal_lam/tile_lib/library/_build_fragment_library_impl/72a755383fba437e4dead6ff3e3d81e3/output.pkl",
+      "size_bytes": 135666,
+      "sha256": "0a94f30ff39587d9e5cbd8b1bcaed05431fc8f4a5583dde391ebd7668e959c29",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/molmetal_lam/tile_lib/.cache/joblib/joblib/molmetal/molmetal_lam/tile_lib/library/_build_fragment_library_impl/72a755383fba437e4dead6ff3e3d81e3/output.pkl",
+      "size_bytes": 135186,
+      "sha256": "ac454c76ee1d13adcfb6ff9f789f097b8ddb040b467e91b93abf132e322cd454",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/wf124_p2_cfm_full/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 2916222,
+      "sha256": "bb3ce26030ac5a9d7a7559584cb1a0038e583d97233690d5b3d322db88322a55",
+      "nearby_experiment_files": [
+        "molmetal/reports/wf124_p2_cfm_full/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 297453,
+      "sha256": "5660925fcd97da0532265e1cffeee992bc2f9dcc9abebd0decf5818cf233afa0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf385a3_scaffold_wire_in/train/per_epoch_metrics.json",
+        "molmetal/reports/wf385a3_scaffold_wire_in/train/per_epoch_metrics.c5c21d68675a.json",
+        "molmetal/reports/wfa170_census_freshness/report.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 297584,
+      "sha256": "703be4fb68da7ed5247c1ee61de6b1ac5fad550e811b8f02111afbf665558f5e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf385a3_scaffold_wire_in/train/per_epoch_metrics.json",
+        "molmetal/reports/wf385a3_scaffold_wire_in/train/per_epoch_metrics.c5c21d68675a.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "size_bytes": 297584,
+      "sha256": "703be4fb68da7ed5247c1ee61de6b1ac5fad550e811b8f02111afbf665558f5e",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_epoch1.pt",
+      "size_bytes": 8386772,
+      "sha256": "701bdd19a8d4e718c39850e48b4b0f92d46065487c1fd6599562cf1261813eaa",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/master.log",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 13754373,
+      "sha256": "e8876bccc6bacdec1766b9dd674e1a4cd61f0a0831773bce622cc5abe5bf8fde",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/master.log",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [
+        "TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_FINAL_2026_10_09.md"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "size_bytes": 13754373,
+      "sha256": "e8876bccc6bacdec1766b9dd674e1a4cd61f0a0831773bce622cc5abe5bf8fde",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/master.log",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 13754373,
+      "sha256": "e8876bccc6bacdec1766b9dd674e1a4cd61f0a0831773bce622cc5abe5bf8fde",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/master.log",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_blk_c5_repair_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 443622,
+      "sha256": "6852a9ad1487a4645c3a7087c541e55326a77a856d0ae0fd1f978b17dfe59f41",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/master.log",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_blk_c5_repair_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "size_bytes": 443622,
+      "sha256": "6852a9ad1487a4645c3a7087c541e55326a77a856d0ae0fd1f978b17dfe59f41",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/master.log",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_blk_c5_repair_2026_10_09/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 530877,
+      "sha256": "ba4d3c89d2afe9d879498be74372685bf8cbf1a945988ce2614a6ba85ab43df7",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/master.log",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/per_epoch_metrics.json",
+        "molmetal/reports/cfm_blk_c5_repair_2026_10_09/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8395006,
+      "sha256": "fbca34d687c51dc9139144c47dcbd5bd70393f62445da263c28ce461a8006a5f",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa113_m9_c8_events_jsonl.json",
+        "molmetal/reports/wfa158_pool_provenance/pool_provenance.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/reports/cfm_c8_fullgen_2026_10_24/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8395006,
+      "sha256": "0ad6b6a660b52dff2a723a976799b7d23d4c0866f913a1cae76efd85ad7fabcb",
+      "nearby_experiment_files": [
+        "molmetal/reports/cfm_c8_fullgen_2026_10_24/master.log"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108i_module_gates_c8_epoch2.json",
+        "metrics/by_metric/cfm_c9_head_ab_capacity.json",
+        "molmetal/reports/wfa158_pool_provenance/pool_provenance.json",
+        "docs/HONEST_NEGATIVE_CATALOG.md"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ru_seed1.pt",
+      "size_bytes": 14296581,
+      "sha256": "f64b7634854591e21745cff07a54d2d7782503414c33e64b9d9d39d5870e9c22",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf432b1_w246/ru/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ru_seed2.pt",
+      "size_bytes": 14296581,
+      "sha256": "8db158669f42a9530b286d7102a621220ea39f92212b5d7881d16148b27c9879",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf432b1_w246/ru/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ir_seed0.pt",
+      "size_bytes": 31684541,
+      "sha256": "280c7352fbbb585422a585c5a3daa1308fbef8db3c37075b0d0d91fb95a12c04",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "todo.archive_2026_10_18.json",
+        "configs/mcts_search_dmpnn_value_on.yaml",
+        "molmetal/molmetal_lam/search_alg/dmpnn_value.py",
+        "molmetal/reports/wf131_p1_ru_auc_multitask/events.jsonl",
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics.json",
+        "molmetal/reports/r20_search_quality_dmpnn_on/search_quality_bench.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "molmetal/scripts/bench_mcts_search_quality.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ir_seed1.pt",
+      "size_bytes": 31684541,
+      "sha256": "f51bf4e027e3623449e4c90ef8433c4a9e1a0ab17c4e7eb5bcb20b41e32530f2",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf131_p1_ru_auc_multitask/events.jsonl",
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ir_seed2.pt",
+      "size_bytes": 31684541,
+      "sha256": "bb9db2b32cecb4afedb3dcbca72aa10092e2f235f2693e4c76df2aea1c64a023",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf131_p1_ru_auc_multitask/events.jsonl",
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf432b1_w246/ir/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_os_seed0.pt",
+      "size_bytes": 5897917,
+      "sha256": "0227cb1c337c3e0a819217176e6bd8672e90b0341e27a0cd40ed4e17a66146d7",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_rh_seed0.pt",
+      "size_bytes": 5897917,
+      "sha256": "9923a87f1f7831dcdfe5fd02e8a5639a8c1a0ec8924cf8dd03dd70d7378a4118",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_os_seed1.pt",
+      "size_bytes": 2364693,
+      "sha256": "88ed7f25752d56d33b84c4224fb8726c560e2baa61b7148bf55e25b81b744972",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_os_seed2.pt",
+      "size_bytes": 2364693,
+      "sha256": "afb05cd69d9beb093b596643502401c336e1ec7f66e4159d9b91c5ad44bb0d77",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf432b1_w246/os/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_rh_seed1.pt",
+      "size_bytes": 2364693,
+      "sha256": "1a2d3c95d5ef8c38e28f94bdb6bd9d7e7b02136139373cd0b17db65b2e3c9ee5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_rh_seed2.pt",
+      "size_bytes": 2364693,
+      "sha256": "4a927724229cda3e0736802d023a335d31f88cc28dec209e263a48eb21bf562e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf432b1_w246/rh/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_re_seed0.pt",
+      "size_bytes": 5897917,
+      "sha256": "3b21b63405c2ed9ee98fd863cc04032339d3a0fc2e3a7b57f0366a0b156fa278",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_re_seed1.pt",
+      "size_bytes": 2364693,
+      "sha256": "a1efa4546e3bcd08466672a29ec61f66ea68b6970bfe5fba41e5d8e3982251cc",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_re_seed2.pt",
+      "size_bytes": 2364693,
+      "sha256": "841f3329550f9bebbe97db4e371cf1f79ba03c88ca9794d295f8bac0d340ad8f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/reports/wf432b1_w246/training_summary.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf432b1_w246/re/per_seed_metrics.json",
+        "molmetal/reports/wfa201_encoder_readout/report.md",
+        "molmetal/reports/wfa201_encoder_readout/report.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed0.pt",
+      "size_bytes": 2713105,
+      "sha256": "a06a21e3a982323db2b91e1a8ac221f2797bb608f7c2f2332df1662ed7abaae9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "TODO/completed/168_wf146_real_ship.md",
+        "metrics/by_metric/chemprop_v2_5metal_5seed_50epoch.json",
+        "molmetal/reports/wf146_chemprop_lomo/Rh_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed1.pt",
+      "size_bytes": 2713105,
+      "sha256": "d3fe16518919cd309d3fd0b2dd6351850f8d803b1e2d04069daac63d37623086",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Rh_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed2.pt",
+      "size_bytes": 2713105,
+      "sha256": "bac7bdde1353902b9c9dacf6c2ecf8312909f18fe9cd7eb99f000ac3863ae9ec",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Rh_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed3.pt",
+      "size_bytes": 2713105,
+      "sha256": "91dea1640ff476ac0f99071e9fbbe5a40c1bb37658e1eceefece3cc0776698d9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Rh_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed4.pt",
+      "size_bytes": 2713105,
+      "sha256": "ad13e1e86b87b94e0f6fe1d52b4b0f0357eb71909860dea78f23aade11613874",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Rh_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ru_seed0.pt",
+      "size_bytes": 2713105,
+      "sha256": "92c7375480fe5b47837fb3563b32b22940492ddf4715081810dec6c52a228c22",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ru_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ru_seed1.pt",
+      "size_bytes": 2713105,
+      "sha256": "7c841e839ec152de2764ecb73d02002591a2c6e5254b31406538d1e5c1916a77",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ru_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ru_seed2.pt",
+      "size_bytes": 2713105,
+      "sha256": "1eb072255037894ee1082f8a8d486111f47bd7c18952cd40fc3dd79ccfd69b7f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ru_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ru_seed3.pt",
+      "size_bytes": 2713105,
+      "sha256": "e206467f4f25fb851ea62eac5a2a97805d86068f33ee2f7a6b9023034c38648c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ru_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ru_seed4.pt",
+      "size_bytes": 2713105,
+      "sha256": "de6ae23fede7b80cbf28b7d82ddc27e021549143951753766a5b575bef56a084",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ru_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ir_seed0.pt",
+      "size_bytes": 2713105,
+      "sha256": "e15da10da95ef5de4ceb3b0bed3de61458e85d1c12e17c1dd0c47bb3969c228f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ir_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ir_seed1.pt",
+      "size_bytes": 2713105,
+      "sha256": "1ad17400a014d5610615e7c2c44a5b7cc127780ecd3648b58e6a960324f398a1",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ir_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ir_seed2.pt",
+      "size_bytes": 2713105,
+      "sha256": "9fdc63daa1aad40d091a32c72d790b5b352dfc83111bb093ab706aeb8e633580",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ir_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ir_seed3.pt",
+      "size_bytes": 2713105,
+      "sha256": "6105164914770b85ba8b73c4a8d0b7e372abb3f3e748abcfe87d936cf9001754",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ir_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Ir_seed4.pt",
+      "size_bytes": 2713105,
+      "sha256": "f1581c9fa4ef585a7063c0581716cbdc5043c3d55c3b407504203323d510bf6f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Ir_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Os_seed0.pt",
+      "size_bytes": 2713105,
+      "sha256": "6d5c3fc2cab9835d6f6741c97d3ecce2f561d89283fc9dc910e820a132222197",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Os_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Os_seed1.pt",
+      "size_bytes": 2713105,
+      "sha256": "a8147624f4342eac1b8984fda303e4e5b6ab484d20124ccff8b3f3dfe06a877a",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Os_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Os_seed2.pt",
+      "size_bytes": 2713105,
+      "sha256": "6746e77ce33f5bf6db422cb33b616e360a7748231b101801aaac07d08fefb768",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Os_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_chemprop_lomo/Os_seed3.pt",
+      "size_bytes": 2713105,
+      "sha256": "399d71447d830507b07cd9edad7af936891fd23da68338bcb4931eeae167a0c9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf146_chemprop_lomo/Os_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ru_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "3e8b89d0dca8e965e4081d3c73b5dc017ef4eb751c94ecf92c8ad4a808c163ac",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ru_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ru_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "4fb5ac519cee212fabff99f202392059fffdc7996ae88618fc0122df2eda8567",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ru_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ru_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "68b20ca7aeb60296d80df1fc3116ee4d19428950e535890b08dc9f735716b5e0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ru_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ru_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "32f9ea57b9421a10b90e2fc62c03f8543a4b752f5d1335411c64b38ba03486fa",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ru_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ru_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "bb5ae5c1aa16fb0ffa9cd82a0a109f53d3d6e0cf1d47d2635564e3988002028a",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ru_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ir_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "48609d5e18b5a393f72602df7fed7b5b0bac8065a5d9fe08d48ad6da1677b07d",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ir_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ir_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "f000848497709b9ef5f958dffb94e957416db7c33250b9a9c8a47463b3dff196",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ir_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ir_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "b1fa2c55d35aa54de82c7d8b0e6c7ca7e6566f73acbac887d3a1b05f0e29915f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ir_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ir_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "bdbd4fe77d6c78f528bc0810dbb20bea2593dd57ea003b326c6a5af9eb84475b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ir_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Ir_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "c0889d4291be0f51525cd6053245978d3f924891db26278eb56542e37b1a50c2",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Ir_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Os_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "e490870030f0aa3ac1002afeef6996db6c68b6ae0de4ed21c98715777846a037",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Os_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Os_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "5d8e0c45c1dac063f49c47d7b0bf1e4f51e2b308bf65a25efdbe1008be31c1eb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Os_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Os_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "9ea8d1c262ea1566e6decb5ca3ed1f9c2d7021cf42cf13471e2ef7048bc68f6b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Os_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Os_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "18a441fcdebc99bd802c6ed079724f451384fde636e4bac4d6993a06264450c0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Os_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Os_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "ab5c5b3dc74c1aec705db2381567932c312f1d28589edb74a6f6bcd147f54b31",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Os_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Rh_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "e774a09475198f6f36bb7dd1a7a3a17cbcc61009c1081486a7b72933e534fab5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Rh_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Rh_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "a8af13d9b5a6a8ab56b6ea5409fbe5bb8a6ac4d70589b541e7f1e98886dcc4e5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Rh_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Rh_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "44efe9a6e4e2003b008451e9c6811bcfc7a17d0df09b91b3d8ae0ee3246e17fa",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Rh_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Rh_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "aaa0b1a8b6ce88328df4b0fd971c5b03b217d7229b9dc75f6a8d9bb9746e6a95",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Rh_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Rh_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "9116563c1f38037103d45eacb52a5de6dfd33cabdabac68007b13b7e7de77fb5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Rh_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Re_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "a0d682b603095320c4d00dff1cf2cd8a98a65dafc48e25b1377229b3d8a82651",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Re_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Re_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "7726a412f8d6d7881b03b77ea87343b42483f480cc4be04829437afeb55d97a2",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Re_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Re_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "6b0e08b864a57f3d203e14cf83cd51772d8311db652e9f66ede7817c46c93827",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Re_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Re_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "41bc8efd6529e41919be4169545fa4ff86262df0d54dc2c68b3fb04a7896982e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Re_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf170_permetal_singletask/Re_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "e5ca137924449c80e6848aa727ac5e2f68c2d0d45fca6ceac05f810a3aed55f9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf170_permetal_singletask/Re_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ru_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "cce5f9a19c545088af3375fc47594da5cc7472267f05bc6111bbc43b7a481212",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ru_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ir_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "4bc3af85f318ad83af61c63e97db1f56eadc5a1a1107f6b45696c758476e3c0d",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ir_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ru_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "df46ff59c25f27a7f3d509611beb34dde3fcf3e9797c22bd17474bdd2adf6988",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ru_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ir_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "e0f2a267471384b28db7b567d1c7175ba8276dee374de29a308de9f62ef8fcf0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ir_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ru_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "a448836ab42c511c877130746ba3a3ac178911c48c243b5461a1c22e78e6e7b9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ru_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ru_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "2d7111de73721613cf6db4f158114537b96114719262c33c59f2b555e2052ad0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ru_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ru_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "cdd94a5a3d926f07d4daaecc67f3381455fbd69f57725af338979b90cf2d1f32",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ru_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ir_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "7a430214f2f55db1de375b168cf51c24a11e4bf8d9cd6b36871f8640a94aeceb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ir_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ir_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "39d6234bd60b103cc77da41db272e1eb60f32a6b159ea91ee0e21ff02c38aa55",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ir_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Ir_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "86b6c0dc23b7f96049900673bab2bb02259ebd2fa5270736394c9e14a3c15232",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Ir_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Os_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "3b791faf16a3b08da7f37c9cb36332973e74b5a62fc8c0ce2c3fd13c70e72a8c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Os_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Os_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "ba70501fbd98b9d686fee52d87e7eb3b3e74f621c9f4c990292f91b31fb2eb3f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Os_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Os_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "27e393a216ac202dd069e7108fee926e04df969d6321ecfff2bb779b5796c75c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Os_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Os_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "d5b64051b8fdf6d9aa11da7d996384c8e0e5197bec19476e0bbcd76ca40c9c5b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Os_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Os_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "c81d4c125c319e03f95315c5237a8c0aeac01fd573fb48eca2aab1aa01f64dcb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Os_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Rh_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "94ec2fa59d5fa46cf02d076b479103d509ee9d2ca06b3b43803caca76322294f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Rh_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Rh_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "e6393fe7d6f69275cfb4dd36f379ff87a5e4421bc1111c0889d75da476500aea",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Rh_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Rh_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "0362a5970c02aa3cb6b0a64b78f4379fe50b5a09363118977d20dd6e35ea5e17",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Rh_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Rh_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "22282dec0ffa4d3d4f962050c247374ae2a21cb71edcc49bf9277ed91fba4b43",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Rh_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Rh_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "43185cffeefadabae3e5eb95ee98b6eed9c0998f56ae3a31b4897acd305bf70e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Rh_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Re_seed0.pt",
+      "size_bytes": 1639315,
+      "sha256": "b89d6a3916148812238b16d7c170fc73f362eba79c6b23d0b34fbeea85bdae47",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Re_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Re_seed1.pt",
+      "size_bytes": 1639315,
+      "sha256": "5218149c0d881207ab77423d6353dce092a13bbc71a14947a6cbc368974c0b9b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Re_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Re_seed2.pt",
+      "size_bytes": 1639315,
+      "sha256": "cf63991a327431515ab5753dddef430a06a36413886d9230915336d0ae520f34",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Re_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Re_seed3.pt",
+      "size_bytes": 1639315,
+      "sha256": "bee43c3476ca035ccd3c9bb26ea89129ab26bfb2e7bdf3871aaaed7426097b2a",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Re_seed3.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf194_lomo_v2/Re_seed4.pt",
+      "size_bytes": 1639315,
+      "sha256": "9497387dc6caf332682485ef7bcc6bccd7bcfa141f2add2877aa683a2d951486",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf194_lomo_v2/Re_seed4.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 549781,
+      "sha256": "4021ba2d128055467414629d1c2247d4c64a84056c7a84b76b9046a3176aa9cd",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "TODO/completed/196_wf196_50ep_cpu_sweep_closeout.md",
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/ru/per_seed_metrics.json",
+        "molmetal/reports/wf196_50ep_sweep/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf196_50ep/ru/per_seed_metrics_seed0.json",
+        "molmetal/tests/test_wfa131_repo_path_reference_guard.py",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "docs/HONEST_NEGATIVE_CATALOG.md"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_ru_seed1.pt",
+      "size_bytes": 549781,
+      "sha256": "c6c6da78dfd8aa79e8f5ad9be610c45736ddb7bc94b4e7394d5fcc3d0f310cee",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/training_summary.json",
+        "molmetal/reports/wf196_50ep/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/ru/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_ir_seed1.pt",
+      "size_bytes": 549781,
+      "sha256": "37709d7cebf67e86ccf788f52561928bd5bf4c5c8ce0a6b9a8794891da8d87eb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/training_summary.json",
+        "molmetal/reports/wf196_50ep/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/ir/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_os_seed1.pt",
+      "size_bytes": 549717,
+      "sha256": "f723a5eb36337d24bd676fe932536114118570db92a09ff6f62db28a87d88e21",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/os/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/training_summary.json",
+        "molmetal/reports/wf196_50ep/os/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/os/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_rh_seed1.pt",
+      "size_bytes": 549717,
+      "sha256": "987ce41e9bb95a4c053c884fb39c6e1181a09973545adf2f27f028bf412116c2",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/rh/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/training_summary.json",
+        "molmetal/reports/wf196_50ep/rh/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/rh/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_re_seed1.pt",
+      "size_bytes": 549717,
+      "sha256": "b94fb6147982a0e10c4eb0e9fea66ca9d8beb4c74f2e1302fb720cdffa73247c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/re/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/training_summary.json",
+        "molmetal/reports/wf196_50ep/re/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf196_50ep/re/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_ru_seed2.pt",
+      "size_bytes": 549781,
+      "sha256": "76500d224a30884b45e72ef9727e8f226d5f0d3db7b1534186ce3cc13bef2f66",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf196_50ep/ru/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_ir_seed2.pt",
+      "size_bytes": 549781,
+      "sha256": "96c95862cf079856fd8f82cf85b23f0e02e4baad4e8997480a8e1ed44082b2e4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/ir/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf196_50ep/ir/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf196_50ep/dmpnn_mtw_os_seed2.pt",
+      "size_bytes": 549717,
+      "sha256": "1d619c18be546221f7374eb1ada8144fa799ed88301883a8bfa2992f909e0c59",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf196_50ep_sweep/training_summary.json",
+        "molmetal/reports/wf196_50ep_sweep/os/per_seed_metrics.json",
+        "molmetal/reports/wf196_50ep_sweep/os/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf196_50ep/os/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ru_seed0.pt",
+      "size_bytes": 2784263,
+      "sha256": "311cab6f5bccad72b2e796df0dcf3b361bebf1212dd384469c67b259bee5bcae",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf225_chemprop_v2_v3/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf230_chemprop_v2_v3/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf241_chemprop_v3_retrain/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf243_integration/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf248d_enhanced_head/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf248d_enhanced_head/attn/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf248d_enhanced_head/legacy/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ru/per_seed_metrics_seed0.json",
+        "molmetal/tests/test_wf446_h2_chemprop_ckpt_restore.py",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "molmetal/scripts/pre_flight_check.py",
+        "results/wf119_p1_4_chemprop_v3_lomo/baseline/seed0/ru/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/v3_fix_only/seed0/ru/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/min_epochs_only/seed0/ru/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/lomo_init_scale_only/seed0/ru/per_seed_metrics_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed0.pt",
+      "size_bytes": 2785799,
+      "sha256": "ba90561dff06fde5713b3b392bc597c54a8975e1dd05bb5027d3e3541ecfdf2c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf243_integration/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ir/per_seed_metrics_seed0.json",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/baseline/seed0/ir/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/v3_fix_only/seed0/ir/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/min_epochs_only/seed0/ir/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/lomo_init_scale_only/seed0/ir/per_seed_metrics_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ru_seed1.pt",
+      "size_bytes": 2787335,
+      "sha256": "d54f33bfa98ea3ffa0d863cab23df71bef7e871ccbd630b6374c93df002a649f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf225_chemprop_v2_v3/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf230_chemprop_v2_v3/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf241_chemprop_v3_retrain/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ru/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ru/per_seed_metrics_seed1.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ru_seed2.pt",
+      "size_bytes": 2787399,
+      "sha256": "22b3470e32682f587b79889a5f97a6245aab8b86a58200fa4bc764870c5c8639",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf225_chemprop_v2_v3/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf230_chemprop_v2_v3/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf241_chemprop_v3_retrain/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ru/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ru/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed1.pt",
+      "size_bytes": 2785799,
+      "sha256": "a9705e10b9038e15c2c8ea7dbae0bff2a3995382859ab80fafe1db9bffa8ac52",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ir/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ir/per_seed_metrics_seed1.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed2.pt",
+      "size_bytes": 2785927,
+      "sha256": "1f538fe518567c1b50163a21634a676ea55a597d04684628432a939d1f4f7219",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/ir/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/ir/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ir/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ir/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_os_seed0.pt",
+      "size_bytes": 2785735,
+      "sha256": "e62d1a0cc8a76e3c77bb16176cbd21c955f292b54fd0d9d14414faa5842424d5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf230_chemprop_v2_v3_flat/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf243_integration/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/os/per_seed_metrics_seed0.json",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/baseline/seed0/os/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/v3_fix_only/seed0/os/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/min_epochs_only/seed0/os/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/lomo_init_scale_only/seed0/os/per_seed_metrics_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ru_seed3.pt",
+      "size_bytes": 2784327,
+      "sha256": "e770a3cca85d9bc2ae254b634619561a19f4600a95a6b0ae03ad6bccfb5f6f98",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf241_chemprop_v3_retrain/ru/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ru/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ru/per_seed_metrics_seed3.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ru_seed4.pt",
+      "size_bytes": 2784327,
+      "sha256": "a7706526f1f70f20e0f100c648c9ee91cec544bd6c4df0ae04ecb5f0dd0c22d7",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ru/per_seed_metrics_seed4.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ru/per_seed_metrics_seed4.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed3.pt",
+      "size_bytes": 2784327,
+      "sha256": "1db559f87756e16dd6628e63e2580e1c1af60662335071da0b56b5c9d8f7c0bd",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ir/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ir/per_seed_metrics_seed3.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed4.pt",
+      "size_bytes": 2784327,
+      "sha256": "c47a61b0e9b17482ed9e8919f7c09a4d1a1b47c24928622bdb89ae24dcceec09",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/ir/per_seed_metrics_seed4.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/ir/per_seed_metrics_seed4.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_os_seed1.pt",
+      "size_bytes": 2785799,
+      "sha256": "8f0c62765d48c53c37edd3dced3ea839a14434e08b01dae2d5fa535dcac220c8",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/os/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/os/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/os/per_seed_metrics_seed1.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_os_seed2.pt",
+      "size_bytes": 2785479,
+      "sha256": "413791a627c063734a9ac10235333a65cfe9bce448a1132c6048f290feefc8e7",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/os/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/os/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/os/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_os_seed3.pt",
+      "size_bytes": 2784327,
+      "sha256": "b567f80877ec2f5ffb90242e063707efdb215a676305914e7227dd6114a5a5b7",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/os/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/os/per_seed_metrics_seed3.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_os_seed4.pt",
+      "size_bytes": 2784327,
+      "sha256": "2caad365195d55dcfab8c63d6fa495e7681c62559d2a1d9eb5c7a1d8e0834683",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/os/per_seed_metrics_seed4.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/os/per_seed_metrics_seed4.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_rh_seed0.pt",
+      "size_bytes": 2785735,
+      "sha256": "a3fd32f1ed901ae93940d031983ca487be0437b36ee2bd7f574d2b4952c6fb27",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/rh/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/rh/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/rh/per_seed_metrics_seed0.json",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/baseline/seed0/rh/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/v3_fix_only/seed0/rh/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/min_epochs_only/seed0/rh/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/lomo_init_scale_only/seed0/rh/per_seed_metrics_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_rh_seed1.pt",
+      "size_bytes": 2785671,
+      "sha256": "a6d7cc715a862b2800ec65b30dce22b6410155d40b4af5f65b5ef11803028a4d",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/rh/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/rh/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/rh/per_seed_metrics_seed1.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_rh_seed2.pt",
+      "size_bytes": 2785671,
+      "sha256": "b8aae56eabbd53cc01145380789898e58b7eba9f5920dc90f933db1dc72b2d66",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/rh/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/rh/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/rh/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_rh_seed3.pt",
+      "size_bytes": 2784327,
+      "sha256": "ecdf415ea297306965237ed4d315a75069e3ef58cf5ae4a51b6cfdeb92d0bf3d",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/rh/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/rh/per_seed_metrics_seed3.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_rh_seed4.pt",
+      "size_bytes": 2784327,
+      "sha256": "f61f4f3f6a01f6e53989c3a569858623b96bce9293138c6333a77ff922e96001",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/rh/per_seed_metrics_seed4.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/rh/per_seed_metrics_seed4.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_re_seed0.pt",
+      "size_bytes": 2785671,
+      "sha256": "b2d25a25137520f98e9906343561b090b3b2ef8d55a4407aca92c1c0a9b08b56",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/re/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/re/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/re/per_seed_metrics_seed0.json",
+        "molmetal/checkpoints/ckpt_manifest.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/baseline/seed0/re/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/v3_fix_only/seed0/re/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/min_epochs_only/seed0/re/per_seed_metrics_seed0.json",
+        "results/wf119_p1_4_chemprop_v3_lomo/lomo_init_scale_only/seed0/re/per_seed_metrics_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_re_seed1.pt",
+      "size_bytes": 2785671,
+      "sha256": "d2ef72c0b1b83793db0b690515e39d9d344d1776786d24d62b7c6917a22b6b9d",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/re/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/re/per_seed_metrics_seed1.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/re/per_seed_metrics_seed1.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_re_seed2.pt",
+      "size_bytes": 2785671,
+      "sha256": "de101ffc01116da0ca1557db0e21deb1849de4899c22403d92865f7bfde01828",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf200_chemprop_v2_v3/re/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/re/per_seed_metrics_seed2.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/re/per_seed_metrics_seed2.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_re_seed3.pt",
+      "size_bytes": 2784327,
+      "sha256": "c4cb365328508b883e93a263bdd7a97a82c86f87386498496ac1e7fce0f0eec1",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/re/per_seed_metrics_seed3.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/re/per_seed_metrics_seed3.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_re_seed4.pt",
+      "size_bytes": 2784327,
+      "sha256": "6c8d11e0939f7739ea9a86336f800bde86e71746def5c24df5ad32b6efbd71d4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fallback/re/per_seed_metrics_seed4.json",
+        "molmetal/reports/wf266_verify_v3_fix_lomo/v3_fix/re/per_seed_metrics_seed4.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg100/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "c82e8e29e697bf98de6921347a0a7efded8506759a8f2fb237232505206f30cb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg100/dmpnn_mtw_ir_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "9bfc2e8017fe7511d5f62fc7a410b992d0657f3b9d64e1e059b861f20e19f922",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg100/dmpnn_mtw_os_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "0c2a454f0c3eb6c9be187a483fcde14836b27ccd3e24618cc2e70c2b796c552b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg100/dmpnn_mtw_rh_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "7c76cd4a55f433c3465ec58800e13da381cc7e711f02c6d0268e2e38ec9d8a5b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg100/dmpnn_mtw_re_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "4ac8b0618155c78f0efe336b3ee7a63d1b6c4b894d6e3c47859ce7634ad3ac58",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg010/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 272469,
+      "sha256": "7132d386ec91e08a23f191c41ed057741f07c72daf249763d2cb17fe175586d5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg110/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "77738b4f641f885f652bdf2a031e222b05b3a36fbc36ac5ab430ec641f9eb18a",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg110/dmpnn_mtw_ir_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "bd810bc2cab9041ef96bc4d3521dc043cc0cfe96683848456262044f8475e0ca",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg110/dmpnn_mtw_os_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "4312cc07b8c580b7a92234f34cae341d78cf1ecfe21663fdc1d396ea065a5767",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg110/dmpnn_mtw_rh_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "51ceb32014d59ce68d33b6e73f17fb26ad5cceda3ce0d11c58f11e9505c2e50f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg110/dmpnn_mtw_re_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "dff771c7bc5f555701aa4c7e2bc56b37a86b07c133a918a2020f661dba518731",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg101/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "3d14f4bd3552c40ed5cdb3539bbb367dcb429f01a30258f6da322c52523f943a",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg101/dmpnn_mtw_ir_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "1bdf88ae23e6a012a82fea88c4457e2dae80721e97cd16f8c8c2a4923af88fdc",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg101/dmpnn_mtw_os_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "817513a339b6260cd31393b4d401b7ed3220f332b70e394d5e731af4730510ca",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg101/dmpnn_mtw_rh_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "068cd1d001d38fe6a93134f44baac04a7702e362643d02422ded850528dd9554",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg101/dmpnn_mtw_re_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "0abb95acf422f95273f3e6417aed1b89aa4ae79303d85896d685a2fe108c14c8",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg011/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 272469,
+      "sha256": "d9f8122fbf0857d21221dab900c036af304edf560c03d30c23d805dbbcdd14fc",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg111/dmpnn_mtw_ru_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "a0e9c0938205478f8c3100f31e97a5f5bc7b1ac3663d5d5e18142d3d2dc30e66",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf216_ablation/per_config/training_summary.json",
+        "molmetal/reports/wf216_ablation/per_config/ru/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf216_ablation/per_config/ru/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg111/dmpnn_mtw_ir_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "a193991ecdff998734c7ddb74ca1e86fb1e1c32852a1a89aa8819899a933b1f4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf216_ablation/per_config/training_summary.json",
+        "molmetal/reports/wf216_ablation/per_config/ir/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf216_ablation/per_config/ir/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg111/dmpnn_mtw_os_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "729009df2bb0ea08463d28bb53417f8c4d880a0886c4de3a277549eddf11268b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf216_ablation/per_config/training_summary.json",
+        "molmetal/reports/wf216_ablation/per_config/os/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf216_ablation/per_config/os/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg111/dmpnn_mtw_rh_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "58fbfc6f923e5b935a93f24a31983517154459a968631987d5087a1ec10b1943",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf216_ablation/per_config/training_summary.json",
+        "molmetal/reports/wf216_ablation/per_config/rh/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf216_ablation/per_config/rh/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf216_ablation/cfg111/dmpnn_mtw_re_seed0.pt",
+      "size_bytes": 549461,
+      "sha256": "b90781d6ec11d4a29429aebad8d5ac4c5c84ea11a8c8471847fa4200fb172ba4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf216_ablation/per_config/training_summary.json",
+        "molmetal/reports/wf216_ablation/per_config/re/per_seed_metrics_seed0.json",
+        "molmetal/reports/wf216_ablation/per_config/re/per_seed_metrics.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Re_seed0.pt",
+      "size_bytes": 112211,
+      "sha256": "08143d01d2e7bf3a3a9b9602e9552f8830b6da21c35024c60e29baa0e614872b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Re_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Re_seed1.pt",
+      "size_bytes": 112211,
+      "sha256": "dd7a2244a47a4080d4a801b03e582fb0fb08ff1813692744444a2d718c3ac950",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Re_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Re_seed2.pt",
+      "size_bytes": 112211,
+      "sha256": "e410c911fc52993cfee23ea3584da6942eac134a3307c03e49c0c82ca6d15f8b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Re_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Os_seed0.pt",
+      "size_bytes": 112211,
+      "sha256": "4b53cd2867aa2e0db63c24b544ad4a1aadea0eedb92b435a13515233381f7e20",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Os_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Os_seed1.pt",
+      "size_bytes": 112211,
+      "sha256": "b4de1f1c64099ca785c0f346bfcb9bfa61f8b10bb4934127cb6b0064ff7cc7e8",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Os_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Os_seed2.pt",
+      "size_bytes": 112211,
+      "sha256": "93ab89c9b2679644bf84a3a29e18d9ddee101325f5bcea9f64f290f2f45fa9e1",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Os_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Rh_seed0.pt",
+      "size_bytes": 112211,
+      "sha256": "afd74f87603051abe326a18f5181d2b5d00048b4351f205c6bc25e5b85cd7d3c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Rh_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Rh_seed1.pt",
+      "size_bytes": 112211,
+      "sha256": "42c4a3f402149338e6079018c14d36c3a0dec75a19a096292c097a6c1846c187",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Rh_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Rh_seed2.pt",
+      "size_bytes": 112211,
+      "sha256": "ce5faa7e8cc5f19213f04a64132fe89672942f91cc369335d2d48a67456bf6f2",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Rh_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Ir_seed0.pt",
+      "size_bytes": 112211,
+      "sha256": "e9d492d7f6be7e16e9d8c7f523741751faeed228f82e48108044a9b530bc864e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Ir_seed0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Ir_seed1.pt",
+      "size_bytes": 112211,
+      "sha256": "c4f10f481d9c80c080add04e5b3589113b4bb8cb2eb5fe84c83493fec065e863",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Ir_seed1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf219_krasnov_aligned/Ir_seed2.pt",
+      "size_bytes": 112211,
+      "sha256": "0cf9ee6905c671a1f7cb9fb2835a332b706592302e55eeeae164a970af46dbf9",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf219_krasnov_aligned/Ir_seed2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00005.pt",
+      "size_bytes": 2014413,
+      "sha256": "533a673237f0b35379caaa6de953e9fcdfb84c502e3e9a1833c182b3facf3bd5",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00010.pt",
+      "size_bytes": 2014413,
+      "sha256": "4b90b92e6d7e5042ee78780f6229013e2cc1aef8d23b7d7c9b29c8bed30beb27",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00015.pt",
+      "size_bytes": 2014413,
+      "sha256": "d89f210de1a522bb6f0f6c607edfe81ec5872ed6687283c835baeaca1f4a600e",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00020.pt",
+      "size_bytes": 2014413,
+      "sha256": "3b5b88fc636ff2e19142c0c1faa23489a6e7e1268b8d5db7e64d94a0a78a4b60",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00025.pt",
+      "size_bytes": 2014413,
+      "sha256": "b88dc4bec3c5d4d969a79e05feba34408593fa80370a143d5d23d065b05fd94f",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00030.pt",
+      "size_bytes": 2014413,
+      "sha256": "bb044466796099e9d0fdbbbe3529ee557a2b90814096f1f5b47b97c37713cadf",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00035.pt",
+      "size_bytes": 2014413,
+      "sha256": "24bca21af59b02646016db7cb32690fbb8e2ddbc600f9c93ad602fc740abfe58",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00040.pt",
+      "size_bytes": 2014413,
+      "sha256": "75c3b42c7787177e02555cb1522c2f0bd13de7b396b21535281ca605757691ce",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00045.pt",
+      "size_bytes": 2014413,
+      "sha256": "796e3fce0ebe73ef0da1b414d30e8286832b8b7070fc574da72c2d70193afeb8",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/wf146_lomo_v2/Ru_seed0_epoch00050.pt",
+      "size_bytes": 2014413,
+      "sha256": "680303ebae05907d53d74be70a628a1a8d99525b392e3b3498cd9240dc7b1499",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ru_seed3.pt",
+      "size_bytes": 2229493,
+      "sha256": "fba0d66d944be3863c797d433428182860f59f2a4ed951a6c00fc5fce51403b0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_ru_seed4.pt",
+      "size_bytes": 2229493,
+      "sha256": "e308c32cb68dace867a3ae1ff15f3f3d745d175b6611fba622252e5ff4a4d779",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf262_checklist/per_wave.json",
+        "molmetal/reports/wf300c_launch_sequence/wave_a_checklist.json",
+        "molmetal/reports/wf299_cfm_main/wave_a_subchecklist.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_a2780_seed0.pt",
+      "size_bytes": 5093859,
+      "sha256": "28d38165a57fe609ba524a8734c4815e887e3db46ca290e02b314f1d17c9e9db",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/cfm_generated_to_nci60_cross_application.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_a2780cis_seed0.pt",
+      "size_bytes": 5094505,
+      "sha256": "499185e5a89b8f7183a36cae93ccfea747cb8dfadbea9ef5436c69c4f316326e",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/cfm_generated_to_nci60_cross_application.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_a549_seed0.pt",
+      "size_bytes": 5093665,
+      "sha256": "0ac03dd23f4b4cc8706b02124f004ec168fc942f8debeaa8eea6ac379f430b94",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/dmpnn_mtw_mcf7_seed0.pt",
+      "size_bytes": 5093665,
+      "sha256": "6e650a958d5b989d65f0d510563a0153bc07f01382716e7208677dea461e0b44",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/cfm_generated_to_nci60_cross_application.json",
+        "molmetal/checkpoints/ckpt_manifest.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/cfm_yuelbond_wasserstein.smoke_stub.pt",
+      "size_bytes": 639549,
+      "sha256": "ba9103274d431d1a69fc1e45dd18a37b0a2d0b4e0e9a528da28a408de8522c8d",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/cfm_yuelbond_wasserstein_seed0.smoke_stub.pt",
+      "size_bytes": 7807093,
+      "sha256": "68fb87bd8347098c2a6786fb8094d1213067734a197dbccbf765f6377381e1b4",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf_a49_arch2_cycle_readout/last.json",
+        "molmetal/scripts/wf_a49_arch2_cycle_readout.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/fm_pocket_conditioned.pt",
+      "size_bytes": 606899,
+      "sha256": "c42b2116ec300b1b132196dc3815b0a000935d6ffb2a8112d8a7245a7d7a7d0f",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/fm_pocket_train.md",
+        "molmetal/reports/fm_pocket_train_summary.json",
+        "molmetal/scripts/train_pocket_flow.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "molmetal/checkpoints/metallo_drug_smoke_mol_cache.pt",
+      "size_bytes": 53847,
+      "sha256": "6207aa771d006739f909111a79e7ae6dee7407d0532b779063ba3cfd74b00a47",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "molmetal/reports/wf_ablation_runner/M15.json",
+        "molmetal/reports/wf_ablation_runner/BASELINE.json",
+        "molmetal/reports/wf_ablation_runner/M13.json",
+        "molmetal/reports/wf_ablation_runner/M14.json",
+        "molmetal/reports/wf_ablation_runner/M12.json",
+        "molmetal/reports/wf_ablation_runner/M7.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/affinity_platinai_seed0.pt",
+      "size_bytes": 4037921,
+      "sha256": "6754804eefca1cddd705b16d65c2028f0be37e670032dbc02c231af4651d47eb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "todo.archive_2026_10_18.json",
+        "TODO/completed/141_q2_jcim_completion_sprint.md"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/affinity_platinai_seed1.pt",
+      "size_bytes": 60641,
+      "sha256": "f4318be0adc59e5d9a182c353fc898c8b8684caa465e77846edb060ff37940c0",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "TODO/completed/141_q2_jcim_completion_sprint.md"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_v4_drugood/assay_seed0.pt",
+      "size_bytes": 1838116,
+      "sha256": "874d7ef5a70bd48c65ecbc6a19dc1d77583a5b847b50b0884c468a02230014a7",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_v4_drugood/assay_seed1.pt",
+      "size_bytes": 1838116,
+      "sha256": "91ba26856687f53dcd769ce0f4f981e1a5b7e203b6c9698c17f78a78513351a1",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_v4_drugood/assay_seed2.pt",
+      "size_bytes": 1838116,
+      "sha256": "366bcdb03a7f18054c68b7702d7b1b8ca53c2059221bf96a73618a8c996d6380",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_v4_drugood/assay_seed3.pt",
+      "size_bytes": 1838116,
+      "sha256": "53c23e62379cba2a1967140d568096b45312696ea0bf237ba03d31a61e531cf7",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/assay_seed0.pt",
+      "size_bytes": 1638790,
+      "sha256": "792bef48832fbbdfc3f40b9b3bf177ae32e130cf10aab0232e44f53859f7bee5",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/assay_seed1.pt",
+      "size_bytes": 1638790,
+      "sha256": "028c893695760eea0eccddddd93f6d6933ce6c57ff1c2dda482e447e966e0911",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/assay_seed2.pt",
+      "size_bytes": 1638790,
+      "sha256": "c8a8f175d98f3d69e131a0bf95d46660ce1bb1cc6af91f889d655d57829c99d6",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/assay_seed3.pt",
+      "size_bytes": 1638790,
+      "sha256": "f7e048d0bf3f91d65033d82fefc69afb821126a789ec8504e9d7aed8310ba5ec",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/assay_seed4.pt",
+      "size_bytes": 1638790,
+      "sha256": "e1c68b9089cf4903b0e6bbf92f2f275eb2fc7054550d7fb4c972d34e0a3da67b",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/scaffold_seed0.pt",
+      "size_bytes": 1638841,
+      "sha256": "980b20723b1d929634ccebd302e20bdc27e6224a1a8bf335f07799056b63aca1",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/scaffold_seed1.pt",
+      "size_bytes": 1638841,
+      "sha256": "89aaaea274b29c1c9b8463f645495708798e5588c5fe6f53dacb8aa087a8ccf4",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/scaffold_seed2.pt",
+      "size_bytes": 1638841,
+      "sha256": "2cec22c2b0111eccd79cc220e736c09262f6d98257d335b76f86903081063f3e",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/scaffold_seed3.pt",
+      "size_bytes": 1638841,
+      "sha256": "283253294f4f3c66a7449518c1c483d49f1a502c9d50e36d84e601127aa1840f",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/scaffold_seed4.pt",
+      "size_bytes": 1638841,
+      "sha256": "fca2e5e86c70e3a77855cd019c5abc3a8a6e23e244da72665a09397aef1bc409",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/size_seed0.pt",
+      "size_bytes": 1638773,
+      "sha256": "7df677e8f2365e88b6204f5e2be91122a9b15ecde3d307b52c8f9354e89f4e46",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/size_seed1.pt",
+      "size_bytes": 1638773,
+      "sha256": "3c156aaa7aa2c1b61d3a4bf5ef054e67cdcd7c4b83264dc9daf44d461188c4ad",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/size_seed2.pt",
+      "size_bytes": 1638773,
+      "sha256": "f10c0f4d642cb9ab058d7bed3e961a7737b65a662707c456c275e652f866a702",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/size_seed3.pt",
+      "size_bytes": 1638773,
+      "sha256": "ab03925f58cb62432963646b053522195715985e9a9fb5d152a9af15bae710d4",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/wf170_chemprop_drugood/size_seed4.pt",
+      "size_bytes": 1638773,
+      "sha256": "211c8326dbbe849283e04ed88434bd9badcff7f49015019ac50c304488e1033f",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/se3sb_seed0.pt",
+      "size_bytes": 13750206,
+      "sha256": "2f531ece88eb38d300ad0564c458cbfbdcad18122b400e6b20a3113c5e5e89c0",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/se3sb_seed1.pt",
+      "size_bytes": 13750206,
+      "sha256": "f868d97b83a471e7b5d80ed8453a4b26afe7da7c8f3df1e261a35e47574c77a5",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": ".ckpt/tmqm_pretrained_dmpnn.pt",
+      "size_bytes": 62060992,
+      "sha256": "a49cf11a522b11f49ebde81f4a8c99007d59c45d3d2619daf1733490b45abe4c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "todo.archive_2026_10_18.json",
+        "molmetal/reports/wfa200_crosswave_locator_audit/report.json",
+        "molmetal/scripts/pretrain_v4_on_tmqm.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "list/lib/python3.12/site-packages/_virtualenv.pth",
+      "size_bytes": 18,
+      "sha256": "69ac3d8f27e679c81b94ab30b3b56e9cd138219b1ba94a1fa3606d5a76a1433d",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 297515,
+      "sha256": "0be725911234bf9a97ec351cda8ba2695ca0d2b932b339932b3228ba9f58339b",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.add45d7cbf33.json",
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.json",
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.c5c21d68675a.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 297665,
+      "sha256": "bb1d67ab68401b7f70b394626e228d12adf782471be8d1f0abf723aad7280ac5",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.add45d7cbf33.json",
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.json",
+        "results/gate_scratch/wf385a3_scaffold_wire_in/train/per_epoch_metrics.c5c21d68675a.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/gate_scratch/wf385a3_scaffold_wire_in/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "size_bytes": 297665,
+      "sha256": "bb1d67ab68401b7f70b394626e228d12adf782471be8d1f0abf723aad7280ac5",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 297659,
+      "sha256": "9fea80b5dd7426ab66d85f61885cc781419f6178cef3f8c500597d4d1af2a169",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "results/gate_scratch/wfa128_scaffold_probe/train/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/gate_scratch/wfa128_scaffold_probe/ckpt/cfm_yuelbond_wasserstein_seed0_epoch0.pt",
+      "size_bytes": 297659,
+      "sha256": "9fea80b5dd7426ab66d85f61885cc781419f6178cef3f8c500597d4d1af2a169",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 5964858,
+      "sha256": "088a008ffd295aa307b2e832e24ac5655c93220b10f98520a86b4de95d4b13a9",
+      "nearby_experiment_files": [
+        "results/wfa107c_headswap/control_seed0/per_epoch_metrics.json",
+        "results/wfa107c_headswap/control_seed0/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107c_head_swap_probe.json",
+        "metrics/by_metric/wfa107d_decode_head_swap.json",
+        "metrics/by_metric/wfa107c_head_swap_probe_gen402.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 5964858,
+      "sha256": "088a008ffd295aa307b2e832e24ac5655c93220b10f98520a86b4de95d4b13a9",
+      "nearby_experiment_files": [
+        "results/wfa107c_headswap/control_seed0/per_epoch_metrics.json",
+        "results/wfa107c_headswap/control_seed0/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 5964887,
+      "sha256": "e22e9d3ff3eff3bf90d246c45242af599c82af59921cde093c78ead852921d1e",
+      "nearby_experiment_files": [
+        "results/wfa107c_headswap/edge_ring_w1_seed0/per_epoch_metrics.json",
+        "results/wfa107c_headswap/edge_ring_w1_seed0/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107c_head_swap_probe.json",
+        "metrics/by_metric/wfa107d_decode_head_swap.json",
+        "metrics/by_metric/wfa107c_head_swap_probe_gen402.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 5964887,
+      "sha256": "e22e9d3ff3eff3bf90d246c45242af599c82af59921cde093c78ead852921d1e",
+      "nearby_experiment_files": [
+        "results/wfa107c_headswap/edge_ring_w1_seed0/per_epoch_metrics.json",
+        "results/wfa107c_headswap/edge_ring_w1_seed0/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_498e955ceb_g0.pt",
+      "size_bytes": 115659,
+      "sha256": "cc481781bb98b3b9ff9fdb03c6f67db4f47fb7009795de381b6d70b23879f259",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_cec34dd110_g0.pt",
+      "size_bytes": 116799,
+      "sha256": "815e22adbce7ea8bf10eb3760257891d7c99c30a2a162d6fecfae02088d29dc4",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_498e955ceb_g402_o64_n32.pt",
+      "size_bytes": 62502,
+      "sha256": "890c6f26ba3e30da3337dd3da138726bde85d14b1c30e129889eb92d5e20b0d2",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_cec34dd110_g402_o64_n32.pt",
+      "size_bytes": 63203,
+      "sha256": "ad48a5691e8f0aa949de719608159bfb8243dbbaa734e5ad44759871ced28194",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_19c92f799a_g402_o64_n32.pt",
+      "size_bytes": 65387,
+      "sha256": "157c6434ba606d247991f78900d8cd8d7257c869ab779c8f55d757657e469711",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_5bc69b6690_g402_o64_n32.pt",
+      "size_bytes": 66473,
+      "sha256": "22ae7cefe0d0b2101f2eb06c8d6807ebaa5ff0e95a7db34588f1ba1f6aeaecd2",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_control_6da53ccb28_g0_o0_n32.pt",
+      "size_bytes": 64825,
+      "sha256": "ba02744f3509eead1b93a2a3a39caf37a3f78b40c01e3451e4fc88660ca7f637",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_edge_ring_w1_5d4f07c521_g0_o0_n32.pt",
+      "size_bytes": 65783,
+      "sha256": "cfbd82cd6922c589ca69e7eb483e4a0dd9d8ee99c0b3124bd65aeffd18f46694",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107c_headswap/gen_cache/gen_vector_channels_a0de950682_g0_o0_n32.pt",
+      "size_bytes": 66473,
+      "sha256": "c8adf7ca819068dd4b18fb71ac6936c09622c4dab10aad91c5911f35db6d8939",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9413186,
+      "sha256": "11b20170a31111a71fbd33a117cfe77da32d4ee47736290ec0dd7eac134c62b3",
+      "nearby_experiment_files": [
+        "results/wfa107e_fm_control/per_epoch_metrics.json",
+        "results/wfa107e_fm_control/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107e_head_swap_probe_gen402.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9413186,
+      "sha256": "11b20170a31111a71fbd33a117cfe77da32d4ee47736290ec0dd7eac134c62b3",
+      "nearby_experiment_files": [
+        "results/wfa107e_fm_control/per_epoch_metrics.json",
+        "results/wfa107e_fm_control/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9413215,
+      "sha256": "40bb8858f0c9e133931efc8ea792182615ba9d7db129a4b2c59ff8d071e378fb",
+      "nearby_experiment_files": [
+        "results/wfa107e_fm_edge_ring_w1/per_epoch_metrics.json",
+        "results/wfa107e_fm_edge_ring_w1/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107e_head_swap_probe_gen402.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9413215,
+      "sha256": "40bb8858f0c9e133931efc8ea792182615ba9d7db129a4b2c59ff8d071e378fb",
+      "nearby_experiment_files": [
+        "results/wfa107e_fm_edge_ring_w1/per_epoch_metrics.json",
+        "results/wfa107e_fm_edge_ring_w1/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9413253,
+      "sha256": "03e0eff5ea10d8b23c8909fffa65772622979f3869c0fba7cee7e15d2f04b67c",
+      "nearby_experiment_files": [
+        "results/wfa107g_fm_sigma_edge_ring_w1/per_epoch_metrics.json",
+        "results/wfa107g_fm_sigma_edge_ring_w1/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107g_head_swap_probe_gen0.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9413253,
+      "sha256": "03e0eff5ea10d8b23c8909fffa65772622979f3869c0fba7cee7e15d2f04b67c",
+      "nearby_experiment_files": [
+        "results/wfa107g_fm_sigma_edge_ring_w1/per_epoch_metrics.json",
+        "results/wfa107g_fm_sigma_edge_ring_w1/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9413224,
+      "sha256": "5af96b80f5c9202ea9e11b07748f913d249045ba1b91db7d429c7b1aa7f0a35b",
+      "nearby_experiment_files": [
+        "results/wfa107g_fm_sigma_control/per_epoch_metrics.json",
+        "results/wfa107g_fm_sigma_control/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa107g_head_swap_probe_gen0.json",
+        "metrics/by_metric/wfa107h_velocity_capacity.json",
+        "metrics/by_metric/wfa108h_radial_capacity_400.json",
+        "metrics/by_metric/wfa108h_vector_channels_metal_capacity.json",
+        "metrics/by_metric/wfa108h_vector_channels_nometal_capacity.json",
+        "metrics/by_metric/wfa108h_vector_channels_metal_capacity_800.json",
+        "metrics/by_metric/wfa108h_vector_channels_nometal_capacity_800.json",
+        "metrics/by_metric/wfa108_head_swap_probe_gen0.json",
+        "molmetal/scripts/wfa107h_velocity_capacity.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9413224,
+      "sha256": "5af96b80f5c9202ea9e11b07748f913d249045ba1b91db7d429c7b1aa7f0a35b",
+      "nearby_experiment_files": [
+        "results/wfa107g_fm_sigma_control/per_epoch_metrics.json",
+        "results/wfa107g_fm_sigma_control/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9514665,
+      "sha256": "5f644314da679834441e9b131613aa419482b1d4b50dc2c731775dc5974e439c",
+      "nearby_experiment_files": [
+        "results/wfa108_vector_channels/per_epoch_metrics.json",
+        "results/wfa108_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108_head_swap_probe_gen0.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc_temb64_2000.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc_temb64_500.json",
+        "metrics/by_metric/wfa108d_t_sensitivity_temb64.json",
+        "metrics/by_metric/wfa108d_t_sensitivity_trainer_ckpt.json",
+        "metrics/by_metric/wfa108d_cycle0_vc_125.json",
+        "metrics/by_metric/wfa108d_cycle1_tuniform_vc_125.json",
+        "metrics/by_metric/wfa108d_cycle25_tfix_vc_125.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_radial_1000.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_vc_1000.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_vc_125.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_vc_2000.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_vc_250.json",
+        "metrics/by_metric/wfa108d_cycle25_tuniform_vc_500.json",
+        "metrics/by_metric/wfa108d_ho_cycle100_vc_500.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc_10000.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc_2000.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc32_2000.json",
+        "metrics/by_metric/wfa108d_ho_cycle25_vc_500.json",
+        "metrics/by_metric/wfa108d_step_calib_radial_125.json",
+        "metrics/by_metric/wfa108d_step_calib_radial_250.json",
+        "metrics/by_metric/wfa108d_step_calib_vector_channels_125.json",
+        "metrics/by_metric/wfa108d_step_calib_vector_channels_250.json",
+        "metrics/by_metric/wfa108e_ho_cycle25_vc_x1_500.json",
+        "metrics/by_metric/wfa108e_ho_cycle25_vc_x1_2000.json",
+        "metrics/by_metric/wfa108e_t_sensitivity_x1.json",
+        "metrics/by_metric/wfa108d_t_sensitivity.json",
+        "molmetal/scripts/wfa108d_t_sensitivity.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9514665,
+      "sha256": "5f644314da679834441e9b131613aa419482b1d4b50dc2c731775dc5974e439c",
+      "nearby_experiment_files": [
+        "results/wfa108_vector_channels/per_epoch_metrics.json",
+        "results/wfa108_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108j_cap_A_baseline.json",
+        "metrics/by_metric/wfa108j_cap_B_sint.json",
+        "metrics/by_metric/wfa108j_cap_C_fix.json",
+        "metrics/by_metric/wfa108i_module_gates_vector_channels.json",
+        "metrics/by_metric/wfa108j_cap_A95_baseline.json",
+        "metrics/by_metric/wfa108j_cap_C95_fix.json",
+        "metrics/by_metric/wfa108j_cap_C2_normfloor.json",
+        "metrics/by_metric/wfa108j_cap_C95_normfloor.json",
+        "metrics/by_metric/wfa108j_cap_single_t050.json",
+        "metrics/by_metric/wfa108j_cap_single_t095.json",
+        "metrics/by_metric/wfa108j_cap_single_t050_2000.json",
+        "metrics/by_metric/wfa108i_module_gates_vector_channels_v2.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108b_lr1e3_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9514815,
+      "sha256": "623a4d169272f1fa92020bbb781d862ae8c0abdbbb9f7c896718ac27f208bca5",
+      "nearby_experiment_files": [
+        "results/wfa108b_lr1e3_vector_channels/master.log",
+        "results/wfa108b_lr1e3_vector_channels/per_epoch_metrics.json",
+        "results/wfa108b_lr1e3_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108b_lr1e3_vector_channels/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9514815,
+      "sha256": "27de47e376e92ec7c7dcb082ead41276449b26337b00856249e1c65638c9cdf3",
+      "nearby_experiment_files": [
+        "results/wfa108b_lr1e3_vector_channels/master.log",
+        "results/wfa108b_lr1e3_vector_channels/per_epoch_metrics.json",
+        "results/wfa108b_lr1e3_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108d_fields/trainer_ckpt.pt",
+      "size_bytes": 2122685,
+      "sha256": "263adf8965c47320e580e600b183ab84d4eb4f0842b1862325087e74b0937e55",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/wfa108d_t_sensitivity_trainer_ckpt.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108d_fields/vc32_2k.pt",
+      "size_bytes": 2222825,
+      "sha256": "0ebfb69d8db471f366c91fa777fd26e355f8d790cf3353f7519b9b86591ae40c",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108d_fields/vc8_10k.pt",
+      "size_bytes": 2124201,
+      "sha256": "e9eac0b5be9b26d4749a2e50784089ece833192fa4d2220d05f6b7068df3caa1",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/wfa108d_t_sensitivity.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108d_fields/vc8_temb64_2k.pt",
+      "size_bytes": 2157444,
+      "sha256": "3e277ca09b57ca19cfd0fe22dab70aee3da0879a5eecef5266b34e424e8a156c",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/wfa108d_t_sensitivity_temb64.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108d_fields/vc8_x1_2k.pt",
+      "size_bytes": 2124913,
+      "sha256": "b68c35aa05260a25dea9a4cde3704778afd4e72941e35f4d71a6cfb3fe4920eb",
+      "nearby_experiment_files": [],
+      "explicit_references": [
+        "metrics/by_metric/wfa108e_t_sensitivity_x1.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108h_b64_chunk2_vector_channels/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9515385,
+      "sha256": "72ce44a6e49d9c344238201cab91363b2ee3761b69664d296c6fb46afe9971a6",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108h_b32_chunk2_vector_channels/ckpt/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 9515787,
+      "sha256": "c627098fee392c1f4886a3df3548d3992b4c86dc8affb9b6a7908a2591e988f9",
+      "nearby_experiment_files": [
+        "results/wfa108h_b32_chunk2_vector_channels/per_epoch_metrics.json",
+        "results/wfa108h_b32_chunk2_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108h_t_sensitivity.json",
+        "molmetal/tests/test_wfa131_repo_path_reference_guard.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108h_b32_chunk2_vector_channels/ckpt/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 9515787,
+      "sha256": "c627098fee392c1f4886a3df3548d3992b4c86dc8affb9b6a7908a2591e988f9",
+      "nearby_experiment_files": [
+        "results/wfa108h_b32_chunk2_vector_channels/per_epoch_metrics.json",
+        "results/wfa108h_b32_chunk2_vector_channels/synthesis.md"
+      ],
+      "explicit_references": [
+        "molmetal/tests/test_wfa131_repo_path_reference_guard.py"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_lsq_init/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 3825142,
+      "sha256": "77ff2d8b90c9a14f6728d676ab7a6f50d00c0319de3db70097849dfb6c4695fe",
+      "nearby_experiment_files": [],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_fixed_cpu_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8553517,
+      "sha256": "d5b22bcb1f626681f4721fec4a58471ab49834bb2eb035d238d693b51dd49efd",
+      "nearby_experiment_files": [
+        "results/wfa108j_fixed_cpu_2026_10_25/master.log",
+        "results/wfa108j_fixed_cpu_2026_10_25/per_epoch_metrics.json",
+        "results/wfa108j_fixed_cpu_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+        "results/wfa108j_fixed_cpu_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_fixed_cpu_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8553517,
+      "sha256": "9fffb0eb4d61b223d35ef9601c7c083d5335689c4349b1ed858c0a18b0c51027",
+      "nearby_experiment_files": [
+        "results/wfa108j_fixed_cpu_2026_10_25/master.log",
+        "results/wfa108j_fixed_cpu_2026_10_25/per_epoch_metrics.json",
+        "results/wfa108j_fixed_cpu_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108j_module_gates_fixed_arm.json",
+        "results/wfa108j_fixed_cpu_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_fixed_cpu_2026_10_25/aborted/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8552850,
+      "sha256": "4e033dce7d1a2ba6b9b0304b8fa96fe212ececb3508a646d966e267784d3bcd3",
+      "nearby_experiment_files": [
+        "results/wfa108j_fixed_cpu_2026_10_25/master.log",
+        "results/wfa108j_fixed_cpu_2026_10_25/per_epoch_metrics.json",
+        "results/wfa108j_fixed_cpu_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8552825,
+      "sha256": "4a43870ebdc8c10bbd45441bb53f37090e41ba42f699470b2bcbeec2c0a672eb",
+      "nearby_experiment_files": [
+        "results/wfa108j_budget36/master.log",
+        "results/wfa108j_budget36/per_epoch_metrics.json",
+        "results/wfa108j_budget36/synthesis.md"
+      ],
+      "explicit_references": [
+        "todo.json",
+        "metrics/by_metric/wfa109_m4_peraxis_budget36_ep17.json",
+        "results/wfa108j_budget36/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_budget36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8552825,
+      "sha256": "ec87306e7b55014b23895bf2afe949816fe86481ccfad40becf9dd762b8730dc",
+      "nearby_experiment_files": [
+        "results/wfa108j_budget36/master.log",
+        "results/wfa108j_budget36/per_epoch_metrics.json",
+        "results/wfa108j_budget36/synthesis.md"
+      ],
+      "explicit_references": [
+        "todo.json",
+        "metrics/by_metric/wfa108j_module_gates_budget36.json",
+        "metrics/by_metric/wfa109_m4_peraxis_budget36_ep17.json",
+        "metrics/by_metric/wfa109_m4_peraxis_budget36_last.json",
+        "molmetal/reports/wfa142_upper_bound/probe.json",
+        "molmetal/reports/wfa142_upper_bound/nsteps10.json",
+        "molmetal/reports/wfa142_upper_bound/nsteps25.json",
+        "molmetal/reports/wfa142_upper_bound/strength12.5.json",
+        "molmetal/reports/wfa142_upper_bound/rk4_nsteps12_n8.json",
+        "molmetal/reports/wfa142_upper_bound/strength6p25_n8.json",
+        "molmetal/reports/wfa142_upper_bound/strength50_n8.json",
+        "molmetal/reports/wfa142_upper_bound/strength25_n8.json",
+        "molmetal/reports/wfa142_upper_bound/midpoint_nsteps50_n8.json",
+        "molmetal/scripts/wfa142_upper_bound_probe.py",
+        "results/wfa108j_budget36/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_gcv36/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8552807,
+      "sha256": "0550a84bf17bda6c10c6090bb2a5e3e49f8dc7a0349740dcc4cf11f284f164f3",
+      "nearby_experiment_files": [
+        "results/wfa108j_gcv36/master.log",
+        "results/wfa108j_gcv36/per_epoch_metrics.json",
+        "results/wfa108j_gcv36/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108j_module_gates_gcv36_ep0.json",
+        "metrics/by_metric/wfa109_m4_peraxis_gcv36_ep17.json",
+        "metrics/by_metric/wfa109_m4_peraxis_gcv36_ep0.json",
+        "results/wfa108j_gcv36/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108j_gcv36/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8552807,
+      "sha256": "23d5be27b0d37e486d3f1a045966fb368d653826eb6e94fa91cd01ff13e52ad9",
+      "nearby_experiment_files": [
+        "results/wfa108j_gcv36/master.log",
+        "results/wfa108j_gcv36/per_epoch_metrics.json",
+        "results/wfa108j_gcv36/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa108j_module_gates_gcv36.json",
+        "metrics/by_metric/wfa109_m4_peraxis_gcv36_ep17.json",
+        "metrics/by_metric/wfa109_m4_peraxis_gcv36_last.json",
+        "results/wfa108j_gcv36/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8392868,
+      "sha256": "aab12ace7610b68e4207496dfe434446a70a400cb216a22ed8572d41914e931b",
+      "nearby_experiment_files": [
+        "results/wfa108l_t3_smoke/master.log",
+        "results/wfa108l_t3_smoke/per_epoch_metrics.json",
+        "results/wfa108l_t3_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa108l_t3_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108l_t3_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8392868,
+      "sha256": "aab12ace7610b68e4207496dfe434446a70a400cb216a22ed8572d41914e931b",
+      "nearby_experiment_files": [
+        "results/wfa108l_t3_smoke/master.log",
+        "results/wfa108l_t3_smoke/per_epoch_metrics.json",
+        "results/wfa108l_t3_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa108l_t3_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108l_geom_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8552909,
+      "sha256": "5ad1ee56ebf041cb2a4f4704ac603400b8cf218cbd97f3c9f1cfb14dd7ceee07",
+      "nearby_experiment_files": [
+        "results/wfa108l_geom_smoke/per_epoch_metrics.json",
+        "results/wfa108l_geom_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa108l_geom_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa108l_geom_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8552909,
+      "sha256": "143ba816dbdbe85a82bb25a35b7f35b68ef9241b4c3bf9f80b3ba2c965b3c55e",
+      "nearby_experiment_files": [
+        "results/wfa108l_geom_smoke/per_epoch_metrics.json",
+        "results/wfa108l_geom_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa108l_geom_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8616299,
+      "sha256": "c7397956abd422cf2830f6e44bab5e58d09d81ea38a2a85429b622109b8abf30",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_typed_edges_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8616299,
+      "sha256": "b648a7aefefb3b291f54c8ef42469fa813e740e1abc6a5aa5a1c5b3f3de12c28",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa110_typed_edge_ablation.json",
+        "molmetal/scripts/wfa110_typed_edge_ablation.py",
+        "results/wfa110_typed_edges_smoke/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke8/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8616304,
+      "sha256": "c8e1c2c4be931d7604229601739a85f5750782d88a98e14ee8f3861d47522429",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke8/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke8/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_typed_edges_smoke8/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke8/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8616304,
+      "sha256": "a5e130e5537f1d90209bb67e9591098426f904c9abfe81d15d4498584b090a41",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke8/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke8/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa110_typed_edge_ablation_ep8.json",
+        "results/wfa110_typed_edges_smoke8/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke20/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8616309,
+      "sha256": "a91e0d8225c2e22a79b0267c707d22a88a146935dbff6ea17ec2affdfedbc4e1",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke20/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke20/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa111_ring_prior_ab.json",
+        "results/wfa110_typed_edges_smoke20/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_typed_edges_smoke20/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8616309,
+      "sha256": "b148026dd1458fbf8fb92e86bc6bd721889c2edabb96366d5dc9b0ff9c7e83d0",
+      "nearby_experiment_files": [
+        "results/wfa110_typed_edges_smoke20/per_epoch_metrics.json",
+        "results/wfa110_typed_edges_smoke20/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa110_typed_edge_ablation_ep20.json",
+        "results/wfa110_typed_edges_smoke20/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_fmode_ckpt_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8553026,
+      "sha256": "07750111e957056d3b8199437ed68e072403adb742c42b3b9174e20a0b174d43",
+      "nearby_experiment_files": [
+        "results/wfa110_fmode_ckpt_2026_10_25/per_epoch_metrics.json",
+        "results/wfa110_fmode_ckpt_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_fmode_ckpt_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_fmode_ckpt_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8553024,
+      "sha256": "c268ee8a3d0a18a5f0a3f1cd2f48fa870cba772548842d7069a0371311a51369",
+      "nearby_experiment_files": [
+        "results/wfa110_fmode_ckpt_2026_10_25/per_epoch_metrics.json",
+        "results/wfa110_fmode_ckpt_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_fmode_ckpt_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_fmode_ckpt_control_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8553696,
+      "sha256": "7140fbe4f659827fe85ef7ebd81fa1d3e6c72ed845a70a956e5b76ef4c7a6960",
+      "nearby_experiment_files": [
+        "results/wfa110_fmode_ckpt_control_2026_10_25/per_epoch_metrics.json",
+        "results/wfa110_fmode_ckpt_control_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_fmode_ckpt_control_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa110_fmode_ckpt_control_2026_10_25/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8553696,
+      "sha256": "d77cadff7a3990b7e4d293057d9d3f1dc328c1d01ac005f5d9edc3db0f319fdc",
+      "nearby_experiment_files": [
+        "results/wfa110_fmode_ckpt_control_2026_10_25/per_epoch_metrics.json",
+        "results/wfa110_fmode_ckpt_control_2026_10_25/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa110_fmode_ckpt_control_2026_10_25/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_7ep_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8617078,
+      "sha256": "c8dc02667b385aba127937e33e40d6ca03b850a24d2e8a38c4eafa0fcd802058",
+      "nearby_experiment_files": [
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/per_epoch_metrics.json",
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_7ep_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8617078,
+      "sha256": "9b8dbdbde2b937ad8c64e970a8b02195361f764df419bbc288b3f242301ba2d9",
+      "nearby_experiment_files": [
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/per_epoch_metrics.json",
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa111_ring_prior_smoke_7ep_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8616398,
+      "sha256": "79b77ddeb98cdfe4ea8c43568d0e0bfb53e60f2647bdad5915cc201945746a87",
+      "nearby_experiment_files": [
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/per_epoch_metrics.json",
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa111_ring_prior_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8616398,
+      "sha256": "79b77ddeb98cdfe4ea8c43568d0e0bfb53e60f2647bdad5915cc201945746a87",
+      "nearby_experiment_files": [
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/per_epoch_metrics.json",
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa111_ring_prior_smoke_off_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8553975,
+      "sha256": "d2b9c60628e7d337db639aafe0c3e97ebdabd65c62e3f6f4948c00c75a7b1717",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_off_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8553975,
+      "sha256": "3096799e806194842bbec7816bf77fff3a5459b28f56ff7915e553de59eb134a",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa112_cn_cond_smoke_off_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_null_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8574834,
+      "sha256": "c0022291f2d10593c52efbcfcb09dfad07c498aec9c31aa69977691da695704d",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_null_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8574834,
+      "sha256": "5797b968590ce71d0fbf3976f895941d7f16b0b1a6c7d97ed86eda0aec5ae021",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa112_cn_cond_smoke_null_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8575182,
+      "sha256": "21971c815e5f5babd9eb5ec25e82124b67f2c69bb61fbd6b35ea1519d6086314",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "metrics/by_metric/wfa112_cn_cond_ab_smoke.json",
+        "metrics/by_metric/wfa112_cn_conditioning_smoke.json",
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa112_cn_cond_smoke_on_2026_10_26/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8575182,
+      "sha256": "0af068323fb0a6fb8e6041274419a2b5b75997d9d29868a02c8eacf39b22e34b",
+      "nearby_experiment_files": [
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json",
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa112_cn_cond_smoke_on_2026_10_26/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "size_bytes": 8407800,
+      "sha256": "fed00651c795a2f78841d702161c3301dffe9927b63945aa600c42bac477c51a",
+      "nearby_experiment_files": [
+        "results/wfa113_t3_profile_cpu/per_epoch_metrics.json",
+        "results/wfa113_t3_profile_cpu/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa113_t3_profile_cpu/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    },
+    {
+      "path": "results/wfa113_t3_profile_cpu/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "size_bytes": 8407800,
+      "sha256": "fed00651c795a2f78841d702161c3301dffe9927b63945aa600c42bac477c51a",
+      "nearby_experiment_files": [
+        "results/wfa113_t3_profile_cpu/per_epoch_metrics.json",
+        "results/wfa113_t3_profile_cpu/synthesis.md"
+      ],
+      "explicit_references": [
+        "results/wfa113_t3_profile_cpu/per_epoch_metrics.json"
+      ],
+      "disposition": "unresolved_retain"
+    }
+  ]
+}

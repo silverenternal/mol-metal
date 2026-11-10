@@ -607,30 +607,76 @@ def main() -> int:
             "closest MEASURED analogue without rerunning CFM decode."
         ),
     }
-    (
-        _wf424_atomic_write_text(out_dir / "aggregate.json"),
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (
+    #             _wf424_atomic_write_text(out_dir / "aggregate.json"),
+    #             json.dumps(aggregate, indent=2) + "\n",
+    #         )
+    _wf424_atomic_write_text(
+        out_dir / "aggregate.json",
         json.dumps(aggregate, indent=2) + "\n",
     )
     print(f"[Wf-264] wrote {out_dir/'aggregate.json'}", flush=True)
 
     # Per-molecule JSON.
-    (
-        _wf424_atomic_write_text(out_dir / "per_molecule.json"),
-        json.dumps(per_mol) + "\n",
-    )
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (
+    #             _wf424_atomic_write_text(out_dir / "per_molecule.json"),
+    #             json.dumps(per_mol) + "\n",
+    #         )
+    _wf424_atomic_write_text(out_dir / "per_molecule.json", json.dumps(per_mol) + "\n")
     print(f"[Wf-264] wrote {out_dir/'per_molecule.json'}", flush=True)
 
     # Per-metal JSON.
-    (
-        _wf424_atomic_write_text(out_dir / "per_metal.json"),
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (
+    #             _wf424_atomic_write_text(out_dir / "per_metal.json"),
+    #             json.dumps(per_metal, indent=2) + "\n",
+    #         )
+    _wf424_atomic_write_text(
+        out_dir / "per_metal.json",
         json.dumps(per_metal, indent=2) + "\n",
     )
     print(f"[Wf-264] wrote {out_dir/'per_metal.json'}", flush=True)
 
     # Per-pocket Vina JSON (if run).
     if not args.skip_vina:
-        (
-            _wf424_atomic_write_text(out_dir / "per_pocket.json"),
+        # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+        # output PATH to the writer and wrapped the call in a discarded tuple, so
+        # the helper raised TypeError (missing 1 required positional argument:
+        # 'content') at runtime and NO artefact was written.  Restored to a
+        # 2-argument call that passes the intended content.
+        # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+        #     (
+        #                 _wf424_atomic_write_text(out_dir / "per_pocket.json"),
+        #                 json.dumps(
+        #                     {
+        #                         "pocket_id": args.vina_pocket,
+        #                         "n_sample": len(vina_records),
+        #                         "vina_scores": vina_records,
+        #                         "summary": vina_summary,
+        #                     },
+        #                     indent=2,
+        #                 )
+        #                 + "\n",
+        #             )
+        _wf424_atomic_write_text(
+            out_dir / "per_pocket.json",
             json.dumps(
                 {
                     "pocket_id": args.vina_pocket,
@@ -780,7 +826,14 @@ def _write_report(out_dir, aggregate, per_metal, vina_records, args) -> None:
         f"- **G5_report_path**: ✅ `{out_dir}/panel_report.md`",
         "",
     ]
-    (_wf424_atomic_write_text(out_dir / "panel_report.md"), "\n".join(lines))
+    # Wf-A269 wave-8 (2026-11-02) - REPAIR: this write call passed only the
+    # output PATH to the writer and wrapped the call in a discarded tuple, so
+    # the helper raised TypeError (missing 1 required positional argument:
+    # 'content') at runtime and NO artefact was written.  Restored to a
+    # 2-argument call that passes the intended content.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     (_wf424_atomic_write_text(out_dir / "panel_report.md"), "\n".join(lines))
+    _wf424_atomic_write_text(out_dir / "panel_report.md", "\n".join(lines))
     print(f"[Wf-264] wrote {out_dir/'panel_report.md'}", flush=True)
 
 

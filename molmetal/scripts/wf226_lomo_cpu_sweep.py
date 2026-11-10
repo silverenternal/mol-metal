@@ -38,12 +38,13 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+PY = sys.executable
 TRAIN_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_lomo_wasserstein.py"
 DEFAULT_CSV = PROJECT_ROOT / "molmetal" / "data" / "metal_lomo.csv"
 OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf226_lomo_sweep"

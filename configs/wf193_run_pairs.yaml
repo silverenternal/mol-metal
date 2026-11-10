@@ -1,0 +1,119 @@
+# configs/wf193_run_pairs.yaml — Wf-193 LOMO (metal, seed) sweep BASE config.
+#
+# Consumed by: molmetal/scripts/wf193_run_pairs.sh
+#
+# =============================================================================
+# WHAT THIS FILE IS
+# =============================================================================
+# Wf-193 ran 14 (metal, seed) pairs — Ir×3 + Os×3 + Rh×3 + Re×5 — at
+# 50 epochs, hidden 64, depth 2, on CPU, and the wrapper passed all ten
+# hyperparameters on the command line:
+#
+#   --metals Ir --seeds 1 --epochs 50 --hidden 64 --depth 2 \
+#   --wasserstein-weight 0.05 --rh-oversample 500 --device cpu \
+#   --batch-size 64 --lr 1e-3
+#
+# AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置启动
+# 训练和推理，no cli参数") forbids that: a launch wrapper may pass only
+# --config / --out-dir / --ckpt-dir / --help to a trainer. This file is where
+# those ten values live now.
+#
+# WHY A BASE + PER-PAIR DERIVATION, NOT ONE CONFIG FOR THE WHOLE SWEEP
+# ---------------------------------------------------------------------------
+# The trainer loops internally — `for metal in args.metals:` then
+# `for seed in args.seeds:` (train_metal_lomo_wasserstein.py:3112-3113). The
+# original wrapper started FOURTEEN PROCESSES, one pair each; moving the whole
+# cohort into the YAML would turn that into ONE process training twenty folds
+# in a single sweep. That is a DIFFERENT RUN, not a re-spelling of the same
+# one, so the cohort is not declared as a single `data.metals` list here.
+#
+# Instead this file is the BASE, and the wrapper derives one config per pair
+# from it (`data.metals: [<metal>]`, `protocol.seeds: [<seed>]`), writing the
+# derived configs to
+#   molmetal/reports/wf193_wf131_p3_extended/configs/<metal>_seed<seed>.yaml
+# and launching the trainer once per pair with `--config <derived>`. Fourteen
+# processes, fourteen pairs, same order, same values — the run is unchanged.
+#
+# `data.metals` / `protocol.seeds` below carry the FIRST pair (Ir, seed 1) so
+# that running THIS FILE directly reproduces one real Wf-193 pair rather than
+# a sweep nobody asked for. The cohort itself is `sweep_pairs:` at the bottom.
+#
+# EVERY VALUE BELOW IS THE VALUE THE WRAPPER USED TO PASS — NOTHING ELSE
+# =============================================================================
+data:
+  # --metals <metal> (per pair; the base carries the first pair)
+  metals:
+    - Ir
+  # --rh-oversample 500
+  rh_oversample: 500
+
+model:
+  # --hidden 64
+  hidden: 64
+  # --depth 2
+  depth: 2
+
+protocol:
+  # --epochs 50
+  epochs: 50
+  # --seeds <seed> (per pair; the base carries the first pair)
+  seeds:
+    - 1
+  # --batch-size 64
+  batch_size: 64
+  # --lr 1e-3
+  lr: 0.001
+  # --wasserstein-weight 0.05
+  wasserstein_weight: 0.05
+
+compute:
+  # --device cpu
+  device: cpu
+
+output:
+  # The wrapper passes the same path with --out-dir; an explicit CLI flag
+  # beats the YAML (wfA2_config_loader.py precedence: explicit CLI > YAML >
+  # argparse default), and --out-dir is one of the four flags §5.11 allows.
+  out_dir: /home/hugo/codes/mol-metal/molmetal/reports/wf193_wf131_p3_extended
+  # start.sh derives its log + events.jsonl paths from `base_dir`. This parser
+  # has no `base_dir` dest (MEASURED hasattr base_dir=False), so the key is
+  # reported as skipped — it is here anyway so the two halves of the run land
+  # in the same directory, exactly as configs/cfm.yaml documents for its own
+  # base_dir.
+  base_dir: /home/hugo/codes/mol-metal/molmetal/reports/wf193_wf131_p3_extended
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: false
+  user_ok_granted: AGENTS.md §5.1 standing authorization; CPU-only LOMO sweep
+
+# The 14 Wf-193 pairs, in the order the wrapper ran them. `sweep_pairs` is the
+# repo's existing convention (configs/wf124_p3_50epoch_full_sweep_g5.yaml);
+# scripts/start.sh reads it as `protocol.seeds + sweep_pairs`, so the metal
+# keys are lower-case and the real metal names are the capitalised forms
+# (Ir / Os / Rh / Re). It is a `_NON_TRAINER_SECTION` — it describes the sweep
+# structure, not a trainer hyperparameter.
+sweep_pairs:
+  ir:
+    - 1
+    - 2
+    - 3
+  os:
+    - 1
+    - 2
+    - 3
+  rh:
+    - 1
+    - 2
+    - 3
+  re:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}

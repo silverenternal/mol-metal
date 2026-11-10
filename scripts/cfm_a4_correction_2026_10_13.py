@@ -56,7 +56,7 @@ import json
 import sys
 from pathlib import Path
 
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[1]
 TODO = REPO / "cfm_todo.json"
 METRIC = "metrics/by_metric/cfm_a4_receptive_field.json"
 SCRIPT = "molmetal/scripts/wf_a4_receptive_field_2026_10_13.py"

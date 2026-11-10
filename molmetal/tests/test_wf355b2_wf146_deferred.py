@@ -23,11 +23,12 @@ output. No paper/* touches (TODO-84 honored).
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf146_deferred_runs.sh"
 PRE_FLIGHT = PROJECT_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 PER_WAVE_CHECK = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c2_per_wave_check.py"
@@ -38,6 +39,44 @@ WF146_TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "wf146_chemprop_lomo.py"
 
 # 6 DEFERRED (metal, seed) pairs per Wf-354-A1 §5 + Wf-146 sweep.log
 EXPECTED_PAIRS = ["Re_0", "Re_1", "Re_2", "Re_3", "Re_4", "Os_4"]
+
+# Wf-A269 wave-10 (2026-11-02) — REPAIR.  The R3 dry-run path aggregates
+# every selected pair into ONE DRY_RUN.log (phase_R3_dry_run_log in
+# scripts/launch_wf146_deferred_runs.sh) and RETURNS before the per-pair
+# loop, so the per-pair "==== Pair <p> begin (budget=...) ====" markers
+# NEVER reach stderr.
+# MEASURED 2026-11-02: `--dry-run --mode R3` exits 0 with 0
+# "begin (budget=" markers in stderr and 6 `pair:` lines in the DRY_RUN.log.
+# The enumeration is therefore asserted against the DRY_RUN.log — which is
+# the artefact the launcher publishes as its plan — not against stderr.
+R3_DRY_RUN_LOG = (
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf146_chemprop_lomo"
+    / "r3"
+    / "DRY_RUN.log"
+)
+
+
+def _r3_pair_labels() -> list[str]:
+    """The `pair:` labels enumerated by the most recent R3 dry-run.
+
+    Reads the AGGREGATED DRY_RUN.log that phase_R3_dry_run_log emits — the
+    authoritative record of which pairs the launcher WOULD launch.
+    """
+    assert R3_DRY_RUN_LOG.exists(), (
+        f"R3 DRY_RUN.log missing at {R3_DRY_RUN_LOG}; the R3 dry-run must "
+        "emit it before returning"
+    )
+    text = R3_DRY_RUN_LOG.read_text(encoding="utf-8")
+    return re.findall(r"^\s*pair:\s+(.+)$", text, re.MULTILINE)
+
+
+def _pair_label(pair: str) -> str:
+    """`Re_0` -> `Re seed=0` (the Wf-363-A1 `pair:` label spelling)."""
+    metal, seed = pair.split("_")
+    return f"{metal} seed={seed}"
 
 
 # ---------------------------------------------------------------------------
@@ -146,10 +185,21 @@ def test_wf355b2_bash_syntax_check():
     ), f"wrapper missing proper shebang; first line={text.splitlines()[0]!r}"
 
     # Size check — task brief says ~200 LOC; allow 300-700 with header docstring.
+    # Wf-A269 wave-10 (2026-11-02) — REPAIR.  The [300, 700] envelope was
+    # written when the wrapper was ~500 LOC.  MEASURED 2026-11-02: the
+    # wrapper is 805 LOC (the Wf-A269 wave-9/10/11 additions — budget_label /
+    # wall_policy / per_pair_budget_hr / gate_verdict schema fields + the
+    # awk-based VRAM arithmetic fix — added ~300 LOC).  The envelope is
+    # widened to admit the MEASURED size while still catching a runaway
+    # wrapper; the lower bound (300) is unchanged.
+    # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+    #     assert (
+    #         300 <= n_lines <= 700
+    #     ), f"wrapper size {n_lines} LOC outside expected [300, 700] range"
     n_lines = len(text.splitlines())
     assert (
-        300 <= n_lines <= 700
-    ), f"wrapper size {n_lines} LOC outside expected [300, 700] range"
+        300 <= n_lines <= 1200
+    ), f"wrapper size {n_lines} LOC outside expected [300, 1200] range"
 
     # Wf-146 trainer reference
     assert (
@@ -205,10 +255,16 @@ def test_wf355b2_per_run_enumeration_six_deferred():
     Verifies:
       - The wrapper source contains all 6 expected pairs (Re 0..4 + Os 4).
       - The wrapper's `--dry-run --mode R3` (with USER_OK=YES) completes
-        without crashing (full enumeration of all 6 pairs).
-      - The wrapper's `--dry-run --mode R1` runs exactly 1 pair (default =
-        first pair, which is Re_0).
-      - ONLY_RUNS=Re_1,Re_3 filter restricts the launch to those 2 pairs.
+        without crashing AND enumerates all 6 pairs in its aggregated
+        DRY_RUN.log (the artefact the launcher publishes as its plan).
+      - ONLY_RUNS=Re_1,Os_4 restricts the plan to exactly those 2 pairs.
+
+    Wf-A269 wave-10 (2026-11-02) — REPAIR: the enumeration used to be
+    asserted against stderr ("pair not enumerated in R3 dry-run output" +
+    a `begin (budget=` marker count).  The R3 dry-run aggregates the pairs
+    into DRY_RUN.log and RETURNS before the per-pair loop, so those stderr
+    markers never existed: the assertions could not hold.  The plan is now
+    read from the DRY_RUN.log the launcher emits.
     """
     assert WRAPPER.exists(), f"wrapper missing: {WRAPPER}"
 
@@ -236,7 +292,7 @@ def test_wf355b2_per_run_enumeration_six_deferred():
     assert re_count == 5, f"expected 5 Re pairs, got {re_count}"
     assert os_count == 1, f"expected 1 Os pair, got {os_count}"
 
-    # Live test — R3 dry-run enumerates all 6 pairs
+    # Live test — R3 dry-run enumerates all 6 pairs in its DRY_RUN.log
     env = {**os.environ, "USER_OK": "YES"}
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
@@ -250,16 +306,17 @@ def test_wf355b2_per_run_enumeration_six_deferred():
         f"stderr={proc.stderr[-500:]!r}"
     )
 
-    # Each pair should appear in the output (DRY_RUN.log mentions it)
-    for pair in EXPECTED_PAIRS:
-        # The metal part appears in --metals flag; the seed part appears in --seeds
-        metal, seed = pair.split("_")
-        # Look for the pair in the launch.log output
-        # (each pair generates a "Pair ${pair} begin" log line)
-        assert pair in proc.stderr, (
-            f"pair '{pair}' not enumerated in R3 dry-run output; "
-            f"stderr={proc.stderr[-500:]!r}"
-        )
+    # Each pair must appear in the AGGREGATED DRY_RUN.log the launcher
+    # published for this run (MEASURED 2026-11-02: 6 `pair:` lines).
+    labels = _r3_pair_labels()
+    assert len(labels) == 6, (
+        f"R3 DRY_RUN.log should enumerate 6 pairs; got {len(labels)}: {labels}"
+    )
+    expected_labels = {_pair_label(p) for p in EXPECTED_PAIRS}
+    assert set(labels) == expected_labels, (
+        f"R3 DRY_RUN.log pair set mismatch; expected {sorted(expected_labels)}, "
+        f"got {sorted(labels)}"
+    )
 
     # ONLY_RUNS filter test (2 of 6 pairs only)
     env_with_filter = {**os.environ, "USER_OK": "YES", "ONLY_RUNS": "Re_1,Os_4"}
@@ -274,23 +331,18 @@ def test_wf355b2_per_run_enumeration_six_deferred():
         f"R3 dry-run with ONLY_RUNS filter should exit zero; got rc={proc_filter.returncode} "
         f"stderr={proc_filter.stderr[-500:]!r}"
     )
-    # Re_1 and Os_4 should appear
-    assert (
-        "Re_1" in proc_filter.stderr
-    ), f"Re_1 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
-    assert (
-        "Os_4" in proc_filter.stderr
-    ), f"Os_4 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
-    # Re_0 / Re_2 / Re_3 / Re_4 should NOT appear (excluded by filter)
-    for excluded in ["Re_0", "Re_2", "Re_3", "Re_4"]:
-        assert excluded not in proc_filter.stderr, (
-            f"{excluded} should be excluded by ONLY_RUNS=Re_1,Os_4 filter but "
-            f"appeared in output; pair={excluded}[stderr]={proc_filter.stderr[-500:]!r}"
-        )
-
-    # Final check: only 2 pairs should have been launched (count "begin" markers)
-    n_begin = proc_filter.stderr.count("begin (budget=")
-    assert n_begin == 2, (
-        f"ONLY_RUNS=Re_1,Os_4 should launch exactly 2 pairs; got {n_begin}; "
-        f"stderr={proc_filter.stderr[-500:]!r}"
+    # The filtered plan must contain Re_1 + Os_4 and nothing else.
+    filtered_labels = _r3_pair_labels()
+    assert len(filtered_labels) == 2, (
+        f"ONLY_RUNS=Re_1,Os_4 should plan exactly 2 pairs; got "
+        f"{len(filtered_labels)}: {filtered_labels}"
     )
+    assert set(filtered_labels) == {"Re seed=1", "Os seed=4"}, (
+        f"ONLY_RUNS=Re_1,Os_4 plan mismatch; got {sorted(filtered_labels)}"
+    )
+    # Re_0 / Re_2 / Re_3 / Re_4 must NOT appear (excluded by the filter)
+    for excluded in ["Re_0", "Re_2", "Re_3", "Re_4"]:
+        assert _pair_label(excluded) not in filtered_labels, (
+            f"{excluded} should be excluded by ONLY_RUNS=Re_1,Os_4 filter but "
+            f"appeared in the plan; plan={filtered_labels}"
+        )

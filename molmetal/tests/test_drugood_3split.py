@@ -39,6 +39,7 @@ Backward-compat tests:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -331,8 +332,14 @@ class TestCLIIntegration:
 # ---------------------------------------------------------------------------
 # (6) End-to-end on real DrugOOD CSV (if available)
 # ---------------------------------------------------------------------------
-DRUGOOD_TRAIN_CSV = (
-    "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+DRUGOOD_TRAIN_CSV = str(
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "drugood"
+    / "ic50"
+    / "data"
+    / "train.csv"
 )
 
 

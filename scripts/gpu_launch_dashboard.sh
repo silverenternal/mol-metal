@@ -51,7 +51,28 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
-PROJECT_ROOT="/home/hugo/codes/mol-metal"
+# D1 REPAIR (Wf-A269, 2026-11-09): the project root used to be a hard-coded
+# host literal (an absolute checkout path), which made the launcher work
+# only on this one host and this one checkout path.  It is now derived from
+# the script's own location, so any checkout of the repo works.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# D2 REPAIR (Wf-A269, 2026-11-09): the canonical repo venv interpreter
+# (AGENTS.md section 5.9 single-venv).  There is deliberately NO fallback
+# to a bare interpreter found on PATH: an unpinned PATH interpreter is the
+# defect this replaces.
+PYTHON="${PROJECT_ROOT}/.venv/bin/python"
+if [[ ! -x "${PYTHON}" ]]; then
+  printf '[FATAL] repo venv interpreter missing or not executable: %s\n' "${PYTHON}" >&2
+  printf '        Use the repo venv (AGENTS.md section 5.9); no fallback interpreter is used.\n' >&2
+  exit 1
+fi
+
+# The heredoc python bodies below read PROJECT_ROOT from the environment
+# (they no longer carry a hard-coded host path of their own).
+export PROJECT_ROOT
+
 RESULTS_BASE="${PROJECT_ROOT}/results"
 REPORTS_BASE="${PROJECT_ROOT}/molmetal/reports"
 DASHBOARD_JSON="${REPORTS_BASE}/gpu_launch_dashboard.json"
@@ -119,7 +140,7 @@ resolve_launcher() {
 json_get() {
   local json_path=$1
   local key=$2
-  python3 -c "
+  "$PYTHON" -c "
 import json, sys
 try:
   with open('${json_path}') as f:
@@ -139,6 +160,7 @@ except (FileNotFoundError, json.JSONDecodeError, KeyError):
 #   - RUNNING       : run.log or master.log mtime < 30 min and no FAILED line
 #   - DRY_RUN_OK    : plan.json status=DRY_RUN_OK or launch.log has [OK] but no GPU usage
 #   - PLAN_ONLY     : plan.json status=PLAN_ONLY (no actual launch yet)
+#   - BLOCKED       : plan.json status=BLOCKED* (the plan CANNOT be launched)
 #   - NO_PLAN       : no plan.json + no launch.log (wrapper never run)
 #   - STALE         : launch.log mtime > 24 hr and no training_summary.json
 #
@@ -156,7 +178,7 @@ get_launcher_status() {
   # COMPLETED: training_summary.json with all OK (no missing_pairs, no failed runs)
   if [[ -f "${training_summary}" ]]; then
     local verdict
-    verdict=$(python3 -c "
+    verdict=$("$PYTHON" -c "
 import json
 try:
   with open('${training_summary}') as f:
@@ -204,6 +226,16 @@ except Exception:
       PLAN_ONLY)  echo "PLAN_ONLY";  return ;;
       COMPLETED)  echo "COMPLETED";  return ;;
       FAILED)     echo "FAILED";     return ;;
+      # Wf-A269 wave-9 (2026-11-02) - REPAIR: an UNRECOGNISED status token fell
+      # through this case and was then reported by the launch.log fallback as
+      # "READY".  plan.json's `status` is BLOCKED_CAPABILITY whenever the
+      # argv-capability gate says the trainer does not declare this launcher's
+      # flags - i.e. the plan CANNOT be launched.  Reporting that as READY is
+      # the dashboard stating the opposite of the record it is reading.
+      # SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+      #   (no BLOCKED*/READY_TO_RUN* arms existed here before this wave)
+      BLOCKED*)      echo "BLOCKED";   return ;;
+      READY_TO_RUN*) echo "READY";     return ;;
     esac
   fi
 
@@ -259,7 +291,7 @@ count_pairs() {
     local runlog="${pair_dir}/run.log"
     if [[ -f "${summary}" ]]; then
       local s
-      s=$(python3 -c "
+      s=$("$PYTHON" -c "
 import json, os, re
 try:
   with open('${summary}') as f:
@@ -348,6 +380,7 @@ status_color() {
     READY)        printf "${C_DIM}%s${C_RST}" "$1" ;;
     STALE)        printf "${C_RED}%s${C_RST}" "$1" ;;
     FAILED)       printf "${C_RED}%s${C_RST}" "$1" ;;
+    BLOCKED)      printf "${C_RED}%s${C_RST}" "$1" ;;
     NO_PLAN)      printf "${C_DIM}%s${C_RST}" "$1" ;;
     *)            printf "$1" ;;
   esac
@@ -441,7 +474,7 @@ print_launcher_detail() {
       local runlog="${pair_dir}/run.log"
       local s="PENDING"
       if [[ -f "${summary}" ]]; then
-        s=$(python3 -c "
+        s=$("$PYTHON" -c "
 import json, os, re
 try:
   with open('${summary}') as f:
@@ -532,19 +565,19 @@ print_all_summary() {
   done
   echo
   echo "Legend: COMPLETED (green), RUNNING/PARTIAL (yellow), DRY_RUN_OK (blue),"
-  echo "        FAILED (red), PLAN_ONLY/READY/STALE/NO_PLAN (dim)"
+  echo "        FAILED/BLOCKED (red), PLAN_ONLY/READY/STALE/NO_PLAN (dim)"
   echo "Bars: each █ = 5% pair completion; ░ = pending"
   echo
 }
 
 # JSON output (machine-readable)
 print_json() {
-  python3 <<'PYEOF'
+  "$PYTHON" <<'PYEOF'
 import json, os, subprocess, re
 from pathlib import Path
 from datetime import datetime, timezone
 
-PROJECT_ROOT = "/home/hugo/codes/mol-metal"
+PROJECT_ROOT = os.environ["PROJECT_ROOT"]
 LAUNCHERS = [
   ("wf355_a1", f"{PROJECT_ROOT}/molmetal/reports/wf310e_r20_p3_drugood_full_launch",
    f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh", 10.0),
@@ -686,6 +719,16 @@ def launcher_status(root):
             ps = d.get('status', '').upper()
             if ps in ('COMPLETED', 'DRY_RUN_OK', 'PLAN_ONLY', 'FAILED'):
                 return ps
+            # Wf-A269 wave-9 (2026-11-02) - REPAIR: an unrecognised status
+            # used to fall through to the launch.log fallback and be reported
+            # as READY.  BLOCKED_CAPABILITY means the plan CANNOT be launched
+            # (the argv-capability gate says the trainer does not declare this
+            # launcher's flags).  Reporting that as READY states the opposite
+            # of the record.
+            if ps.startswith('BLOCKED'):
+                return 'BLOCKED'
+            if ps.startswith('READY_TO_RUN'):
+                return 'READY'
         except Exception:
             pass
     # Top-level training_summary.json (G6-style aggregate)
@@ -841,12 +884,12 @@ print_budget_detail() {
 # remaining_hr vs the 10h session cap, plus DEFERRED_TEMP aggregate from
 # wave_budget_tracker.py (per Wf-360-A1 rebalance).
 print_budget_json() {
-  python3 <<'PYEOF'
+  "$PYTHON" <<'PYEOF'
 import json, os
 from pathlib import Path
 from datetime import datetime, timezone
 
-PROJECT_ROOT = "/home/hugo/codes/mol-metal"
+PROJECT_ROOT = os.environ["PROJECT_ROOT"]
 SESSION_CAP_HR = 10.0
 LAUNCHERS = [
   ("wf355_a1", f"{PROJECT_ROOT}/molmetal/reports/wf310e_r20_p3_drugood_full_launch", 10.0),
@@ -871,7 +914,29 @@ def _load_wave_budget_report():
         return None
 
 
+# D3 REPAIR (Wf-A269, 2026-11-09): the module load used to sit inside a bare
+# `except Exception:` that returned "DEFERRED_TEMP" - so a tracker module that
+# could not be imported AT ALL was reported as a normal classification.  Two
+# different facts were conflated:
+#   * "the tracker classifies this wave as temporary/deferred"  -> a class
+#   * "the tracker could not be loaded at all"                  -> an ERROR
+# A broken import must never read as a normal classification, so the load
+# failure is now reported as the distinct sentinel "IMPORT_FAILED" (carrying
+# the underlying exception message) and the caller surfaces it.
+_IMPORT_FAILURES = []
+
+
 def _classify_deferred_class_safe(wave_name):
+    """Classify `wave_name`.
+
+    Returns one of:
+      * ``"DEFERRED_TEMP"`` / ``"DEFERRED_PERMANENT"`` - a real classification
+        produced by the tracker module.
+      * ``"IMPORT_FAILED"`` - the tracker module could NOT be loaded (or the
+        classification call itself raised).  This is an ERROR, not a class: the
+        caller must surface it and must NOT fold it into the DEFERRED_TEMP
+        total.
+    """
     try:
         import importlib.util as _ilu
         spec = _ilu.spec_from_file_location(
@@ -879,12 +944,25 @@ def _classify_deferred_class_safe(wave_name):
             f"{PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py",
         )
         if spec is None or spec.loader is None:
-            return "DEFERRED_TEMP"
+            raise ImportError(
+                "no import spec for "
+                f"{PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py"
+            )
         mod = _ilu.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        return mod.classify_deferred_class(wave_name) or "DEFERRED_TEMP"
-    except Exception:
-        return "DEFERRED_TEMP"
+    except Exception as exc:
+        _IMPORT_FAILURES.append(
+            {"wave_name": wave_name, "error": f"{type(exc).__name__}: {exc}"}
+        )
+        return "IMPORT_FAILED"
+    try:
+        classified = mod.classify_deferred_class(wave_name)
+    except Exception as exc:
+        _IMPORT_FAILURES.append(
+            {"wave_name": wave_name, "error": f"{type(exc).__name__}: {exc}"}
+        )
+        return "IMPORT_FAILED"
+    return classified or "DEFERRED_TEMP"
 
 
 def _deferred_temp_total_hr():
@@ -897,7 +975,14 @@ def _deferred_temp_total_hr():
         if (w.get("status") or "").upper() != "DEFERRED":
             continue
         name = w.get("wave_name") or ""
-        if _classify_deferred_class_safe(name) != "DEFERRED_TEMP":
+        deferred_class = _classify_deferred_class_safe(name)
+        if deferred_class == "IMPORT_FAILED":
+            # An import failure is NOT a classification.  The wave is EXCLUDED
+            # from the DEFERRED_TEMP aggregate (no fabricated hours) and the
+            # underlying error is surfaced in the report (see
+            # deferred_temp_import_failures / honest_framing below).
+            continue
+        if deferred_class != "DEFERRED_TEMP":
             continue
         actual = w.get("actual_hr")
         estimated = w.get("estimated_hr") or 0.0
@@ -952,6 +1037,15 @@ honest_lines = [
     f"across {len(deferred_temp_waves)} wave(s); "
     f"{round(deferred_temp_remaining_hr, 2)}h headroom.",
 ]
+if _IMPORT_FAILURES:
+    honest_lines.append(
+        "HONEST-NEGATIVE: deferred-class classification FAILED for "
+        f"{len(_IMPORT_FAILURES)} wave(s) - the tracker module could not be "
+        "loaded/classified, so those waves are EXCLUDED from the "
+        "DEFERRED_TEMP total (errors: "
+        + "; ".join(f"{f['wave_name']}: {f['error']}" for f in _IMPORT_FAILURES)
+        + ")"
+    )
 if over:
     honest_lines.append(
         f"HONEST-NEGATIVE: {len(over)} launcher(s) individually exceed "
@@ -971,6 +1065,7 @@ result = {
     "total_remaining_hr": total_remaining_hr,
     "deferred_temp_total_hr": round(deferred_temp_hr, 6),
     "deferred_temp_waves": deferred_temp_waves,
+    "deferred_temp_import_failures": list(_IMPORT_FAILURES),
     "deferred_temp_remaining_hr": deferred_temp_remaining_hr,
     "honest_framing": " | ".join(honest_lines),
 }
@@ -1002,7 +1097,7 @@ print_per_pair_detail() {
     local runlog="${pair_dir}/run.log"
     local s="PENDING"
     if [[ -f "${summary}" ]]; then
-      s=$(python3 -c "
+      s=$("$PYTHON" -c "
 import json, os, re
 try:
   with open('${summary}') as f:

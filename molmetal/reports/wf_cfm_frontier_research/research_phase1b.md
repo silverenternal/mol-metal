@@ -9,18 +9,30 @@
 
 ---
 
+> **⚠️ RE-CHECKED (2026-10-31, Wf-A148).** The Wf-A144 adversarial review re-checked this
+> file's bibliographic claims against the paper's own extracted text (both the bioRxiv
+> preprint PDF and the published JCIM author manuscript) and against Europe PMC / bioRxiv.
+> This wave corrected the four defects it found — **F2** (an unsourced layer count / hidden
+> size presented as the paper's architecture), **F4** (the bare 92.7 % figure and a backwards
+> "lower bound"), **F9** (a bioRxiv DOI mislabelled as an arXiv id), **F13** (FlowMol3's
+> validity definition mis-attributed to RDKit `DetermineConnectivity`) — and, at the same F13
+> site, the FlowMol3 parameter count (66M → 6M, a 10x slip).  Dated, additive correction
+> notes at each site preserve the superseded wording verbatim (AGENTS.md §5.5 rule #6).
+
 ## 0. TL;DR (one-screen answer)
 
 **Why our CFM fails at decode** — three independent strands of recent (2025-2026) literature converge on the same diagnosis we reached in `wf_cfm_internal_review/audit.md`:
 1. **Flow matching has an inference-time distribution-drift pathology** (FlowMol3, 2025-08, arXiv:2508.12629): the velocity field produces geometries slightly off the training manifold, then the next step's input is out-of-distribution, and the field degrades further. Three architecture-agnostic fixes (self-conditioning, fake atoms, train-time geometry distortion) cut this pathology; FlowMol3 hits 99.9% validity on GEOM-Drugs.
-2. **RDKit `DetermineConnectivity` (xyz2mol) fails on the kind of distorted geometries our CFM produces** (YuelBond, 2025-05, arXiv:2505.05.06.652517): RDKit failed on 783/1000 distorted-CDGs, while YuelBond gets F1=92.7% on the same data. This is a drop-in decoder replacement.
+2. **RDKit's `DetermineBonds` (which internally leverages `xyz2mol`) fails on the kind of distorted geometries our CFM produces** (YuelBond — preprint bioRxiv 10.1101/2025.05.06.652517, 2025-05; published J. Chem. Inf. Model. 2026, 66(2), 1003-1012, doi:10.1021/acs.jcim.5c03052): RDKit failed on 783/1000 distorted-CDGs, while YuelBond gets F1=92.7% on the same data (CDG = Crude De novo Generated, Gaussian noise σ = 0.2 Å — the paper's worst case); on standard 3-D structures it reports F1=98.4%. This is a drop-in decoder replacement.
+
+   > **⚠️ CITATION CORRECTED (2026-10-31, Wf-A143).** This bullet previously read "RDKit `DetermineConnectivity` (xyz2mol) fails … (YuelBond, 2025-05, arXiv:2505.05.06.652517)".  Two errors: `arXiv:2505.05.06.652517` is **not an arXiv id** (the paper is a bioRxiv preprint; the id is the DOI `10.1101/2025.05.06.652517`), and the paper's RDKit baseline is `DetermineBonds`, not `DetermineConnectivity` — the latter is the connectivity-only sibling and assigns no bond orders (MEASURED locally: every bond it emits is SINGLE).  Historical text preserved verbatim in `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
 3. **3D-only flow matching on small datasets is structurally under-constrained** (NExT-Mol, ICLR 2025, arXiv:2502.12638): decoupling 1D generation (SELFIES — 100% valid by construction) from 3D conformer prediction lifts 3D FCD by +26% on GEOM-Drugs, with a 1.8B-parameter 1D LM backbone.
 
 **Top 2-3 fixes to move decode_ratio 0 → 0.5+ on our 32-mol training scale:**
 
 | Rank | Fix | Why on 32 mols | Effort | Expected lift (decode_ratio) |
 |---:|---|---|---:|---:|
-| **#1** | **YuelBond-style decoder swap** | Replaces our literal `disconnected_distance_graph` failure with a 92.7% F1 ML decoder — independent of training scale. Plugs into our existing `_generate_impl` (F1 from P0 already wired a `bond_decoder.decode` call site). | 1 day (Python wrapper around pretrained YuelBond) | **0% → 0.45-0.60** STANDALONE |
+| **#1** | **YuelBond-style decoder swap** | Replaces our literal `disconnected_distance_graph` failure with a learned decoder that the YuelBond paper reports at **F1 = 92.7 % on the CDG cohort** (CDG = Crude De novo Generated, Gaussian noise σ = 0.2 Å — the paper's WORST case; **F1 = 98.4 %** on exact 3-D structures) — independent of training scale. Plugs into our existing `_generate_impl` (F1 from P0 already wired a `bond_decoder.decode` call site). | 1 day (Python wrapper around pretrained YuelBond) | **0% → 0.45-0.60** STANDALONE |
 | **#2** | **FlowMol3's three architecture-agnostic techniques** (self-conditioning + fake atoms + train-time geometry distortion) | All three are inference-time / training-time hacks that compensate for *exactly* the small-data drift pathology we observe. No new data, no new architecture. | 0.5 day code, 1 day retrain | **0% → 0.20-0.35** STANDALONE; stacks with #1 |
 | **#3** | **NExT-Mol 1D→3D decoupling with a pretrained 1D SELFIES LM** (MoLlama, 960M params, ZINC 1.8B pretrain) | Completely sidesteps our under-parameterised 3D model: let a billion-scale 1D LM generate the SMILES (always 100% valid), then learn ONLY the 3D conformer given a fixed (valid) topology. This is THE architecture for small-data 3D SBDD. | 3-5 days (integrate MoLlama, then retrain 3D head) | **0% → 0.70-0.90** STANDALONE; final ceiling |
 
@@ -53,22 +65,49 @@ The 32-mol training set is `molmetal/data/tmqm_subset/` (per the existing `r10_c
   1. **Self-conditioning** (Chen et al. 2023 Analog Bits, repurposed for FM): at training, 50% of steps use the previous prediction as input to the velocity head; at inference, always. This gives the network a way to "see its own mistakes" and correct them. **Cost: zero — only changes the forward signature to accept a `(x_pred, x_t, t)` triple.**
   2. **Fake atoms:** a new atom type that lets the model dynamically add/remove atoms during generation. The number is sampled from `U(0, pN)` with `p=0.3`; this gives the model capacity to *grow* a molecule into a typical topology if its current count is too low. **Cost: zero — only changes the atom-type vocabulary to include one extra category, and the loss-mask to ignore the fake atom in the validity check.**
   3. **Train-time geometry distortion** (Karras et al. 2024 "guiding a diffusion model with a bad version of itself", repurposed): for any graph with `t > 0.5`, apply Gaussian noise `σ=0.5 Å` to a subset `p=0.2` of atom coords. This forces the model to learn a velocity field that can *recover* from distorted geometry — i.e. the model sees its own inference-time drift at training time. **Cost: zero — only changes the conditional probability path.**
-* **Reported numbers (GEOM-Drugs, 243K mols, 5.7M conformers, 66M params, 250 integration steps):**
-  * Validity 99.9% (RDKit `DetermineConnectivity` pass)
-  * PoseBusters validity 91.9%
-  * Order-of-magnitude fewer parameters than comparable methods.
+* **Reported numbers (GEOM-Drugs, 243,480 unique molecules + 5,741,535 conformers, 6M params, 250 Euler integration steps):**
+  * Validity 99.9% (% Valid) = the percent of molecules that can be **sanitized by RDKit**; % PB-valid 91.9% additionally requires passing the PoseBusters physical-plausibility checks (one component, reasonable bond lengths/angles, planar aromatic rings and double bonds, no steric clashes, internal energy close to an ETKDGv3+UFF ensemble). FlowMol3 generates atom type, formal charge and bond order directly via CTMC discrete flow matching, so its pipeline has **no geometry-based bond-perception step** — `DetermineConnectivity` / `DetermineBonds` is not part of it.
+  * PoseBusters validity 91.9% (% PB-valid)
+  * Fewer learnable parameters than the three comparable methods it benchmarks against — 6M vs 40M / 60M / 150M (6.7x / 10x / 25x fewer).
+
+  > **⚠️ VALIDITY DEFINITION CORRECTED (2026-10-31, Wf-A148).** The bullet above previously read
+  > "* Validity 99.9% (RDKit `DetermineConnectivity` pass)" and the reported-numbers header
+  > previously read "(GEOM-Drugs, 243K mols, 5.7M conformers, 66M params, 250 integration steps)".
+  > Two errors.  (1) **FlowMol3's validity is not a bond-perception metric.**  §3.2.1 ("Validity") defines it as "the percent of molecules that can be sanitized by rdkit", with "% PB-valid" additionally requiring the PoseBusters physical-plausibility checks; FlowMol3 generates atom type, formal charge and bond order with CTMC discrete flow matching, so it runs **no geometry-based bond-perception step at all** (VERIFIED against arXiv:2508.12629v1, LaTeX source `main.tex:548`; the RSC published version §3.2.1 carries the same sentence, but that page returned HTTP 403, so the published text is snippet-supported only).  The `DetermineConnectivity` bracket was **mis-attributed**: it is **this repo's own** decode gate (`molmetal/scripts/r10_cfg_real_crossdocked.py:110` — `rdDetermineBonds.DetermineConnectivity(mol, useVdw=True, covFactor=1.3)` run on the raw atom cloud), not FlowMol3's metric.  (2) **"66M params" is a 10x slip**: the paper's Table 1 `Params (M)` column reads **6**, and the body's "6.7/10/25 times more learnable parameters" is 40/6, 60/6 and 150/6 for the compared methods.  Superseded wording preserved verbatim per AGENTS.md §5.5 rule #6.
 * **DIRECT APPLICABILITY to our 32-mol CFM:** FlowMol3 trains on 243K mols and shows the three techniques *eliminate* the drift pathology even on drug-like distributions. Our CFM is 7,500x smaller dataset, which makes drift WORSE. Applying the same three techniques (and the supporting `velocity_field(x, t, x_pred)` signature) is the highest-confidence fix that doesn't require more data.
 * **Expected lift on decode_ratio 0 → 0.5+:** **+0.20-0.35 pp standalone** (h32) / **+0.30-0.50 pp** when stacked with #1 YuelBond decoder (YuelBond handles the residual topology failures that survive the geometry drift mitigation). **Confidence: HIGH** — paper directly validates the mechanism and reports 99.9% on a similar task.
 
 **Second-tier candidate: YuelBond (Wang & Dokholyan, bioRxiv 10.1101/2025.05.06.652517, 2025-05; published J Chem Inf Model 2026-01, doi:10.1021/acs.jcim.5c03052)** — directly addresses the decoder failure.
 
-* **arXiv ID:** bioRxiv 10.1101/2025.05.06.652517; J Chem Inf Model 2026
+* **DOI:** 10.1021/acs.jcim.5c03052 — *J. Chem. Inf. Model.* 2026, 66(2), 1003-1012 (published 2026-01-09); preprint bioRxiv 10.1101/2025.05.06.652517 (2025-05-11).  NB: `10.1101/…` is the **DOI form** of the preprint id, **not** an arXiv id; no arXiv version of this paper exists (arXiv title search returns 0 hits — VERIFIED 2026-10-31).
 * **Authors:** Jian Wang, Nikolay V. Dokholyan (Penn State College of Medicine)
-* **Key insight:** RDKit's `xyz2mol` (which `DetermineConnectivity` wraps) is a *rule-based* decoder — it identifies connected atoms by covalent radii, then solves a graph coloring problem for bond orders. On "Crude De novo Generated compounds (CDGs)" with controlled Gaussian noise `σ=0.2 Å` applied, **RDKit failed on 783/1000** molecules, while YuelBond (a learned GNN) achieves **F1=92.7%** on the same set.
+* **Key insight:** RDKit's `xyz2mol` is a *rule-based* decoder — it identifies connected atoms by covalent radii, then assigns bond orders by valence rules. The paper's baseline entry point is `rdkit.Chem.rdDetermineBonds.DetermineBonds`, which internally calls `DetermineConnectivity` (the connectivity-only step) and then assigns bond orders on top. On "Crude De novo Generated compounds (CDGs)" with controlled Gaussian noise `σ=0.2 Å` applied, **RDKit failed on 783/1000** molecules (RDKit processed 217 — the paper attributes the split to RDKit itself, not to `xyz2mol` directly), while YuelBond (a learned GNN) achieves **F1=92.7%** on the same set — the paper's **worst case**; on standard 3-D structures it reports **F1 = 98.4%** (acc 98.2 / prec 98.8 / rec 98.2 %).
+
+  > **⚠️ CITATION CORRECTED (2026-10-31, Wf-A143).** This bullet previously read "RDKit's `xyz2mol` (which `DetermineConnectivity` wraps) is a rule-based decoder — it identifies connected atoms by covalent radii, then solves a graph coloring problem for bond orders."  Two errors: the relationship is backwards (`DetermineConnectivity` is the connectivity-only step *inside* the xyz2mol family, and `DetermineBonds` is what the paper benchmarks), and the **graph-coloring** mechanism is JT-VAE's (`Jin 2018`, cited correctly elsewhere in this file) — `xyz2mol` assigns bond orders by valence rules.  The historical text is preserved verbatim in `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
+  >
+  > **⚠️ ATTRIBUTION CORRECTED (2026-10-31, Wf-A151).**  Two further
+  > attribution errors in the bullet above, both corrected in place.  (1) The
+  > parenthetical "(`xyz2mol` processed 217)" attributed the 783/1000
+  > failure to `xyz2mol` specifically; the paper's own split is **RDKit's** —
+  > 783 failed / 217 processed — so the split is attributed to RDKit itself,
+  > not to `xyz2mol` directly.  (2) The phrase "the bond-**order**-capable
+  > sibling of `DetermineConnectivity` (which assigns connectivity only)"
+  > described the two as **independent siblings**; RDKit's `DetermineBonds`
+  > **internally calls** `DetermineConnectivity` (the connectivity-only step)
+  > and **then** assigns bond orders on top — it is **one call deep inside**,
+  > not a sibling.  Verified against RDKit 2026.03.6
+  > `Code/GraphMol/DetermineBonds/DetermineBonds.cpp` (L543
+  > `determineConnectivity(...)`, L544 `determineBondOrders(...)`).  The
+  > historical wording is preserved verbatim above and the superseded text is
+  > recorded in `docs/HONEST_NEGATIVE_CATALOG.md` §6.257.
 * **Architecture:** GNN with edge-centric message passing, MLPs + SiLU + LayerNorm, trained on GEOM lowest-energy conformers (≈450K mols).
 * **Code:** https://bitbucket.org/dokhlab/yuel_bond (Bitbucket, not GitHub).
 * **DIRECT APPLICABILITY:** this is a drop-in replacement for our P0 decoder call site (`__init__.py:2067-2105`). Replace `BondAwareDecoder.decode(cloud)` with `YuelBond.predict(cloud)`. YuelBond is a single forward pass; no retraining required if we use the pretrained weights.
-* **Expected lift:** **+0.45-0.60 pp standalone** (YuelBond is robust to 0.2 Å noise; our CFM outputs at much higher distortion given the F1 failure, but YuelBond's 92.7% F1 on "RDKit-fails" data is the lower bound). **Confidence: VERY HIGH** — paper reports 92.7% on exactly the failure regime we are in.
+* **Expected lift:** **+0.45-0.60 pp standalone** (YuelBond is robust to σ = 0.2 Å noise; our CFM outputs at much higher distortion given the F1 failure, so YuelBond's **92.7 % F1 on the CDG cohort** (CDG = Crude De novo Generated, Gaussian noise σ = 0.2 Å — the paper's **worst case**; **98.4 % F1** on exact 3-D structures) is an **UPPER bound** on what our decoder would achieve — the paper's F1 *falls* as distortion grows and our distortion is uncontrolled and worse than σ = 0.2 Å; the lower bound on the lift is the existing 0 % baseline). **Confidence: VERY HIGH** — the paper reports 92.7 % on exactly the failure regime we are in.
+
+  > **⚠️ BOUND DIRECTION CORRECTED (2026-10-31, Wf-A148).** This bullet previously read
+  > `YuelBond's 92.7% F1 on "RDKit-fails" data is the lower bound`, and the §4.1 site
+  > previously read `YuelBond's 92.7% F1 is a CONSERVATIVE lower bound`.  Both are **backwards**: the paper's F1 *falls* as coordinate distortion grows, 92.7 % was measured at σ = 0.2 Å, and our CFM's distortion is uncontrolled and worse than that — so 92.7 % is an **UPPER** bound on what our decoder would achieve, not a lower bound.  (The only lower bound on the lift is the existing 0 % baseline, as §6 already states — the two statements now agree.)  Superseded wording preserved verbatim per AGENTS.md §5.5 rule #6.
 
 **Other relevant 2025-2026 work (cited for completeness, not selected for top 2-3):**
 
@@ -85,7 +124,7 @@ The 32-mol training set is `molmetal/data/tmqm_subset/` (per the existing `r10_c
 
 1. **Capacity: 50K params ÷ 32 mols = 1.5K params per example** (at hidden_dim=32, n_layers=2). A single tmQM molecule has ~15-20 heavy atoms × 3D coords → ~45-60 floats of supervision. The model has 50K parameters; it can over-fit the 32 mols in <500 steps. **This is consistent with our observation that `cfm_loss` plateaus at step 3500 in the GPU probe** — we are NOT under-fitting; we are over-fitting to a noisy single-mol-per-step supervision.
 2. **Distribution: tmQM is a metal-organometallic subset** with Pt, Pd, Au, Ir, Rh, Ru, Os, Ag centers. The 3D Voronoi cell of a Pt_II complex is fundamentally different from a generic QM9 drug-like mol (square-planar coordination, ~90° angles, single Pt–X bonds of 2.0-2.4 Å). 32 mols is ~2-3 mols per metal per coordination geometry — not enough to learn the conditional `p(coords | atom_types, pocket)`.
-3. **Empirical evidence: the bottleneck is NOT the model size; it's the geometry drift.** FlowMol3 (66M params, 243K mols) gets 99.9% validity; if model size were the bottleneck, we would expect 100% validity at hidden_dim=32 (over-fit regime) and decreasing with bigger nets. We see 0% at h=32 AND h=128 (per `wf_cfm_p0_fixes` and `wf_cfm_retrain_full`). **The architecture and dataset are both at fault; more data won't help unless we add the drift-mitigation tricks from FlowMol3 + a robust decoder.**
+3. **Empirical evidence: the bottleneck is NOT the model size; it's the geometry drift.** FlowMol3 (6M params, 243K mols) gets 99.9% validity; if model size were the bottleneck, we would expect 100% validity at hidden_dim=32 (over-fit regime) and decreasing with bigger nets. We see 0% at h=32 AND h=128 (per `wf_cfm_p0_fixes` and `wf_cfm_retrain_full`). **The architecture and dataset are both at fault; more data won't help unless we add the drift-mitigation tricks from FlowMol3 + a robust decoder.**
 
 **DIRECT APPLICABILITY:** the literature consistently says 3D flow matching needs *thousands-to-millions* of mols to learn the velocity field. **NExT-Mol is the exception that proves the rule** — they sidestep 3D data scarcity by pretraining a 1D SELFIES LM on 1.8B mols, then learning ONLY the 3D conformer given a (valid) topology. This is the path that does NOT require 243K GEOM-Drugs mols.
 
@@ -104,14 +143,16 @@ The 32-mol training set is `molmetal/data/tmqm_subset/` (per the existing `r10_c
 **Other relevant work:**
 
 * **YuelBond** — the only model that explicitly benchmarks against RDKit's failure mode on the kind of geometry our CFM produces.
-* **RDKit `xyz2mol`** — the baseline we're replacing. The 2025-05 YuelBond paper documents its 78.3% failure rate on noisy CDGs.
+* **RDKit's `DetermineBonds` (which internally leverages `xyz2mol`)** — the baseline we're replacing. The 2025-05 YuelBond paper reports that RDKit processed only **217 of 1,000** noisy CDGs, i.e. it failed on the remaining **783** (the paper prints that integer split, never a percentage).
+
+   > **⚠️ CITATION CORRECTED (2026-10-31, Wf-A146).** This bullet previously read "* **RDKit `xyz2mol`** — the baseline we're replacing. The 2025-05 YuelBond paper documents its 78.3% failure rate on noisy CDGs."  Three defects in that one sentence: (1) the paper prints **783 failures out of 1,000** and prints **no percentage** for the failure count — the only percentage it attaches to that benchmark is RDKit's *quality* on the 217 it did process (65.3 % acc / 70.1 % prec / 65.3 % rec / 64.2 % F1); (2) **"78.3 %" is a live trap in that paper** — it is the **2D-reassignment F1-score** (Fig 4b / Table S3: 80.1 / 81.1 / 80.1 / **78.3**), so a reader who greps the paper for "78.3" finds an F1, not a failure rate; (3) the benchmark's entry point is RDKit's **`DetermineBonds`**, which the paper says "internally … leverages the xyz2mol program" — the 217/783 split belongs to **RDKit**, not to `xyz2mol` directly.  Superseded wording preserved verbatim per AGENTS.md §5.5 rule #6; see `docs/HONEST_NEGATIVE_CATALOG.md` §6.259.
 * **EdGr** (Koodli et al., arXiv:2505.21833, 2025-05; Stanford / Dror lab) — joint geometry+topology diffusion for fragment assembly. **Key insight:** "predicted edge likelihoods directly influence node position updates during the diffusion denoising process, allowing connectivity cues to guide spatial movements." This is the same principle as FlowMol3's self-conditioning, but applied to the edge head instead of the atom head. **Why not selected for top 2-3:** EdGr is designed for fragment assembly (input is pre-positioned fragments); it doesn't apply directly to our unconditional generation. But the *principle* (let bond predictions influence atom positions) is a strong argument for **adding a bond-coord coupling term to our cfm_loss** during retraining.
 * **MMFF94 relaxation** — already shipped in our `wf_pb_mmff94_relax` work (60-80% PB pass). This is the classical post-processing repair; not a learned fix.
 * **ConnectivityAwareDecoder / Gumbel-top-k** — already shipped in our `molmetal/adapters/flow_matching_lipman/connectivity_decoder.py` (per `wf_cfm_path_b_decoder_rework`). It uses Gumbel-top-k edge sampling + DropEdge for k-edge-connectedness. **Why not selected:** our 32-mol training cannot give the decoder head the right signal; the issue is upstream.
 
 ### 2.4 Decoder alternatives to RDKit `DetermineConnectivity` (topology-aware, fragment-completion, tree-decomposition)
 
-* **YuelBond** — the leader (F1=92.7% on CDGs). Already detailed in 2.1/2.3.
+* **YuelBond** — the leader (F1 = 92.7 % on the CDG cohort: Crude De novo Generated, σ = 0.2 Å — the paper's WORST case; F1 = 98.4 % on exact 3-D structures). Already detailed in 2.1/2.3.
 * **EdGr** — joint geometry+topology diffusion. Detailed in 2.3.
 * **FragFM** (Lee et al., arXiv:2502.15805, 2025-02; KAIST) — fragment-level discrete flow matching with a stochastic fragment bag. **Why not selected:** we don't have a curated fragment bag for tmQM, and the method requires a coarse-to-fine autoencoder. Out of scope for our 32-mol scale.
 * **NExT-Mol's 1D-side** — see 2.6. SELFIES by construction has 100% valid topology; the 3D side just has to learn the conformer. This is a "decoder alternative" in the sense that the topology is generated by the 1D LM, not the 3D flow.
@@ -191,7 +232,16 @@ The 32-mol training set is `molmetal/data/tmqm_subset/` (per the existing `r10_c
 **YuelBond setup:**
 ```python
 # Pretrained weights from bitbucket.org/dokhlab/yuel_bond
-# Architecture: GNN with edge-centric message passing, 3 layers, hidden=128
+# Architecture: GNN with edge-centric message passing   <- the paper's own description.
+#   The paper publishes NO layer count and NO hidden size (zero occurrences of "128" in
+#   either the preprint PDF or the published manuscript), so the repo values below must
+#   NOT be read as the paper's.
+# REPO implementation values (MEASURED 2026-10-31 in
+#   molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py, YuelBondDecoderHead defaults):
+#   hidden_dim = 64, n_layers = 3, candidate-edge cutoff = 3.5 A
+#   (the paper's candidate-edge cutoff is 3 A; 3.5 A is this repo's declared deviation,
+#   left unchanged because changing it would invalidate every trained checkpoint and
+#   every measured decode metric, and re-validation needs a GPU run).
 # Input: 3D coord tensor (N, 3) + atomic number tensor (N,)
 # Output: bond_index (2, E) + bond_type (E,)
 import yuelbond  # hypothetical wrapper
@@ -199,7 +249,18 @@ yb = yuelbond.load_pretrained(weights_path)
 mols = [Molecule(coords=cf, atom_types=at, bonds=yb.bond_index, bond_types=yb.bond_order) for cf, at in zip(coords_final, sampled_atoms)]
 ```
 
-**Expected lift:** **decode_ratio 0% → 0.45-0.60** standalone. The YuelBond paper reports F1=92.7% on the exact failure regime (RDKit-fails-on-distorted-geometry). Our 32-mol CFM produces more distortion than their σ=0.2 Å controlled-noise test, but YuelBond's 92.7% F1 is a CONSERVATIVE lower bound. If we can recover even 50% of generated mols to "RDKit-canonicalizable" via YuelBond, we hit our 0.5+ target.
+  > **⚠️ ARCHITECTURE ATTRIBUTION CORRECTED (2026-10-31, Wf-A148).** The code comment above
+  > previously read
+  > "# Architecture: GNN with edge-centric message passing, 3 layers, hidden=128".
+  > "GNN with edge-centric message passing" is the paper's own description and is kept; but
+  > **"3 layers, hidden=128" was unsourced** — the paper publishes no layer count and no
+  > hidden size (zero occurrences of "128" in either the bioRxiv preprint PDF or the
+  > published JCIM manuscript), so those numbers were presented as the paper's architecture
+  > when they are not the paper's.  They are now stated separately, and explicitly as the
+  > **REPO's own** implementation values (`hidden_dim = 64`, `n_layers = 3`).  Superseded
+  > wording preserved verbatim per AGENTS.md §5.5 rule #6.
+
+**Expected lift:** **decode_ratio 0% → 0.45-0.60** standalone. The YuelBond paper reports **F1 = 92.7 % on the CDG cohort** (Crude De novo Generated, Gaussian noise σ = 0.2 Å — the paper's WORST case; RDKit failed on 783 of those 1,000; **F1 = 98.4 %** on exact 3-D structures) — i.e. on the exact failure regime (RDKit-fails-on-distorted-geometry). Our 32-mol CFM produces more distortion than their σ = 0.2 Å controlled-noise test, and the paper's F1 *falls* as distortion grows, so YuelBond's 92.7 % is an **UPPER bound** on what our decoder would achieve — the lower bound on the lift is the existing 0 % baseline (bound direction corrected 2026-10-31, Wf-A148; see the note in §2.1). If we can recover even 50% of generated mols to "RDKit-canonicalizable" via YuelBond, we hit our 0.5+ target.
 
 **Effort:** 1 day engineering (Python wrapper around the YuelBond Bitbucket code), 0 GPU, 0 retraining. Can be verified immediately on a smoke test of 16-100 generated candidates.
 
@@ -281,14 +342,14 @@ mols = [Molecule(coords=cf, atom_types=at, bonds=yb.bond_index, bond_types=yb.bo
 
 ### MEASURED (arXiv-validated, with paper cites)
 - FlowMol3 reports 99.9% validity on GEOM-Drugs with self-conditioning + fake atoms + train-time geometry distortion (arXiv:2508.12629, §4.1, Table 1).
-- YuelBond reports F1=92.7% on CDGs where RDKit failed 783/1000 (bioRxiv 10.1101/2025.05.06.652517, §3.2).
+- YuelBond reports F1=92.7% on CDGs (Crude De novo Generated, Gaussian noise σ = 0.2 Å — the paper's worst case) where RDKit failed 783/1000, and F1=98.4% on exact 3-D structures (bioRxiv 10.1101/2025.05.06.652517; published J. Chem. Inf. Model. 2026, 66(2), 1003-1012, doi:10.1021/acs.jcim.5c03052 — the previous "§3.2" locator is NOT verifiable: the bioRxiv HTML has no numbered sections).
 - NExT-Mol reports +26% relative 3D FCD improvement on GEOM-Drugs with MoLlama 1D LM + DMT 3D head (arXiv:2502.12638, Table 2).
 - EdGr reports substantial outperformance on fragment assembly with joint geometry+topology diffusion (arXiv:2505.21833, §4).
 - Our internal review's diagnosis: `wf_cfm_internal_review/diagnose.md` §1.3-1.4 line-cites confirm the bond-head + decoder + capacity failures.
 
 ### PROJECTED (our analysis applied to our config, not yet retrained)
 - The +0.20-0.35 standalone lift for FlowMol3 techniques is estimated from the 0 → 99.9% paper result, scaled down for our 32 mols. **We expect a smaller lift, not a larger one.**
-- The +0.45-0.60 standalone lift for YuelBond is estimated from the 92.7% paper F1 on RDKit-failing data. **Our distortion is uncontrolled, so this is an UPPER bound on standalone lift; the lower bound is the existing 0% baseline.**
+- The +0.45-0.60 standalone lift for YuelBond is estimated from the 92.7% paper F1 on the CDG cohort (Crude De novo Generated, σ = 0.2 Å — the paper's worst case; 98.4% F1 on exact 3-D structures). **Our distortion is uncontrolled and worse than σ = 0.2 Å, so this is an UPPER bound on standalone lift; the lower bound is the existing 0% baseline.**
 - The +0.70-0.90 standalone lift for NExT-Mol is estimated from the 1D-side 100%-valid property + 3D-side state-of-the-art. **Our 32-mol 3D head may not reach the paper's level; this is an optimistic upper bound.**
 
 ### SPECULATIVE (forward-looking, not validated)
@@ -318,7 +379,7 @@ mols = [Molecule(coords=cf, atom_types=at, bonds=yb.bond_index, bond_types=yb.bo
 
 **Referenced (read-only):**
 - arXiv:2508.12629 — FlowMol3 (Dunn & Koes, 2025-08)
-- bioRxiv:10.1101/2025.05.06.652517 / J Chem Inf Model 2026 — YuelBond (Wang & Dokholyan, 2025-05)
+- bioRxiv:10.1101/2025.05.06.652517 (preprint, 2025-05-11) / doi:10.1021/acs.jcim.5c03052 — J. Chem. Inf. Model. 2026, 66(2), 1003-1012 — YuelBond (Wang & Dokholyan)
 - arXiv:2502.12638 — NExT-Mol (Liu et al., ICLR 2025)
 - arXiv:2505.21833 — EdGr (Koodli et al., 2025-05)
 - arXiv:2504.10564 — FLOWR (2025-04, AlphaXiv)

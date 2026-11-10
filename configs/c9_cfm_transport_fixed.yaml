@@ -1,0 +1,424 @@
+# configs/c9_cfm_transport_fixed.yaml — the head swap that the CFM line never ran.
+#
+# WHAT THIS FILE IS (2026-10-30, Wf-A114).  c9 is c8's protocol with the
+# coordinate head replaced.  Every other hyperparameter — corpus, budget,
+# optimiser, objective, eval pool, split, noise scale — is c8's, so c8 vs c9
+# is a ONE-VARIABLE comparison on the axis that the audit showed to be
+# broken.
+#
+# THE DEFECT c9 IS AIMED AT (MEASURED, not inferred)
+# ----------------------------------------------------
+# "The CFM model generates fragments in most cases."  Traced end-to-end on
+# 2026-10-30, the honest numbers are:
+#
+#   * c8 (`molmetal/reports/cfm_c8_fullgen_2026_10_24/per_epoch_metrics.csv`)
+#     read `gen_validity` = 1.000 at all three epochs it completed, while
+#     `gen_single_fragment_ratio` read 0.203 / 0.200 / 0.348.  `gen_validity`
+#     counts a sample as valid when RDKit can sanitise it, and a pile of loose
+#     atoms sanitises — so the headline metric was blind to the failure.
+#   * the SAME run's decoder, applied to the SAME run's REAL val clouds, read
+#     `decode_single_fragment_ratio` 0.9375 and `decode_ratio` 1.000.  The
+#     decoder is exonerated: it turns real metal-complex geometry into a
+#     connected molecule 93.75% of the time.  What fails is the field's
+#     transport, not the bond head.
+#   * project-wide this is the DEFAULT state of the line, not a c8 regression:
+#     of the 42 CFM runs in `metrics/by_metric/cfm_run_census.json`, 41 carry
+#     an honest `gen_single_fragment_ratio` and it ranges 0.0000 - 0.8772
+#     (HIGHER IS BETTER — it is the fraction of the pool that is ONE
+#     connected fragment).  `cfm_c7_fullgen_2026_10_20` read `gen_validity`
+#     1.000 with `gen_single_fragment_ratio` 0.1222.
+#   * the field is wrong exactly where the ODE starts.  §6.187 Finding 4
+#     (`docs/HONEST_NEGATIVE_CATALOG.md`), 10,000-step field split by `t`:
+#         t     v=0     network   closed-form Gaussian c(t)*x_t
+#         0.05  9.008   14.781    3.605      <- 64% WORSE than predicting zero
+#         0.25  9.008    9.638    5.458
+#         0.50  9.008    7.445    8.344
+#         0.75  9.008    6.744    8.537
+#         0.95  9.008    6.994    6.305
+#     and the endpoint cosine v(0.05)·v(0.95) is +0.736 — the field is
+#     t-sensitive but never REVERSES, while the conditional mean must
+#     (-x_t as t->0, +x_t as t->1).  Its low-t output is orthogonal to the
+#     required direction (cosine -0.04).
+#
+# WHY THE FIX WAS NEVER RUN (the reason this file exists)
+# -------------------------------------------------------
+# The three levers that address that defect are already in the tree and are
+# already unit-tested, and no full-corpus config has ever combined them:
+#
+#   * `velocity_head: vector_channels` (Wf-A108a).  The radial head is
+#     `tanh(vel_head(h)) * vel_scale * (x - centroid) + last_v`: its dominant
+#     term is a scalar gate on the centroid RAY, so it cannot represent an
+#     arbitrary per-atom direction.  §6.173 Finding 1, overfit ONE 8-cloud
+#     batch at 400 steps: radial MSE 10.529 = 98.8% of the v=0 baseline,
+#     vector channels 1.157 = 10.9%, cosine 0.944 vs 0.130.  §6.187 Finding 1
+#     repeats it under the trainer's own sampling distribution at 1000 steps:
+#     radial closes 1.2% of the gap, vector channels 20.1%.
+#   * `velocity_head_init: lsq` + `vector_channel_norm_gain: fixed` (Wf-A108j).
+#     The gate is zero-initialised, so a fresh field emits exactly v = 0 and
+#     every unit of output magnitude has to be paid for at lr*steps; the
+#     trainable `norm_gain` collapsed 1.0 -> 0.0017 in three layers while the
+#     field emitted |v| = 0.135 against a target of 5.325.
+#   * `fm_batch_chunk_ratio: 2.0` (Wf-A108g).  On 64 real clouds 79.5% of the
+#     atom slots and 83.6% of the edge slots are padding at ratio 0 (§6.188).
+#
+# WHAT IS MEASURED FOR c9 SPECIFICALLY (CPU, this session, 2026-10-30)
+# ------------------------------------------------------------------
+# A paired 500-step capacity A/B, same cohort (MetalCytoToxDB 5-metal, 8
+# clouds, 464 atoms, `fm_noise_sigma` 2.485), `--eval-seed 999`,
+# `--cycle-batches 25 --t-uniform`, lr 1e-3, seed 0, `--device cpu`, both
+# arms `--fresh` so the delta is attributable to the head:
+#
+#   arm                              reached   gap_closed   |v|    cosine   verdict
+#   radial (c8's head)                13.995     0.0266     0.630   0.169   CANNOT_FIT
+#   vector_channels + lsq + fixed      13.852     0.0366     0.799   0.196   CANNOT_FIT
+#   (v=0 baseline 14.378; radial oracle ceiling 9.735)
+#
+#   Artifact: `metrics/by_metric/cfm_c9_head_ab_capacity.json`.
+#
+#   HONEST-NEGATIVE, and it is the first thing to read: **neither arm fits.**
+#   The c9 combination is better (gap closed 2.66% -> 3.66%, cosine 0.169 ->
+#   0.196, |v| 0.630 -> 0.799 against a target of 6.029) but 500 CPU steps on
+#   8 clouds is 1.2% of what a full-corpus epoch contains, so this is a
+#   direction, not an effect size.  §6.187 Finding 2 puts the same curve in
+#   context: 125 steps closes 5.2%, 500 closes 18.6%, 2000 closes 21.7% — on
+#   the tmQM held-out cohort, whose v=0 baseline is 9.008 rather than 14.378,
+#   so only `gap_closed` is comparable across the two and the c9 arms here sit
+#   BELOW the published curve at every budget.
+#
+#   What the LSQ initialiser does buy is measurable at step 0, on the field's
+#   own terms (`lsq_init.post_init` in the same artifact):
+#         t=0.05  ratio 0.535347  cosine 0.545125
+#         t=0.50  ratio 0.113305  cosine 0.044057
+#         t=0.95  ratio 0.458254  cosine 0.482562
+#   The field STARTS 46.5% below the v=0 baseline at t = 0.05 with a positive
+#   cosine of 0.545, where the trained c8 field measured cosine -0.04
+#   (§6.187 Finding 4).  That is a repair of the sign/direction error at the
+#   one end the audit localised the failure to.  It is not proof that the run
+#   will produce molecules.
+#
+#   The per-knot fit is t-dependent and the middle is degenerate
+#   (`lsq_init.knots`): ratio 0.5709 (t=0.02), 0.4891 (0.14), 0.3664 (0.26),
+#   0.1486 (0.38, ridge_relative 3.0), 0.0051 (0.50, ridge_relative 30.0),
+#   0.2660 (0.62), 0.3747 (0.74), 0.4504 (0.86), 0.4735 (0.98).  The GCV ridge
+#   blows up exactly at t = 0.38-0.50, so the mid-path is NOT solved by the
+#   initialiser and must be learned.  The sinusoidal regression smooths over
+#   it (post_init t=0.50 is 0.1133, better than the raw knot's 0.0051), and
+#   the fit residual is 301.8 against a gate weight rms of 963.4.
+#
+# WHAT c9 DOES NOT CLAIM
+# ----------------------
+#   * That it fixes fragmentation.  It has not been run: this config was
+#     written under a standing "no GPU experiments" directive, so c9 exists as
+#     an ARM, and the fragmentation verdict for c9 does not exist yet.
+#   * That the capacity A/B above is an effect size.  It is one seed, one
+#     cohort, 500 steps, CPU, and both arms FAIL to fit.
+#   * That `t_embedding_dim: 32` helps on its own.  It is a MEASURED NULL
+#     (§6.187 Finding 3: 0.219 -> 0.224 at 2000 steps, 0.193 -> 0.152 — worse
+#     — at 500).  It is present here ONLY because the LSQ gate is regressed on
+#     the sinusoidal t embedding: with `t_embedding_dim: 0` the trainer takes
+#     the `mode: "constant"` branch of `init_velocity_head_lsq`
+#     (train_cfm_yuelbond_wasserstein.py:3593-3595) and the gate is t-blind,
+#     which is the one thing a flow-matching field cannot afford.
+#
+#   * That `prediction_target: x1` would help more.  §6.195 measured it: the
+#     x1 target repairs the low-t end and pays for it at high-t, and NEITHER
+#     arm beats the one-parameter closed-form Gaussian.  So `velocity` is
+#     kept, DECLARED rather than defaulted.
+#   * That `metal_frame_channels` helps.  §6.173 Finding 1: at 400 steps the
+#     two arms differ by 0.09 MSE, at 800 by 2.9, on one seed — init variance,
+#     not an effect.  It stays off.
+#   * That `radial_centroid_masked` would help.  It is INERT here: the
+#     `vector_channels` branch of `EGNNVelocityField.forward`
+#     (molmetal/adapters/flow_matching_lipman/__init__.py:2646-2696) never
+#     computes a centroid, so the flag has no code path to influence.  It is
+#     deliberately absent from this file rather than set to true.
+#
+# MEMORY (read before launching)
+# -------------------------------
+# c8's own header: this protocol peaks near 80 GB with a 768-candidate eval
+# pool.  c9 needs GPU0 (RTX PRO 6000 Blackwell, 97,889 MiB); GPU1 has 32,607
+# MiB and batch 64 with FmOdeTerm live exceeds 32 GiB even at the chunkable
+# vector_channels head (c8's `honest_framing.deferred`).  §6.196 recorded a
+# 20 GiB cap silently zeroing weighted terms, which is why this file does not
+# advertise a smaller-batch variant: a run that silently loses terms is worse
+# than no run.
+#
+# SECTION SCHEMA — READ BEFORE ADDING A KEY
+# -------------------------------------------
+# The loader does NOT flatten arbitrary sections.  `_resolve_dest`
+# (wfA2_config_loader.py:258) only matches a leaf when the YAML path is
+# EXACTLY two components AND the section is in `_LEAF_FALLBACK_SECTIONS`
+# (wfA2_config_loader.py:78):
+#     protocol | model | flow | data | compute | eval | output | train
+# Every head lever below lives in `flow:` for that reason, and each one is a
+# real dest on this parser (MEASURED by round-trip, see the header of
+# `molmetal/tests/test_wfa114_c9_config_binding.py`).
+#
+# Validate any edit to this file with:
+#   WFA2_CONFIG_STRICT=1 .venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/c9_cfm_transport_fixed.yaml --help
+# Strict mode raises UnresolvedConfigKey listing every dead key.
+
+model:
+  # c8's values, unchanged.
+  hidden_dim: 128
+  n_layers: 3
+  yuelbond_vocab: all6
+  use_egnn_velocity: true
+  use_tmqm_init: true
+  use_fm_objective: true
+  fm_t_per_cloud: 1
+  connectivity_prior: "on"
+  connectivity_prior_min_logit: 0.0
+
+train:
+  n_train: 26715
+  epochs: 18
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  fm_noise_sigma: 2.485
+  lr_scheduler: none
+  lr_warmup_epochs: 5
+  resume_from: none
+  bond_head_warmup_epochs: 0
+  consistency_weight: 0.05
+  shortcut_distill: true
+  so3_average: true
+  sboo3_n_rot: 1
+
+flow:
+  # ======================================================================
+  # THE VARIABLE.  Everything else in this file is c8's.
+  # ======================================================================
+  # Wf-A108a.  `radial` (c8's head) emits
+  #     tanh(vel_head(h)) * vel_scale * (x - centroid) + last_v
+  # — a scalar gate on the centroid ray.  `vector_channels` keeps C = 8
+  # independent 3-vectors per atom, gates them per edge with a scalar (GVP,
+  # arXiv:2009.03092), injects a per-channel radial message (SemlaFlow,
+  # arXiv:2406.07266 Eq. 4/10-13), normalises each channel to a unit
+  # direction and emits a learned per-atom projection of them (FlowMol3,
+  # arXiv:2508.12629 Eq. 18).  Survey: docs/WF_A108_VELOCITY_HEAD_SURVEY.md.
+  #
+  # MEASURED (§6.173 Finding 1, 400 steps, ONE 8-cloud batch):
+  #     radial              MSE 10.529 = 98.8% of v=0, |v| 0.288, cosine 0.130
+  #     vector channels     MSE  1.157 = 10.9% of v=0, |v| 4.797, cosine 0.944
+  # and under the trainer's own sampling distribution at 1000 steps
+  # (§6.187 Finding 1): radial closes 1.2% of the gap, vector channels 20.1%.
+  velocity_head: vector_channels
+  # C = 8 channels per atom.  MEASURED NULL (§6.187 Finding 3): C = 32 gave
+  # gap closed 0.217 vs 0.217 at 2000 steps.  8 is the shipped default and
+  # the value every published vector-channel number above was measured with.
+  vector_channels: 8
+  # Wf-A108j.  `learnable` let the per-channel `norm_gain` collapse
+  # 1.0 -> 0.0017 in three layers while the field emitted |v| = 0.135
+  # against a target of 5.325 — with the output near zero, shrinking the
+  # channels is the only move that reduces the loss.  `fixed` freezes it at
+  # 1 so the gate is the only magnitude control.  At the least-squares
+  # optimum dL/d(gain_c) is exactly zero, so starting there also removes the
+  # gradient that drives the collapse.
+  vector_channel_norm_gain: fixed
+  # Wf-A108j.  `lsq` initialises the gate by a closed-form least-squares
+  # solve on the first FM batch at 9 t-knots, then fits
+  # `w(t) = w0 + W1 * phi(t)` and writes `w0` into `channel_gate.bias` and
+  # `W1` into `t_gate.weight`.  A constant gate would leave the field
+  # t-blind, which is exactly what a flow-matching field cannot afford.
+  # REQUIRES `velocity_head: vector_channels` — the initialiser refuses any
+  # other head (train_cfm_yuelbond_wasserstein.py:3503-3510).
+  velocity_head_init: lsq
+  velocity_head_init_knots: 9
+  # REQUIRED BY `velocity_head_init: lsq`, and a measured null on its own.
+  # With `t_embedding_dim: 0` the LSQ fit takes the `mode: "constant"`
+  # branch (train_cfm_yuelbond_wasserstein.py:3593-3595) and the gate never
+  # sees t.  On its own it is null: §6.187 Finding 3 measured gap closed
+  # 0.219 -> 0.224 at 2000 steps and 0.193 -> 0.152 (WORSE) at 500.
+  t_embedding_dim: 32
+  # Wf-A108g.  Split an FM batch into size-homogeneous groups whose pad
+  # width is the GROUP max instead of the BATCH max.  On 64 real clouds
+  # 79.5% of atom slots and 83.6% of edge slots are padding at ratio 0
+  # (§6.188).  A value of 2.0 keeps each group's largest/smallest atom count
+  # within 2x.
+  #
+  # NUMERICALLY INERT HERE, AND THAT IS THE POINT.  `_fm_padding_invariant`
+  # (train_cfm_yuelbond_wasserstein.py:3189-3205) is True for
+  # `vector_channels`, and the trainer's own docstring says the split is
+  # "exactly equivalent" in that case: the vector_channels head takes its
+  # centroid from `initial_vector_channels`, which divides by the REAL atom
+  # count.  So under this head the chunk plan buys MEMORY, not a different
+  # number — it is not a second variable in the c8-vs-c9 comparison.
+  fm_batch_chunk_ratio: 2.0
+  # DECLARED, at the argparse default, because c8 never declared it either.
+  # `velocity` regresses x1 - x0 directly (bit-exact pre-Wf-A108e).  `x1`
+  # changes what the low-t target is, and §6.195 measured that arm: it
+  # repairs the low-t end and pays for it at high-t, and NEITHER arm beats the
+  # one-parameter closed-form Gaussian `c(t)·x_t`.  So it is not folded in.
+  prediction_target: velocity
+
+  # c8's `flow:` block, unchanged.  The three class-wrapper weights are
+  # DECLARED at the values argparse was already supplying (Wf-A108i) so the
+  # config describes its own objective; `DEC_energy_default_off` in
+  # cfm_todo.json records that none of the three has ever been A/B'd.
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  use_ot_cfm: false
+  monge_ampere: false
+  fm_ode_term_weight: 0.05
+  energy_conservation_weight: 0.05
+  sboo3_term_weight: 0.05
+
+compute:
+  device: cuda:0
+  tf32: false
+  torch_compile: false
+  triton_ot: false
+
+eval:
+  # Wf-A114 (2026-10-30) — THE EARLY-STOP AXIS WAS BLIND, and c9 fixes it.
+  #
+  # c8 gated on `bond_type_f1`, which does not see fragmentation: the same
+  # blindness that let 41 runs through.  The comment that used to stand here
+  # claimed `early_stop_metric` accepts no fragmentation value.  THAT IS NO
+  # LONGER TRUE: `molecule_validity` was added to EARLY_STOP_METRICS on
+  # 2026-10-27 (Wf-A113, commit 27777532) and is the criterion that can
+  # fail — RDKit-strict AND one fragment AND the seed metal AND n_heavy > 1.
+  #
+  # WHY THIS MATTERS, MEASURED (metrics/by_metric/cfm_run_census.json ->
+  # fragmentation_summary):
+  #   * 2 runs reach a real gen_validity (> 0.5) at some epoch and then
+  #     COLLAPSE to gen_validity == 0.0 at their last epoch
+  #     (cfm_fm_control_2026_10_09, cfm_bond_head_30ep_onecycle_2026_10_09).
+  #   * 8 of 27 runs reach an end-to-end single-molecule rate >= 0.50 at
+  #     their BEST epoch (max 0.9375, cfm_fm_ab_2026_10_09 epoch 12), while
+  #     the same runs' LAST epoch reads 0.0000-0.2499.
+  #   So the checkpoint that survives a `bond_type_f1` gate is not the
+  #   checkpoint that holds the molecules together.
+  #
+  # DEGRADATION IS SAFE: if the generation eval did not run this epoch,
+  # `molecule_validity` degrades to bond_exact_type -> gen_validity ->
+  # decode_ratio, and the degradation is recorded per epoch.  c9 runs the
+  # generation eval every epoch (gen_eval_n 128 x 6 seeds), so the strict
+  # criterion is available.
+  #
+  # ATTRIBUTION CAVEAT, STATED HERE BECAUSE IT IS REAL: c9 now differs from
+  # c8 in TWO ways — the coordinate head AND the early-stop criterion.  A
+  # c9-vs-c8 comparison is therefore NOT a single-variable A/B.  The design
+  # that would separate them is 2x2 (head x early-stop); this config is the
+  # (fixed, fixed) corner of it.
+  early_stop_metric: molecule_validity
+  early_stop_epsilon: 0.85
+  early_stop_patience: 16
+  wasserstein_weight: 0.1
+  gen_eval_n: 128
+  gen_eval_seeds: "0 1 2 3 4 5"
+  n_steps: 50
+  method: midpoint
+
+output:
+  out_dir: molmetal/reports/cfm_c9_transport_fixed_2026_10_30
+  ckpt_dir: molmetal/reports/cfm_c9_transport_fixed_2026_10_30/checkpoints
+  base_dir: molmetal/reports/cfm_c9_transport_fixed_2026_10_30
+  checkpoint_interval: 1
+  resume_from: none
+  save_generated_smiles: true
+  log_master: molmetal/reports/cfm_c9_transport_fixed_2026_10_30/master.log
+  training_summary: molmetal/reports/cfm_c9_transport_fixed_2026_10_30/synthesis.md
+
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
+  tmqm_split_kind: scaffold
+
+protocol:
+  seed: 0
+  epochs: 18
+  weight_decay: 0.0
+  max_norm: 5.0
+  scheduler:
+    type: none
+    # `protocol.scheduler.warmup_epochs` is DELIBERATELY ABSENT, and this is
+    # the one place c9 differs from c8's launcher block for a reason other
+    # than the head.  `warmup_epochs` is an ALIAS for the trainer dest
+    # `lr_warmup_epochs` (molmetal/scripts/wfA2_config_loader.py:140), and
+    # because `train.lr_warmup_epochs` above sets that dest directly, the
+    # alias is suppressed — but the suppression does NOT stop the key from
+    # being escalated in strict mode, so a config carrying BOTH keys cannot
+    # pass its own §5.11 gate.
+    #
+    # MEASURED: `configs/c8_fullgen_b64_2026_10_24.yaml` fails strict mode
+    # on exactly this key —
+    #   UnresolvedConfigKey: protocol.scheduler.warmup_epochs=5
+    # so this is a pre-existing defect in the shipped c8 reference, not
+    # something c9 introduced.
+    #
+    # The launcher is unaffected: scripts/start.sh:525 reads
+    # `_first(_sched.get('warmup_epochs'), _train.get('lr_warmup_epochs'))`,
+    # so with the protocol key gone it falls back to `train.lr_warmup_epochs`
+    # and LR_WARMUP_EPOCHS is still 5.
+    min_lr: 1.0e-06
+
+honest_framing:
+  claims:
+  - "This is c8's protocol with the coordinate head replaced.  Corpus
+    (26,715 tmQM clouds), budget (18 epochs x batch 64), lr 3.0e-4, scaffold
+    split, fm_noise_sigma 2.485, eval pool (128 x 6 seeds), objective weights
+    and split are c8's byte-for-byte."
+  - "The single intended difference is the `flow:` block's coordinate head:
+    vector_channels + lsq init + fixed norm gain + t_embedding_dim 32, with
+    fm_batch_chunk_ratio 2.0, which under this head is numerically exact
+    (the trainer's own docstring, train_cfm_yuelbond_wasserstein.py:3193-3198)."
+  - "The defect c9 targets is MEASURED: c8's `gen_validity` read 1.000 while
+    its `gen_single_fragment_ratio` read 0.203 / 0.200 / 0.348, and the
+    same run's decoder on the same run's real val clouds read
+    `decode_single_fragment_ratio` 0.9375.  The decoder works; the field's
+    transport does not."
+  - "The CPU capacity A/B for this exact head combination is on disk at
+    metrics/by_metric/cfm_c9_head_ab_capacity.json, together with the LSQ
+    initialiser's per-knot report and its step-0 post-init readings."
+  do_not_claim:
+  - "That c9 fixes fragmentation.  IT HAS NOT BEEN RUN: this file was
+    written under a standing no-GPU directive.  There is no c9 generation
+    pool, so there is no c9 fragmentation number, and none may be quoted."
+  - "That the head swap is an effect size.  The paired 500-step CPU A/B
+    (one seed, one 8-cloud cohort) read gap closed 0.0266 (radial) vs 0.0366
+    (c9 combination) and BOTH arms returned CANNOT_FIT.  It is a direction."
+  - "That `t_embedding_dim: 32` helps.  It is a measured null (§6.187
+    Finding 3) and is present only because the LSQ gate is regressed on it."
+  - "That the `prediction_target: x1` arm would be better.  §6.195 measured
+    it and it is not folded in."
+  - "That `metal_frame_channels` would help.  §6.173 Finding 1 measured init
+    variance, not an effect, so it stays off."
+  - "That `radial_centroid_masked` does anything here.  It is INERT under
+    `vector_channels` — that branch never computes a centroid — which is why
+    the key is absent from this file rather than set."
+  - "That checkpoint selection protects against fragmentation.  The gate is
+    `bond_type_f1`, which cannot see it.  The connectivity verdict is a
+    separate post-run step (molmetal/scripts/cfm_fragmentation_gate.py)."
+  deferred:
+  - "Any c8-vs-c9 comparison of generation pools: c9 has no pool.  When it
+    has one, score both with the same gate and the same thresholds."
+  - "A smaller-batch or GPU1 variant.  MEASURED on c8's protocol: this
+    protocol needs ~80 GB; GPU1 has 32,607 MiB and batch 64 with
+    FmOdeTerm live exceeds 32 GiB even at the chunkable vector_channels head.
+    §6.196 recorded a 20 GiB cap silently zeroing weighted terms, which is
+    worse than no run at all."
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: "Wf-A114 c9 arm (2026-10-30). GPU launch NOT granted in this
+    session: the standing directive was 'do not run any GPU-related
+    experiments'.  This file is the arm, prepared and audited, not launched."
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed}

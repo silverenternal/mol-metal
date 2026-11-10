@@ -34,15 +34,27 @@ Our CFM at `molmetal/adapters/flow_matching_lipman/__init__.py` produces **decod
 ### 2A. Frontline benchmarks showing the SAME failure mode (decode ratio = 0)
 
 #### A1. **FlowMol3** — Dunn & Koes, 2025
-- arXiv: **2508.16916** (Aug 2025, Catalyzex listing)
+- arXiv: **2508.12629** (Aug 2025, Catalyzex listing)
 - Code: https://github.com/dunni3/FlowMol3
 - Headline claim: "**nearly 100% molecular validity** for drug-like molecules with explicit hydrogens" using a **multi-modal flow matching** model
+
+> **⚠️ CORRECTED (2026-10-31, Wf-A148).**  The arXiv id for FlowMol3
+> in this file was **2508.16916**, which is **a different paper**.  The
+> correct id is **2508.12629**.  MEASURED 2026-10-31 from the arXiv abs
+> pages: `2508.12629` = *"FlowMol3: Flow Matching for 3D De Novo
+> Small-Molecule Generation"*; `2508.16916` = *"The compressible
+> Neural Particle Method for Simulating Compressible Viscous Fluid
+> Flows"*.  This repo's own
+> `molmetal/reports/wf_cfm_frontier_research/research_phase1b.md` already
+> cites **2508.12629** — so the repo was internally inconsistent about
+> its own top-ranked frontier candidate.  Superseded wording preserved
+> verbatim per AGENTS.md §5.5 rule #6.
 - **Key insight** (the bit relevant to us): three architecture-agnostic techniques — **self-conditioning**, **fake atoms**, **train-time geometry distortion** — fix what the authors call a "**general pathology affecting transport-based generative models**" that manifests as **distribution drift during inference** producing invalid molecules. This is the SAME pathology we are seeing.
 - Applicability: All three techniques are drop-in to our `velocity_net.py` EGNN. **Fake atoms** = pad batch to fixed N=64 with masked slots; **train-time geometry distortion** = random small affine transforms on input coords during training; **self-conditioning** = feed model's own previous-step prediction back into next step. All 3 are CPU-only changes. **Effort estimate**: 6-10 hours CPU engineering + 1-day GPU retrain.
 - **Why it matters for us**: directly addresses 0% decode ratio with a published 2025 paper, not a 2023 paper. The authors explicitly hypothesize these techniques "**mitigate a general pathology affecting transport-based generative models**" which matches our diagnosis 1:1.
 
 #### A2. **FlowMol-CTMC** — Dunn & Koes, 2024
-- arXiv: **2411.16644** (NeurIPS 2024 ML4StructBio workshop, J Chem Inf Model 2024)
+- arXiv: **2411.16644** (NeurIPS 2024 Workshop on Machine Learning for Structural Biology; **no journal version exists** — Europe PMC hitCount 0, Crossref JCIM journal query total-results 0)
 - Headline claim: **26% higher molecular stability** than continuous-DFM baselines with fewer learnable parameters; SOTA 3D de novo molecule generation at the time
 - **Key insight**: Continuous-Time Markov Chain (CTMC) flow matching — atom types **jump** between discrete states (mask ↔ C/N/O/...) rather than flowing on a probability simplex. This eliminates the "soft-to-hard lag" where continuous flows take many sampling steps to commit to a discrete atom type.
 - Figure 5 in the paper shows that for continuous-embedding approaches (e.g. SimplexFlow), the final atom-type assignment happens late in the trajectory, while CTMC commits early.
@@ -251,7 +263,7 @@ Our CFM at `molmetal/adapters/flow_matching_lipman/__init__.py` produces **decod
 
 | # | Paper | arXiv | Venue |
 |---|-------|-------|-------|
-| A1 | FlowMol3 (Dunn & Koes) | 2508.16916 | Catalyzex listing 2025 |
+| A1 | FlowMol3 (Dunn & Koes) | 2508.12629 | Catalyzex listing 2025 |
 | A2 | FlowMol-CTMC (Dunn & Koes) | 2411.16644 | NeurIPS 2024 ML4StructBio |
 | A3 | SemlaFlow (Irwin et al.) | 2406.07266 | AISTATS 2025 |
 | B1 | Equivariant Flow Matching (Klein et al.) | 2306.15030 | NeurIPS 2023 |

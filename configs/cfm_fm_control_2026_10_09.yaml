@@ -1,6 +1,6 @@
 # Wf-FIX-3LINES-C4-RESTART yaml-driven config (2026-10-09)
 #
-# Per AGENTS.md §5.7 + §5.8 + user voice 2026-10-09 verbatim
+# Per AGENTS.md §5.7 + ~~§5.8~~ → AGENTS.md §5.11 (YAML-only launch) + user voice 2026-10-09 verbatim; corrected 2026-11-01
 #   "这个退火的配置你是应该写到yaml配置文件里面的，快速收敛优化呢，那个用了吗？"
 #
 # Key changes vs the original C4 100-ep launcher (which had NO scheduler,
@@ -213,8 +213,10 @@ directives:
   time_budget: 48h              # per session budget (2026-10-03 user grant)
   user_ok_required: true
   user_ok_granted: 2026-10-09 user OK on Plan A restart (OneCycle + 30 ep)
+  # Wf-A176 (2026-11-01): the required-gate entry `p1_pytorch_cuda_available`
+  # was removed — that gate name has 0 occurrences in any .py (HEAD + full
+  # git history), so it had no referent. See catalog §6.268.
   pre_flight_gates_required:
-  - p1_pytorch_cuda_available
   - p2_tests_pass
   - p3_wf343c4_anchor_freshness_24h
   - p3_wf343c2_per_wave_runtime_check

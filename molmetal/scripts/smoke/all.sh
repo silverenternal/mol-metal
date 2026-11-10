@@ -39,6 +39,31 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${HERE}/../../.." && pwd)"
 cd "${REPO_ROOT}"
 
+# ---------------------------------------------------------------------------
+# CPU LOCK (AGENTS.md §5.1 + the repo's standing 0-GPU session contract)
+#
+# MEASURED 2026-11-04: running this script WITHOUT the lock allocated
+# 694 MiB of GPU memory per process, while the smoke itself ran on CPU.
+# The cause is the IMPORT CHAIN, not the smoke: it reaches
+# ``torch.cuda.get_device_capability()``
+# (molmetal/adapters/flow_matching_lipman/amp.py:187), and
+# ``torch.cuda.is_available()`` initialises the CUDA driver (``cuInit``),
+# which creates the context.  This is the SAME class Wf-A162 repaired
+# inside the pre-flight (molmetal/scripts/pre_flight_check.py::_smoke_device)
+# -- but these smoke scripts carried no lock of their own, so a caller who
+# forgot it silently paid the allocation (this repo's own session did,
+# twice, before the lock existed).
+#
+# These smokes are CPU-BY-DESIGN (each script's own header budgets the run
+# as "<2 min on CPU"), so the lock is the DEFAULT rather than a caller
+# obligation: an unset ``CUDA_VISIBLE_DEVICES`` becomes "" (no device
+# visible), and an explicit value is PRESERVED so a deliberate GPU smoke
+# is still possible.  ``MOLMETAL_SMOKE_DEVICE=cpu`` is the repo's parity
+# kill-switch (honoured by ``metallo_drug_smoke_retrain.py::_resolve_device``).
+# ---------------------------------------------------------------------------
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-}"
+export MOLMETAL_SMOKE_DEVICE="${MOLMETAL_SMOKE_DEVICE:-cpu}"
+
 # Per-script timeout (seconds).  Each smoke already enforces a hard ceiling
 # on its own; this is just a backstop so a runaway sub-smoke cannot
 # lock the dispatch harness indefinitely.

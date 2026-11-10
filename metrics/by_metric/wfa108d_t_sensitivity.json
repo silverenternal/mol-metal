@@ -17,33 +17,42 @@
  "per_t": [
   {
    "t": 0.05,
-   "mean_v_norm": 3.2756564617156982,
+   "mean_v_norm": 3.2756567001342773,
    "rms_v_per_coord": 2.2344579696655273,
    "cos_to_signflip_ref": -0.0407763347029686,
    "mse_zero": 9.008453369140625,
    "mse_network": 14.78072452545166,
    "mse_gaussian_closed_form": 3.605022430419922,
-   "gaussian_coefficient": -1.021912273273329
+   "gaussian_coefficient": -1.021912273273329,
+   "corr_v_norm_with_radius": 0.5153242945671082,
+   "corr_gauss_norm_with_radius": 0.9793350100517273,
+   "mean_radius": 3.536371946334839
   },
   {
    "t": 0.25,
-   "mean_v_norm": 2.579500436782837,
-   "rms_v_per_coord": 1.751236081123352,
-   "cos_to_signflip_ref": 0.2507428824901581,
+   "mean_v_norm": 2.579500675201416,
+   "rms_v_per_coord": 1.7512362003326416,
+   "cos_to_signflip_ref": 0.2507428228855133,
    "mse_zero": 9.008453369140625,
    "mse_network": 9.638006210327148,
    "mse_gaussian_closed_form": 5.458390235900879,
-   "gaussian_coefficient": -1.0380323967575351
+   "gaussian_coefficient": -1.0380323967575351,
+   "corr_v_norm_with_radius": 0.5862366557121277,
+   "corr_gauss_norm_with_radius": 0.9800384640693665,
+   "mean_radius": 2.886723756790161
   },
   {
    "t": 0.5,
    "mean_v_norm": 2.2461259365081787,
    "rms_v_per_coord": 1.4729864597320557,
-   "cos_to_signflip_ref": -0.17571251094341278,
+   "cos_to_signflip_ref": -0.1757124960422516,
    "mse_zero": 9.008453369140625,
-   "mse_network": 7.445043087005615,
+   "mse_network": 7.445042610168457,
    "mse_gaussian_closed_form": 8.343853950500488,
-   "gaussian_coefficient": -0.6186081421952488
+   "gaussian_coefficient": -0.6186081421952488,
+   "corr_v_norm_with_radius": 0.45764946937561035,
+   "corr_gauss_norm_with_radius": 0.9859457015991211,
+   "mean_radius": 2.350559711456299
   },
   {
    "t": 0.75,
@@ -53,17 +62,23 @@
    "mse_zero": 9.008453369140625,
    "mse_network": 6.743524074554443,
    "mse_gaussian_closed_form": 8.53679084777832,
-   "gaussian_coefficient": 0.4054358545484166
+   "gaussian_coefficient": 0.4054358545484166,
+   "corr_v_norm_with_radius": 0.4884222745895386,
+   "corr_gauss_norm_with_radius": 0.9974193572998047,
+   "mean_radius": 2.226630926132202
   },
   {
    "t": 0.95,
-   "mean_v_norm": 2.6358609199523926,
+   "mean_v_norm": 2.6358611583709717,
    "rms_v_per_coord": 1.8128653764724731,
    "cos_to_signflip_ref": 0.6767557859420776,
    "mse_zero": 9.008453369140625,
-   "mse_network": 6.9941911697387695,
+   "mse_network": 6.994189739227295,
    "mse_gaussian_closed_form": 6.304538726806641,
-   "gaussian_coefficient": 0.9426605537545321
+   "gaussian_coefficient": 0.9426605537545321,
+   "corr_v_norm_with_radius": 0.7896019220352173,
+   "corr_gauss_norm_with_radius": 0.9999454021453857,
+   "mean_radius": 2.46282958984375
   }
  ],
  "pairwise": [
@@ -71,13 +86,13 @@
    "t_a": 0.05,
    "t_b": 0.25,
    "cosine": 0.7360314130783081,
-   "relative_l2_change": 0.7609025627938154
+   "relative_l2_change": 0.760902536916301
   },
   {
    "t_a": 0.05,
    "t_b": 0.5,
-   "cosine": 0.3446348309516907,
-   "relative_l2_change": 1.19338898173858
+   "cosine": 0.34463489055633545,
+   "relative_l2_change": 1.193388908615774
   },
   {
    "t_a": 0.05,
@@ -88,47 +103,47 @@
   {
    "t_a": 0.05,
    "t_b": 0.95,
-   "cosine": -0.010852313600480556,
+   "cosine": -0.010852284729480743,
    "relative_l2_change": 1.4293949559100965
   },
   {
    "t_a": 0.25,
    "t_b": 0.5,
-   "cosine": 0.674002468585968,
-   "relative_l2_change": 0.8227574707392727
+   "cosine": 0.6740024089813232,
+   "relative_l2_change": 0.8227574361497711
   },
   {
    "t_a": 0.25,
    "t_b": 0.75,
-   "cosine": 0.35110074281692505,
-   "relative_l2_change": 1.1419444713158204
+   "cosine": 0.3511006832122803,
+   "relative_l2_change": 1.1419444249978645
   },
   {
    "t_a": 0.25,
    "t_b": 0.95,
-   "cosine": 0.13568058609962463,
-   "relative_l2_change": 1.3150354002336337
+   "cosine": 0.13568063080310822,
+   "relative_l2_change": 1.3150351980930266
   },
   {
    "t_a": 0.5,
    "t_b": 0.75,
    "cosine": 0.7678161859512329,
-   "relative_l2_change": 0.6852618534288553
+   "relative_l2_change": 0.6852618976732971
   },
   {
    "t_a": 0.5,
    "t_b": 0.95,
-   "cosine": 0.4919387996196747,
+   "cosine": 0.4919387698173523,
    "relative_l2_change": 1.0237419690287268
   },
   {
    "t_a": 0.75,
    "t_b": 0.95,
-   "cosine": 0.8253227472305298,
+   "cosine": 0.8253228068351746,
    "relative_l2_change": 0.604081671016201
   }
  ],
- "endpoint_relative_l2_change": 0.7609025627938154,
+ "endpoint_relative_l2_change": 0.760902536916301,
  "endpoint_cosine": 0.7360314130783081,
  "verdict": "T_SENSITIVE",
  "sign_flip_achieved": false,

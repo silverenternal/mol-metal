@@ -60,15 +60,29 @@ RDLogger.DisableLog("rdApp.*")
 
 
 # Defaults
-DEFAULT_REAL_CSV = (
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_REAL_CSV = str(
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_DRUGOOD_CSV = (
-    "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+DEFAULT_DRUGOOD_CSV = str(
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "drugood"
+    / "ic50"
+    / "data"
+    / "train.csv"
 )
-DEFAULT_OUTPUT_CSV = "/home/hugo/codes/mol-metal/molmetal/data/balanced_rh_cohort.csv"
-DEFAULT_OUTPUT_META = (
-    "/home/hugo/codes/mol-metal/molmetal/data/balanced_rh_cohort_meta.json"
+DEFAULT_OUTPUT_CSV = str(
+    Path(__file__).resolve().parents[2] / "molmetal" / "data" / "balanced_rh_cohort.csv"
+)
+DEFAULT_OUTPUT_META = str(
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "data"
+    / "balanced_rh_cohort_meta.json"
 )
 
 DEFAULT_N_ACTIVE = 250

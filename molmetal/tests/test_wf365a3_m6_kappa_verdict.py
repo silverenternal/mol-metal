@@ -19,7 +19,7 @@ import re
 from pathlib import Path
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 VERDICT_DOC_PATH = REPO_ROOT / "docs" / "M6_KAPPA_FINAL_VERDICT.md"
 
 

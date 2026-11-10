@@ -74,8 +74,21 @@ molmetal/reports/**/__pycache__/
 # repo did not reproduce the test suite the maintainers run.  No conftest.py
 # even exists at the root today, and the other three matched zero files, so
 # anchoring costs nothing and stops the pattern from reaching into source.
+#
+# 2026-10-31 (Wf-A127): the sentence above is the HISTORICAL 2026-10-04 text,
+# PRESERVED VERBATIM per AGENTS.md §5.5 rule #6.  Its clause "No conftest.py
+# even exists at the root today" is now FALSE: the root conftest.py NOW EXISTS
+# and is SOURCE, not a transient artefact -- it is the repo-wide CPU lock
+# (Wf-A125 G1/G9) that keeps `pytest` off the GPU for the top-level `tests/`
+# tree.  The `/conftest.py` ignore rule is therefore REMOVED (catalog
+# §6.235): while it stood, the lock existed on disk only, so a fresh clone
+# ran `tests/` UNLOCKED and silently took VRAM -- exactly what the standing
+# "禁止使用gpu" directive forbids.  The historical harm above was caused by the
+# UNANCHORED pattern reaching into source; the anchored form is what protects
+# `molmetal/conftest.py` and `molmetal/tests/conftest.py`, and that protection
+# is unaffected by dropping the root entry.  `git check-ignore -v conftest.py`
+# now returns nothing and the file is trackable.
 /_a1_sanity.py
-/conftest.py
 /cutoff_sweep.json
 /cutoff_sweep.md
 /texput.log
@@ -157,6 +170,12 @@ molmetal/reports/**/*.json
 !molmetal/reports/wf44_r2_debug/baseline_check.json
 !molmetal/reports/wf44_r2_debug/root_cause_catalog.md
 !molmetal/reports/wf44_r2_debug/root_cause_checklist.json
+# Wf-A114 cluster D — the cohort-matched comparison payloads.  The
+# `compare.json` is the MACHINE-READABLE verdict (the .md is its twin), and
+# `metrics/by_metric/cfm_cohort_matched_bar.json` points at it by path, so a
+# clone that does not carry these files cannot check the published bar.
+!molmetal/reports/wfa114_cohort_matched_compare/**/*.json
+!molmetal/reports/wfa114_cohort_matched_compare/**/*.md
 
 # --- Joblib caches (rebuilt by build_cache.py) ------------------------------
 molmetal/molmetal_lam/tile_lib/.cache/

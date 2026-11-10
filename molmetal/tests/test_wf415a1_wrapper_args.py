@@ -1,7 +1,7 @@
 """Wf-415-A1 — wrapper transparent-passthrough for 22+ trainer flags.
 
 Per the Wf-415-A1 task brief, the wrapper
-``molmetal/scripts/launch_wf299_cfm_main.sh`` was failing with
+``scripts/launch_wf299_cfm_main.sh`` was failing with
 ``[FATAL] unknown arg: <flag>`` for any flag outside its known surface
 (``--dry-run``, ``--wave``, ``--wave-X``, ``-h``, ``--help``). This
 blocked transparent passthrough of NEW trainer flags added by
@@ -60,7 +60,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-LAUNCHER_PATH = REPO_ROOT / "molmetal" / "scripts" / "launch_wf299_cfm_main.sh"
+LAUNCHER_PATH = REPO_ROOT / "scripts" / "launch_wf299_cfm_main.sh"
 
 
 def _resolve_python() -> str:
@@ -70,13 +70,13 @@ def _resolve_python() -> str:
     but for subprocess tests we allow override via env var or fall back to
     ``sys.executable`` if the canonical path is unavailable.
     """
+    import sys
+
     override = os.environ.get("WF415_PY") or os.environ.get("PY")
     if override and Path(override).is_file():
         return override
-    if Path("/home/hugo/codes/mol-metal/.venv/bin/python").is_file():
-        return "/home/hugo/codes/mol-metal/.venv/bin/python"
-    import sys
-
+    if Path(sys.executable).is_file():
+        return sys.executable
     return sys.executable
 
 

@@ -4,15 +4,22 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
-SCRIPT = "/home/hugo/codes/mol-metal/molmetal/scripts/wf244d_click_yield_r2.py"
-REPORT = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf244d_click_yield/R2_report.json"
-)
+# Repo root — derived from this file's own location (molmetal/tests/X.py).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Canonical project interpreter (AGENTS.md §5.9); fall back to the running
+# interpreter when the venv is absent (e.g. a fresh checkout).
+PY = str(REPO_ROOT / ".venv" / "bin" / "python")
+if not Path(PY).exists():
+    PY = sys.executable
+
+SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "wf244d_click_yield_r2.py"
+REPORT = REPO_ROOT / "molmetal" / "reports" / "wf244d_click_yield" / "R2_report.json"
 
 
 @pytest.fixture(scope="module")

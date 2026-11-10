@@ -19,12 +19,13 @@ exercise the lever combinations per the documented NULL-lever / real-lever
 contracts; no test is shipped with ``@pytest.mark.skip``.
 """
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 import torch
 
-sys.path.insert(0, "/home/hugo/codes/mol-metal")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from molmetal.baselines.dmpnn import (  # noqa: E402
     ATOM_FEATURE_DIM,

@@ -1,0 +1,59 @@
+{
+  "schema_version": "wfa135.v1",
+  "measured_at": "2026-10-31",
+  "host": "mol-metal dev host (32 CPU cores, 2 GPUs; other workflows run concurrently)",
+  "device": "cpu",
+  "cuda_visible_devices": "",
+  "headroom_allowance": 1.45,
+  "derivation": "Hw = max(standalone MAX, contended wall inside a real --pipeline all --strict pre-flight run, the pre-flight's own cut-off wall in the Wf-A133 baseline run); R = ceil_0.05(max over smokes of Hw/Cw) = the MEASURED worst-case run-to-run inflation; budget = ceil_0.1(Hw * R); headroom_factor = budget / standalone_baseline.",
+  "note": "MEASURED standalone baselines for the three AGENTS.md 5.7 wire-in smokes, CPU-only (CUDA_VISIBLE_DEVICES=\"\"), full-subprocess wall clock. The module molmetal/scripts/wfa135_smoke_budget.py is the ONE source of truth for the budgets; this fixture is its machine-readable mirror and the regression test asserts the two agree.",
+  "smokes": {
+    "p1_chemprop_smoke": {
+      "budget_sec": 137.5,
+      "measured_baseline_sec": 81.516323,
+      "headroom_factor": 1.686779,
+      "env_var": "MOLMETAL_SMOKE_BUDGET_CHEMPROP_SEC",
+      "standalone_walls_sec": [
+        49.17,
+        6.919,
+        81.516,
+        78.936,
+        33.136
+      ],
+      "contended_observed_sec": 83.7284,
+      "headroom_allowance": 1.45,
+      "measured_command": ".venv/bin/python molmetal/scripts/train_chemprop_v2_v3.py --quick --allow-single-seed --device cpu --out-dir <tmp> --metals Ru --seeds 0",
+      "note": "Hw = 94.8 s is a LOWER BOUND (the Wf-A133 baseline run cut the smoke off at its 90 s budget after 94.8 s). Standalone repeats 1-2 were measured while a concurrent Wf-A135 D-MPNN measurement shared the host; repeats 3-5 were measured with no Wf-A135 job of ours in flight. The MAX over repeats (81.516 s) is used as the baseline, so the budget is conservative by construction."
+    },
+    "p3_dmpnn_loss_wire_in_smoke": {
+      "budget_sec": 435.0,
+      "measured_baseline_sec": 127.284939,
+      "headroom_factor": 3.417529,
+      "env_var": "MOLMETAL_SMOKE_BUDGET_DMPNN_SEC",
+      "standalone_walls_sec": [
+        94.75,
+        123.375,
+        127.285,
+        116.105
+      ],
+      "contended_observed_sec": 215.5782,
+      "headroom_allowance": 1.45,
+      "measured_command": ".venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --device cpu --epochs 2 --csv .data/molmetal/metalcytotox_5metal_multitask_v4.csv --data-csv .data/molmetal/MetalCytoToxDB.csv --metals Re --seeds 0 --batch-size 32 --cpu-num-workers 2 --hidden 64 --depth 2 --out-dir <tmp> --ckpt-dir <tmp>/ckpt",
+      "note": "Hw = 300.0 s is a LOWER BOUND (the Wf-A133 baseline run cut the smoke off at its 300 s budget, rc=124). This smoke showed the LARGEST run-to-run spread of the three (215.6 s completed vs >300 s cut off), which is what sets the global R = 1.45."
+    },
+    "p3_wf385_scaffold_loss_wire_in_verified": {
+      "budget_sec": 324.6,
+      "measured_baseline_sec": 223.832467,
+      "headroom_factor": 1.450192,
+      "env_var": "MOLMETAL_SMOKE_BUDGET_WF385_SEC",
+      "standalone_walls_sec": [
+        223.832,
+        142.879
+      ],
+      "contended_observed_sec": 159.6427,
+      "headroom_allowance": 1.45,
+      "measured_command": ".venv/bin/python molmetal/scripts/wf385a3_scaffold_wire_in_gate.py --out-dir <tmp> --python-bin .venv/bin/python --timeout 900",
+      "note": "The standalone repeat 1 (223.832 s) is the worst observation of this smoke on this host and binds over both the contended wall (159.6 s) and the Wf-A133 baseline run's 150 s INNER cut-off. The budget is the OUTER subprocess budget; the inner gate script is given budget - 30 s so it can still write gate_result.json."
+    }
+  }
+}

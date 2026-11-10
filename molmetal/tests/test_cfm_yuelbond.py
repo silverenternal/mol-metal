@@ -111,9 +111,14 @@ def test_yuelbond_bond_decoder_init_default():
         decoder.distance_cutoff == 3.5
     ), f"default cutoff should be 3.5 Å, got {decoder.distance_cutoff}"
     assert decoder.valence_cap is not None
+    # Wf-A113 (T88, 2026-10-29) — was 4 (Pt_II square-planar).  The cap is a
+    # permission, not a compulsion, and RDKit carries no default valence for
+    # Pt, so a cap of 4 could only drop real bonds: 1,465 of 8,275 Pt
+    # complexes in tmQM are 5- or 6-coordinate.  See
+    # test_wfa113_t72_metal_coordination_cap.py.
     assert (
-        decoder.valence_cap[78] == 4
-    ), f"Pt_II valence cap should be 4, got {decoder.valence_cap.get(78)}"
+        decoder.valence_cap[78] == 6
+    ), f"Pt valence cap should be the corpus MND p99 (6), got {decoder.valence_cap.get(78)}"
     assert decoder.valence_cap[6] == 4
     assert decoder.valence_cap[7] == 3
     assert decoder.valence_cap[8] == 2
@@ -152,38 +157,48 @@ def test_yuelbond_decoder_returns_valid_bonds_on_cisplatin():
         f"Expected >= 1 accepted bond on cisplatin cloud, got "
         f"{result.bonds_accepted}"
     )
-    # The valence cap must NEVER let Pt get more than 4 bonds.
+    # The valence cap must NEVER let Pt exceed its table entry.  Wf-A113
+    # (T88) — count BONDS, not the order sum: the selector charges a metal
+    # bond 1.0 whatever class the head gave it (T77), so summing orders
+    # measures a different quantity than the cap.
     if result.decoded.bond_orders:
-        pt_total = 0
-        for src, dst, order in result.decoded.bond_orders:
-            # Identify Pt atom — index 0 in the cisplatin layout.
-            if src == 0 or dst == 0:
-                pt_total += int(order)
-        assert pt_total <= 4, f"Pt_II valence cap (4) violated: Pt has {pt_total} bonds"
+        pt_bonds = sum(
+            1
+            for src, dst, _order in result.decoded.bond_orders
+            if src == 0 or dst == 0
+        )
+        cap = int(decoder.valence_cap[78])
+        assert pt_bonds <= cap, (
+            f"Pt valence cap ({cap}) violated: Pt has {pt_bonds} bonds"
+        )
 
 
 # ===========================================================================
 # Test 3 — No overvalent Pt on crowded cloud
 # ===========================================================================
 def test_yuelbond_no_overvalent_pt_on_crowded_cloud():
-    """The valence-aware selector must NOT let Pt exceed 4 bonds.
+    """The valence-aware selector must NOT let Pt exceed its cap.
 
     On a deliberately overvalent 1-Pt + 6-donor cloud the head may
-    propose all 6 candidate bonds, but the selector must reject the
-    extras so Pt stays at <= 4.
+    propose all 6 candidate bonds, and the selector must stop at the
+    table entry.  Wf-A113 (T88) — the entry is 6 (corpus MND p99), so
+    six-coordinate Pt(IV) is now representable; the invariant under test
+    is "the cap is enforced", not the literal 4.
     """
     torch.manual_seed(0)
     decoder = YuelBondBondDecoder(hidden_dim=32, n_layers=2)
     cloud = _crowded_pt_cloud()
     result = decoder.decode(cloud)
     if result.decoded.bond_orders:
-        pt_total = 0
-        for src, dst, order in result.decoded.bond_orders:
-            if src == 0 or dst == 0:
-                pt_total += int(order)
-        assert pt_total <= 4, (
-            f"Pt_II valence cap (4) violated on crowded cloud: "
-            f"Pt has {pt_total} bonds (bonds={result.decoded.bond_orders})"
+        pt_bonds = sum(
+            1
+            for src, dst, _order in result.decoded.bond_orders
+            if src == 0 or dst == 0
+        )
+        cap = int(decoder.valence_cap[78])
+        assert pt_bonds <= cap, (
+            f"Pt valence cap ({cap}) violated on crowded cloud: "
+            f"Pt has {pt_bonds} bonds (bonds={result.decoded.bond_orders})"
         )
     # Even when no bonds are predicted, the selector's safety net
     # must have considered and rejected the extras.
@@ -234,7 +249,9 @@ def test_covalent_valence_table_canonical_values():
     assert table[9] == 1, "F should be 1"
     assert table[17] == 1, "Cl should be 1"
     # Metals
-    assert table[78] == 4, "Pt_II should be 4 (square-planar)"
+    # Wf-A113 (T88, 2026-10-29) — was 4.  Pt(IV) is octahedral and 17.7% of
+    # the Pt corpus exceeds four bonds; the ceiling is now the p99.
+    assert table[78] == 6, "Pt cap should be the corpus MND p99 (6)"
     # Wf-A113 (T72, 2026-10-28) — this used to assert Ru == 6 "octahedral".
     # 6 is the corpus MEDIAN coordination number, not a ceiling: MEASURED on
     # tmqm_parsed.csv, Ru MND p50/p99 is 6/10, and 53.4% of Ru clouds are

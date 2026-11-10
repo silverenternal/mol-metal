@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover — fallback for direct invocation
     _HAS_ATOMIC = False
     atomic_write_file = None  # type: ignore[assignment]
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 POOL = ROOT / ".data/molmetal/platinai_4cell_real_label_pool.csv"
 CACHE = ROOT / ".data/molmetal/platinai_smiles_cache.json"
 OUT_CSV = ROOT / ".data/molmetal/platinai_4cell_real_label_pool_with_smiles.csv"

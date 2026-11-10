@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 
-REPO_ROOT = Path("/home/hugo/codes/mol-metal")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SYNTHESIS_DOC = REPO_ROOT / "docs" / "SESSION_FINAL_SYNTHESIS.md"
 CLOSEOUT_DOC = REPO_ROOT / "TODO" / "completed" / "370a3_session_synthesis.md"
 

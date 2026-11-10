@@ -60,8 +60,8 @@ import pytest
 # Project + path constants
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
-LAUNCHER = PROJECT_ROOT / "scripts" / "launch_wf74_v2_drugood_dann.sh"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LAUNCHER = Path(__file__).resolve().parents[2] / "scripts" / "launch_wf74_v2_drugood_dann.sh"
 DRUGOOD_TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "wf305d_drugood_dann_train.py"
 PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 

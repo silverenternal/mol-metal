@@ -1,6 +1,6 @@
 # Wf-46 Phase 4 — End-to-end integration verify (R18 modules)
 
-Generated at `2026-10-09T12:59:17.959787+00:00` (UTC). Total wall-clock: `0.3 s`.
+Generated at `2026-10-30T19:39:08.249862+00:00` (UTC). Total wall-clock: `0.1 s`.
 
 - **Total tests**: 3
 - **PASS**: 3
@@ -13,7 +13,7 @@ Generated at `2026-10-09T12:59:17.959787+00:00` (UTC). Total wall-clock: `0.3 s`
 |---|---|---|---|---|---|
 | `T3` | Multi-PH + PLL → score_any router | **PASS** | 0.0 | 4/5 | 4/5 pass, 1 skipped |
 | `T4` | Variance MCTS × proof_search wrapper | **PASS** | 0.0 | 4/4 | 4/4 pass, 0 skipped |
-| `T5` | ASTSR × Hilbert × Multi-PH triangle closure | **PASS** | 0.3 | 3/3 | 3/3 pass, 0 skipped |
+| `T5` | ASTSR × Hilbert × Multi-PH triangle closure | **PASS** | 0.1 | 3/3 | 3/3 pass, 0 skipped |
 
 ## Per-test detail
 
@@ -51,14 +51,14 @@ Traceback (most recent call last)... |
 ### T5 — ASTSR × Hilbert × Multi-PH triangle closure
 
 - **Status**: `PASS`
-- **Elapsed**: 0.27 s
+- **Elapsed**: 0.06 s
 - **Inputs**: `{"n_trajectories": 12, "n_rounds": 3, "n_features": 5, "n_arms": 4}`
 - **Outputs**: `{"triangle_summary": {"mean_hilbert_r2": 0.5765405661098222, "std_hilbert_r2": 0.14347079034000043, "mean_evolutionary_r2": 0.22871727572248626, "std_evolutionary_r2": 0.3962186080084509, "mean_variance_reduction": 0.025289124957671955, "std_variance_reduction": 0.01966381062359533, "triangle_convergence_rate": 0.5894646215261374, "n_rounds": 3, "n_trajectories": 12, "n_features": 5, "n_arms": 4, "seed": 42}}`
 
 | Assertion | Pass | Skip | Time (s) | Message |
 |---|---|---|---|---|
-| `triangle_closure_smoke` | PASS | False | 0.15 | triangle_closure.build_report ran 3 rounds × 12 traj × 5 features × 4 arms (0.15s); mean_hilbert_r2=0.5765, mean_evolutionary_r2=0.2287, mean_variance_reduction=0.0253. |
-| `triangle_closure_deterministic` | PASS | False | 0.12 | build_report is deterministic for fixed kwargs (0.12s); summary keys: ['mean_evolutionary_r2', 'mean_hilbert_r2', 'mean_variance_reduction', 'n_arms'] ... . |
+| `triangle_closure_smoke` | PASS | False | 0.02 | triangle_closure.build_report ran 3 rounds × 12 traj × 5 features × 4 arms (0.02s); mean_hilbert_r2=0.5765, mean_evolutionary_r2=0.2287, mean_variance_reduction=0.0253. |
+| `triangle_closure_deterministic` | PASS | False | 0.03 | build_report is deterministic for fixed kwargs (0.03s); summary keys: ['mean_evolutionary_r2', 'mean_hilbert_r2', 'mean_variance_reduction', 'n_arms'] ... . |
 | `triangle_closure_multiph_hook` | PASS | False | 0.00 | triangle_closure.Multi-PH hook probe (0.00s); has_param=False, attrs_seen=14. |
 
 ## Methodology

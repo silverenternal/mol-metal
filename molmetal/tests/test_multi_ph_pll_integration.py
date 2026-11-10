@@ -20,7 +20,13 @@ All tests run on CPU in <10 s.  No GPU dependencies required.
 Reference
 ---------
 Kim M.-J. & Jung S.-H. (2026).  Adv. Appl. Math. 174:103023.
-Liu J. & Feng H. (2026).  J. Chem. Inf. Model. 66:1024-1037.
+Liu J. & Feng H. (2026).  J. Chem. Inf. Model. 66 (18): 11767-11777.
+
+[CITATION CORRECTED 2026-10-31, Wf-A149 — the volume/pages above previously
+read "J. Chem. Inf. Model. 66:1024-1037"; the Crossref record for
+DOI 10.1021/acs.jcim.6c02460 (MEASURED 2026-10-31, HTTP 200) gives volume
+66, issue 18, pages 11767-11777 (online 2026-09-04, print
+2026-09-28).  The year 2026 was already correct and is unchanged.]
 """
 
 from __future__ import annotations

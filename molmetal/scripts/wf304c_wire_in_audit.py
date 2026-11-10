@@ -24,7 +24,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-ADAPTER_DIR = Path("/home/hugo/codes/mol-metal/molmetal/adapters")
+ADAPTER_DIR = Path(__file__).resolve().parents[2] / "molmetal" / "adapters"
 FLOW_DIR = ADAPTER_DIR / "flow_matching_lipman"
 INIT_PY = FLOW_DIR / "__init__.py"
 
@@ -195,8 +195,12 @@ def main():
         ),
     }
 
-    out_path = Path(
-        "/home/hugo/codes/mol-metal/molmetal/reports/wf304c_todo_impl/wire_in_audit.json"
+    out_path = (
+        Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "reports"
+        / "wf304c_todo_impl"
+        / "wire_in_audit.json"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2))

@@ -49,6 +49,13 @@ MOLMETAL_ROOT = REPO_ROOT / "molmetal"
 # Wf-310E launch wrapper — fixed path per Wf-334-U2.
 # Pre-fix: molmetal/scripts/launch_wf310e_wf135_phase2_gpu.sh (FILE NOT FOUND)
 # Post-fix: scripts/launch_wf310e_wf135_phase2_gpu.sh (resolves correctly)
+# Wf-A269 wave-3 (2026-11-02) — CORRECTION: the wave rewrote the
+# HISTORICAL pre-fix path in place, which made the two bullets name the
+# SAME string and left the record self-contradictory.  The pre-fix path
+# is restored above (it is what the bug WAS); the post-fix path is
+# unchanged.  SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md
+# §5.5 rule #6:
+#   # Pre-fix: scripts/launch_wf310e_wf135_phase2_gpu.sh (FILE NOT FOUND)
 LAUNCH_WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
 
 # Phase 1 cohort — Wf-139 P7 / Wf-309A SHIPPED 500 balanced.
@@ -259,6 +266,11 @@ class TestPathConsistencyAfterWf334U2:
     Path bug history:
       * Pre-Wf-334-U2: pipeline master referenced
         ``molmetal/scripts/launch_wf310e_wf135_phase2_gpu.sh`` (FILE NOT FOUND)
+        (Wf-A269 wave-3 (2026-11-02) — CORRECTION: the wave rewrote this
+        HISTORICAL path in place, so the pre-fix and post-fix bullets
+        named the SAME string.  Restored above; the superseded rendering
+        ``scripts/launch_wf310e_wf135_phase2_gpu.sh`` is preserved in the
+        git diff, per AGENTS.md §5.5 rule #6.)
       * Post-Wf-334-U2: ``scripts/launch_wf310e_wf135_phase2_gpu.sh``
         (resolves correctly)
 

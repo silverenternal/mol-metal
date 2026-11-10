@@ -396,10 +396,22 @@ def test_ring_size_distribution_matches_existing_json_value():
     """
     import csv as _csv
 
+    # Wf-A269 (2026-11-02): this test used to open the original author's
+    # ABSOLUTE path ("/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/
+    # metallo_drugs_500_train.csv"), which exists only on that one host => the
+    # test FAILED with FileNotFoundError on every other machine.  The pool
+    # itself is TRACKED IN THIS REPO (molmetal/data/metallo_drugs_500_train.csv,
+    # 449 rows), so resolve it repo-relative -- the repo's own convention
+    # (cf. molmetal/eval/knn_oracle.py::DEFAULT_POOL_PATH,
+    # molmetal/reports/wf252_fix/m6_kappa_emit.py::DATA_CSV).  On this path the
+    # test RUNS everywhere and reproduces the published value exactly:
+    # '3': 0.006682, '4': 0.022272, '5': 0.971047, '6': 4.536748, 'other': 0.042316.
+    pool_path = os.path.join(_REPO, "molmetal", "data", "metallo_drugs_500_train.csv")
+    assert os.path.isfile(pool_path), (
+        f"the 449-mol metallo pool is missing from the repo: {pool_path}"
+    )
     smiles_list = []
-    with open(
-        "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/metallo_drugs_500_train.csv"
-    ) as f:
+    with open(pool_path) as f:
         for row in _csv.DictReader(f):
             smi = row.get("smiles")
             if smi:

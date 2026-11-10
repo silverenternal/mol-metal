@@ -59,8 +59,9 @@ class GenerationConfig:
     conditioning: dict = field(default_factory=dict)  # pocket embeddings etc.
     # Wf-A75 (2026-10-18) — bond-length guidance weight applied at every
     # ODE step.  0.0 (default) is a no-op (back-compat with the pre-Wf-A75
-    # sampler).  Per MolDiff (Vignac et al. 2023, arXiv:2305.07508),
-    # Cartesian-coordinate diffusion on metal complexes suffers from
+    # sampler).  Per MolDiff (Peng, Guan, Liu & Ma, ICML 2023,
+    # arXiv:2305.07508), Cartesian-coordinate
+    # diffusion on metal complexes suffers from
     # the "atom-bond inconsistency" failure mode: bonded pairs drift
     # past ~3 Å during denoising, fragmenting the output.  The
     # guidance is a Hooke-spring force on (Z_i, Z_j) pairs that pulls
@@ -68,6 +69,28 @@ class GenerationConfig:
     # ~2.05 Å, C-C ~1.50 Å, C-N/O ~1.40 Å, etc.).  At weight 0.1 the
     # guidance is ~10% of the EGNN velocity at full magnitude.
     bond_length_guidance_weight: float = 0.0
+    # Wf-A128 (2026-10-31) — the bond-length guidance's REACH companion
+    # switch.  DEFAULT OFF; additive to the surface above (it does not
+    # repurpose ``bond_length_guidance_weight``).  The spring above only
+    # fires for pairs below 2.5 Å, but the YuelBond head's candidate set
+    # on the CFM path is 3.5 Å
+    # (``molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py``,
+    # ``distance_cutoff: float = 3.5``), so a pair at 2.5-3.5 Å is inside
+    # the head's candidate set and the head could have bonded it, yet the
+    # guidance handed it no restoring force at all.  With this switch ON
+    # a ONE-SIDED UPPER BOUND is added: a penalty that fires only when the
+    # distance EXCEEDS the expected bond length, with no inner truncation,
+    # reaching out to ``bond_length_guidance_upper_bound_reach``.  With the
+    # switch OFF the sampler is bit-exact with the pre-Wf-A128 path.
+    bond_length_guidance_upper_bound: bool = False
+    #: How far (Å) the one-sided upper bound reaches.  The default 3.5 Å
+    #: is the YuelBond head's own candidate cutoff, i.e. exactly the set
+    #: of pairs the head has authority over.
+    bond_length_guidance_upper_bound_reach: float = 3.5
+    #: Stiffness of the upper bound.  ``None`` (default) means "same as
+    #: the spring constant"; 0.0 disables the extra term while leaving
+    #: the switch itself on.
+    bond_length_guidance_upper_bound_strength: Optional[float] = None
     # ODE solver method. One of {"euler", "midpoint", "dopri5", "heun3"}.
     # Default flipped "euler" → "midpoint" (Heun's 2nd-order) per
     # WF-CFM-Frontier Phase 2 Fix #2 to reduce O(h) global integration

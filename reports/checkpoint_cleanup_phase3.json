@@ -1,0 +1,10 @@
+{
+  "created_at_utc": "2026-11-10T15:55:52.393843+00:00",
+  "status": "completed",
+  "deleted": "molmetal/reports/wfa164_bond_threshold_narrative/per_row.json",
+  "retained": "molmetal/reports/wfa156_bond_threshold_frontier/per_row.json",
+  "sha256": "150d06b1f791e3fdb1d0cc3e7363d04fb90d17fb08df03ad3d4a82d3b8c2c79c",
+  "logical_bytes": 41516176,
+  "reason": "Byte-identical copy of detailed historical audit rows; source report retained; historical paths may no longer resolve.",
+  "retained_verified": true
+}

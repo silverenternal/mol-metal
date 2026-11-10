@@ -387,9 +387,10 @@ def main() -> int:
     parser.add_argument(
         "--csv",
         type=Path,
-        default=Path(
-            "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
-        ),
+        default=Path(__file__).resolve().parents[2]
+        / ".data"
+        / "molmetal"
+        / "metalcytotox_5metal_multitask_v4.csv",
     )
     parser.add_argument("--metals", nargs="+", default=["Rh", "Ru", "Ir", "Os", "Re"])
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
@@ -403,16 +404,18 @@ def main() -> int:
     parser.add_argument(
         "--ckpt-dir",
         type=Path,
-        default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf146_dgllifesci_erm"
-        ),
+        default=Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "checkpoints"
+        / "wf146_dgllifesci_erm",
     )
     parser.add_argument(
         "--json-dir",
         type=Path,
-        default=Path(
-            "/home/hugo/codes/mol-metal/molmetal/reports/wf146_dgllifesci_erm"
-        ),
+        default=Path(__file__).resolve().parents[2]
+        / "molmetal"
+        / "reports"
+        / "wf146_dgllifesci_erm",
     )
     args = parser.parse_args()
 

@@ -31,6 +31,7 @@ of the adapter (hidden_dim=8, n_layers=1).
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -179,9 +180,19 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
     script = PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
     if not script.is_file():
         pytest.skip(f"missing retrain script: {script}")
+    # Wf-A122 FIX 6 follow-up: this test's own docstring says it "does not
+    # depend on GPU", but the smoke script resolves
+    # ``device = "cuda" if torch.cuda.is_available() else "cpu"`` with no
+    # override, so on a GPU host the subprocess allocates VRAM.
+    # ``CUDA_VISIBLE_DEVICES=""`` + ``MOLMETAL_SMOKE_DEVICE=cpu`` make the
+    # CPU contract explicit.  Same class as test_smoke_flag.py (already fixed)
+    # and molmetal/tests/test_integration.py::test_005_end_to_end_smoke.
+    _env = dict(os.environ)
+    _env["CUDA_VISIBLE_DEVICES"] = ""
+    _env["MOLMETAL_SMOKE_DEVICE"] = "cpu"
     proc = subprocess.run(
         [
-            "/home/hugo/codes/mol-metal/.venv/bin/python",
+            sys.executable,
             str(script),
             "--steps",
             "1",
@@ -203,6 +214,7 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
         capture_output=True,
         text=True,
         timeout=120,
+        env=_env,
     )
     # Look for the marker line in stdout — proves the flag was
     # forwarded to ``LipmanFlowMatchingAdapter``.

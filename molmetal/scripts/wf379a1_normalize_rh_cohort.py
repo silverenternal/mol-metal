@@ -20,8 +20,12 @@ import json
 import sys
 from pathlib import Path
 
-SRC = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg.json"
+SRC = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
+    / "synthetic_rh_pos_neg.json"
 )
 DST = SRC.parent / "synthetic_rh_pos_neg_normalized.json"
 

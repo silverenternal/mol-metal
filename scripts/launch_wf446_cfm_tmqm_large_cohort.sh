@@ -34,9 +34,16 @@
 # Owner: Hugo Lee + ultracode agent (Wf-446)
 # Date: 2026-10-04
 
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
 # 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
 # flushing stdout after trainer exit killed the wrapper silently via `tee`).
 # Capture trainer rc via ${PIPESTATUS[0]}; suppress tee SIGPIPE with `|| true`.
+#
+# Wf-A269 wave-10 (2026-11-02): the `|| true` half above is what made the rc
+# read DEAD — `|| true` runs AFTER the failing pipeline and CLOBBERS
+# PIPESTATUS to (0), so the "trainer exited rc != 0 -> exit" branch could never
+# fire and this wrapper exited 0 after a crashed trainer.  The repaired shape
+# is at the launch site below (scripts/_WRAPPER_TEMPLATE.sh:190-193).
 set -uo pipefail
 
 # --- Paths (HARDCODED per §5.9) -------------------------------------------
@@ -78,6 +85,55 @@ source "${DRY_RUN_LOG_HELPER}"
 [ -f "${PROJECT_ROOT}/${CONFIG}" ]  || die "config missing: ${CONFIG}"
 [ -x "${PY}" ]                      || die "venv python missing: ${PY}"
 
+# -----------------------------------------------------------------------------
+# §5.11 (2026-11-03) — per-run config derivation
+# -----------------------------------------------------------------------------
+# The trainer used to be invoked as `--config <base> --seed ${SEED} --out-dir
+# <out>`.  `--seed` is a HYPERPARAMETER (§5.11: only --config / --out-dir /
+# --ckpt-dir / --help may appear on a trainer invocation line), so it moves
+# into the YAML.
+#
+# The base config ALREADY declares the seed — `protocol.seed: 0` in
+# configs/cfm.yaml — and `protocol.seed` is a LIVE key: MEASURED 2026-11-03
+# with scripts/_yaml_equivalence_probe.py,
+#     --old-argv-json '["--seed","3"]'  ->  DIFF seed: old=3 (int) new=0 (int)
+# i.e. the config's value (0) reaches the `seed` dest and the probe sees the
+# CLI value override it.  `protocol` is one of the loader's leaf-fallback
+# sections (wfA2_config_loader.py:78), so the key resolves rather than being
+# dropped with a warning.
+#
+# The derived config is written with the RUN's seed so `SEED=3 bash <wrapper>`
+# still selects seed 3 — which is what the old `--seed "${SEED}"` did.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   TRAIN_ARGS=(
+#       --config "${CONFIG}"
+#       --seed "${SEED}"
+#       --out-dir "${OUT_DIR}"
+#   )
+DERIVED_CONFIG="${OUT_DIR}/_derived_configs/cfm_seed${SEED}.yaml"
+mkdir -p "$(dirname "${DERIVED_CONFIG}")"
+${PY} - "${PROJECT_ROOT}/${CONFIG}" "${DERIVED_CONFIG}" "${SEED}" <<'PYEOF' \
+    || die "per-run config derivation failed for seed=${SEED}"
+import sys
+
+import yaml
+
+base, out, seed = sys.argv[1:4]
+with open(base, encoding="utf-8") as fh:
+    cfg = yaml.safe_load(fh)
+# `protocol.seed` is the key that reaches the `seed` dest on this parser
+# (see the probe evidence above).  Nothing else in the base config changes.
+cfg.setdefault("protocol", {})["seed"] = int(seed)
+with open(out, "w", encoding="utf-8") as fh:
+    fh.write("# DERIVED per-run config for scripts/launch_wf446_cfm_tmqm_large_cohort.sh\n")
+    fh.write("# base: %s\n" % base)
+    fh.write("# seed: %s\n" % seed)
+    fh.write("# Only `protocol.seed` differs from the base; it carries the value\n")
+    fh.write("# the old `--seed ${SEED}` command-line flag used to pass.\n")
+    yaml.safe_dump(cfg, fh, sort_keys=False, default_flow_style=False)
+PYEOF
+[ -f "${DERIVED_CONFIG}" ] || die "derived config missing: ${DERIVED_CONFIG}"
+
 # --- Stale-checkpoint guard (AGENTS.md §5.7 class) -----------------------
 # `--resume-from` defaults to `auto`, which scans the checkpoint directory and
 # continues from whatever it finds.  MEASURED during the preparation of this
@@ -116,13 +172,40 @@ fi
 echo "[$(date -Iseconds)] GPU 0 free=${FREE_MIB} MiB (>= 8192 required) — OK"
 
 # --- Pre-flight gate (per Wf-415-A3 + Wf-427-B1) -------------------------
+# Wf-A269 wave-17 (2026-11-03) — FOUR repairs to this block.
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+# the pre-fix block ran the pre-flight under a BARE `setsid nohup` and then
+# read the verdict out of a file named `preflight.json` with
+# `grep -q '"fail": 0'`.  Two independent defects lived in that shape:
+#  (a) bare `setsid` MAY fork and return 0 immediately, so the `|| die`
+#      below saw SETSID's exit code rather than the pre-flight's — and the
+#      `grep` then read a file the pre-flight had not finished writing.  A
+#      gate whose verdict is read from a half-written file is a race, not a
+#      gate.  `setsid --wait` is the repo's own established fix for this
+#      (see scripts/launch_cfm_frag_ab.sh:148-153).
+#  (b) the `grep` predicate was TIMEOUT-BLIND (a report with 1 TIMEOUT and
+#      0 FAILs matched it) and could not see a TIMEOUT at all, so a gate
+#      whose measurement was NOT obtained counted as a PASS (Wf-A135).
+#  (1) `setsid --wait` so the wrapper waits for the pre-flight it gated on.
+#  (2) `--json PATH` writes a REAL JSON document; the console transcript
+#      goes to a sibling .log, so the report path stays pure JSON.
+#  (3) the verdict comes from the repo's own FAIL-CLOSED consumer
+#      (molmetal/scripts/wf_launch_gate_verdict.py).
+#  (4) the previous run's report is removed first ("stale is treated as
+#      missing"), so a crashed pre-flight leaves no PASS report behind.
+PREFLIGHT_OUT="${OUT_DIR}/preflight.json"
+PREFLIGHT_LOG="${OUT_DIR}/preflight.log"
+mkdir -p "${OUT_DIR}"
+rm -f "${PREFLIGHT_OUT}"
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight check begin"
-setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch \
-    >"${OUT_DIR}/preflight.json" 2>&1 \
-    || die "pre_flight_check FAIL — see ${OUT_DIR}/preflight.json"
-grep -q '"fail": 0' "${OUT_DIR}/preflight.json" \
-    || die "pre_flight_check has FAILs (not 0) — see ${OUT_DIR}/preflight.json"
-echo "[$(date -Iseconds)] pre-flight PASS"
+PYTHONPATH=/home/hugo/codes/mol-metal setsid --wait nohup ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch \
+    --json "${PREFLIGHT_OUT}" \
+    >"${PREFLIGHT_LOG}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_LOG}"
+pf_verdict="$(PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf_launch_gate_verdict.py \
+    preflight --report "${PREFLIGHT_OUT}" 2>&1)" \
+    || die "pre_flight_check verdict is not PASS — ${pf_verdict} (see ${PREFLIGHT_OUT})"
+echo "[$(date -Iseconds)] pre-flight PASS — ${pf_verdict}"
 
 
 # --- Main: --dry-run + actual launch ----------------------------------
@@ -137,8 +220,7 @@ esac
 # it also trips scripts/_wrapper_audit.py, whose DUPLICATE heuristic counts
 # every literal "--device" in the file rather than launch invocations.
 TRAIN_ARGS=(
-    --config "${CONFIG}"
-    --seed "${SEED}"
+    --config "${DERIVED_CONFIG}"
     --out-dir "${OUT_DIR}"
 )
 
@@ -154,7 +236,7 @@ if [ "${MODE}" = "dry-run" ]; then
         --mode "large_cohort_20ep" \
         --trainer "${TRAINER}" \
         --config "${CONFIG}" \
-        --flags "--config ${CONFIG} --seed ${SEED} --out-dir ${OUT_DIR}" \
+        --flags "--config ${DERIVED_CONFIG} --out-dir ${OUT_DIR}" \
         --gpu "cuda:0 (${FREE_MIB} MiB free)" \
         --budget-hr "5" \
         --user-ok "REQUIRED" \
@@ -171,7 +253,7 @@ if [ "${MODE}" = "dry-run" ]; then
     "out_dir": "${OUT_DIR}",
     "vram_free_mib": ${FREE_MIB},
     "pre_flight": "PASS",
-    "args": ["--config", "${CONFIG}", "--seed", "${SEED}", "--out-dir", "${OUT_DIR}"],
+    "args": ["--config", "${DERIVED_CONFIG}", "--out-dir", "${OUT_DIR}"],
     "expected_cohort": {"n_train": 26715, "n_val": 6714},
     "estimated_wall": "4-5 hr (26715 clouds; MEASURED 256-cloud epoch = 6-8 s)",
     "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1"
@@ -183,9 +265,31 @@ fi
 
 # --- Actual launch -------------------------------------------------------
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} launching (est. 4-5 hr)"
-setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
-    2>&1 | tee "${OUT_DIR}/launch.log" || true   # 2026-10-08 pipefix
-TRAIN_RC=${PIPESTATUS[0]}                        # 2026-10-08 pipefix
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
+#       2>&1 | tee "${OUT_DIR}/launch.log" || true   # 2026-10-08 pipefix
+#   TRAIN_RC=${PIPESTATUS[0]}                        # 2026-10-08 pipefix
+#
+# Canonical shape (scripts/_WRAPPER_TEMPLATE.sh:190-193): pipefail off for
+# this ONE pipeline (a trainer whose forked DataLoader workers still hold the
+# pipe open takes SIGPIPE and would report 141 instead of its own status — the
+# tee stays, it is the only diagnostic); `setsid --wait` (bare setsid may fork
+# and return 0 before the trainer has done anything, which would make
+# PIPESTATUS[0] report success for a run that had not started — and setsid
+# gives the trainer its own session, which already covers nohup's SIGHUP
+# immunity); and the rc read BETWEEN the two `set` lines, while PIPESTATUS
+# still holds the pipeline's statuses.
+#
+# The env assignment moved in FRONT of setsid (template form): `setsid` does
+# NOT accept `VAR=value` arguments — it execs the first argument as the
+# program, so the old form died with
+#   "nohup: failed to run command 'PYTHONPATH=/home/hugo/codes/mol-metal'"
+# and rc=127, which the `|| true` then reported as a SUCCESS (rc=0).
+set +o pipefail
+PYTHONPATH=/home/hugo/codes/mol-metal setsid --wait ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
+    2>&1 | tee "${OUT_DIR}/launch.log"
+TRAIN_RC=${PIPESTATUS[0]}
+set -o pipefail
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} complete; log at ${OUT_DIR}/launch.log"
 if [ "${TRAIN_RC}" -ne 0 ]; then
     echo "FAIL: trainer exited rc=${TRAIN_RC}" >&2

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+from pathlib import Path
 from typing import Dict, List
 
 # Allow ``python -m molmetal.scripts.debug_mcts`` and direct-script
@@ -37,7 +38,7 @@ from typing import Dict, List
 # we add the project root to ``sys.path`` and fall back to the same
 # absolute imports.
 if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from molmetal_lam.binding.types import BindingSite
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 from molmetal_lam.reactions.beta_reductions import ReactionRule

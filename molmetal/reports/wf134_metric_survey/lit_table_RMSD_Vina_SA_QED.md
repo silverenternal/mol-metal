@@ -32,7 +32,7 @@ on 2026-09-27 (see `wf134_web_search_log.md` for raw queries).
 1. **Peng et al., "Pocket2Mol" (ICML 2022)** — arXiv:2205.07249; reports mean conformer RMSD 0.46 Å vs. AR baseline 0.84 Å vs. CVAE 1.38 Å (full-ligand Kabsch, no MCS). https://arxiv.org/abs/2205.07249
 2. **Guan et al., "TargetDiff" (ICLR 2023)** — Table 1 reports "RMSD ↓" for the CrossDocked2020 benchmark with values ≈ 1.31 Å; this is the **ligand-vs-crystal** RMSD (not a conformer-overlay metric), see §2 below.
 3. **Schneuing et al., "DiffSBDD" (Nature Computational Science 2024)** — arXiv:2210.13695; reports redocking RMSD (median 2.83 Å, σ=1.54 Å) as a critique of SBDD redocking protocol. https://doi.org/10.1038/s43588-024-00737-x
-4. **Morehead et al., "EquiBind" (NeurIPS 2022, workshop track)** — uses Kabsch-aligned ligand RMSD after gradient descent pose refinement. https://arxiv.org/abs/2202.05146
+4. **Stärk et al., "EquiBind" (ICML 2022)** — uses Kabsch-aligned ligand RMSD after gradient descent pose refinement. https://arxiv.org/abs/2202.05146
 5. **Lu et al., "TBind" / "TankBind" (ICLR 2023)** — Kabsch-aligned ligand RMSD after docking-time refinement. arXiv:2204.10618
 6. **Zhang et al., "DecompDiff" (ICML 2023)** — ICLR-style Kabsch-aligned ligand RMSD with Hungarian atom matching. arXiv:2203.10422; reports success rate 24.5% at 2.0 Å threshold on CrossDocked2020.
 7. **Luo et al., "Uni-Mol" (ICLR 2023, oral)** — uses symmetry-aware RMSD via RDKit `GetBestRMS(symmetrizeConjugatedTerminalGroups=True)`, identical API to our adapter. arXiv:2207.00826
@@ -63,7 +63,7 @@ on 2026-09-27 (see `wf134_web_search_log.md` for raw queries).
 4. **Schneuing et al., "DiffSBDD" (Nat. Comput. Sci. 2024)** — redocking RMSD via QuickVina2; reports median 2.83 Å. https://doi.org/10.1038/s43588-024-00737-x
 5. **Luo et al., "DecompDiff" (ICML 2023)** — Kabsch + Hungarian; reports 24.5% at 2 Å on CrossDocked2020. arXiv:2203.10422
 6. **Corso et al., "DiffDock" (ICML 2023, oral)** — "ligand RMSD" = symmetry-corrected RMSD after confidence-model selection; reports 38.2% top-1 success on PDBBind. arXiv:2210.01776
-7. **Morehead et al., "EquiBind" (NeurIPS 2022 workshop)** — same definition. arXiv:2202.05146
+7. **Stärk et al., "EquiBind" (ICML 2022)** — same definition. arXiv:2202.05146
 8. **Lu et al., "TankBind" (ICLR 2023)** — same. arXiv:2204.10618
 
 **Critical analysis (verbatim from arXiv:2308.07413 — "How Rational is Structure-based Drug Design with Generative Models?"):**
@@ -236,7 +236,7 @@ This is the most important honest-framing point for our §3.5 / §4 metrics disc
 - DecompDiff paper: https://arxiv.org/abs/2203.10422 (ICML 2023)
 - DiffDock paper: https://arxiv.org/abs/2210.01776 (ICML 2023)
 - DiffDock-L paper: https://arxiv.org/abs/2506.14176 (2025)
-- EquiBind paper: https://arxiv.org/abs/2202.05146 (NeurIPS 2022 workshop)
+- EquiBind paper: https://arxiv.org/abs/2202.05146 (ICML 2022)
 - TankBind paper: https://arxiv.org/abs/2204.10618 (ICLR 2023)
 - MOSES paper: https://arxiv.org/abs/1811.12823 ; doi:10.1021/acs.jcim.9b00975
 - GuacaMol paper: https://arxiv.org/abs/1708.08227 ; doi:10.1021/acs.jcim.8b00839
@@ -249,3 +249,48 @@ This is the most important honest-framing point for our §3.5 / §4 metrics disc
 - SA score wrapper (us): `molmetal/molmetal_lam/sbdd_env/sa_score.py`
 - Vina adapter (us): `molmetal/molmetal_lam/sbdd_env/vina_adapter.py`
 - H1 SA score ship: `molmetal/reports/h1_sa_score_ertl.md`
+
+
+---
+
+## Correction log
+
+### 2026-10-31 — Wf-A149 — EquiBind venue and first author
+
+**Corrected (citation fields only).** Three EquiBind citation sites in this
+document carried a wrong first-author attribution and a wrong venue. The
+superseded wording, quoted verbatim:
+
+- §1, line 35: `4. **Morehead et al., "EquiBind" (NeurIPS 2022, workshop track)** — uses Kabsch-aligned ligand RMSD after gradient descent pose refinement. https://arxiv.org/abs/2202.05146`
+- §2, line 66: `7. **Morehead et al., "EquiBind" (NeurIPS 2022 workshop)** — same definition. arXiv:2202.05146`
+- Sources, line 239: `- EquiBind paper: https://arxiv.org/abs/2202.05146 (NeurIPS 2022 workshop)`
+
+Corrected to **Stärk et al.** and **ICML 2022**. Verified live on 2026-10-31
+against https://arxiv.org/abs/2202.05146 (HTTP 200) and the arXiv API record
+`https://export.arxiv.org/api/query?id_list=2202.05146` (HTTP 200):
+
+| Field | Verified value (verbatim from the record) |
+|---|---|
+| Title | "EquiBind: Geometric Deep Learning for Drug Binding Structure Prediction" |
+| Authors | Stärk, Hannes; Ganea, Octavian-Eugen; Pattanaik, Lagnajit; Barzilay, Regina; Jaakkola, Tommi |
+| journal-ref | "39th International Conference on Machine Learning (ICML 2022)" |
+| Comments | "39th International Conference on Machine Learning (ICML 2022). Also accepted at ICLR 2022 GTRL and at ICLR 2022 MLDD as spotlight" |
+
+Two distinct defects, both corrected:
+
+1. **Wrong first author.** "Morehead et al." is the *FlowDock* attribution
+   (arXiv:2412.10966, "FlowDock: Geometric Flow Matching for Generative
+   Protein-Ligand Docking and Affinity Prediction"; Morehead, Alex; Cheng,
+   Jianlin — verified live 2026-10-31, HTTP 200), not EquiBind.
+2. **Wrong venue.** EquiBind is an **ICML 2022** paper (39th International
+   Conference on Machine Learning), not a NeurIPS paper. The "workshop"
+   qualifier is also wrong as written: the record shows additional
+   acceptance as a spotlight at two **ICLR 2022** workshops (GTRL and MLDD),
+   per the arXiv Comments field quoted above — there is no NeurIPS 2022
+   workshop-track claim in the record.
+
+No measured performance number in this document was changed; only the author
+and venue fields of the EquiBind citation were corrected. The JSON sibling
+`lit_table_RMSD_Vina_SA_QED.json` carries the same superseded wording
+(`"name": "Morehead et al., EquiBind"`, `"venue": "NeurIPS 2022 (workshop)"`)
+and is **not** owned by this wave — reported here, not edited.

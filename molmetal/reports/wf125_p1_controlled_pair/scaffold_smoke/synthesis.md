@@ -1,49 +1,48 @@
-# Wf-131 Phase 3 — LOMO 5-fold × 5-seed × 50-epoch full re-bench on MetalCytoToxDB 5-metal
+# LOMO 1-fold × 1-seed × 2-epoch cross-metal re-bench on MetalCytoToxDB
 
-**Date**: 2026-10-03  
-**Metals**: Rh  
+**Date**: 2026-10-27  
+**Metals (held-out folds)**: Rh  
 **Seeds**: 0  
 **Epochs/seed**: 2  
-**Wasserstein weight**: 0.05  
-**Rh oversample**: 500 (250 actually appended)  
+**Cohort CSV**: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv  
+**Time(h) filter threshold**: 24.0  
+**Leak-controlled (--drop-leaked-ligands)**: False  
+**Wasserstein weight (requested)**: 0.05  
+**W₂ actually applied to the gradient (Wf-E1)**: 0.0  
+**Rh oversample**: 500 (500 actually appended)  
 **Quick mode**: False  
 **Wf-127 P2 L2 guard (grad-norm clip ≤ 5.0)**: True  
 **Wf-127 P3 ASTSR scale clip [-10.0, 10.0]**: False  
 
 ## §1 Goal
 
-TODO-121 + Wf-125 Phase 2 stacks three innovations on top of the
-existing LOMO trainer:
+Leave-one-metal-out (LOMO) cross-metal transfer benchmark: hold out
+one metal's rows entirely, train a multi-task D-MPNN on the rest, and
+measure ROC-AUC on the held-out metal (the m19 protocol). The active
+components are echoed from the config below — not asserted.
 
-1. **Wasserstein transfer regularisation** — sliced-W₂ over per-metal
-   embeddings (canonical M1 primitive from
-   `molmetal_lam.reward.wasserstein_loss.wasserstein_transfer_loss`),
-   added to the BCE+MSE loss with weight
-   `0.05`.
-2. **Rh closure-theorem oversampling** — the 500-compound Catherine 6/6
-   PASS synthetic Rh cohort from Wf-125 P1 is appended to the train
-   pool when the held-out metal is Rh.
-3. **Multi-task D-MPNN backbone with per-metal embedding extraction** —
-   the existing D-MPNN-MT backbone is reused; per-metal embeddings
-   (pooled `2H`-dim vector before the readout head) are extracted
-   every epoch end so the W₂ penalty can be computed per-metal.
-4. **Wf-127 P2 L2 grad-norm guard** (engaged by ``--use-l2-guard``) —
-   clips grad-norm to ``≤ {l2_max:.1f}`` each step. Belt-and-braces
-   against the W₂ penalty blowing up the optimisation; off by
-   default to preserve Wf-125 P2 ship behaviour.
-5. **Wf-127 P3 ASTSR scale clip** (engaged by ``--use-astr-scale-guard``)
-   — value-space clip on predicted pIC50 at test time to
-   ``[-10.0, 10.0]``.
-   Catches explosive predictions the W₂ regulariser can produce
-   early in training; off by default.
+1. **Wasserstein transfer regularisation — OFF** (weight 0.0).
+   The objective is BCE + L2 guard only. Do NOT read this run as a
+   Wasserstein result: per Wf-E1 the term requires BOTH a non-zero
+   `wasserstein_weight` AND `--wasserstein-real`.
+2. **Rh closure-theorem oversampling — ON** (500 synthetic
+   Rh rows appended to the Rh train pool; Wf-125 P1 Catherine 6/6
+   PASS cohort). It is *inactive* by design (MetalCytoToxDB Rh is
+   ~85 % inactive at the IC50<10 µM gate) — a *chemistry*
+   augmentation, not a *label* augmentation.
+3. **Multi-task D-MPNN backbone** with per-metal embedding extraction
+   (pooled `2H`-dim vector before the readout head); computed every
+   epoch end only when W₂ is active.
+4. **Wf-127 P2 L2 grad-norm guard — ON** (clips grad-norm to ≤ 5.0 each step).
+5. **Wf-127 P3 ASTSR scale clip — OFF** (range [-10.0, 10.0]; engage with `--use-astr-scale-guard`).
 
 ## §2 MEASURED (this run)
 
-**Overall LOMO mean test AUC = 0.5025 ± 0.0000**  
+**Overall LOMO mean test AUC = 0.3333 ± 0.0000**  
 (n=1 runs, 1 folds, gate ≥ 0.7)
 
-**Rh LOMO AUC = 0.5025 ± 0.0000** (target ≥ 0.5)  
-**Verdict (Rh target)**: HIT  
+**Rh LOMO AUC = 0.3333 ± 0.0000** (target ≥ 0.5)  
+**Verdict (Rh target)**: MISS  
 **Verdict (overall target ≥ 0.60)**: MISS  
 **Verdict (gate ≥ 0.70)**: BELOW GATE  
 
@@ -51,13 +50,13 @@ existing LOMO trainer:
 
 | Held-out metal | Mean ROC-AUC | Std | n_runs |
 |---|---|---|---|
-| Rh | 0.5025 | 0.0000 | 1 |
+| Rh | 0.3333 | 0.0000 | 1 |
 
 ### §2.2 Per-run detail
 
 | Fold | Seed | n_train | n_test | pos_rate_test | val_AUC | test_AUC | elapsed_s |
 |---|---|---|---|---|---|---|---|
-| Rh | 0 | 22962 | 1368 | 0.374 | 0.6403 | 0.5025 | 377.6 |
+| Rh | 0 | 22962 | 1618 | 0.471 | 0.7195 | 0.3333 | 131.2 |
 
 ## §3 Honest framing (party-twenty-spirit §3.5)
 
@@ -65,10 +64,17 @@ existing LOMO trainer:
 host with the chosen (epochs, seeds, wasserstein_weight) configuration.
 No silent PROJECTED-to-MEASURED promotion.
 
-**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50 (vs current 0.368);
-overall LOMO mean ≥ 0.60 (vs current 0.535).
+**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50; overall LOMO mean
+≥ 0.60.
 
-**Hit / miss summary**: Rh target HIT,
+**Baseline reference (MEASURED, pre-repair ≤24 h cohort)**: Rh 0.3812,
+overall 0.5575 — see
+`molmetal/reports/wf_a2_m19_rh_diagnosis/diagnosis.json`. That baseline
+used a DIFFERENT cohort (`molmetal/data/metal_lomo.csv`), so any delta
+must be computed against the same cohort; the cohort CSV for THIS run
+is echoed in the header above.
+
+**Hit / miss summary**: Rh target MISS,
 overall target MISS,
 original gate BELOW GATE.
 
@@ -78,9 +84,13 @@ original gate BELOW GATE.
   Rh is ~85 % inactive at the IC50<10 µM gate). The oversample is
   a *chemistry* augmentation, not a *label* augmentation.
 * The Wasserstein regulariser is injected every 5 epochs (not every
-  batch) to keep the per-epoch wall-time reasonable.
+  batch) to keep the per-epoch wall-time reasonable. Wf-E1: it is
+  only computed at all when `--wasserstein-real` is passed;
+  `w2_effective_weight` in the per-seed JSON is the authoritative
+  record of whether W₂ reached the gradient.
 * The W₂ snapshot at the end of training is recorded in
-  `final_per_metal_w2` for diagnostic purposes (see per-seed JSON).
+  `final_per_metal_w2` for diagnostic purposes (see per-seed JSON);
+  it is empty when `--wasserstein-real` is off.
 
 ## §4 Cross-references
 

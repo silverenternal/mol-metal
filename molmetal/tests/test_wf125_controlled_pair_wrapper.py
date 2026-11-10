@@ -78,6 +78,7 @@ def dry_run_artifacts():
     Used by tests that need the artefacts to exist.
     """
     env = {
+        "CUDA_VISIBLE_DEVICES": "",
         "PATH": "/usr/bin:/usr/local/bin:/bin",
         "HOME": str(Path.home()),
         "PYTHONPATH": str(PROJECT_ROOT),
@@ -137,6 +138,7 @@ def test_user_ok_gate_REFUSED_default(wrapper_exists):
     """
     assert wrapper_exists, f"Wrapper MISSING on disk: {WRAPPER}"
     env_no_user_ok = {
+        "CUDA_VISIBLE_DEVICES": "",
         "PATH": "/usr/bin:/usr/local/bin:/bin",
         "HOME": str(Path.home()),
         "PYTHONPATH": str(PROJECT_ROOT),
@@ -172,6 +174,7 @@ def test_user_ok_gate_REFUSED_zero(wrapper_exists):
     """
     assert wrapper_exists, f"Wrapper MISSING on disk: {WRAPPER}"
     env_user_ok_zero = {
+        "CUDA_VISIBLE_DEVICES": "",
         "PATH": "/usr/bin:/usr/local/bin:/bin",
         "HOME": str(Path.home()),
         "PYTHONPATH": str(PROJECT_ROOT),
@@ -203,6 +206,7 @@ def test_user_ok_gate_PASSED_dry_run(wrapper_exists):
     """
     assert wrapper_exists, f"Wrapper MISSING on disk: {WRAPPER}"
     env_user_ok_one = {
+        "CUDA_VISIBLE_DEVICES": "",
         "PATH": "/usr/bin:/usr/local/bin:/bin",
         "HOME": str(Path.home()),
         "PYTHONPATH": str(PROJECT_ROOT),

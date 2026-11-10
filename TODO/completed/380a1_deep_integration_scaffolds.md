@@ -26,8 +26,8 @@ wiring (deferred to Wf-380-B1).
 - SCAFFOLD-only; NO trainer integration yet (deferred to Wf-380-B1).
 - All speedup / lift claims are PROJECTED per upstream papers
   (Karras 2022, Frans 2024, Pooladian 2023, Cao 2025 ICML, Khainb 2025,
-  Qiang 2024, Goyal 2017).  MEASURED speedup requires a 5-seed × 30-epoch
-  A/B retrain, OUT OF SCOPE here.
+  Dunn & Koes 2024 (FlowMol), Goyal 2017).  MEASURED speedup requires a
+  5-seed × 30-epoch A/B retrain, OUT OF SCOPE here.
 - 0 GPU launches performed across the entire wave.
 - 2 SCAFFOLD modules use `_wf380` suffix to avoid overwriting existing
   SHIPPED implementations (see §3 for the conflict-resolution detail).
@@ -45,10 +45,29 @@ wiring (deferred to Wf-380-B1).
 | 5 | Triton mini-batch OT (CPU ref) | Khainb 2025 | `triton_mini_batch_ot.py` | 110 | `test_wf380a1_triton_ot.py` | 4 |
 | 6 | Shortcut distillation | Frans 2024 (arXiv:2410.11081) | `shortcut_distillation_wf380.py` | 121 | `test_wf380a1_shortcut_distill.py` | 4 |
 | 7 | Consistency regularisation | Karras 2022 | `consistency_regularization_wf380.py` | 92 | `test_wf380a1_consistency.py` | 4 |
-| 8 | FlowMol unified (CC-BY-NC) | Qiang 2024 (arXiv:2412.01966) | `flowmol_unified.py` | 117 | `test_wf380a1_flowmol.py` | 4 |
+| 8 | FlowMol unified (CC BY-SA 4.0) | Dunn & Koes 2024 (arXiv:2404.19739) | `flowmol_unified.py` | 117 | `test_wf380a1_flowmol.py` | 4 |
 | 9 | Log-normal t-sampling | Karras 2022 / NVlabs/edm | `log_normal_t.py` | 59 | `test_wf380a1_log_normal_t.py` | 4 |
 | 10 | Linear lr-warmup | Goyal 2017 (arXiv:1706.02677) | `lr_warmup.py` | 64 | `test_wf380a1_lr_warmup.py` | 5 |
 | | **TOTAL** | | | **1055** | **10 files** | **41** |
+
+**CITATION CORRECTION (2026-10-31, Wf-A149).** Superseded wording, quoted
+verbatim: “FlowMol unified (CC-BY-NC)” and “Qiang 2024 (arXiv:2412.01966)”.
+Verified against the primary sources on 2026-10-31: `arXiv:2412.01966` is
+**not** FlowMol — the arXiv abs page returns “Implementing Semiclassical
+Szegedy Walks in Classical-Quantum Circuits for Homomorphic Encryption”
+(Ortega, S. A.; Fernández, P.; Martin-Delgado, M. A.), a
+quantum-homomorphic-encryption paper, and the arXiv API returns no record
+titled “FlowMol: A Unified Flow Matching Model for 3D Molecular Generation” and
+no record authored by “Qiang, B.; Song, Y.; ...; Kingma, D. P.”. The real
+upstream is Dunn, I.; Koes, D. R. (2024), *Mixed Continuous and Categorical
+Flow Matching for 3D De Novo Molecule Generation* (FlowMol), `arXiv:2404.19739`
+— the identifier this repo’s own canonical `unified_atom_bond_flow.py` already
+cites — with siblings `arXiv:2411.16644` (FlowMol-CTMC) + `arXiv:2508.12629`
+(FlowMol3). **LICENCE: all three are CC BY-SA 4.0**, **not** CC-BY-NC (arXiv
+abs-page `creativecommons.org/licenses/by-sa/4.0/`). The LICENSE GATE is
+unchanged — CC BY-SA 4.0 still carries attribution + share-alike obligations,
+so USER_OK is still required. Superseded wording preserved verbatim per
+AGENTS.md §5.5 rule #6.
 
 ### Per-module public API summary
 
@@ -105,7 +124,7 @@ wiring (deferred to Wf-380-B1).
   values in `[σ_min, σ_max]` with empirical `log(σ)` mean ≈ `-1.2`,
   std ≈ `1.2`.
 - **FlowMol**: verifies licence gate (`LICENSE_GATED=True`,
-  `LICENSE_NAME` mentions arXiv:2412.01966) + bond-head zeros the
+  `LICENSE_NAME` mentions arXiv:2404.19739) + bond-head zeros the
   output when `USER_OK=1` is unset.
 - **Log-normal t-sampling**: verifies output is in `(0, 1)` and the
   empirical `logit(t)` mean ≈ `mu=-0.5`.
@@ -241,7 +260,7 @@ closeout doc).
    (EDM preconditioning, log-normal t, consistency), Frans 2024
    (shortcut distillation), Pooladian 2023 (OT-CFM), Cao 2025
    ICML (SO(3)-averaged FM), Khainb 2025 (Triton mini-batch OT),
-   Qiang 2024 / FlowMol (CC-BY-NC, license-gated), Goyal 2017
+   Dunn & Koes 2024 / FlowMol (CC BY-SA 4.0, license-gated), Goyal 2017
    (lr-warmup), Kim & Jung 2026 (StableVM).
 3. **2 SCAFFOLD names diverge from task brief** — `consistency_regularization_wf380.py`
    and `shortcut_distillation_wf380.py` use the `_wf380` suffix to

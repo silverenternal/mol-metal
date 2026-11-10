@@ -17,7 +17,7 @@ from pathlib import Path
 from statistics import mean, pstdev
 from typing import Any
 
-REPO = Path("/home/hugo/codes/try_triton_on_rocm")
+REPO = Path(__file__).resolve().parents[3]
 REPORT = REPO / "molmetal/reports/wf_lambda1_wf_r16_round13_30cell/report.json"
 OUT_DIR = REPO / "molmetal/reports/wf_r16_round13_30cell"
 

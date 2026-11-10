@@ -1,0 +1,1 @@
+PASS — all 2 flag(s) are declared by train_dmpnn_multitask_wasserstein.py

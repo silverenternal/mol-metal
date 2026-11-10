@@ -410,7 +410,11 @@
   "head_max_abs_delta": 0.0029514357447624207,
   "n_vel_tensors": 51,
   "n_head_tensors": 30,
-  "reading": "vel_field must be 0.0: the ring term touches only the head and per-module clipping keeps its clip factor independent.  A non-zero value means the A/B is confounded again."
+  "n_vel_tensors_shared": 51,
+  "n_head_tensors_shared": 30,
+  "vel_field_keys_only_in_control": [],
+  "vel_field_keys_only_in_treatment": [],
+  "reading": "For a one-factor A/B on the SAME architecture, vel_field must be 0.0 (the ring term touches only the head, and per-module clipping keeps its clip factor independent); a non-zero value means the A/B is confounded again.  When the architectures differ, the max is over the SHARED tensors only and the *_only_in_* lists carry the difference — the number is not a confound check in that case."
  },
  "honest_limits": [
   "1 seed, 5 epochs, 200 training clouds: a direction test, not an effect size.  Wf-A107b measured the run-to-run spread of this protocol to be as large as the single-seed effect.",

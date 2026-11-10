@@ -5,7 +5,7 @@ import json
 import statistics
 from pathlib import Path
 
-REPORTS = Path("/home/hugo/codes/mol-metal/molmetal/reports")
+REPORTS = Path(__file__).resolve().parents[2] / "molmetal" / "reports"
 OUT_DIR = REPORTS / "wf226_lomo_sweep"
 
 per_metal: dict[str, list[float]] = {}

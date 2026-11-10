@@ -20,6 +20,7 @@ The test is a fail-first regression gate: if anyone removes the
 """
 import os
 import sys
+from pathlib import Path
 
 
 def _clear_triton_env():
@@ -36,7 +37,7 @@ def test_triton_ot_flag_dispatches_env_vars():
     ``--triton-ot`` block in main() was deleted or the env-var names
     changed, this assertion fails.
     """
-    repo = "/home/hugo/codes/mol-metal"
+    repo = str(Path(__file__).resolve().parents[2])
     sys.path.insert(0, repo)
 
     _clear_triton_env()
@@ -68,7 +69,7 @@ def test_triton_ot_flag_dispatches_env_vars():
 
 def test_default_no_triton_ot():
     """Without ``--triton-ot``, neither env var is dispatched."""
-    repo = "/home/hugo/codes/mol-metal"
+    repo = str(Path(__file__).resolve().parents[2])
     sys.path.insert(0, repo)
 
     _clear_triton_env()

@@ -69,7 +69,7 @@ report as PROJECTED.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar, List, Optional, Sequence, Tuple
+from typing import ClassVar, Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -1666,6 +1666,14 @@ class BondAwareDecoder:
         self.min_distance = float(min_distance)
         self.use_geometry_prior = bool(use_geometry_prior)
         self.apply_bond_pattern_mask = bool(apply_bond_pattern_mask)
+        # Wf-A133 (2026-10-31) — the RDKit bond-drop counter for THIS
+        # decoder.  Mirrors the YuelBond decoder's twin attributes
+        # (``molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py``
+        # :1023-1024) so the two drop sites report the same way.  Reset
+        # at the TOP of ``_assemble_mol`` so a decode that returns early
+        # can never inherit the previous decode's count.
+        self._last_bonds_dropped: int = 0
+        self._last_bonds_dropped_reasons: Dict[str, int] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -1962,6 +1970,12 @@ class BondAwareDecoder:
         from rdkit import Chem
         from rdkit.Chem import rdChemReactions  # noqa: F401  (kept for future use)
 
+        # Wf-A133 (2026-10-31) — reset the drop counter at the TOP of the
+        # method, so a decode that returns early can never inherit the
+        # previous decode's count (same rule as the YuelBond twin).
+        self._last_bonds_dropped = 0
+        self._last_bonds_dropped_reasons = {}
+
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
             atom_z = _safe_z(int(z))
@@ -1973,18 +1987,52 @@ class BondAwareDecoder:
             BOND_TRIPLE: Chem.BondType.TRIPLE,
             BOND_AROMATIC: Chem.BondType.AROMATIC,
         }
+        # Wf-A133 (2026-10-31) — a DROPPED BOND IS A MOLECULAR SPLIT, so it
+        # has to be COUNTED, not swallowed.  This is the SECOND RDKit
+        # bond-drop site in the repo; the first (and the reference
+        # implementation for this pattern) is the YuelBond decoder at
+        # ``molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py``
+        # :1612-1629, which carries a counter + a reason histogram.
+        #
+        # The old comment here ("RDKit rejected the bond (e.g. valence
+        # overflow)") was WRONG about the mechanism: RDKit does not raise
+        # on valence overflow at ``AddBond`` time (valence is checked at
+        # SANITISE time, i.e. in the ``SanitizeMol`` call below, which is a
+        # different branch).  Measured on RDKit 2026.03.6: a duplicate
+        # bond, an out-of-range atom index and a self-bond raise
+        # ``RuntimeError``; a NEGATIVE atom index raises ``OverflowError``
+        # (Python's int -> unsigned conversion, not RDKit).
+        #
+        # The catch is deliberately left WIDE, for the same reason as the
+        # YuelBond twin: narrowing it to ``(RuntimeError, OverflowError)``
+        # would change behaviour, because ``int(i)`` on a non-numeric index
+        # raises ``ValueError``/``TypeError``, which the wide catch
+        # swallows (bond dropped) and a narrow catch would PROPAGATE (the
+        # whole decode raises).  So the exception TYPE is recorded instead
+        # — strictly more information than the old bare ``continue`` gave,
+        # and no behaviour change.
+        n_bonds_dropped = 0
+        dropped_reasons: Dict[str, int] = {}
         for i, j, order in bond_orders:
             bt = bond_type_map.get(int(order), Chem.BondType.SINGLE)
             try:
                 rw.AddBond(int(i), int(j), bt)
-            except Exception:
-                # RDKit rejected the bond (e.g. valence overflow) — skip.
+            except Exception as exc:
+                # RDKit rejected the bond (duplicate / out-of-range index /
+                # self-bond) — skip it, but record that it was skipped.
+                n_bonds_dropped += 1
+                _exc_name = type(exc).__name__
+                dropped_reasons[_exc_name] = dropped_reasons.get(_exc_name, 0) + 1
                 continue
+        # Stashed on the decoder so a caller can read the count and the
+        # reason histogram off the LAST decode (see ``bond_drop_report``).
+        self._last_bonds_dropped = n_bonds_dropped
+        self._last_bonds_dropped_reasons = dropped_reasons
 
         try:
             mol = rw.GetMol()
         except Exception as exc:
-            return DecodedMol(
+            _dropped = DecodedMol(
                 error=f"RWMol.GetMol failed: {exc}",
                 bond_orders=list(bond_orders),
                 dative_bonds=list(dative_bonds),
@@ -1993,6 +2041,9 @@ class BondAwareDecoder:
                 dative_source=dative_source,
                 dative_manufactured=int(dative_manufactured),
             )
+            if n_bonds_dropped:
+                _dropped.warnings.append(f"bonds_dropped_rdkit:{n_bonds_dropped}")
+            return _dropped
 
         # Sanitise; if it fails, mark and return what we have.
         sanitized = False
@@ -2015,7 +2066,7 @@ class BondAwareDecoder:
         except Exception:
             smiles = ""
 
-        return DecodedMol(
+        _decoded = DecodedMol(
             mol=mol,
             smiles=smiles,
             bond_orders=list(bond_orders),
@@ -2028,6 +2079,40 @@ class BondAwareDecoder:
             dative_source=dative_source,
             dative_manufactured=int(dative_manufactured),
         )
+        # Wf-A133 (2026-10-31) — a dropped bond SPLITS a molecule, so the
+        # count rides on the per-molecule record the same way the YuelBond
+        # decoder does (``cfm_decoder_yuelbond.py`` :1782-1783).  The
+        # reason histogram lives on the decoder — read it with
+        # ``bond_drop_report()``.
+        if n_bonds_dropped:
+            _decoded.warnings.append(f"bonds_dropped_rdkit:{n_bonds_dropped}")
+        return _decoded
+
+    def bond_drop_report(self) -> Dict[str, object]:
+        """Report the RDKit bond drops of the LAST decode.
+
+        Returns
+        -------
+        dict
+            ``{"bonds_dropped": int, "reasons": {exception_name: count}}``.
+
+            ``bonds_dropped`` is the number of predicted bonds that
+            ``RWMol.AddBond`` refused during the last ``decode()`` — each
+            one is a potential MOLECULAR SPLIT (the bond was predicted,
+            then thrown away during assembly).  ``reasons`` maps the
+            exception TYPE to how many bonds it killed (e.g.
+            ``{"RuntimeError": 1}`` for a duplicate / out-of-range /
+            self-bond, ``{"OverflowError": 1}`` for a negative atom index).
+
+        Notes
+        -----
+        Both fields are reset at the TOP of every decode, so the report
+        always describes the most recent decode and never a stale one.
+        """
+        return {
+            "bonds_dropped": int(self._last_bonds_dropped),
+            "reasons": dict(self._last_bonds_dropped_reasons),
+        }
 
 
 # ---------------------------------------------------------------------------

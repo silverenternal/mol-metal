@@ -43,8 +43,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from molmetal.scripts.cfm_pool_kind import (  # noqa: E402
+    KIND_RECONSTRUCTION,
+    classify_pool,
+)
+from molmetal.scripts.cfm_pool_epoch_rule import census_row  # noqa: E402
 from molmetal.scripts.msrs_surface_model import _git_commit  # noqa: E402
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
+
+#: The run census -- the SSOT of which run wrote what.
+CENSUS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "cfm_run_census.json"
 
 
 def _epoch_summary(rows: Sequence[Dict[str, str]]) -> Dict[str, object]:
@@ -178,6 +186,187 @@ def _bond_head_trajectory(run_dir: Path) -> Dict[str, object] | None:
     return out or None
 
 
+def _event_stream_epochs(run_dir: Path) -> List[int]:
+    """Every epoch index the run's append-only event stream carries.
+
+    The stream is the record of EVERY population that ever wrote into the
+    directory, so it can hold MORE epochs than the run of record ran: the
+    leading ones are a killed pre-resume attempt.
+    """
+    path = run_dir / "events.jsonl"
+    epochs: set[int] = set()
+    if not path.exists():
+        return []
+    try:
+        with path.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(row, dict) or row.get("event") != "train_epoch":
+                    continue
+                try:
+                    epochs.add(int(row.get("epoch")))
+                except (TypeError, ValueError):
+                    continue
+    except OSError:
+        return []
+    return sorted(epochs)
+
+
+def _done_event(run_dir: Path) -> Dict[str, object] | None:
+    """The run's ``done`` event, or None when the stream carries none."""
+    path = run_dir / "events.jsonl"
+    if not path.exists():
+        return None
+    try:
+        with path.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict) and row.get("event") == "done":
+                    return row
+    except OSError:
+        return None
+    return None
+
+
+def _census_for(run_name: str) -> Dict[str, object] | None:
+    """The run census's row for ``run_name``, or None when it carries none."""
+    if not CENSUS_PATH.exists():
+        return None
+    try:
+        census = json.loads(CENSUS_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    return census_row(census, run_name)
+
+
+def _bond_head_trajectory_meta(
+    run_dir: Path, trajectory: List[Dict[str, object]] | None
+) -> Dict[str, object] | None:
+    """WHAT the published bond-head trajectory covers -- read off disk.
+
+    The trajectory list says which epochs carry a bond-head row; it does not
+    say why those epochs and no others.  MEASURED on disk (Wf-A121 / I3):
+    ``cfm_c7_fullgen_2026_10_20``'s trajectory starts at epoch 4, because the
+    run RESUMED into the same directory and epochs 0..3 belong to a killed
+    pre-resume attempt.  A reader who takes "epochs 4..17" for "the run's
+    first four epochs were skipped" is wrong.
+
+    Every field here is derived:
+      * the covered epochs are the epochs of the rows that were read;
+      * the run-of-record epochs are the census's own answer (or, when the
+        census does not carry the run, the population the run's own ``done``
+        event describes);
+      * the verdict is the census's own ``population_verdict`` -- never
+        invented: when the census does not carry the run, the meta SAYS so.
+    """
+    if not trajectory:
+        return None
+    covered = sorted(
+        {int(r["epoch"]) for r in trajectory if r.get("epoch") is not None}
+    )
+    if not covered:
+        return None
+
+    metrics_path = run_dir / "per_epoch_metrics.json"
+    try:
+        source = str(metrics_path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        source = str(metrics_path)
+
+    stream_epochs = _event_stream_epochs(run_dir)
+    done = _done_event(run_dir) or {}
+    try:
+        n_epochs_run = int(done.get("n_epochs_run"))
+    except (TypeError, ValueError):
+        n_epochs_run = None
+
+    # The population's OWN epochs are the LAST ``n_epochs_run`` epochs of the
+    # stream: a segment can hold more epochs than it ran, and the leading
+    # extras are the killed pre-resume attempt (the census's own rule).
+    own_epochs: List[int] = list(stream_epochs)
+    if n_epochs_run is not None and 0 < n_epochs_run < len(stream_epochs):
+        own_epochs = stream_epochs[-n_epochs_run:]
+
+    row = _census_for(run_dir.name)
+    integrity = (row or {}).get("integrity") or {}
+    census_epochs = integrity.get("run_of_record_epoch_indices")
+    if isinstance(census_epochs, list) and census_epochs:
+        run_of_record_epochs = sorted(int(e) for e in census_epochs)
+        run_of_record_source = "census:run_of_record_epoch_indices"
+    else:
+        run_of_record_epochs = list(own_epochs)
+        run_of_record_source = (
+            "events.jsonl:done(n_epochs_run) -- the census does not carry "
+            "this run"
+        )
+
+    verdict = integrity.get("population_verdict")
+    if row is None:
+        source_verdict = None
+        verdict_note = (
+            f"the run census ({CENSUS_PATH.relative_to(PROJECT_ROOT)}) does "
+            f"not carry this run, so no population verdict is published; the "
+            f"run-of-record epochs below are the run's own `done` event"
+        )
+    else:
+        source_verdict = str(verdict) if verdict is not None else None
+        verdict_note = (
+            f"the verdict is the run census's own "
+            f"`integrity.population_verdict` for {run_dir.name}"
+        )
+
+    # The leading epochs of the stream that the trajectory does NOT cover: a
+    # killed pre-resume attempt, when they are exactly a leading prefix.
+    covered_set = set(covered)
+    missing = [e for e in stream_epochs if e not in covered_set]
+    is_resume = bool(missing) and missing == stream_epochs[: len(missing)]
+    if is_resume:
+        resume_note = (
+            f"the trajectory starts at epoch {covered[0]} because the run "
+            f"RESUMED: epochs {missing[0]}..{missing[-1]} belong to a killed "
+            f"pre-resume attempt in the same directory"
+        )
+    elif missing:
+        resume_note = (
+            f"the trajectory covers epochs {covered[0]}..{covered[-1]} while "
+            f"the event stream also carries {missing}; the epochs it does "
+            f"not cover are not a leading prefix, so no resume is claimed"
+        )
+    else:
+        resume_note = (
+            f"the trajectory covers every epoch the event stream carries "
+            f"({covered[0]}..{covered[-1]}); no pre-resume history on disk"
+        )
+
+    return {
+        "epochs_covered": covered,
+        "n_epochs": len(covered),
+        "first_epoch": covered[0],
+        "last_epoch": covered[-1],
+        "run_of_record_epochs": run_of_record_epochs,
+        "resume_note": resume_note,
+        "source_verdict": source_verdict,
+        "source": source,
+        "run_of_record_source": run_of_record_source,
+        "verdict_note": verdict_note,
+        "verdict_source": str(CENSUS_PATH.relative_to(PROJECT_ROOT)),
+        "done_event_n_epochs_run": n_epochs_run,
+        "event_stream_epochs": stream_epochs,
+    }
+
+
 def _reference_stats(path: Path) -> Dict[str, object] | None:
     """The same numbers for real chemistry, so the pool has something to be wrong against.
 
@@ -209,10 +398,11 @@ def _reference_stats(path: Path) -> Dict[str, object] | None:
 def _profile_pools(paths: Sequence[Path]) -> List[Dict[str, object]]:
     """Summarise bond-head reconstruction pools with the same measures.
 
-    A reconstruction pool is written by ``wf_cfm_decode_dump_smiles.py``: real
-    tmQM atoms, bonds predicted by the head, no sampler. It answers a different
-    question from the generation pool — does the HEAD already get the topology
-    wrong? — and without it the generation numbers cannot be attributed.
+    A reconstruction pool is written by ``wf_cfm_decode_dump_smiles.py`` in its
+    FIRST era: real tmQM atoms, bonds predicted by the head, no sampler. It
+    answers a different question from the generation pool — does the HEAD
+    already get the topology wrong? — and without it the generation numbers
+    cannot be attributed.
     """
     out: List[Dict[str, object]] = []
     for path in paths:
@@ -267,12 +457,46 @@ def main(argv: Sequence[str] | None = None) -> int:
     ]
     recon_paths = [p / "generated_smiles.csv" if p.is_dir() else p for p in recon_paths]
 
+    # The reconstruction pools are declared by the FLAG, but the KIND is
+    # decided by the shared rule, not by the flag and not by the header
+    # (one script wrote one header in two eras).  A pool that the rule does
+    # not classify as a reconstruction is REFUSED here rather than profiled
+    # as "the bond head on real geometries" -- the two kinds mean different
+    # things (see molmetal/scripts/cfm_pool_kind.py).  This refuses an input;
+    # it never changes a number.
+    recon_pool_kinds: Dict[str, str] = {}
+    for recon_pool in recon_paths:
+        kind = classify_pool(recon_pool)
+        recon_pool_kinds[str(recon_pool)] = kind.kind
+        if kind.kind != KIND_RECONSTRUCTION:
+            print(
+                f"[c7_fullgen] REFUSING a --recon-pool that is not a "
+                f"reconstruction: {recon_pool} (kind={kind.kind}; reason: "
+                f"{kind.reason})",
+                file=sys.stderr,
+            )
+            return 2
+
     path = args.run / "generated_smiles.csv"
     try:
         pool_label = str(path.relative_to(PROJECT_ROOT))
     except ValueError:
         # A pool outside the repo (a test fixture, an archived run).
         pool_label = str(path)
+
+    # Wf-A114 verify:B D1 -- the MAIN pool is classified too, not only the
+    # --recon-pool inputs.  The payload already carried `pool_kind_source`
+    # next to `recon_pool_kinds`, which read as "the pool kinds are labelled"
+    # while the main pool's numbers were unlabelled.  MEASURED (Wf-A114D):
+    # the main pool's kind is decided by the CONTENT, not by the header --
+    # `cfm_fullcorpus_2026_10_10/generated_smiles.csv` carries `metal_z` but
+    # every row has `sanitized = 0` and an empty `metal_z`, so it is the
+    # 2026-10-12+ ODE path and therefore a GENERATION pool: its numbers ARE
+    # the generator's quality.  A main pool that the rule classifies as a
+    # RECONSTRUCTION still must not be read as the generator's quality.  This
+    # LABELS; it never changes a number.
+    main_pool_kind = classify_pool(path)
+
     with path.open(newline="") as handle:
         rows = list(csv.DictReader(handle))
     by_epoch: Dict[int, List[Dict[str, str]]] = {}
@@ -298,6 +522,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "three_ring_share": [first["three_ring_share"], last["three_ring_share"]],
         }
 
+    bond_trajectory = _bond_head_trajectory(args.run)
+
     payload = {
         "artifact": "c7_fullgen_pool_quality",
         "tag": "MEASURED",
@@ -308,14 +534,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             "pool": pool_label,
             "n_rows": len(rows),
             "epochs": len(per_epoch),
+            "recon_pool_kinds": recon_pool_kinds,
+            "pool_kind": main_pool_kind.kind,
+            "pool_kind_reason": main_pool_kind.reason,
+            "pool_kind_source": "molmetal/scripts/cfm_pool_kind.py",
         },
         "overall": overall,
         "per_epoch": per_epoch,
         "first_vs_last": trend,
-        "bond_head_trajectory": _bond_head_trajectory(args.run),
+        "bond_head_trajectory": bond_trajectory,
+        "bond_head_trajectory_meta": _bond_head_trajectory_meta(
+            args.run, bond_trajectory
+        ),
         "reference": _reference_stats(args.reference),
         "head_on_real_geometries": _profile_pools(recon_paths),
         "reading": (
+            f"The MAIN pool ({pool_label}) is classified as "
+            f"'{main_pool_kind.kind}' by molmetal/scripts/cfm_pool_kind.py: "
+            f"{main_pool_kind.reason}.  Its numbers are that kind's numbers. "
             "The corpus writes the metal as its own component (69.1% of training rows have 3 "
             "components, 0.07% have one), so a correct generation is multi-component and "
             "single_fragment_rate is not a quality metric here. Compare mean_n_frags against the "

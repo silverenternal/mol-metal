@@ -1,0 +1,190 @@
+# configs/wfa269_c3_dmpnn_r20p5_seed0.yaml — AGENTS.md §5.11 YAML for
+# scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh, SEED 0.
+#
+# WHY ONE FILE PER SEED (not one file for the sweep)
+#   The wrapper launches ONE trainer process per (cell, seed) tuple
+#   ("one trainer process per tuple" is what the per-pair wall budget in the
+#   wrapper's own header depends on).  The trainer sweeps `args.seeds`
+#   INTERNALLY, so the per-tuple seed has to be delivered by the CONFIG.
+#   §5.11 forbids a CLI flag other than --config/--out-dir/--ckpt-dir/--help,
+#   and the migration contract for this wave forbids generating a YAML at
+#   launch time — so the seed is pinned in a STATIC file, one per seed.
+#   The cell coordinate is NOT swept by the trainer (see UNMIGRATED below), so
+#   the cell loop keeps its per-iteration --out-dir on the command line.
+#
+#   The repo's other §5.11 migration (scripts/launch_wf124_p3_g5.sh) solves the
+#   same problem by DERIVING a per-pair YAML at launch time from a base
+#   config.  That mechanism is deliberately NOT used here: this wave's contract
+#   says the config is a file on disk.
+#
+# PROVENANCE OF EVERY VALUE (MEASURED 2026-11-03)
+#   The pre-migration invocation was:
+#     --config configs/dmpnn.yaml --mode joint_tmqm_platinai
+#     --tmqm-csv .../tmQM/tmqm_parsed.csv --platinai-csv .../platinai_4cell.csv
+#     --cells <cell> --tmqm-metals Cr Mn ... Au --seeds <seed>
+#     --epochs 50 --hidden 300 --depth 3
+#     --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128
+#     --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8
+#     --out-dir <REPORTS_DIR>/<cell>/seed<seed>
+#     --per-cell-w2-out ... --per-metal-w2-out ... --per-wave-convergence-out ...
+#     --device cuda:0
+#   Effective old values = configs/dmpnn.yaml overridden by the CLI flags above
+#   (explicit CLI > YAML > argparse default, AGENTS.md §5.11).  Every leaf
+#   below reproduces that effective value exactly; the equivalence probe
+#   compares the two namespaces dest by dest.
+#
+# FLAG -> DEST -> YAML KEY MAP (dest names come from the trainer's OWN parser,
+# captured with scripts/_config_binding_gate.py :: _capture_parser)
+#   --seeds            -> seeds             -> data.seeds / protocol.seeds   (LIST)
+#   --epochs           -> epochs            -> train.epochs
+#   --hidden           -> hidden            -> model.hidden
+#   --depth            -> depth             -> model.depth
+#   --w2-weight        -> wasserstein_weight-> eval.wasserstein_weight
+#   --w2-gradient-mode -> w2_gradient_mode  -> eval.w2_gradient_mode
+#   --cpu-num-workers  -> cpu_num_workers   -> compute.cpu_num_workers
+#   --device           -> device            -> compute.device
+#   --out-dir          -> out_dir           -> output.out_dir (the FALLBACK:
+#                                             §5.11 keeps --out-dir on the
+#                                             command line because it selects
+#                                             WHERE the run writes, not WHAT it
+#                                             trains.  The wrapper passes the
+#                                             per-(cell, seed) path explicitly
+#                                             and an explicit CLI value wins
+#                                             over the YAML, so the declared
+#                                             value below is what the OLD
+#                                             config carried and is what the
+#                                             equivalence probe compares.)
+#
+# UNMIGRATED — the trainer DOES NOT DECLARE THESE FLAGS (MEASURED 2026-11-03:
+# 12 of the 20 pre-migration argv flags are undeclared; see the repo's own
+# report molmetal/reports/wf355a3_r20_p5_tmqm_plat/argv_capability.txt and
+# molmetal/scripts/wf_argv_capability_check.py, which already names THIS
+# wrapper).  There is no argparse dest to move them to, so they have no YAML
+# counterpart and they are NOT passed any more:
+#   --mode joint_tmqm_platinai   --tmqm-csv <path>   --platinai-csv <path>
+#   --cells <cell>               --tmqm-metals <11 metals>
+#   --use-multiph-pll            --multiph-fourier-bins 32   --pll-signature-dim 128
+#   --per-cell-w2-out <path>     --per-metal-w2-out <path>
+#   --per-wave-convergence-out <path>
+#   and --w2-weight (the flag NAME is wrong; the dest is --wasserstein-weight,
+#   which this file sets under eval.wasserstein_weight).
+#   The pre-migration invocation was therefore FATAL: argparse exited 2 with
+#   "unrecognized arguments" before any training started.  Dropping the
+#   undeclared flags is what makes the wrapper runnable at all.
+#
+# SECTIONS: only the eight loader leaf-fallback sections (protocol | model |
+# flow | data | compute | eval | output | train) carry leaves; a leaf under
+# any other top-level section is SILENTLY IGNORED by
+# molmetal/scripts/wfA2_config_loader.py.
+
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  # Only --config and --out-dir, both placeholder-valued — the §5.11 shape.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+model:
+  # --hidden 300 (the wrapper's value; configs/dmpnn.yaml shipped 128 and the
+  # argparse default is None = "use the built-in model default").
+  hidden: 300
+  # --depth 3
+  depth: 3
+  use_triton_smiles_featurize: false
+  use_triton_relu_mlp: false
+  use_triton_bond_head: false
+  pic50_ridge_readout: false
+
+train:
+  # --epochs 50
+  epochs: 50
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  use_ema: false
+  lr_scheduler: none
+  lr_min_lr: 1.0e-6
+  lr_warmup_epochs: 5
+  alpha: 0.5
+  single_task: false
+  # dest is `kendall` (the flags are --use-kendall / --no-kendall).
+  kendall: true
+  ablation_config: mtl_baseline
+
+data:
+  # NOTE: under `data:`, the leaf `csv` resolves to the dest `data_csv` (the
+  # flattened two-component path wins), NOT to the `csv` dest.  The value is
+  # configs/dmpnn.yaml's, unchanged — the wrapper never passed --csv or
+  # --data-csv, so the old effective value came from that file.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  # The wrapper never passed --metals; the cohort is auto-discovered.
+  metals:
+    - auto
+  # --seeds <this file's seed> — a LIST dest, so it MUST be a YAML sequence.
+  seeds:
+    - 0
+  metal_coord_term: false
+  metal_coord_weight: 0.5
+  active_pic50_threshold: 6.0
+
+eval:
+  # --w2-weight 0.05 -> the dest is `wasserstein_weight` (the flag the trainer
+  # actually declares is --wasserstein-weight).
+  wasserstein_weight: 0.05
+  use_wasserstein_2: false
+  # configs/dmpnn.yaml's value (True); the argparse default is False, so this
+  # leaf is a deliberate deviation, inherited from the pre-migration config.
+  use_wasserstein_w1: true
+  # --w2-gradient-mode sort (configs/dmpnn.yaml shipped `sliced`).
+  w2_gradient_mode: sort
+  use_triton_wasserstein_sliced: false
+  use_ot_cfm: false
+  triton_ot: false
+  use_l2_guard: true
+
+compute:
+  # --device cuda:0
+  device: "cuda:0"
+  tf32: false
+  torch_compile: false
+  # --cpu-num-workers 8
+  cpu_num_workers: 8
+  pin_memory: true
+
+# Restated with the identical value it has under `data:` — the loader treats
+# list dests as YAML-wins, so both writes land the same list.
+protocol:
+  seeds:
+    - 0
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+
+output:
+  # `out_dir` IS the pre-migration effective value: configs/dmpnn.yaml's
+  # output.out_dir (molmetal/reports/dmpnn_default), copied verbatim.
+  # The wrapper passes --out-dir explicitly on EVERY invocation
+  # (<REPORTS_DIR>/<cell>/seed<seed>) and an explicit CLI value wins over the
+  # YAML (AGENTS.md §5.11 precedence), so at run time the sweep writes to the
+  # per-(cell, seed) path exactly as it did before the migration — this key is
+  # the FALLBACK.  It is declared because the equivalence probe models
+  # `--config` alone: without it the probe would report one DIFF (out_dir)
+  # that says nothing about the run, because the CLI value overrides it.
+  out_dir: molmetal/reports/dmpnn_default
+  # `ckpt_dir` IS the pre-migration effective value (configs/dmpnn.yaml's
+  # output.ckpt_dir, copied verbatim, relative path included).  NOTE the
+  # pre-existing hazard this preserves: the ckpt file name is
+  # dmpnn_mtw_<metal>_seed<seed>.pt, so the 4 cell runs of one seed share a
+  # checkpoint file and `resume_from: auto` can resume the next cell's run
+  # from the previous one's checkpoint.  That is the OLD effective behaviour
+  # and is preserved unchanged here; it is REPORTED, not repaired, because
+  # repairing it would change what the wrapper does.
+  ckpt_dir: molmetal/checkpoints
+  # No `base_dir` dest in this parser; scripts/start.sh reads output.base_dir.
+  # It records the sweep root (the parent of every per-iteration path).
+  base_dir: molmetal/reports/wf355a3_r20_p5_tmqm_plat
+  resume_from: auto
+  checkpoint_interval: 50

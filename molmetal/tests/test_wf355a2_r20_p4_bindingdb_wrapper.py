@@ -21,7 +21,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path("/home/hugo/codes/mol-metal")
+ROOT = Path(__file__).resolve().parents[2]
 WRAPPER = ROOT / "scripts" / "launch_wf310e_r20_p4_bindingdb_1.07M.sh"
 DOWNLOAD = ROOT / "scripts" / "download_bindingdb_1.07M.sh"
 

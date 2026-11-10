@@ -51,7 +51,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # Repo root on sys.path so we can import the validation runner
-REPO = Path("/home/hugo/codes/mol-metal")
+REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
 
 from rdkit import Chem  # type: ignore
@@ -69,11 +69,17 @@ from molmetal.validation.posebusters_runner import (  # type: ignore
 # --------------------------------------------------------------------------
 # Inputs
 # --------------------------------------------------------------------------
-WF179_DIR = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf179_bd9_m15_rmsd_p2"
+WF179_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "molmetal"
+    / "reports"
+    / "wf179_bd9_m15_rmsd_p2"
 )
-OUT_DIR = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf246d_m8_pb_dock"
+OUT_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "molmetal"
+    / "reports"
+    / "wf246d_m8_pb_dock"
 )
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

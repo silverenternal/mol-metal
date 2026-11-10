@@ -1,0 +1,70 @@
+{
+  "created_at_utc": "2026-11-10T15:51:07.405896+00:00",
+  "status": "completed",
+  "scope": "Only byte-identical duplicate last checkpoints in wfa107 results; selected counterpart retained.",
+  "items": [
+    {
+      "deleted": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107c_headswap/control_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "088a008ffd295aa307b2e832e24ac5655c93220b10f98520a86b4de95d4b13a9",
+      "bytes": 5964858,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "deleted": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107c_headswap/edge_ring_w1_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "e22e9d3ff3eff3bf90d246c45242af599c82af59921cde093c78ead852921d1e",
+      "bytes": 5964887,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "deleted": "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107e_fm_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "11b20170a31111a71fbd33a117cfe77da32d4ee47736290ec0dd7eac134c62b3",
+      "bytes": 9413186,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "deleted": "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107e_fm_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "40bb8858f0c9e133931efc8ea792182615ba9d7db129a4b2c59ff8d071e378fb",
+      "bytes": 9413215,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "deleted": "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107g_fm_sigma_edge_ring_w1/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "03e0eff5ea10d8b23c8909fffa65772622979f3869c0fba7cee7e15d2f04b67c",
+      "bytes": 9413253,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    },
+    {
+      "deleted": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "retained": "results/wfa107g_fm_sigma_control/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "sha256": "5af96b80f5c9202ea9e11b07748f913d249045ba1b91db7d429c7b1aa7f0a35b",
+      "bytes": 9413224,
+      "reason": "Byte-identical last-epoch duplicate; selected checkpoint retained; no exact-path text references found in inventory scan.",
+      "deleted_verified": true,
+      "retained_verified": true
+    }
+  ],
+  "deleted_files": 6,
+  "deleted_logical_bytes": 49582623,
+  "rebuildable_cache": {
+    "path": ".ruff_cache",
+    "logical_bytes": 174436912,
+    "file_count": 1158,
+    "status": "removed",
+    "reason": "Ruff regenerates its cache."
+  }
+}

@@ -276,7 +276,7 @@ def test_trans_pair_cut_red_check() -> None:
             cwd=str(REPO),
             capture_output=True,
             text=True,
-            env={"PATH": "/usr/bin:/bin", "HOME": str(Path.home())},
+            env={"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin", "HOME": str(Path.home())},
         )
         # The trigonal-prism case must FAIL under the bad cut. The
         # octahedron's trans pairs (180 deg) survive; only the
@@ -295,7 +295,7 @@ def test_trans_pair_cut_red_check() -> None:
         cwd=str(REPO),
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin", "HOME": str(Path.home())},
+        env={"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin", "HOME": str(Path.home())},
     )
     assert "hand_built_tests: 4/4 PASS" in proc.stdout, (
         f"after restore, expected 4/4 PASS, got: {proc.stdout}{proc.stderr}"

@@ -32,8 +32,18 @@ from sklearn.preprocessing import StandardScaler
 RDLogger.DisableLog("rdApp.*")
 warnings.filterwarnings("ignore")
 
-CSV_PATH = Path("/home/hugo/codes/mol-metal/.data/molmetal/click_yields_literature.csv")
-REPORT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf244d_click_yield")
+CSV_PATH = (
+    Path(__file__).resolve().parents[2]
+    / ".data"
+    / "molmetal"
+    / "click_yields_literature.csv"
+)
+REPORT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf244d_click_yield"
+)
 REPORT_JSON = REPORT_DIR / "R2_report.json"
 
 # 12 RDKit 2D descriptors per molecule. Standard chemoinformatics panel

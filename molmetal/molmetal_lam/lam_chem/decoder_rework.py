@@ -281,14 +281,16 @@ TMQM_MEASURED_METAL_CAPS: Dict[int, float] = {
 #: of all metal bonds (230/2,323) are unrepresentable
 #: (metrics/by_metric/wfa113_t72_valence_cap.json).
 #:
-#: Pt stays at 4 deliberately, not statistically: 81.8% of the Pt corpus is
-#: four-coordinate, the project targets Pt(II) anticancer complexes, and a
-#: six-coordinate ceiling would let the decoder build Pt(IV) shapes on a
-#: Pt(II)-dominated prior.  The 17.7% of Pt complexes at MND >= 5 are
-#: therefore NOT representable; that is measured in the same artifact rather
-#: than assumed away.
+#: Wf-A113 (T88, 2026-10-29) — Pt used to be pinned at 4 here as well, on the
+#: same "project targets Pt(II)" argument.  The loss-side ceiling and the
+#: decoder's ceiling must agree, or the barrier permits a sixth bond the
+#: selector then drops -- the T82 divergence in a different table pair.
+#: MEASURED (tmqm_parsed.csv, 8,275 Pt rows): MND p99 = 6; 1,465 complexes
+#: (17.7%) exceed 4, stranding 2,714 bonds.  Pt(IV) octahedral prodrugs are a
+#: first-class anticancer class (satraplatin reached the clinic), so the
+#: exclusion was costing target chemistry, not noise.
 TMQM_MEASURED_METAL_COORDINATION_CAPS: Dict[int, int] = {
-    78: 4,   # Pt  p50 4, p99 6 -- pinned to the square-planar target, see above
+    78: 6,   # Pt  p50 4, p99 6
     44: 10,  # Ru  p99 10
     77: 9,   # Ir  p99 9
     45: 10,  # Rh  p99 10

@@ -140,9 +140,56 @@ fi
 
 # BLK-I2 wrapper: pre-flight v2 must PASS (AGENTS.md §1.4 + §5.7). Inline so a
 # stale pre-flight cache cannot claim an under-firewall run.
-if ! "$PY" molmetal/scripts/pre_flight_check.py \
-        --pipeline launch --fast 2>&1 | tail -25; then
-  echo "[FATAL] pre_flight_check FAILED — refuse to launch (AGENTS.md §1.4 + §5.1)"
+#
+# 2026-11-04 (Wf-A269 script-contract repair — `scripts/_script_contract_gate.py`
+# reported this line as `undeclared_flag`): `--fast` is NOT an option of
+# `molmetal/scripts/pre_flight_check.py` and NEVER was.
+#   MEASURED (2026-11-04): the parser declares exactly 13 options
+#   (--budget-hr --changed-files --changed-only --declared-wave
+#   --freeze-csv-hashes --gates --jobs --json --pairs-metals --pairs-seeds
+#   --pipeline --strict --verbose) — none of them `--fast`; and
+#   `git log --all -S '"--fast"' -- molmetal/scripts/pre_flight_check.py`
+#   returns NOTHING, i.e. the flag was NEVER declared in any branch of the
+#   history. argparse therefore exited 2 with "unrecognized arguments: --fast".
+#   `--fast` is the vocabulary of the BASH surfaces (`scripts/start.sh:159` and
+#   `scripts/_pre_flight_check.sh:22`), where it means "skip the pytest
+#   collect-only + the p3_* gates, WARN-only summary". The Python pre-flight
+#   has no such mode.
+#   NO DECLARED FLAG EXPRESSES "fast": `--pipeline launch` IS the repo's
+#   canonical launch surface (9 other launchers call it verbatim) and
+#   `--jobs N` sets the gate CONCURRENCY (default = min(8, cpu_count)), not
+#   the gate SUBSET. `--changed-only` is an OPT-IN incremental mode with a
+#   different meaning (and it silently skips gitignored-scope gates).
+#   ⇒ `--fast` is DROPPED, which is the honest repair. Adding it to
+#   `pre_flight_check.py` was considered and REJECTED: a "skip some gates"
+#   mode on a fail-closed PASS gate is exactly the "skipped-but-PASS"
+#   costume AGENTS.md §6.269.17 classifies as a DEAD GATE.
+#
+# SECOND DEFECT IN THE SAME LINE, repaired here under the same dated note:
+# the guard was VACUOUS. In `cmd | tail -25` the pipeline's exit status is
+# `tail`'s (always 0), so `if ! cmd | tail -25` could NEVER be true ⇒ the
+# "[FATAL] pre_flight_check FAILED" branch was DEAD CODE. Combined with the
+# `--fast` argparse exit above, the wrapper launched the GPU run with NO
+# pre-flight at all and could not have complained. The pre-flight's own rc
+# is now read from `${PIPESTATUS[0]}` (the repo's canonical rc-capture shape,
+# `molmetal/tests/test_wfa269_wave10_pipefail_rc_capture.py`), read
+# IMMEDIATELY after the pipeline and with NO `|| true` in between (a `|| true`
+# after the pipeline resets PIPESTATUS to 0 — the wave-10 defect class).
+# `set -o pipefail` is deliberately NOT enabled: this file must not grow one
+# (the SIGPIPE lesson in memory), and the rc is taken from the pipeline's
+# FIRST slot, which is the pre-flight's own status, not `tail`'s.
+#
+# SUPERSEDED RENDERING PRESERVED VERBATIM per AGENTS.md section 5.5 rule #6:
+#   if ! "$PY" molmetal/scripts/pre_flight_check.py \
+#           --pipeline launch --fast 2>&1 | tail -25; then
+#     echo "[FATAL] pre_flight_check FAILED — refuse to launch (AGENTS.md §1.4 + §5.1)"
+#     exit 2
+#   fi
+"$PY" molmetal/scripts/pre_flight_check.py \
+    --pipeline launch 2>&1 | tail -25
+preflight_rc=${PIPESTATUS[0]}
+if [ "$preflight_rc" -ne 0 ]; then
+  echo "[FATAL] pre_flight_check FAILED (rc=$preflight_rc) — refuse to launch (AGENTS.md §1.4 + §5.1)"
   exit 2
 fi
 
@@ -151,7 +198,8 @@ mkdir -p "$OUT_DIR" "$(dirname "$LOG")"
 # BLK-I1: redirect entire .sh stdout/stderr to LOG; trainer detached.
 exec >"$LOG" 2>&1
 
-export CUDA_VISIBLE_DEVICES=0
+# Wf-A165: an explicit ambient CUDA_VISIBLE_DEVICES (incl. the "" session lock) must win; unset -> 0.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES-0}"
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

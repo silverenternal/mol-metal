@@ -1,0 +1,239 @@
+# Wf-A163 — PROPOSED patch (NOT APPLIED).  Applying it is the main thread's job.
+#
+# WHAT IT COVERS — the paths the landed Wf-A162 pre-flight repair does NOT:
+#
+#   1. molmetal/tests/conftest.py + conftest.py (repo root)
+#      The 28 child spawns (18 files, all under molmetal/tests/) that build a
+#      HAND-MADE env dict with no CUDA_VISIBLE_DEVICES key.  Such a child
+#      inherits NOTHING from the parent -- including the CPU lock the two
+#      conftests write at import time -- so it sees EVERY GPU.  Worse, the
+#      trainers it invokes call
+#      molmetal/scripts/_cuda_default.py::ensure_cuda_visible_devices_default(),
+#      which SETS CUDA_VISIBLE_DEVICES="0" when the variable is UNSET; in
+#      these children it IS unset, so the child ends up with GPU 0 visible.
+#      The fix is ONE choke point (subprocess.Popen.__init__) and it is a
+#      NO-OP unless the session lock is on.
+#
+#   2. molmetal/scripts/infer_cfm.py
+#      The device default was computed at IMPORT time
+#      ("cuda" if torch.cuda.is_available() else "cpu"), so merely importing
+#      the module initialised CUDA and created a primary context on a visible
+#      GPU.  Now: lazy, the session lock wins, and MOLMETAL_SMOKE_DEVICE
+#      makes the choice explicit.
+#
+# WHAT IT DELIBERATELY DOES NOT TOUCH:
+#
+#   * molmetal/scripts/pre_flight_check.py -- READ-ONLY to this branch.  The
+#     landed Wf-A162 repair is CORRECT: all four of its claimed properties
+#     were verified against the file on disk (see report.md §4).  No diff is
+#     proposed for it.
+#   * molmetal/utils/device.py -- its import-time ROCM_AVAILABLE probe does
+#     NOT create a context (torch.cuda.is_available() is a device-count
+#     query), so it is not an allocation path; and making it lazy would
+#     break molmetal/molmetal_lam/tests/test_device_selection.py:219
+#     ("assert isinstance(ROCM_AVAILABLE, bool)"), which lives under
+#     molmetal/molmetal_lam/** -- read-only to this branch.
+#   * scripts/launch_*.sh (the GPU launchers) -- a deliberate opt-in surface
+#     (AGENTS.md §5.1).  scripts/start.sh was ALREADY repaired by the
+#     concurrent Wf-A165 branch (the ambient mask now wins over the yaml's
+#     compute.gpu).
+#   * molmetal/tests/test_wfa156_text_scan.py and
+#     molmetal/tests/test_wfa125_root_conftest_gpu_lock.py -- test_wfa*
+#     files, read-only to this branch.  Their runtime behaviour is covered
+#     anyway by the conftest fix above.
+#
+# VERIFIED:
+#   * git apply --check  -> clean on all three files.
+#   * patch -p1 --dry-run + patch -p1 on a SCRATCH COPY -> clean.
+#   * functional check on the scratch copy: a hand-made env without the key
+#     gains CUDA_VISIBLE_DEVICES=""; an env that carries the key keeps it
+#     verbatim; a spawn with no env= is unchanged.
+#   * functional check on the scratch copy: infer_cfm.py imports with
+#     torch.cuda.is_available() booby-trapped (the import-time probe is
+#     gone) and resolves to "cpu" under a blank ambient.
+#
+# STATE NOTE (apply to the WORKING TREE, not to a pristine HEAD checkout):
+#   * molmetal/tests/conftest.py is ALREADY MODIFIED in the working tree by
+#     another branch (the Wf-A123 published-tree write guard).  The hunk
+#     context below is against that working-tree state, so the patch must be
+#     applied on top of the current working tree.  It was verified against
+#     exactly that state.
+#   * molmetal/scripts/infer_cfm.py is CLEAN vs HEAD.
+#   * the repo-root conftest.py is UNTRACKED in git (it is not in
+#     `git ls-files`), so applying this patch makes that file modified but
+#     still untracked -- it needs `git add conftest.py` before it can be
+#     committed.
+
+diff --git a/molmetal/tests/conftest.py b/molmetal/tests/conftest.py
+--- a/molmetal/tests/conftest.py
++++ b/molmetal/tests/conftest.py
+@@ -55,6 +55,55 @@
+     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+ 
+ 
++# --- Wf-A163: THE CPU LOCK MUST ALSO REACH THE CHILDREN --------------------
++# MEASURED 2026-11-01 (molmetal/reports/wfa163_gpu_tooling_census/): 28 child
++# spawns in this test tree build a HAND-MADE env dict that carries NO
++# CUDA_VISIBLE_DEVICES key, so the child inherits NOTHING from this process --
++# including the CPU lock written above.  A child launched that way sees EVERY
++# GPU.  Worse, the trainers it invokes call
++# molmetal/scripts/_cuda_default.py::ensure_cuda_visible_devices_default(),
++# which SETS CUDA_VISIBLE_DEVICES="0" when the variable is UNSET -- and in
++# these children it IS unset.  The child therefore ends up with GPU 0 visible.
++#
++# The fix is ONE choke point: subprocess.Popen.__init__ is the single funnel
++# through which subprocess.run / call / check_call / check_output / Popen all
++# start a child.  When the session lock is ON, inject CUDA_VISIBLE_DEVICES=""
++# into any env that does not already carry the key.  An env that DOES carry
++# the key keeps it verbatim, and when the lock is OFF nothing is touched.
++def _install_child_env_lock() -> None:
++    """Propagate this session's CPU lock into every child process."""
++    import functools
++    import subprocess
++
++    real_init = subprocess.Popen.__init__
++
++    @functools.wraps(real_init)
++    def _patched_init(self, *args, **kwargs):
++        env = kwargs.get("env")
++        positional = False
++        if env is None and len(args) >= 11:
++            # Popen(self, args, bufsize, executable, stdin, stdout, stderr,
++            #       preexec_fn, close_fds, shell, cwd, env, ...)
++            env = args[10]
++            positional = True
++        if env is not None and "CUDA_VISIBLE_DEVICES" not in env:
++            env = {**env, "CUDA_VISIBLE_DEVICES": ""}
++            if positional:
++                args = args[:10] + (env,) + args[11:]
++            else:
++                kwargs["env"] = env
++        return real_init(self, *args, **kwargs)
++
++    subprocess.Popen.__init__ = _patched_init
++
++
++if (
++    os.environ.get(MOLMETAL_TEST_ALLOW_GPU_ENV) != "1"
++    and os.environ.get("CUDA_VISIBLE_DEVICES") == ""
++):
++    _install_child_env_lock()
++
++
+ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ 
+ 
+diff --git a/conftest.py b/conftest.py
+--- a/conftest.py
++++ b/conftest.py
+@@ -69,6 +69,55 @@
+     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+ 
+ 
++# --- Wf-A163: THE CPU LOCK MUST ALSO REACH THE CHILDREN --------------------
++# MEASURED 2026-11-01 (molmetal/reports/wfa163_gpu_tooling_census/): 28 child
++# spawns in this test tree build a HAND-MADE env dict that carries NO
++# CUDA_VISIBLE_DEVICES key, so the child inherits NOTHING from this process --
++# including the CPU lock written above.  A child launched that way sees EVERY
++# GPU.  Worse, the trainers it invokes call
++# molmetal/scripts/_cuda_default.py::ensure_cuda_visible_devices_default(),
++# which SETS CUDA_VISIBLE_DEVICES="0" when the variable is UNSET -- and in
++# these children it IS unset.  The child therefore ends up with GPU 0 visible.
++#
++# The fix is ONE choke point: subprocess.Popen.__init__ is the single funnel
++# through which subprocess.run / call / check_call / check_output / Popen all
++# start a child.  When the session lock is ON, inject CUDA_VISIBLE_DEVICES=""
++# into any env that does not already carry the key.  An env that DOES carry
++# the key keeps it verbatim, and when the lock is OFF nothing is touched.
++def _install_child_env_lock() -> None:
++    """Propagate this session's CPU lock into every child process."""
++    import functools
++    import subprocess
++
++    real_init = subprocess.Popen.__init__
++
++    @functools.wraps(real_init)
++    def _patched_init(self, *args, **kwargs):
++        env = kwargs.get("env")
++        positional = False
++        if env is None and len(args) >= 11:
++            # Popen(self, args, bufsize, executable, stdin, stdout, stderr,
++            #       preexec_fn, close_fds, shell, cwd, env, ...)
++            env = args[10]
++            positional = True
++        if env is not None and "CUDA_VISIBLE_DEVICES" not in env:
++            env = {**env, "CUDA_VISIBLE_DEVICES": ""}
++            if positional:
++                args = args[:10] + (env,) + args[11:]
++            else:
++                kwargs["env"] = env
++        return real_init(self, *args, **kwargs)
++
++    subprocess.Popen.__init__ = _patched_init
++
++
++if (
++    os.environ.get(MOLMETAL_TEST_ALLOW_GPU_ENV) != "1"
++    and os.environ.get("CUDA_VISIBLE_DEVICES") == ""
++):
++    _install_child_env_lock()
++
++
+ def _cpu_lock_on() -> bool:
+     """True when this session has been forced onto the CPU."""
+     return os.environ.get(MOLMETAL_TEST_ALLOW_GPU_ENV) != "1"
+diff --git a/molmetal/scripts/infer_cfm.py b/molmetal/scripts/infer_cfm.py
+--- a/molmetal/scripts/infer_cfm.py
++++ b/molmetal/scripts/infer_cfm.py
+@@ -34,13 +34,41 @@
+ DEFAULTS = {
+     "input_file": "molecules.smi",
+     "output_dir": "./predictions/",
+-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+     "num_cycle": 1,
+     "batch_size": 8,
+     "max_smiles_len": 256,
+ }
+ 
+ 
++def _default_device() -> str:
++    """The device this run uses when ``--device`` is not given.
++
++    Wf-A163 (2026-11-01).  The default used to be computed at IMPORT time
++    (``"device": "cuda" if torch.cuda.is_available() else "cpu"``), so merely
++    importing this module initialised CUDA and created a primary context on a
++    visible GPU -- before the operator had asked for any work at all.
++
++    Three changes, in order:
++
++    1. LAZY -- the probe runs when the arguments are parsed, not when the
++       module is imported.
++    2. THE SESSION LOCK WINS -- ``CUDA_VISIBLE_DEVICES=""`` (the repo's
++       no-GPU lock) forces ``cpu`` without probing at all.
++    3. EXPLICIT OVERRIDE -- ``MOLMETAL_SMOKE_DEVICE=cpu|cuda`` makes the
++       choice explicit, following the convention already used by
++       ``molmetal/scripts/metallo_drug_smoke_retrain.py::_resolve_device``.
++
++    The default in every other case is unchanged: the GPU whenever one is
++    available.
++    """
++    if os.environ.get("CUDA_VISIBLE_DEVICES", None) == "":
++        return "cpu"
++    override = (os.environ.get("MOLMETAL_SMOKE_DEVICE") or "").strip().lower()
++    if override in ("cpu", "cuda"):
++        return override
++    return "cuda" if torch.cuda.is_available() else "cpu"
++
++
+ def parse_args(argv=None) -> argparse.Namespace:
+     """Build argparse Namespace from CLI args (mirror omegafold/__main__.py:42)."""
+     p = argparse.ArgumentParser(
+@@ -60,7 +88,7 @@
+     )
+     p.add_argument(
+         "--device",
+-        default=DEFAULTS["device"],
++        default=_default_device(),
+         type=str,
+         help="cpu / cuda / cuda:0 / cuda:1",
+     )

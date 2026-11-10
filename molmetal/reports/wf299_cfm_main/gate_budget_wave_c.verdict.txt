@@ -1,0 +1,1 @@
+FAIL the wave does not fit the session cap: remaining_hr=-1.1 [7.5h budget exceeded by 1.1h; 0 wave(s) DEFERRED to next session (none)]

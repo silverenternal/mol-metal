@@ -1,0 +1,66 @@
+# CFM subsystem CI smoke — the hyperparameters of
+#   molmetal/scripts/smoke/smoke_cfm.sh   (wired by .github/workflows/ci.yml)
+#
+# WHY THIS FILE EXISTS (2026-11-04 — Wf-A269 coverage hole):
+#   The smoke's driver is a PYTHON HEREDOC embedded in the shell script, so
+#   every §5.11 gate was blind to it: their trainer predicate is the regex
+#   `train_[a-z0-9_]+\.py`, and a heredoc-embedded trainer has no .py file to
+#   match.  The 200-step training's hyperparameters (hidden_dim / n_layers /
+#   batch) therefore lived in shell-embedded Python that no gate, no diff and
+#   no reviewer could audit — AGENTS.md §5.11: "a knob that lives only in a
+#   shell script is a knob nobody audits".
+#   The values below are the SAME values the heredoc hardcoded before this
+#   file existed (source: the pre-change molmetal/scripts/smoke/smoke_cfm.sh,
+#   read 2026-11-04).  Nothing about the smoke's BEHAVIOUR changed: same
+#   200 train steps, same 4 decode probes, same decode_ratio criterion.
+#
+# CONSUMER:
+#   the embedded driver of molmetal/scripts/smoke/smoke_cfm.sh.  It builds an
+#   argparse of its own (the dests below), resolves THIS file through
+#   molmetal/scripts/wfA2_config_loader.py::apply_yaml_overrides — the same
+#   resolution machinery the §5.11 gates use — and FAILS CLOSED when a key
+#   here resolves to no dest or when a key the driver needs is absent.
+#   The command line carries `--config` ONLY (AGENTS.md §5.11 allowlist).
+#
+# BINDING (declared skip):
+#   scripts/_config_binding_gate.py cannot check this file — its consumer is a
+#   heredoc, not an importable .py, so there is no parser for the gate to
+#   capture.  It is declared in that gate's DECLARED_SKIPPED_CONFIGS with a
+#   reason; the driver itself is the binding check and it fails closed.
+#
+# NOTE ON SECTION NAMES: `model` / `train` / `data` / `eval` are the repo's
+# run-describing sections (wfA2_config_loader._LEAF_FALLBACK_SECTIONS), so each
+# leaf below resolves to the same-named argparse dest of the driver's parser.
+
+model:
+  # LipmanFlowMatchingAdapter(hidden_dim=..., n_layers=..., max_atomic_number=...)
+  hidden_dim: 64
+  n_layers: 2
+  max_atomic_number: 100
+
+train:
+  # 200-step CPU training loop (adapter.train_step), batch of 3 molecules.
+  n_train_steps: 200
+  batch_size: 3
+  seed: 0
+
+data:
+  # Synthetic 8-atom pocket (torch.randn coords + in-vocab atom types).
+  pocket_n_atoms: 8
+  pocket_coord_scale: 2.0
+  pocket_radius: 6.0
+  # Synthetic training molecules: 8 atoms each, 3 bond pairs.
+  molecule_n_atoms: 8
+  molecule_coord_scale: 0.5
+  # H/C/N/O/S/Cl/Br/I/Pt — drawn from the adapter's vocab so vocab_mask does
+  # not skip the optimizer step (see LipmanFlowMatchingAdapter._atom_vocab).
+  atom_vocab: [1, 6, 7, 8, 16, 17, 35, 53, 78]
+  bond_pairs: [[0, 1], [2, 3], [4, 5]]
+  bond_types: [1, 1, 1]
+
+eval:
+  # 4 decode probes x 4 samples, 20 ODE steps each (probe i uses seed i).
+  n_probes: 4
+  n_samples_per_probe: 4
+  decode_n_steps: 20
+  probe_seed_base: 0

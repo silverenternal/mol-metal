@@ -95,15 +95,33 @@ PITFALL_SHORT_NAME: Dict[str, str] = {
 def _run_pytest(verbose: bool = False) -> Tuple[int, str, str]:
     """Invoke pytest on the guard test file; return (rc, stdout, stderr).
 
-    Use ``pytest`` (not ``python -m pytest``) directly so we land in the
-    project's managed virtualenv where the test deps are installed.  When
-    ``pytest`` is not on PATH we fall back to ``python -m pytest`` for
-    the case where the user is already inside the test venv.
+    **AGENTS.md §5.9 — the interpreter that runs the tests must be the
+    interpreter that runs this runner**, i.e. ``sys.executable -m pytest``.
+
+    The ORIGINAL implementation preferred the BARE ``pytest`` on PATH "so we
+    land in the project's managed virtualenv where the test deps are
+    installed".  **That reasoning is backwards.**  A bare ``pytest`` lands in
+    WHATEVER environment provides it: MEASURED 2026-11-04 on this host,
+    ``which pytest`` resolves to
+    ``/home/linuxbrew/.linuxbrew/opt/python@3.14/bin/python3.14`` — a
+    Homebrew python 3.14 with **no torch** — so the repo's own
+    ``molmetal/tests/conftest.py`` died on ``import torch`` and
+    ``smoke_pitfalls.sh`` reported ``FAIL runner_crashed rc=2`` for a reason
+    that had NOTHING to do with the seven pitfall guards.  A measurement
+    taken under an unpinned interpreter is a measurement nobody may quote
+    (AGENTS.md §5.2).
+
+    The bare form is retained as a LAST resort (an environment where
+    pytest is installed but not importable by ``sys.executable``), and it
+    is only reached when the pinned attempt produced **no output at all**:
+    the loop below returns as soon as a run produced output, and a CRASHED
+    pytest always produces output — that output is a VERDICT, not an
+    invitation to retry under a different interpreter.
     """
     rel = str(TEST_FILE.relative_to(REPO_ROOT))
     cmds: List[List[str]] = [
-        ["pytest", rel, "-v", "--tb=short", "--no-header"],
         [sys.executable, "-m", "pytest", rel, "-v", "--tb=short", "--no-header"],
+        ["pytest", rel, "-v", "--tb=short", "--no-header"],
     ]
     last_err = ""
     for cmd in cmds:
