@@ -2,6 +2,19 @@
 
 > **TL;DR.** Mol-Metal is a precious-metal anticancer drug design framework (Pt/Ru/Ir/Au/Pd) on top of Flow Matching + Structure-Based Drug Design + Lambda Calculus MCTS proof-search.
 
+## Restore or move this project
+
+Start with [`docs/SERVER_RECOVERY.md`](docs/SERVER_RECOVERY.md) for the GitHub
+checkout, required external data archive, preserved checkpoints, and known
+recovery gaps. Check [`reports/server_recovery_validation.json`](reports/server_recovery_validation.json)
+for the latest recorded recovery test. **A fresh installation and the full
+pre-flight have not passed; do not delete the source server until your required
+workflows and remaining ignored files have been independently verified.**
+
+For project context, read [`docs/00_MODEL_NARRATIVE.md`](docs/00_MODEL_NARRATIVE.md)
+and [`docs/PREDICTIVE_LINE_INDEX.md`](docs/PREDICTIVE_LINE_INDEX.md); the latter
+includes retracted claims and links to the authoritative prediction metrics.
+
 ## Quickstart
 
 See [`QUICKSTART.md`](QUICKSTART.md) — install + console-script entry point + 5-min smoke.
