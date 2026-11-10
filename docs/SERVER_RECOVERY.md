@@ -39,6 +39,10 @@ The tool checks every target before creating links and refuses to overwrite
 existing paths. If the external tree is unavailable, pocket/cross-docking work
 remains blocked until it is supplied.
 
+The release retains `chemrxiv-2025-pp32k.zip` and `v1.zip` as original
+supplementary source archives. They are verified by the restore script but
+are left in the asset directory for manual inspection rather than extracted.
+
 The release also contains `repository-refs.bundle`, holding the old server's
 reachable Git refs, and `worktrees-changes.tar.gz`, holding patches and
 untracked source files from its secondary worktrees. Those patches are **not**

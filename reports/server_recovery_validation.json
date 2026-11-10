@@ -145,6 +145,15 @@
         "note": "The same three failures were observed in the source working tree; they are not a newly introduced migration failure."
       },
       "limitations": "Full training pre-flight remains FAIL on historical budget, missing config hyperparameters and run-ledger provenance. Pocket and CrossDocked symlinks refer to a separate pocket/data tree, which must be kept. Historical diagnostic outputs and intentionally discarded checkpoints are not preserved."
+    },
+    {
+      "timestamp_utc": "2026-11-10T17:16:07.679634+00:00",
+      "tag": "MEASURED",
+      "release_asset_count": 22,
+      "release_integrity": "GitHub-provided SHA-256 digests matched the local release manifest; complete local restore and repeat restore passed.",
+      "checks": "The original tracked working tree was compared against the restored checkout; two staged provenance records were subsequently preserved. Intentional omissions include old diagnostic launch copies and intermediate checkpoints.",
+      "external_dependency": "The pocket/data tree is separate from the project folder and must remain available for the recorded external links.",
+      "note": "Supplementary source zip files were archived from existing local files; no dataset was re-downloaded from its upstream provider."
     }
   ]
 }
