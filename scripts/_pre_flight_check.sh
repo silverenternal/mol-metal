@@ -80,9 +80,9 @@ FORBIDDEN_VENV_NAMES="CadButEaas kanzi_venv kanzi"
 _interp_is_forbidden() {
   local p="$1" bad
   for bad in $FORBIDDEN_VENV_NAMES; do
-    case "/$p/" in
-      *"/$bad/"*) return 0 ;;
-    esac
+    if [[ "/$p/" == *"/$bad/"* ]]; then
+      return 0
+    fi
   done
   return 1
 }

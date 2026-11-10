@@ -74,6 +74,7 @@ p2rank = [
 
 [tool.uv]
 managed = true
+package = true
 
 # =============================================================================
 # ruff — the repo had NO config until 2026-10-03, so `--isolated` equalled hook
@@ -177,3 +178,6 @@ explicit = true
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cu130" }]
+
+[tool.uv.extra-build-dependencies]
+torch-scatter = ["torch>=2.14,<2.15"]

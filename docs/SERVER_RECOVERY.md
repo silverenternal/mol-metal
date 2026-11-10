@@ -9,18 +9,16 @@ against the data and experiments you need.
 ```bash
 git clone https://github.com/silverenternal/mol-metal.git
 cd mol-metal
-uv sync --locked  # currently blocked; see note below
+uv sync --locked
 source .venv/bin/activate
 ```
 
 The project targets Python 3.12. The dependency configuration specifies CUDA
 13 PyTorch and Triton; the appropriate PyTorch build and optional packages
-may differ on another machine. An isolated install on a new host has not been
-validated by this note. `uv lock --check` failed in the source environment:
-resolution tried building the optional `torch-scatter` in isolation without
-PyTorch, so `uv sync --locked` must not be treated as a verified recovery
-procedure. Resolve and test the dependency lock on the destination before
-relying on it. Run `python -m molmetal --help`, followed by the
+may differ on another machine. `uv sync --locked` and the console entry point
+were verified in a new virtual environment in a GitHub clone on the source
+server; that is not an independent test on a different host. Run
+`python -m molmetal --help`, followed by the
 project's relevant CPU tests. Before any retraining, run
 `molmetal/scripts/pre_flight_check.py` and resolve its reported failures.
 
@@ -95,7 +93,7 @@ their own attribution and reuse terms.
 `reports/server_recovery_validation.json` records the dated verification of a
 GitHub checkout and downloaded release archive using the old server's Python
 environment. Its full pre-flight did **not** pass. In particular, the lock
-file has not been successfully installed in an isolated environment, two
-metric registry entries are stale, and several gates still fail. This is not
+file has since been installed in a new environment on the same server; two
+metric registry entries remain stale and several gates still fail. This is not
 proof that it is safe to discard the source server. Check the report and make
 an independent backup of any ignored data or weights needed by your workflows.
